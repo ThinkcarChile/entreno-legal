@@ -1,4 +1,13 @@
-import { NUTRIENT_KEYS, type BasisUnit, type NutritionFact, type NutritionValues } from "./types";
+import {
+  NUTRIENT_KEYS,
+  type AbsoluteNutrients,
+  type AggregatedNutrition,
+  type BasisUnit,
+  type NutrientCompleteness,
+  type NutritionCompleteness,
+  type NutritionFact,
+  type NutritionValues,
+} from "./types";
 
 /**
  * Cálculo nutricional puro (ADR 0001 §7):
@@ -81,10 +90,14 @@ export function quantityFromServings(
 }
 
 /**
- * Suma conjuntos nutricionales YA escalados a cantidades absolutas.
- * Rechaza mezclar bases distintas (crudo vs cocido, g vs ml): 100 g de arroz
- * crudo no es comparable con 100 g cocido.
- * NULL se propaga: si un componente desconoce un nutriente, la suma es desconocida.
+ * Combina fichas que comparten UNA MISMA REPRESENTACIÓN (misma base y unidad),
+ * p. ej. dos mediciones por-100 g RAW del mismo alimento. Rechaza fusionar
+ * representaciones incompatibles: 100 g de arroz crudo no es 100 g de cocido.
+ *
+ * OJO — esto NO es lo que usa una receta. Una receta con pollo RAW y arroz
+ * COOKED es perfectamente válida: cada ingrediente se resuelve con SU ficha,
+ * se convierte a nutrientes absolutos y recién ahí se suma. Para eso está
+ * {@link sumAbsoluteNutrients}, no esta función (ADR 0002 §2).
  */
 export function combineNutrition(facts: readonly NutritionFact[]): NutritionFact {
   if (facts.length === 0) throw new Error("Nada que combinar");
@@ -110,6 +123,62 @@ export function combineNutrition(facts: readonly NutritionFact[]): NutritionFact
     values[key] = sum;
   }
   return { values, weightBasis: first.weightBasis, basisUnit: first.basisUnit };
+}
+
+/**
+ * Suma vectores **absolutos** (ya dimensionalmente resueltos: kcal, g, mg para
+ * cantidades concretas). Aquí la base RAW/COOKED y la unidad g/ml ya se
+ * consumieron al calcular cada vector, así que sumar pollo crudo con arroz
+ * cocido es legítimo — es lo que hace cualquier receta real.
+ *
+ * Reporta completitud por nutriente (Sprint 3 §21), porque "sumé los 5 aportes"
+ * no es lo mismo que "sumé los 3 que conocía":
+ * - COMPLETE: todos los aportes traían el nutriente;
+ * - PARTIAL:  algunos sí y otros no → el valor es una suma parcial, jamás se
+ *             presenta como total (la UI muestra "cálculo incompleto");
+ * - UNKNOWN:  ninguno lo traía → valor `null`, nunca 0.
+ */
+export function sumAbsoluteNutrients(
+  vectors: readonly AbsoluteNutrients[],
+): AggregatedNutrition {
+  const completeness = {} as NutritionCompleteness;
+  const values: NutritionValues = {};
+
+  for (const key of NUTRIENT_KEYS) {
+    let sum = 0;
+    let known = 0;
+    for (const vector of vectors) {
+      const value = vector[key];
+      if (value === null || value === undefined) continue;
+      sum += value;
+      known += 1;
+    }
+    let state: NutrientCompleteness;
+    if (known === 0) state = "UNKNOWN";
+    else if (known === vectors.length) state = "COMPLETE";
+    else state = "PARTIAL";
+
+    completeness[key] = state;
+    values[key] = state === "UNKNOWN" ? null : sum;
+  }
+
+  return { values, completeness, contributors: vectors.length };
+}
+
+/** Divide una agregación por un número de porciones, conservando la completitud. */
+export function divideAggregated(
+  aggregated: AggregatedNutrition,
+  servings: number,
+): AggregatedNutrition {
+  if (!Number.isFinite(servings) || servings <= 0) {
+    throw new Error("Las porciones deben ser mayores que 0");
+  }
+  const values: NutritionValues = {};
+  for (const key of NUTRIENT_KEYS) {
+    const value = aggregated.values[key];
+    values[key] = value === null || value === undefined ? null : value / servings;
+  }
+  return { values, completeness: aggregated.completeness, contributors: aggregated.contributors };
 }
 
 /** Redondeo SOLO para visualización/persistencia (half-up, n decimales). */

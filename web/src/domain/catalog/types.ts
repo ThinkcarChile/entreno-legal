@@ -34,6 +34,38 @@ export type SourceType =
   | "AI_ESTIMATE"
   | "DEV_SEED";
 
+/**
+ * Vector nutricional ya **dimensionalmente resuelto**: nutrientes absolutos
+ * (kcal, g, mg) para una cantidad concreta. A diferencia de `NutritionFact`,
+ * NO arrastra base (RAW/COOKED, g/ml): esa dimensión ya se consumió al calcular.
+ * Por eso dos vectores absolutos siempre se pueden sumar aunque provengan de
+ * ingredientes con estados distintos (ADR 0002 §2).
+ */
+export type AbsoluteNutrients = NutritionValues;
+
+/**
+ * Completitud por nutriente de una suma (Sprint 3 §21). UNKNOWN != ZERO, y
+ * además "sumé todos" != "sumé los que sabía".
+ */
+export type NutrientCompleteness = "COMPLETE" | "PARTIAL" | "UNKNOWN";
+
+export type NutritionCompleteness = Record<NutrientKey, NutrientCompleteness>;
+
+/** Resultado de agregar vectores absolutos: valores + qué tan confiable es cada uno. */
+export interface AggregatedNutrition {
+  /** Suma de los aportes CONOCIDOS. `null` si ninguno lo conocía. */
+  values: NutritionValues;
+  completeness: NutritionCompleteness;
+  /** Cuántos vectores participaron en la suma. */
+  contributors: number;
+}
+
+export const COMPLETENESS_LABELS: Record<NutrientCompleteness, string> = {
+  COMPLETE: "Cálculo completo",
+  PARTIAL: "Cálculo incompleto",
+  UNKNOWN: "Sin datos",
+};
+
 /** Conjunto nutricional con identidad de base (estado + unidad). */
 export interface NutritionFact {
   values: NutritionValues;

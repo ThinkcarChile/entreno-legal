@@ -15,3 +15,10 @@ Formato: `NNNN-titulo-corto.md`, correlativo. Plantilla:
 ## Decisión
 ## Consecuencias (incluye migración requerida)
 ```
+
+## ADRs registrados
+
+| # | Título | Estado |
+|---|---|---|
+| [0001](./0001-food-data-provenance.md) | Food Data Provenance | APROBADO (Sprint 2) |
+| [0002](./0002-recipe-versioning-and-nutrition-aggregation.md) | Versionado de recetas y agregación nutricional | APROBADO (Sprint 3) |

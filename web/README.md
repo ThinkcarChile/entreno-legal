@@ -1,6 +1,8 @@
 # Mesa Familiar — aplicación web
 
-Sprint 1 (Fundaciones) de la [Plataforma Familiar Inteligente de Alimentación](../docs/sprint-0/README.md). Arquitectura: [BASELINE 1.0](../docs/architecture/BASELINE.md).
+[Plataforma Familiar Inteligente de Alimentación](../docs/sprint-0/README.md). Arquitectura: [BASELINE 1.0](../docs/architecture/BASELINE.md).
+
+Puesta en marcha desde cero: [Activar Supabase paso a paso](../docs/setup-supabase.md).
 
 ## Desarrollo
 
@@ -21,7 +23,24 @@ npm run lint && npm run typecheck && npm test && npm run build
 
 ## Tests de base de datos
 
-`scripts/db-test.sh` levanta un PostgreSQL local efímero, aplica `supabase/migrations/*.sql` + el seed de desarrollo y ejecuta `supabase/tests/rls_catalog.sql` (aislamiento RLS entre hogares, barcode único por ámbito, UNKNOWN ≠ ZERO, DEV_SEED nunca verificado). Corre también en CI.
+`scripts/db-test.sh` levanta un PostgreSQL local efímero, aplica `supabase/migrations/*.sql` + los seeds de desarrollo y ejecuta todos los `supabase/tests/rls_*.sql`. Corre también en CI (job `db`) y funciona en Linux y en Windows/Git Bash (allá con socket Unix, acá con TCP en loopback).
+
+Qué cubren:
+
+- `rls_catalog.sql` — aislamiento entre hogares, barcode único por ámbito, UNKNOWN ≠ ZERO, DEV_SEED nunca verificado.
+- `rls_recipes.sql` — la biblioteca global es intocable para un hogar (pero copiable), las recetas del hogar son invisibles para otros hogares, publicar congela la ficha nutricional, y una versión publicada no se puede editar ni por SQL directo.
+
+## Qué incluye el Sprint 3
+
+- Recetas modulares y **versionadas** ([ADR 0002](../docs/adr/0002-recipe-versioning-and-nutrition-aggregation.md)): `MealTemplate` + `MealTemplateVersion` inmutable. Publicar congela la ficha nutricional de cada componente; editar crea la versión siguiente y la anterior queda intacta (reforzado con triggers, no solo en la UI).
+- Slots con **varios** ingredientes (la ensalada chilena son tomate + cebolla + cilantro + limón), alternativas de **compatibilidad culinaria** que explícitamente no afirman equivalencia nutricional, y aderezos como ingredientes reales con sus calorías.
+- Ensaladas y postres reutilizables dentro de la misma arquitectura (`kind = SALAD | DESSERT`), referenciados por versión: "Pollo + arroz + Ensalada Chilena v2".
+- Motor `calculateMealNutrition`: cada ingrediente se resuelve con **su** ficha y **su** estado, y recién ahí se suman los vectores absolutos — por eso una receta con pollo crudo y arroz cocido se calcula sin problema, mientras leer una ficha con la base equivocada sigue siendo un error.
+- **Completitud por nutriente** COMPLETE / PARTIAL / UNKNOWN: si un ingrediente no informa fósforo, el plato dice "cálculo incompleto" en vez de inventar un total.
+- `scaleMealTemplateVersion`: escalar 5 → 6 porciones es una proyección; la receta guardada no se toca.
+- Pantallas: RECETAS (búsqueda + filtros por momento del día y por ámbito), DETALLE con calculadora de porciones en vivo y procedencia de cada dato, CREAR/EDITAR con lenguaje de cocina ("Agregar proteína") y nutrición actualizándose mientras se escribe, DUPLICAR y "Copiar a mis recetas".
+- Seed: 9 recetas globales de demostración (7 platos + 2 ensaladas reutilizables), `DEV_SEED`.
+- Tabla `member_favorites` creada y con RLS, sin UI todavía (Sprint 4).
 
 ## Qué incluye el Sprint 2
 
