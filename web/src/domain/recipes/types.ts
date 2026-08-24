@@ -1,6 +1,11 @@
 import type { BasisUnit, NutritionFact, WeightBasis } from "../catalog/types";
 
 /** Tipos de comida (§2). Una receta puede servir para más de uno. */
+/**
+ * Los ocho tipos que existen en la base. FRUIT se agregó en la migración 0005 y
+ * hasta el QA del Sprint 5 faltaba acá: la base aceptaba una comida de fruta que
+ * el dominio no sabía nombrar.
+ */
 export const MEAL_TYPES = [
   "BREAKFAST",
   "LUNCH",
@@ -8,6 +13,7 @@ export const MEAL_TYPES = [
   "DINNER",
   "DESSERT",
   "SNACK",
+  "FRUIT",
   "OTHER",
 ] as const;
 export type MealType = (typeof MEAL_TYPES)[number];
@@ -186,6 +192,7 @@ export const MEAL_TYPE_LABELS: Record<MealType, string> = {
   DINNER: "Cena",
   DESSERT: "Postre",
   SNACK: "Snack",
+  FRUIT: "Fruta",
   OTHER: "Otro",
 };
 

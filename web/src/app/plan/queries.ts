@@ -3,6 +3,7 @@ import { z } from "zod";
 import { DataAccessError } from "@/lib/supabase/unwrap";
 import { dateString, nullableNumeric, parseRows, uuid } from "@/lib/supabase/rows";
 import { weekDays } from "@/domain/nutrition/calendar";
+import type { DayEvent, EventStrategy } from "@/domain/nutrition/events";
 import type { MealType } from "@/domain/recipes/types";
 
 type Db = SupabaseClient;
@@ -27,6 +28,16 @@ export interface Assignment {
   notes: string | null;
   /** Cuántas porciones quedaron guardadas al confirmar. */
   servingCount: number;
+  /**
+   * Quiénes comen. VACÍO = comen todos los integrantes activos, que es el caso
+   * normal: se guardan filas solo cuando alguien queda fuera.
+   */
+  participantIds: string[];
+  /** Algo cambió alrededor de esta comida ya confirmada (§18). */
+  needsReview: boolean;
+  reviewReason: string | null;
+  /** Cuántas veces se confirmó, para poder ver que hubo recálculos (§12). */
+  confirmCount: number;
 }
 
 export interface PlanDay {
@@ -49,6 +60,8 @@ export interface WeekPlan {
     mealType: MealType | null;
     strategy: string;
     title: string;
+    /** Integrantes afectados. VACÍO = toda la familia. */
+    memberIds: string[];
   }[];
 }
 
@@ -61,6 +74,9 @@ const assignmentRowSchema = z.object({
   template_id: uuid.nullable(),
   version_id: uuid.nullable(),
   notes: z.string().nullable(),
+  needs_review: z.boolean(),
+  review_reason: z.string().nullable(),
+  confirm_count: z.number().int(),
 });
 
 const dayRowSchema = z.object({ id: uuid, plan_date: dateString });
@@ -110,10 +126,33 @@ export async function loadWeek(
 
   const { data: assignmentRows, error: asigError } = await db
     .from("meal_assignments")
-    .select("id, day_id, meal_type, kind, status, template_id, version_id, notes")
+    .select(
+      "id, day_id, meal_type, kind, status, template_id, version_id, notes, " +
+        "needs_review, review_reason, confirm_count",
+    )
     .in("day_id", days.map((d) => d.id));
   if (asigError) throw new DataAccessError("comidas planificadas", asigError);
   const assignments = parseRows(assignmentRowSchema, assignmentRows, "comidas planificadas");
+
+  // Participantes explícitos. Sin filas para una comida = comen todos.
+  const participantes = new Map<string, string[]>();
+  if (assignments.length > 0) {
+    const { data, error } = await db
+      .from("meal_assignment_participants")
+      .select("assignment_id, member_id")
+      .in("assignment_id", assignments.map((a) => a.id));
+    if (error) throw new DataAccessError("participantes de las comidas", error);
+    const filas = parseRows(
+      z.object({ assignment_id: uuid, member_id: uuid }),
+      data,
+      "participantes de las comidas",
+    );
+    for (const fila of filas) {
+      const lista = participantes.get(fila.assignment_id) ?? [];
+      lista.push(fila.member_id);
+      participantes.set(fila.assignment_id, lista);
+    }
+  }
 
   // Nombres de receta por versión, en una sola consulta.
   const versionIds = [...new Set(assignments.map((a) => a.version_id).filter(Boolean))] as string[];
@@ -152,6 +191,26 @@ export async function loadWeek(
     .lte("event_date", fechas[6]!)
     .order("event_date");
   if (eventosError) throw new DataAccessError("eventos de la semana", eventosError);
+  const eventos = parseRows(eventRowSchema, eventRows, "eventos de la semana");
+
+  // A quién afecta cada evento. Sin filas = a toda la familia.
+  const afectados = new Map<string, string[]>();
+  if (eventos.length > 0) {
+    const { data, error } = await db
+      .from("nutrition_event_members")
+      .select("event_id, member_id")
+      .in("event_id", eventos.map((e) => e.id));
+    if (error) throw new DataAccessError("integrantes de los eventos", error);
+    for (const fila of parseRows(
+      z.object({ event_id: uuid, member_id: uuid }),
+      data,
+      "integrantes de los eventos",
+    )) {
+      const lista = afectados.get(fila.event_id) ?? [];
+      lista.push(fila.member_id);
+      afectados.set(fila.event_id, lista);
+    }
+  }
 
   return {
     planId: planId as string,
@@ -174,9 +233,13 @@ export async function loadWeek(
           versionNumber: a.version_id ? (versiones.get(a.version_id)?.versionNumber ?? null) : null,
           notes: a.notes,
           servingCount: conteos.get(a.id) ?? 0,
+          participantIds: participantes.get(a.id) ?? [],
+          needsReview: a.needs_review,
+          reviewReason: a.review_reason,
+          confirmCount: a.confirm_count,
         })),
     })),
-    events: parseRows(eventRowSchema, eventRows, "eventos de la semana").map((e) => ({
+    events: eventos.map((e) => ({
       id: e.id,
       date: e.event_date,
       endDate: e.end_date,
@@ -184,6 +247,7 @@ export async function loadWeek(
       mealType: e.meal_type as MealType | null,
       strategy: e.strategy,
       title: e.title,
+      memberIds: afectados.get(e.id) ?? [],
     })),
   };
 }
@@ -300,5 +364,52 @@ export async function loadConfirmedServings(db: Db, assignmentId: string) {
     reasons: row.reasons as { code: string; text: string }[],
     components: [...row.member_serving_components].sort((a, b) => a.sort_order - b.sort_order),
     substitutions: row.member_serving_substitutions,
+  }));
+}
+
+/**
+ * Eventos que cubren una fecha, con a quién afectan. Incluye los de varios días
+ * cuyo rango contiene esa fecha — un viaje que empezó el jueves sigue vigente el
+ * sábado.
+ */
+export async function loadEventsForDate(db: Db, date: string): Promise<DayEvent[]> {
+  const { data, error } = await db
+    .from("nutrition_events")
+    .select("id, event_date, end_date, event_type, meal_type, strategy, title")
+    .lte("event_date", date)
+    .or(`end_date.is.null,end_date.gte.${date}`);
+  if (error) throw new DataAccessError("eventos del día", error);
+
+  const eventos = parseRows(eventRowSchema, data, "eventos del día").filter(
+    (e) => (e.end_date === null ? e.event_date === date : date <= e.end_date),
+  );
+  if (eventos.length === 0) return [];
+
+  const { data: filas, error: miembrosError } = await db
+    .from("nutrition_event_members")
+    .select("event_id, member_id")
+    .in("event_id", eventos.map((e) => e.id));
+  if (miembrosError) throw new DataAccessError("integrantes de los eventos", miembrosError);
+
+  const afectados = new Map<string, string[]>();
+  for (const fila of parseRows(
+    z.object({ event_id: uuid, member_id: uuid }),
+    filas,
+    "integrantes de los eventos",
+  )) {
+    const lista = afectados.get(fila.event_id) ?? [];
+    lista.push(fila.member_id);
+    afectados.set(fila.event_id, lista);
+  }
+
+  return eventos.map((e) => ({
+    id: e.id,
+    date: e.event_date,
+    endDate: e.end_date,
+    eventType: e.event_type,
+    mealType: e.meal_type as MealType | null,
+    strategy: e.strategy as EventStrategy,
+    title: e.title,
+    memberIds: afectados.get(e.id) ?? [],
   }));
 }

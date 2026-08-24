@@ -23,6 +23,7 @@ const MIGRACIONES = [
   "supabase/migrations/0005_profiles_and_portions.sql",
   "supabase/migrations/0006_component_roles.sql",
   "supabase/migrations/0007_weekly_planning.sql",
+  "supabase/migrations/0008_participants_and_serving_lifecycle.sql",
 ];
 
 const SEEDS = [

@@ -127,6 +127,16 @@ export interface OptimizeInput {
   mealType: MealType;
   /** Excepción del día: manda sobre el patrón, sin modificarlo (§19). */
   override?: TargetSet | null;
+  /**
+   * Objetivos ya resueltos por quien llama, que REEMPLAZAN a los del patrón en
+   * vez de mezclarse con ellos.
+   *
+   * Existe por los eventos (§5): "sin conteo ese día" tiene que dejar la comida
+   * SIN objetivos, y un `override` vacío no puede expresar eso — mezclar `{}`
+   * sobre el patrón devuelve el patrón intacto. La diferencia entre "no cambio
+   * nada" y "hoy no hay objetivos" no se puede escribir con un solo campo.
+   */
+  resolvedTargets?: TargetSet | null;
 }
 
 /** Márgenes conservadores cuando la receta no define límites (§29). */
@@ -367,7 +377,10 @@ export function optimizePortion(input: OptimizeInput): MemberServingProjection {
     return finish("COMPATIBLE", 0, {});
   }
 
-  const targets = effectiveMealTargets(profile, mealType, input.override);
+  const targets =
+    input.resolvedTargets !== undefined && input.resolvedTargets !== null
+      ? input.resolvedTargets
+      : effectiveMealTargets(profile, mealType, input.override);
 
   // --- Preferencias SOFT: anotan, no prohíben (§12) ---
   for (const component of components) {

@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { AppNav } from "@/components/AppNav";
 import { roundForDisplay } from "@/domain/catalog/nutrition";
-import { NUTRIENT_KEYS, NUTRIENT_LABELS } from "@/domain/catalog/types";
+import { NUTRIENT_LABELS } from "@/domain/catalog/types";
 import { countsCalories } from "@/domain/nutrition/profile";
 import { TRACKING_LABELS } from "@/domain/nutrition/types";
 import { projectFamilyServings } from "@/domain/portions/family";
@@ -14,7 +14,7 @@ import type { TargetSet } from "@/domain/nutrition/types";
 import type { AcceptedSubstitution, AvailableAlternative } from "@/domain/portions/optimizer";
 import { DataAccessError } from "@/lib/supabase/unwrap";
 import { loadDailyOverride, loadHouseholdProfiles } from "@/app/family/nutrition-queries";
-import { loadRecipeDetail } from "../../queries";
+import { loadAlternativesWithFacts, loadRecipeDetail } from "../../queries";
 
 export const dynamic = "force-dynamic";
 
@@ -77,58 +77,10 @@ export default async function FamilyServingsPage({ params, searchParams }: Props
   }));
 
   // --- Alternativas culinarias con su nutrición, para poder sustituir (§26) ---
-  const alternativeIds = [
-    ...new Set(
-      recipe.alternatives
-        .map((a) => (a.target.kind === "INGREDIENT" ? a.target.ingredientId : null))
-        .filter((x): x is string => Boolean(x)),
-    ),
-  ];
-
-  let alternatives: AvailableAlternative[] = [];
-  if (alternativeIds.length > 0) {
-    const { data: factRows, error: factsError } = await supabase
-      .from("nutrition_facts")
-      .select(
-        `id, ingredient_id, weight_basis, basis_unit,
-         energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g,
-         saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg`,
-      )
-      .in("ingredient_id", alternativeIds);
-    if (factsError) throw new DataAccessError("fichas de las alternativas", factsError);
-
-    const factByIngredient = new Map<string, (typeof factRows)[number]>();
-    for (const row of factRows ?? []) {
-      // Se prefiere la ficha en crudo, que es como se declara el plato base.
-      if (!factByIngredient.has(row.ingredient_id) || row.weight_basis === "RAW") {
-        factByIngredient.set(row.ingredient_id, row);
-      }
-    }
-
-    alternatives = recipe.alternatives
-      .filter((a) => a.target.kind === "INGREDIENT")
-      .map((a) => {
-        const ingredientId = a.target.kind === "INGREDIENT" ? a.target.ingredientId : "";
-        const row = factByIngredient.get(ingredientId);
-        const values: Record<string, number | null> = {};
-        for (const key of NUTRIENT_KEYS) {
-          const raw = row?.[key as keyof typeof row];
-          values[key] = raw === null || raw === undefined ? null : Number(raw);
-        }
-        return {
-          slotId: a.slotId,
-          ingredientId,
-          label: a.label,
-          nutrition: row
-            ? {
-                values,
-                weightBasis: row.weight_basis as never,
-                basisUnit: row.basis_unit as never,
-              }
-            : null,
-        };
-      });
-  }
+  const alternatives: AvailableAlternative[] = await loadAlternativesWithFacts(
+    supabase,
+    recipe.alternatives,
+  );
 
   // --- Reemplazos aceptados por URL: "memberId~componentId~ingredientId" ---
   const subParams = Array.isArray(sub) ? sub : sub ? [sub] : [];

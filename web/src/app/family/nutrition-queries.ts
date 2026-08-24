@@ -8,7 +8,7 @@ import type {
 } from "@/domain/nutrition/types";
 import type { MealType } from "@/domain/recipes/types";
 import { DataAccessError } from "@/lib/supabase/unwrap";
-import { nullableNumeric, parseMaybeRow, parseRows, uuid } from "@/lib/supabase/rows";
+import { dateString, nullableNumeric, parseMaybeRow, parseRows, uuid } from "@/lib/supabase/rows";
 import { z } from "zod";
 
 /**
@@ -439,10 +439,22 @@ export async function loadUpcomingOverrides(
     .order("plan_date");
   if (error) throw new DataAccessError("excepciones del dia", error);
 
-  return (data ?? []).map((plan) => ({
+  // §6: `plan_date` es DATE-only y se normaliza con el schema compartido. Antes
+  // se leía directo y se castaba el embed: una fila con otra forma se convertía
+  // en silencio en una excepción del día incompleta.
+  const comida = z.object({ meal_type: z.string(), energy_max: nullableNumeric });
+  const filaSchema = z.object({
+    plan_date: dateString,
+    member_daily_plan_meals: z
+      .union([z.array(comida), comida, z.null()])
+      .transform((v) => (v === null ? [] : Array.isArray(v) ? v : [v])),
+  });
+
+  return parseRows(filaSchema, data, "excepciones del dia").map((plan) => ({
     date: plan.plan_date,
-    meals: ((plan.member_daily_plan_meals ?? []) as { meal_type: MealType; energy_max: number | null }[]).map(
-      (m) => ({ mealType: m.meal_type, energyMax: m.energy_max }),
-    ),
+    meals: plan.member_daily_plan_meals.map((m) => ({
+      mealType: m.meal_type as MealType,
+      energyMax: m.energy_max,
+    })),
   }));
 }

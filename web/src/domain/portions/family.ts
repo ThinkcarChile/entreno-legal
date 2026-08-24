@@ -26,6 +26,8 @@ export interface FamilyProjectionInput {
     profile: MemberNutritionProfile;
     /** Excepción del día de esta persona, si tiene. */
     override?: TargetSet | null;
+    /** Objetivos ya resueltos (patrón + excepción + evento) que reemplazan al patrón. */
+    resolvedTargets?: TargetSet | null;
     /** Reemplazos que ESTA persona aceptó. */
     substitutions?: readonly AcceptedSubstitution[];
   }[];
@@ -51,7 +53,7 @@ export interface FamilyServingProjection {
 }
 
 export function projectFamilyServings(input: FamilyProjectionInput): FamilyServingProjection {
-  const servings = input.members.map(({ profile, override, substitutions }) =>
+  const servings = input.members.map(({ profile, override, resolvedTargets, substitutions }) =>
     optimizePortion({
       versionId: input.versionId,
       components: input.components,
@@ -61,6 +63,7 @@ export function projectFamilyServings(input: FamilyProjectionInput): FamilyServi
       profile,
       mealType: input.mealType,
       override,
+      resolvedTargets,
     }),
   );
 

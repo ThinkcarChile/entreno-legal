@@ -23,7 +23,7 @@ export default async function PlanPage({ searchParams }: Props) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/plan");
 
-  const { householdId } = await loadHouseholdMembers(supabase);
+  const { householdId, members } = await loadHouseholdMembers(supabase);
   if (!householdId) {
     return (
       <main className="mx-auto max-w-3xl px-4 pb-16">
@@ -97,7 +97,12 @@ export default async function PlanPage({ searchParams }: Props) {
         </p>
       )}
 
-      <WeekBoard week={week} recipes={recipes} today={hoy} />
+      <WeekBoard
+        week={week}
+        recipes={recipes}
+        members={members.map((m) => ({ id: m.id, name: m.displayName }))}
+        today={hoy}
+      />
     </main>
   );
 }

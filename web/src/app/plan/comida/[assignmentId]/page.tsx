@@ -8,6 +8,8 @@ import { formatDate } from "@/domain/nutrition/calendar";
 import { COOKING_METHOD_LABELS, MEAL_TYPE_LABELS, type MealType } from "@/domain/recipes/types";
 import { DataAccessError } from "@/lib/supabase/unwrap";
 import { loadConfirmedServings } from "../../queries";
+import { dateString, parseRow, parseRows } from "@/lib/supabase/rows";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +36,7 @@ export default async function ComidaConfirmadaPage({ params }: Props) {
   const { data: asignacion, error } = await supabase
     .from("meal_assignments")
     .select(
-      `id, meal_type, status, confirmed_at,
+      `id, meal_type, status, confirmed_at, confirm_count, needs_review, review_reason,
        weekly_plan_days ( plan_date ),
        meal_template_versions ( name, version_number )`,
     )
@@ -43,14 +45,37 @@ export default async function ComidaConfirmadaPage({ params }: Props) {
   if (error) throw new DataAccessError("comida confirmada", error);
   if (!asignacion) notFound();
 
-  const dias = asignacion.weekly_plan_days as unknown;
-  const fecha =
-    (Array.isArray(dias) ? dias[0]?.plan_date : (dias as { plan_date?: string } | null)?.plan_date) ??
-    null;
-  const versiones = asignacion.meal_template_versions as unknown;
-  const receta = Array.isArray(versiones)
-    ? versiones[0]
-    : (versiones as { name?: string; version_number?: number } | null);
+  // Los embeds se validan, no se castean: una fila con otra forma tiene que
+  // gritar, no convertirse en una pantalla sin fecha ni nombre de receta.
+  const uno = <T extends z.ZodTypeAny>(schema: T) =>
+    z
+      .union([z.array(schema), schema, z.null()])
+      .transform((v) => (Array.isArray(v) ? (v[0] ?? null) : v));
+
+  const cabecera = parseRow(
+    z.object({
+      weekly_plan_days: uno(z.object({ plan_date: dateString })),
+      meal_template_versions: uno(z.object({ name: z.string(), version_number: z.number().int() })),
+    }),
+    asignacion,
+    "cabecera de la comida confirmada",
+  );
+  const fecha = cabecera.weekly_plan_days?.plan_date ?? null;
+  const receta = cabecera.meal_template_versions;
+
+  // §2: quiénes comieron esta comida. Sin filas, comió toda la familia.
+  const { data: comensales, error: comensalesError } = await supabase
+    .from("meal_assignment_participants")
+    .select("household_members ( display_name )")
+    .eq("assignment_id", assignmentId);
+  if (comensalesError) throw new DataAccessError("comensales de la comida", comensalesError);
+  const nombres = parseRows(
+    z.object({ household_members: uno(z.object({ display_name: z.string() })) }),
+    comensales,
+    "comensales de la comida",
+  )
+    .map((c) => c.household_members?.display_name)
+    .filter((n): n is string => Boolean(n));
 
   const servings = await loadConfirmedServings(supabase, assignmentId);
 
@@ -94,6 +119,18 @@ export default async function ComidaConfirmadaPage({ params }: Props) {
               timeZone: "America/Santiago",
             })}
             . Estas porciones quedaron guardadas tal como se calcularon.
+            {Number(asignacion.confirm_count ?? 0) > 1 && (
+              <> Se recalculó {asignacion.confirm_count} veces antes de servirse.</>
+            )}
+          </p>
+        )}
+        <p className="mt-1 text-xs text-[var(--ink)]/50">
+          Comieron: {nombres.length === 0 ? "toda la familia" : nombres.join(", ")}.
+        </p>
+        {asignacion.needs_review && (
+          <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            {asignacion.review_reason ?? "Algo cambió alrededor de esta comida"}. Lo guardado acá no
+            se tocó: sigue siendo lo que se calculó ese día.
           </p>
         )}
       </header>

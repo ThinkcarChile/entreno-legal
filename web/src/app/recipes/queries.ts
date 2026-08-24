@@ -607,3 +607,77 @@ export async function loadDraftForEdit(
   if (!detail || detail.status !== "DRAFT") return null;
   return detail;
 }
+
+/**
+ * Alternativas culinarias de una receta con su ficha nutricional.
+ *
+ * Vivía copiada en dos pantallas — "ver porciones" y confirmar una comida — y en
+ * las dos con `as never` sobre la fila. Dos copias de la misma lectura sin
+ * validar es el lugar exacto donde el Sprint 4 perdió las preferencias: acá se
+ * lee una sola vez, validada, y las dos pantallas comparten la misma verdad.
+ */
+export async function loadAlternativesWithFacts(
+  db: Db,
+  alternatives: readonly Pick<SlotAlternative, "slotId" | "label" | "target">[],
+): Promise<AlternativeWithFact[]> {
+  const ingredientIds = [
+    ...new Set(
+      alternatives
+        .map((a) => (a.target.kind === "INGREDIENT" ? a.target.ingredientId : null))
+        .filter((x): x is string => Boolean(x)),
+    ),
+  ];
+  if (ingredientIds.length === 0) return [];
+
+  const { data, error } = await db
+    .from("nutrition_facts")
+    .select(
+      `ingredient_id, weight_basis, basis_unit,
+       energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g,
+       saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg`,
+    )
+    .in("ingredient_id", ingredientIds);
+  if (error) throw new DataAccessError("fichas de las alternativas", error);
+
+  const fichaSchema = z
+    .object({ ingredient_id: uuid, weight_basis: weightBasis, basis_unit: basisUnit })
+    .merge(nutrientColumns);
+
+  const porIngrediente = new Map<string, z.output<typeof fichaSchema>>();
+  for (const fila of parseRows(fichaSchema, data, "fichas de las alternativas")) {
+    // Se prefiere la ficha en crudo, que es como se declara el plato base.
+    if (!porIngrediente.has(fila.ingredient_id) || fila.weight_basis === "RAW") {
+      porIngrediente.set(fila.ingredient_id, fila);
+    }
+  }
+
+  return alternatives
+    .filter((a) => a.target.kind === "INGREDIENT")
+    .map((a) => {
+      const ingredientId = a.target.kind === "INGREDIENT" ? a.target.ingredientId : "";
+      const fila = porIngrediente.get(ingredientId);
+      const values: Record<string, number | null> = {};
+      for (const key of NUTRIENT_KEYS) {
+        values[key] = fila ? (fila[key] ?? null) : null;
+      }
+      return {
+        slotId: a.slotId,
+        ingredientId,
+        label: a.label,
+        nutrition: fila
+          ? {
+              values: values as NutritionFact["values"],
+              weightBasis: fila.weight_basis,
+              basisUnit: fila.basis_unit,
+            }
+          : null,
+      };
+    });
+}
+
+export interface AlternativeWithFact {
+  slotId: string;
+  ingredientId: string;
+  label: string;
+  nutrition: NutritionFact | null;
+}

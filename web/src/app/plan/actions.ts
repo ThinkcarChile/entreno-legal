@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { effectiveDate } from "@/domain/nutrition/calendar";
+import { applyEventEffect, effectFor } from "@/domain/nutrition/events";
+import { effectiveMealTargets } from "@/domain/nutrition/profile";
 import type { TargetSet } from "@/domain/nutrition/types";
 import { projectFamilyServings } from "@/domain/portions/family";
 import type {
@@ -13,9 +15,11 @@ import type {
 } from "@/domain/portions/optimizer";
 import type { MealType } from "@/domain/recipes/types";
 import { loadDailyOverride, loadHouseholdProfiles } from "@/app/family/nutrition-queries";
-import { loadRecipeDetail } from "@/app/recipes/queries";
-import { NUTRIENT_KEYS } from "@/domain/catalog/types";
+import { loadAlternativesWithFacts, loadRecipeDetail } from "@/app/recipes/queries";
+import { loadEventsForDate } from "./queries";
 import { DataAccessError } from "@/lib/supabase/unwrap";
+import { DataShapeError, dateString } from "@/lib/supabase/rows";
+import { z } from "zod";
 
 export interface ActionResult {
   ok: boolean;
@@ -67,6 +71,66 @@ export async function assignMeal(input: {
   return { ok: true, message: "Comida planificada." };
 }
 
+/**
+ * Quiénes comen esta comida (§2 del QA adversarial).
+ *
+ * Una lista vacía NO significa "no come nadie": significa "comen todos", que es
+ * el caso normal y no merece cinco filas por almuerzo. Se guardan filas solo
+ * cuando alguien queda fuera — el sábado que Francisco tiene un cumpleaños.
+ */
+export async function setMealParticipants(
+  assignmentId: string,
+  memberIds: string[],
+): Promise<ActionResult> {
+  const supabase = await client();
+
+  const { data: yaServidas, error: servidasError } = await supabase
+    .from("member_serving_projections")
+    .select("id, status")
+    .eq("assignment_id", assignmentId)
+    .in("status", ["SERVED", "CONSUMED"]);
+  if (servidasError) throw new DataAccessError("porciones de la comida", servidasError);
+  if ((yaServidas ?? []).length > 0) {
+    return { ok: false, error: "Esta comida ya se sirvió: sus porciones son historia." };
+  }
+
+  const { error: borrado } = await supabase
+    .from("meal_assignment_participants")
+    .delete()
+    .eq("assignment_id", assignmentId);
+  if (borrado) return { ok: false, error: "No se pudo actualizar quiénes comen." };
+
+  if (memberIds.length > 0) {
+    const { error } = await supabase
+      .from("meal_assignment_participants")
+      .insert(memberIds.map((member_id) => ({ assignment_id: assignmentId, member_id })));
+    if (error) return { ok: false, error: "No se pudo actualizar quiénes comen." };
+  }
+
+  // Las porciones planificadas dejaron de corresponder: se rehacen al confirmar.
+  // Si esta limpieza falla hay que decirlo: quedarían guardadas porciones de
+  // gente que ya no come, y el ShoppingEngine compraría para ellas.
+  const { error: limpieza } = await supabase
+    .from("member_serving_projections")
+    .delete()
+    .eq("assignment_id", assignmentId)
+    .eq("status", "PLANNED");
+  if (limpieza) throw new DataAccessError("porciones a rehacer", limpieza);
+
+  const { error: reset } = await supabase
+    .from("meal_assignments")
+    .update({ status: "PLANNED", confirmed_at: null, confirmed_by: null })
+    .eq("id", assignmentId)
+    .neq("status", "SERVED");
+  if (reset) throw new DataAccessError("estado de la comida", reset);
+
+  revalidatePath("/plan");
+  return {
+    ok: true,
+    message: memberIds.length === 0 ? "Vuelve a comer toda la familia." : "Listo, quedó anotado quién come.",
+  };
+}
+
 export async function clearAssignment(assignmentId: string): Promise<ActionResult> {
   const supabase = await client();
   const { error } = await supabase.from("meal_assignments").delete().eq("id", assignmentId);
@@ -100,16 +164,43 @@ export async function confirmMeal(
     return { ok: false, error: "Esa comida no tiene una receta para calcular porciones." };
   }
 
-  const dias = asignacion.weekly_plan_days as unknown;
-  const fecha =
-    (Array.isArray(dias) ? dias[0]?.plan_date : (dias as { plan_date?: string } | null)?.plan_date) ??
-    null;
+  // §6: `plan_date` es DATE-only. Se valida y se normaliza a `YYYY-MM-DD` con el
+  // mismo schema que el resto de la capa de datos — nunca se castea. Si llegara
+  // como Date, leerlo directo movería la comida un día y la porción quedaría
+  // guardada con la fecha equivocada.
+  const diaSchema = z.union([
+    z.array(z.object({ plan_date: dateString })),
+    z.object({ plan_date: dateString }),
+    z.null(),
+  ]);
+  const diaParseado = diaSchema.safeParse(asignacion.weekly_plan_days);
+  if (!diaParseado.success) {
+    throw new DataShapeError("día de la comida a confirmar", diaParseado.error.issues);
+  }
+  const dia = diaParseado.data;
+  const fecha = (Array.isArray(dia) ? (dia[0]?.plan_date ?? null) : (dia?.plan_date ?? null)) ?? null;
 
   const recipe = await loadRecipeDetail(supabase, asignacion.template_id, asignacion.version_id);
   if (!recipe) return { ok: false, error: "No se encontró la receta de esa comida." };
 
-  const profiles = await loadHouseholdProfiles(supabase);
-  if (profiles.length === 0) return { ok: false, error: "El hogar no tiene integrantes." };
+  const todosLosPerfiles = await loadHouseholdProfiles(supabase);
+  if (todosLosPerfiles.length === 0) return { ok: false, error: "El hogar no tiene integrantes." };
+
+  // §2: solo come quien participa. Sin filas de participantes, comen todos.
+  const { data: participantesFilas, error: participantesError } = await supabase
+    .from("meal_assignment_participants")
+    .select("member_id")
+    .eq("assignment_id", assignmentId);
+  if (participantesError) throw new DataAccessError("participantes de la comida", participantesError);
+  const participantes = (participantesFilas ?? []).map((f) => f.member_id as string);
+  const profiles =
+    participantes.length === 0
+      ? todosLosPerfiles
+      : todosLosPerfiles.filter((p) => participantes.includes(p.memberId));
+
+  if (profiles.length === 0) {
+    return { ok: false, error: "Nadie come esta comida: marca al menos a una persona." };
+  }
 
   const mealType = asignacion.meal_type as MealType;
 
@@ -132,56 +223,12 @@ export async function confirmMeal(
     isOptional: c.isOptional,
   }));
 
-  // Alternativas con su ficha, para poder aplicar un reemplazo aceptado.
-  const alternativeIds = [
-    ...new Set(
-      recipe.alternatives
-        .map((a) => (a.target.kind === "INGREDIENT" ? a.target.ingredientId : null))
-        .filter((x): x is string => Boolean(x)),
-    ),
-  ];
-  let alternatives: AvailableAlternative[] = [];
-  if (alternativeIds.length > 0) {
-    const { data: fichas, error: fichasError } = await supabase
-      .from("nutrition_facts")
-      .select(
-        `ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g,
-         fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg`,
-      )
-      .in("ingredient_id", alternativeIds);
-    if (fichasError) throw new DataAccessError("fichas de las alternativas", fichasError);
-
-    const porIngrediente = new Map<string, Record<string, unknown>>();
-    for (const fila of fichas ?? []) {
-      if (!porIngrediente.has(fila.ingredient_id) || fila.weight_basis === "RAW") {
-        porIngrediente.set(fila.ingredient_id, fila);
-      }
-    }
-
-    alternatives = recipe.alternatives
-      .filter((a) => a.target.kind === "INGREDIENT")
-      .map((a) => {
-        const ingredientId = a.target.kind === "INGREDIENT" ? a.target.ingredientId : "";
-        const fila = porIngrediente.get(ingredientId);
-        const values: Record<string, number | null> = {};
-        for (const key of NUTRIENT_KEYS) {
-          const raw = fila?.[key];
-          values[key] = raw === null || raw === undefined ? null : Number(raw);
-        }
-        return {
-          slotId: a.slotId,
-          ingredientId,
-          label: a.label,
-          nutrition: fila
-            ? {
-                values,
-                weightBasis: fila.weight_basis as never,
-                basisUnit: fila.basis_unit as never,
-              }
-            : null,
-        };
-      });
-  }
+  // Alternativas con su ficha, en la MISMA lectura validada que usa la pantalla
+  // de porciones: una sola fuente, un solo lugar donde equivocarse.
+  const alternatives: AvailableAlternative[] = await loadAlternativesWithFacts(
+    supabase,
+    recipe.alternatives,
+  );
 
   // Excepción del día de cada persona, en la zona horaria del hogar.
   const { data: hogar, error: hogarError } = await supabase
@@ -200,6 +247,10 @@ export async function confirmMeal(
       plan ? { planId: plan.planId, targets: plan.targets as TargetSet } : null,
     );
   }
+
+  // §5: los eventos de ese día dejan de ser decorativos. La estrategia cambia
+  // los objetivos de verdad, y solo para las personas que el evento nombra.
+  const eventos = await loadEventsForDate(supabase, fechaEfectiva);
 
   const proyeccion = projectFamilyServings({
     versionId: asignacion.version_id,
@@ -222,9 +273,19 @@ export async function confirmMeal(
         })
         .filter((x): x is AcceptedSubstitution => x !== null);
 
+      // El override que recibe el motor ya trae, en este orden: el patrón de la
+      // persona, su excepción del día si tiene, y encima el efecto del evento.
+      const base = effectiveMealTargets(
+        profile,
+        mealType,
+        overrides.get(profile.memberId)?.targets ?? null,
+      );
+      const efecto = effectFor(eventos, profile.memberId, fechaEfectiva, mealType);
+      const conEvento = applyEventEffect(base, efecto);
+
       return {
         profile,
-        override: overrides.get(profile.memberId)?.targets ?? null,
+        resolvedTargets: conEvento,
         substitutions,
       };
     }),
@@ -303,23 +364,48 @@ export async function unconfirmMeal(assignmentId: string): Promise<ActionResult>
 export async function saveEvent(input: {
   householdId: string;
   date: string;
+  /** Último día inclusive de un evento de varios días. Vacío = un solo día. */
+  endDate?: string | null;
   eventType: string;
   mealType: MealType | null;
   strategy: string;
   title: string;
+  /** A quiénes afecta. Vacío = a toda la familia. */
+  memberIds?: string[];
 }): Promise<ActionResult> {
   const supabase = await client();
   if (!input.title.trim()) return { ok: false, error: "El evento necesita un nombre." };
+  if (input.endDate && input.endDate < input.date) {
+    return { ok: false, error: "El evento no puede terminar antes de empezar." };
+  }
 
-  const { error } = await supabase.from("nutrition_events").insert({
-    household_id: input.householdId,
-    event_date: input.date,
-    event_type: input.eventType,
-    meal_type: input.mealType,
-    strategy: input.strategy,
-    title: input.title.trim(),
-  });
+  const { data: creado, error } = await supabase
+    .from("nutrition_events")
+    .insert({
+      household_id: input.householdId,
+      event_date: input.date,
+      end_date: input.endDate || null,
+      event_type: input.eventType,
+      meal_type: input.mealType,
+      strategy: input.strategy,
+      title: input.title.trim(),
+    })
+    .select("id")
+    .single();
   if (error) return { ok: false, error: "No se pudo guardar el evento." };
+
+  const memberIds = input.memberIds ?? [];
+  if (memberIds.length > 0) {
+    const { error: miembrosError } = await supabase
+      .from("nutrition_event_members")
+      .insert(memberIds.map((member_id) => ({ event_id: creado.id, member_id })));
+    if (miembrosError) {
+      // Un evento que dice ser de toda la familia cuando era de una persona
+      // cambia las porciones de todos: mejor no dejarlo a medias.
+      await supabase.from("nutrition_events").delete().eq("id", creado.id);
+      return { ok: false, error: "No se pudo guardar a quiénes afecta el evento." };
+    }
+  }
 
   revalidatePath("/plan");
   return { ok: true, message: "Evento agregado." };
