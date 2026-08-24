@@ -2,6 +2,8 @@
 
 Esquema relacional inicial para PostgreSQL (Supabase). **Este documento es para revisión del modelo; las migraciones SQL se escribirán en el sprint correspondiente, tras aprobación.**
 
+> **Actualización 0.1**: el [Addendum](./12-addendum.md) agrega las tablas de Finance, Procurement y Prep & Storage, promueve el inventario a lotes (`inventory_lots`) y **reemplaza** `pantries`/`pantry_items`, `leftovers`, `price_history` y `stock_targets` (ver [Addendum §13](./12-addendum.md#13-revisión-del-modelo)). Las secciones afectadas abajo quedan marcadas; el resto sigue vigente tal cual.
+
 ## Convenciones globales
 
 - PK: `id uuid default gen_random_uuid()`.
@@ -126,8 +128,8 @@ Esquema relacional inicial para PostgreSQL (Supabase). **Este documento es para 
 ### `recipe_nutrition` (materializada)
 - **Propósito**: nutrición por porción base del template con opciones default; cache recalculable, con `computed_at` y versión de insumos.
 
-### `kitchen_equipment`
-- **Propósito**: equipamiento del hogar: `household_id`, `equipment_type` (AIRFRYER/OVEN/…), `capacity_g null` → cálculo de tandas.
+### `kitchen_equipment` *(ampliada en 0.1 → `household_equipment` + `equipment_capabilities` + `preparation_alternatives`; ver [Addendum §9](./12-addendum.md#9-equipamiento-opcional-y-capacidades))*
+- **Propósito**: equipamiento del hogar: `household_id`, `equipment_type` (AIRFRYER/OVEN/…), `capacity_g null` → cálculo de tandas. En 0.1: capacidades concretas como datos (p. ej. discos de procesador) y regla de método base manual obligatorio.
 
 ---
 
@@ -226,14 +228,16 @@ Esquema relacional inicial para PostgreSQL (Supabase). **Este documento es para 
 ### `shopping_list_revisions`
 - **Propósito**: cambios post-LOCK: `list_id`, `caused_by_event_id`, `delta` (hija por item: +180 g pollo, −100 g arroz), `status` (PENDING_REVIEW/APPLIED_NOW/DEFERRED_NEXT_WEEK/REJECTED), `decided_by/at`.
 
-### `price_history`
-- **Propósito**: `product_id`, `store`, `price`, `date`, `source` (MANUAL/RECEIPT). Sin scraping por ahora.
+### `price_history` *(superseded en 0.1 → `price_observations`, alimentada automáticamente por `purchase_items` + registro manual; ver [Addendum §3](./12-addendum.md#3-finanzas-de-alimentación))*
+- **Propósito original**: `product_id`, `store`, `price`, `date`, `source` (MANUAL/RECEIPT). Sin scraping por ahora.
 
 ---
 
 ## 8. Inventory
 
-### `pantries` + `pantry_locations` + `pantry_items`
+> **⚠️ Sección reescrita por el Addendum 0.1**: el stock ahora se modela como **lotes** (`inventory_lots`) sobre `storage_locations` (evolución de `pantry_locations`, con capacidad opcional); `pantries`, `pantry_items` y `leftovers` quedan absorbidas; `stock_targets` es reemplazada por `reorder_rules` + `demand_forecasts` (Procurement); `inventory_movements` gana `lot_id`, `reason` explícita (incl. causas de merma) y `group_id` con invariantes. Modelo completo en [Addendum §1, §6–8](./12-addendum.md#1-la-decisión-central-inventario-por-lotes). Lo siguiente se conserva como referencia del diseño original:
+
+### `pantries` + `pantry_locations` + `pantry_items` *(superseded en 0.1)*
 - **Propósito**: despensa por ubicación (PANTRY/FRIDGE/FREEZER/OTHER): `ingredient_id|product_id`, `quantity_canonical`, `expiry_date null`, `opened boolean`.
 - **Índices**: `(household_id, ingredient_id)`, `(household_id, expiry_date) where expiry_date is not null`.
 
@@ -241,10 +245,10 @@ Esquema relacional inicial para PostgreSQL (Supabase). **Este documento es para 
 - **Propósito**: libro mayor del inventario: `pantry_item_id|ingredient_id`, `movement_type` (PURCHASE/CONSUMPTION/COOKING/WASTE/ADJUSTMENT/LEFTOVER_IN/LEFTOVER_OUT), `quantity_delta`, `reference` (shopping_item/serving/leftover), `created_by`.
 - **Regla**: el stock actual es derivable; los ajustes manuales también son movimientos (auditables).
 
-### `stock_targets`
+### `stock_targets` *(superseded en 0.1 → `reorder_rules` + `demand_forecasts`)*
 - **Propósito**: `household_id`, `ingredient_id|product_id`, `minimum_stock`, `target_stock`, `estimated_weekly_consumption` (aprendida del historial de movimientos; editable), `learned_at`, `days_of_supply` (derivado).
 
-### `leftovers`
+### `leftovers` *(superseded en 0.1 → `inventory_lots` con `origin=assignment`, `state=COOKED`)*
 - **Propósito**: comida preparada: `source_assignment_id`, `ingredient/dish`, `quantity_canonical`, `stored_location`, `cooked_at`, `use_by`, `status` (AVAILABLE/PLANNED/CONSUMED/DISCARDED). Participa en inventario y en "¿Qué puedo comer?".
 
 ---

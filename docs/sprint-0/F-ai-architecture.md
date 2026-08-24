@@ -9,6 +9,7 @@
 | Capacidad | Servicio | Salida |
 |---|---|---|
 | Extraer resultados de exámenes desde PDF/imagen | `LabExtractionService` | `lab_results` en estado EXTRACTED (pendiente de confirmación) |
+| Extraer boletas/pedidos de compra (0.1) | `ReceiptExtractionService` | Líneas de compra con confianza por campo, matching de productos con score — confirmación cuando hay incertidumbre ([Addendum §4](./12-addendum.md#4-importación-de-boletas-y-compras)) |
 | Explicar en lenguaje natural decisiones ya tomadas por los motores | `NutritionReasoningService` | Textos "¿Por qué?" a partir de `reasons[]` estructuradas |
 | Rankear/proponer entre opciones **ya filtradas como elegibles** por los motores | `RecommendationService` | Orden + razones para semana asistida/automática y "¿Qué puedo comer?" |
 | Importar recetas desde URL/texto/imagen | `RecipeImportService` | Borrador de `MealTemplate` (slots clasificados) pendiente de confirmación |

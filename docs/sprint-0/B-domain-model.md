@@ -1,6 +1,6 @@
 # B. Domain Model
 
-Nueve dominios (bounded contexts). Cada uno tiene entidades propias, un contrato público (servicios/consultas) y no accede a las tablas internas de otro dominio directamente: se comunica vía servicios de aplicación y eventos de dominio (ver [H](./H-event-recalculation.md)).
+Doce dominios (bounded contexts) — nueve del Sprint 0 más **Procurement**, **Prep & Storage** y **Finance**, incorporados por el [Addendum 0.1](./12-addendum.md). Cada uno tiene entidades propias, un contrato público (servicios/consultas) y no accede a las tablas internas de otro dominio directamente: se comunica vía servicios de aplicación y eventos de dominio (ver [H](./H-event-recalculation.md)).
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -65,37 +65,71 @@ Nueve dominios (bounded contexts). Cada uno tiene entidades propias, un contrato
 - Entidades: `ShoppingList`, `ShoppingListItem` (con desglose explicable: recetas por día, habituales, reposición, descuento de despensa), `ShoppingListRevision` (cambios post-lock), `StapleProduct` (habituales por persona con ADD_ALWAYS/ASK/NEVER), conversión a formatos comerciales, `PriceHistory` (store/product/price/date), lista compartida en tiempo real con estado COMPRADO.
 - Regla clave: la cantidad nace de `SUM(member_final_serving)` consolidada por ingrediente, nunca de receta × personas.
 
-## 7. Inventory (Despensa)
+## 7. Inventory (Despensa) — actualizado en 0.1
 
-**Responsabilidad**: qué hay en la casa y cuánto conviene tener.
+**Responsabilidad**: qué hay en la casa, como **ledger de lotes físicos**.
 
-- Entidades: `Pantry`, `PantryLocation` (PANTRY/FRIDGE/FREEZER/OTHER), `PantryItem` (cantidad, unidad, vencimiento opcional), `StockTarget` (current/minimum/target, consumo semanal/mensual estimado, days_of_supply), `InventoryMovement` (toda variación es un movimiento auditable: compra, consumo, cocción, merma, ajuste), `Leftover`/`PreparedFoodInventory`.
-- Reglas clave: el stock se deriva de movimientos (no se edita "a mano" sin dejar movimiento); los consumos estimados se **aprenden del historial**, no se inventan; alimentos por vencer alimentan al recomendador.
+- Entidades: `StorageLocation` (PANTRY/FRIDGE/FREEZER/OTHER, con capacidad opcional), `InventoryLot` (el objeto físico identificable: origen, cantidad, estado RAW/PREPPED/COOKED/FROZEN/THAWED, ubicación, costo unitario, vencimiento/use_by, uso previsto — absorbe a `PantryItem` y `Leftover` del Sprint 0), `InventoryMovement` (toda variación es un movimiento auditable **con causa explícita**: compra, consumo, cocción, split/merge/transform, thaw, merma SPOILED/EXPIRED/DAMAGED…, ajuste; invariantes de conservación por grupo).
+- Reglas clave: el stock se deriva de movimientos (no se edita "a mano" sin dejar movimiento); SPLIT/MERGE/TRANSFORM conservan cantidad — nunca inventario ficticio duplicado; FEFO para perecibles; los consumos estimados se **aprenden del historial**, no se inventan; alimentos por vencer alimentan al recomendador. Detalle en [Addendum §1](./12-addendum.md#1-la-decisión-central-inventario-por-lotes).
 
-## 8. AI (Servicios de inteligencia)
+## 8. Procurement (nuevo en 0.1)
+
+**Responsabilidad**: ejecutar la adquisición por el canal correcto. Shopping consolida la demanda; Procurement la convierte en compras reales.
+
+- Entidades: `ReorderRule` (estrategia por producto: semanal/quincenal/mensual/stock mínimo, safety stock, canal preferido), `ReorderSuggestion`, `DemandForecast`, `Supplier`, `SupplierProduct` (precio conocido, mínimo, lead time, días de entrega), `PurchaseOrder`/`PurchaseOrderItem` (SUGGESTED→…→STORED/CANCELLED), `Delivery`, `PurchaseSchedule` (agenda derivada).
+- Reglas clave: **nada se compra necesariamente cada semana** — la frecuencia es configurable por producto y hogar; todo canal converge en `Purchase` al recibir; recepción crea lotes de inventario. Detalle en [Addendum §6–7](./12-addendum.md#6-procurement-ciclos-proveedores-y-pedidos).
+
+## 9. Prep & Storage (nuevo en 0.1)
+
+**Responsabilidad**: de la compra recibida a lotes listos: sesiones "PREPARAR COMPRA", corte/porcionado, congelado/refrigerado, descongelación planificada, etiquetas.
+
+- Entidades: `PrepBatch`/`PrepBatchItem` (tareas que al ejecutarse SON movimientos del ledger — sin stock propio), `StorageSafetyRule` (+fuentes, versionadas), `HouseholdEquipment`/`EquipmentCapability`/`PreparationAlternative` (método base manual obligatorio + optimizados por capacidad), `LabelTemplate`/`PrintJob` (PDF primero; QR = id opaco de lote).
+- Reglas clave: la app funciona completa con cuchillo+tabla+sartén+olla+horno; el equipamiento optimiza, jamás condiciona; seguridad de almacenamiento por reglas versionadas (`FoodStorageSafetyEngine`), nunca por LLM. Detalle en [Addendum §8–11](./12-addendum.md#8-prep--storage).
+
+## 10. Finance (nuevo en 0.1)
+
+**Responsabilidad**: la economía de la alimentación, como capa **derivada de solo lectura** (no es fuente de verdad de ninguna cantidad — por construcción no puede duplicar conteos).
+
+- Entidades: `Purchase`/`PurchaseItem`/`PurchaseReceipt`, `PriceObservation`, `CostAllocation` (costo de cada movimiento a CONSUMED/WASTED, con atribución por integrante según cantidad realmente consumida), `HouseholdFoodBudget`.
+- Reglas clave: caja (PURCHASED, por fecha de compra) separada de consumo (CONSUMED, devengado por movimientos); invariante por lote `compra = consumido + desperdiciado + inventario restante`; costo por integrante jamás por división simple entre personas. Detalle en [Addendum §3](./12-addendum.md#3-finanzas-de-alimentación).
+
+## 11. AI (Servicios de inteligencia)
 
 **Responsabilidad**: extracción, razonamiento explicativo, ranking, importación y registro de consumo asistido — detrás de abstracciones.
 
-- Servicios: `AIProvider`, `LabExtractionService`, `NutritionReasoningService`, `RecommendationService`, `RecipeImportService`, `FoodLoggingService` (texto/voz/foto/código de barras).
+- Servicios: `AIProvider`, `LabExtractionService`, `ReceiptExtractionService` (boletas/pedidos, 0.1), `NutritionReasoningService`, `RecommendationService`, `RecipeImportService`, `FoodLoggingService` (texto/voz/foto/código de barras).
 - Entidades: `AIRecommendation`, `RecommendationReason`, `RecommendationFeedback`.
 - Reglas clave: toda salida es estructurada y validada por schema; toda estimación de IA requiere confirmación humana antes de convertirse en dato; mínimo envío de información (ver [F](./F-ai-architecture.md) y [G](./G-security-model.md)).
 
-## 9. Notifications & Audit (Transversal)
+## 12. Notifications & Audit (Transversal)
 
 **Responsabilidad**: comunicar cambios y dejar rastro.
 
 - Entidades: `DomainEvent` (outbox), `ChangeImpact` (la pantalla "¿Qué cambió?"), `HealthReminder`, recordatorios de exámenes (CURRENT/EXPIRING_SOON/OUTDATED/MISSING), `AuditEvent` (accesos a datos médicos, confirmaciones, consentimientos).
 - Regla clave: todo cambio automático relevante es explicable y atribuible (quién/qué lo causó, qué recalculó, con qué versión de perfil).
 
-## Dependencias entre dominios (dirección permitida)
+## Dependencias entre dominios (dirección permitida) — actualizado en 0.1
 
 ```
-Family  ←─ todos (identidad y aislamiento)
-Nutrition ←─ Planning, Shopping, AI          (consultan perfil efectivo)
-Nutrition ─→ consume: Health (constraints confirmados), Family
-Meals   ←─ Planning, Shopping, Inventory, AI (catálogo)
-Health  ─→ publica constraints hacia Nutrition; no conoce Planning
-Planning ─→ produce MemberServing → Shopping
-Inventory ─→ descuenta en Shopping; recibe movimientos de Shopping/Cocina
-AI      ─→ solo a través de servicios; nunca escribe datos finales sin confirmación
+Family ◄── todos (identidad y aislamiento)
+
+Health ──constraints──► Nutrition ◄──consulta── Planning, Shopping, AI
+   │ (invalida porciones vía ClinicalImpactReview; jamás toca compras/inventario)
+Meals ◄── Planning, Shopping, Prep&Storage, AI   (catálogo)
+
+Planning ──MemberServing──► Shopping (consolida demanda por canal)
+    │                           │
+    │                     Procurement (reorder rules, proveedores, pedidos,
+    │                           │      recepción → Purchase → lotes)
+    ▼                           ▼
+ reservas ─────────► Inventory (ledger de lotes) ◄── Prep&Storage (tareas = movimientos;
+                         │        ▲                   etiquetas/QR sobre lotes)
+                         │   FoodStorageSafetyEngine (use_by, descongelación)
+                         ▼
+           DemandForecastEngine ──sugerencias──► Shopping / Procurement
+
+ Finance ◄── solo lectura de Purchases + Movements + CostAllocations
+ AI ──► solo vía servicios con confirmación; nunca escribe ledger, costos ni constraints
 ```
+
+Flujo operativo completo (PLAN → PROCURE → RECEIVE → PREP → STORE → COOK → SERVE → CONSUME → WASTE/LEFTOVERS → FORECAST → NEXT PURCHASE): ver [Addendum §14](./12-addendum.md#14-dependencias-entre-dominios-y-flujo-completo).

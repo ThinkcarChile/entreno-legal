@@ -50,6 +50,10 @@ Solo decisiones **costosas de revertir**. Para cada una: la opción propuesta (l
 
 ---
 
+## Decisiones agregadas por el Addendum 0.1
+
+**K-11…K-17** (inventario por lotes con costo por lote, costeo a costo real, `purchases` como convergencia de canales, reglas de seguridad de almacenamiento como datos versionados, equipamiento como capacidades-datos, QR = id opaco, lo clínico invalida en vez de modificar): ver [Addendum §16](./12-addendum.md#16-decisiones-estructurales-nuevas). K-17 **reemplaza** la parte de la excepción clínica descrita en D/H del Sprint 0.
+
 ## Pendientes de decisión del director (bloquean sprints específicos, no el 1–2)
 
 1. **Fuente nutricional inicial** (sprint 2): base de composición de alimentos a usar como `nutrition_source` primaria para el seed curado (se propone partir de una base pública reconocida + verificación manual de los ~150 ingredientes iniciales).

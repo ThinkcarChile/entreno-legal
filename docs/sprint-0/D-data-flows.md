@@ -80,7 +80,7 @@ Pipeline del **ShoppingEngine** (cada paso queda registrado en `shopping_item_so
 
 ## Caso 6 — Hay alimentos en la despensa: ¿cómo se descuentan?
 
-1. **Fuente de verdad**: `pantry_items` cuyo stock es la suma de `inventory_movements` (compras +, consumo/cocina −, mermas −, ajustes ±, sobras ±).
+1. **Fuente de verdad** *(actualizado en 0.1)*: `inventory_lots` cuyo stock es la suma de `inventory_movements` con causa explícita (compras +, consumo/cocina −, mermas SPOILED/EXPIRED/… −, split/merge/transform ±0, ajustes ±, sobras como lotes COOKED). Ver [Addendum §1](./12-addendum.md#1-la-decisión-central-inventario-por-lotes).
 2. **En la compra (reserva lógica)**: al generar la lista, el ShoppingEngine descuenta stock disponible **no reservado**: descuenta primero lo más próximo a vencer (FEFO), respetando unidad canónica y equivalencias. El descuento es una *reserva* asociada al plan (no un movimiento físico todavía) para que dos semanas no descuenten el mismo arroz dos veces.
 3. **Al cocinar**: Modo Cocina "preparar 450 g arroz crudo" → al confirmar la preparación se registra `inventory_movements(COOKING, −450 g)` contra la reserva; la diferencia entre cocinado y consumido vuelve como `leftovers` (+250 g pollo cocido, ubicación FRIDGE, `use_by`).
 4. **Consumo directo** (yogur de la once, fruta): `consumption_logs` genera el movimiento de salida correspondiente.
@@ -100,5 +100,5 @@ Pipeline del **ShoppingEngine** (cada paso queda registrado en `shopping_item_so
    - **APPLY_NOW**: se crea una mini-lista adicional de compra (o se reasigna desde despensa si alcanza) y las porciones nuevas quedan vigentes ya.
    - **APPLY_NEXT_WEEK**: la semana actual mantiene las porciones antiguas (el perfil nuevo queda registrado con `effective_from` = próxima semana para efectos de planificación); la próxima planificación nace con el objetivo nuevo.
    - **REVIEW**: queda pendiente en "¿Qué cambió?" hasta decidir.
-5. **Excepción de seguridad**: si el cambio proviene de una **restricción clínica confirmada** (prioridad 1–2), las porciones se ajustan de inmediato aunque la semana esté bloqueada (la compra puede quedar con excedente, señalado en el impacto). La seguridad prima sobre el lock.
+5. **Excepción de seguridad** *(precisada en 0.1 — reemplaza la redacción original)*: si el cambio proviene de una **restricción clínica confirmada de alta prioridad**, las porciones y recomendaciones afectadas se **INVALIDAN de inmediato** (`CLINICALLY_INVALIDATED` — el cocinero las ve como "no servir sin revisar") aunque la semana esté bloqueada, pero **nada del mundo físico se modifica silenciosamente**: ni compras realizadas, ni inventario, ni cantidades cocinadas. Se genera un `clinical_impact_review` con la comida afectada, el riesgo, la propuesta de modificación y el impacto en compra e inventario; los cambios físicos se ejecutan solo al resolverla el usuario. La seguridad prima sobre el lock; la modificación es siempre trazable. Ver [Addendum §12](./12-addendum.md#12-precisión-sobre-lock_week-clinicalimpactreview).
 6. Todo queda en `change_impacts` con actor, causa, delta y decisión tomada.

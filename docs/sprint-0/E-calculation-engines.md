@@ -1,6 +1,6 @@
 # E. Calculation Engines
 
-Siete motores. Todos son **módulos TypeScript puros y deterministas** (`src/engines/*`): reciben datos, devuelven resultados + explicaciones, no tocan la base de datos ni llaman IA. La capa de aplicación los alimenta (repositorios) y persiste sus salidas (snapshots materializados versionados). Esto los hace testeables con unit tests exhaustivos — requisito para un sistema que calcula comida y salud.
+Siete motores del Sprint 0 + tres agregados por el [Addendum 0.1](./12-addendum.md) (`DemandForecastEngine`, `FoodStorageSafetyEngine`, `BatchPrepOptimizer` — al final de este documento). Todos son **módulos TypeScript puros y deterministas** (`src/engines/*`): reciben datos, devuelven resultados + explicaciones, no tocan la base de datos ni llaman IA. La capa de aplicación los alimenta (repositorios) y persiste sus salidas (snapshots materializados versionados). Esto los hace testeables con unit tests exhaustivos — requisito para un sistema que calcula comida y salud.
 
 ```
                     ┌──────────────────┐
@@ -62,7 +62,7 @@ Siete motores. Todos son **módulos TypeScript puros y deterministas** (`src/eng
 
 **Responsabilidad**: estado de despensa, reservas, sobras, vencimientos y aprendizaje de consumo.
 
-- **Inputs**: `inventory_movements`, `pantry_items`, `leftovers`, reservas de planes activos, `stock_targets`, historial de consumo.
+- **Inputs** *(0.1: opera sobre lotes)*: `inventory_movements`, `inventory_lots` (absorben pantry_items/leftovers), reservas de planes activos, `reorder_rules`, historial de consumo.
 - **Outputs**: stock disponible (total y no-reservado) por ingrediente en unidad canónica; lista FEFO de próximos a vencer; `estimated_weekly/monthly_consumption` y `days_of_supply`; necesidades de REPOSICIÓN (`current < minimum`); disponibilidad de sobras para "¿Qué puedo comer?".
 - **Reglas**: stock siempre derivado de movimientos; aprender del historial (promedio móvil con ventana configurable), nunca inventar consumos iniciales; conversión estricta de unidades.
 - **Dependencias**: ninguna de otros motores (es base para Shopping y FamilyOptimizer).
@@ -93,3 +93,20 @@ Siete motores. Todos son **módulos TypeScript puros y deterministas** (`src/eng
 - **Explicación como dato**: cada output relevante lleva `reasons[]` estructuradas (código de razón + parámetros), que la UI/IA convierten en texto. La explicabilidad no es un string suelto: es parte del contrato.
 - **Versionado de insumos**: toda salida materializada registra las versiones de perfil/regla/nutrición usadas → trazabilidad y invalidación selectiva.
 - **Tests**: cada motor con suite de unit tests basada en los ejemplos del Prompt Maestro (pescado 4 métodos, +180 g pollo/−100 g arroz, 850 ml → 1 L, etc.) como casos dorados.
+
+---
+
+## Motores agregados en 0.1
+
+Contratos completos en el [Addendum](./12-addendum.md); resumen:
+
+### 8. DemandForecastEngine ([§7](./12-addendum.md#7-pronóstico-de-demanda-y-cobertura))
+Demanda prevista (plan futuro + consumo habitual aprendido + tasa histórica de merma + safety stock) − stock disponible − en tránsito → `recommended_purchase_quantity` y `recommended_order_date` (cobertura vs lead time). La demanda prevista manda; jamás "se desperdició una manzana → comprar una menos". Sin historial suficiente, se abstiene.
+
+### 9. FoodStorageSafetyEngine ([§10](./12-addendum.md#10-seguridad-de-almacenamiento))
+Reglas versionadas con fuente (`storage_safety_rules`) → `use_by` por lote en cada transición (COOK/THAW/MOVE/SEAL) e instrucciones de descongelación hacia atrás desde la fecha de uso prevista. Sin LLM; el vacío no estabiliza perecibles; sin regla aplicable → "sin dato", nunca un valor inventado.
+
+### 10. BatchPrepOptimizer ([§8](./12-addendum.md#8-prep--storage))
+Ordena la sesión PREPARAR COMPRA: agrupa tareas por equipo y capacidad concreta (todas las "Shred 4 mm" juntas), respeta seguridad crudo/cocido, intercala esperas. Con hogar sin equipamiento produce la secuencia manual base — el equipamiento optimiza, nunca condiciona.
+
+*(0.1 también ajusta al ShoppingEngine: su salida se divide por canal — lista de supermercado vs. sugerencias de pedido a proveedor — según `reorder_rules`.)*
