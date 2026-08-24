@@ -15,6 +15,7 @@ import type {
 } from "@/domain/portions/optimizer";
 import type { MealType } from "@/domain/recipes/types";
 import { loadDailyOverride, loadHouseholdProfiles } from "@/app/family/nutrition-queries";
+import { publishProfileSnapshot } from "@/app/family/profile-publish";
 import { loadAlternativesWithFacts, loadRecipeDetail } from "@/app/recipes/queries";
 import { loadEventsForDate } from "./queries";
 import { DataAccessError } from "@/lib/supabase/unwrap";
@@ -202,6 +203,23 @@ export async function confirmMeal(
     return { ok: false, error: "Nadie come esta comida: marca al menos a una persona." };
   }
 
+  // Quien nunca abrió su ficha no tiene snapshot publicado, y sin snapshot no se
+  // puede guardar con qué perfil se calculó su porción. Antes eso bloqueaba la
+  // confirmación: una familia recién creada no podía confirmar NINGUNA comida
+  // hasta abrir las cinco fichas. Un perfil sin objetivos es un perfil válido —
+  // dice "esta persona no lleva conteo" — así que se publica acá mismo. El RPC
+  // deduplica por firma: si ya existía y nada cambió, no crea una versión nueva.
+  for (let i = 0; i < profiles.length; i += 1) {
+    const perfil = profiles[i]!;
+    if (perfil.profileId) continue;
+    profiles[i] = await publishProfileSnapshot(
+      supabase,
+      perfil.memberId,
+      perfil.memberName,
+      "Publicado al confirmar una comida",
+    );
+  }
+
   const mealType = asignacion.meal_type as MealType;
 
   const components: PortionComponent[] = recipe.components.map((c) => ({
@@ -331,12 +349,14 @@ export async function confirmMeal(
     };
   });
 
-  const missingProfile = payload.some((p) => !p.profile_id);
-  if (missingProfile) {
+  const sinPerfil = payload.filter((p) => !p.profile_id).map((p) => p.member_id);
+  if (sinPerfil.length > 0) {
+    const quienes = sinPerfil
+      .map((id) => profiles.find((perfil) => perfil.memberId === id)?.memberName ?? id)
+      .join(", ");
     return {
       ok: false,
-      error:
-        "Falta publicar el perfil nutricional de algún integrante. Entra a su ficha y guarda una vez.",
+      error: `No se pudo publicar el perfil nutricional de ${quienes}. Intenta de nuevo.`,
     };
   }
 

@@ -10,7 +10,7 @@ import {
   type UserSettablePreference,
 } from "@/domain/nutrition/types";
 import type { MealType } from "@/domain/recipes/types";
-import { loadMemberProfile } from "./nutrition-queries";
+import { publishProfileSnapshot } from "./profile-publish";
 import { DataAccessError } from "@/lib/supabase/unwrap";
 
 export interface ActionResult {
@@ -38,26 +38,7 @@ async function republishProfile(
   memberName: string,
   reason: string,
 ): Promise<void> {
-  const profile = await loadMemberProfile(supabase, memberId, memberName);
-  await supabase.rpc("publish_nutrition_profile", {
-    p_member_id: memberId,
-    p_tracking_mode: profile.trackingMode,
-    p_input_signature: profile.inputSignature,
-    p_computed_inputs: {
-      goals: Object.keys(profile.dailyTargets).length,
-      meals: Object.keys(profile.mealTargets).length,
-      preferences: profile.preferences.length,
-      cooking: profile.cookingPreferences.length,
-    },
-    p_daily_targets: profile.dailyTargets,
-    p_meal_targets: profile.mealTargets,
-    p_preferences: {
-      addedFatStance: profile.addedFatStance,
-      items: profile.preferences,
-      cooking: profile.cookingPreferences,
-    },
-    p_reason: reason,
-  });
+  await publishProfileSnapshot(supabase, memberId, memberName, reason);
 }
 
 export async function setTrackingMode(

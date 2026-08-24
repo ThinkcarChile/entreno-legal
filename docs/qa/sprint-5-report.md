@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-08-24
 **Objetivo:** encontrar errores reales en la planificación semanal, los eventos y la persistencia de porciones confirmadas, con foco en **las costuras que después va a leer el ShoppingEngine**.
-**Resultado:** 8 fallas encontradas, 8 corregidas. 205 pruebas verdes (183 antes + 22 nuevas de integración). `lint`, `typecheck` y `build` limpios.
+**Resultado:** 10 fallas encontradas, 10 corregidas. 205 pruebas verdes (183 antes + 22 nuevas de integración), `lint`, `typecheck` y `build` limpios, y las 23 secciones ejecutadas — incluidas §21 (móvil 320/375/430) y §22 (semana realista) contra la aplicación viva con las migraciones aplicadas.
 
 El criterio para dar por probada una costura fue ejecutar contra PostgreSQL de verdad (PGlite, migraciones 0001–0008 + seeds), con `set role authenticated` y el claim del usuario puesto. Como `postgres` las políticas RLS ni se evalúan: una prueba de seguridad corrida como superusuario pasa siempre y no prueba nada.
 
@@ -119,15 +119,27 @@ Además, dos `await supabase…` en `setMealParticipants` ignoraban su error. Si
 
 ---
 
-## Pendiente y por qué
+## §21 y §22 — ejecutados en vivo
 
-**§21 (revisión en 320 / 375 / 430 px) y §22 (semana realista de punta a punta) quedan sin ejecutar.**
+Con las migraciones **0007 + 0008 ya aplicadas** en el Supabase del proyecto (verificado por API: las siete tablas nuevas responden 200), se armó la semana del 31 de agosto al 6 de septiembre en la aplicación real, con la familia de demostración (Casa, Paula, Sebastián, Constanza, Ricardo):
 
-No es una decisión de alcance: las migraciones **0007 y 0008 todavía no están aplicadas en el Supabase del proyecto**. Verificado por API — `weekly_plans`, `meal_assignments`, `meal_assignment_participants` y `nutrition_events` responden 404. Con esas tablas ausentes, `/plan` no carga y no hay nada que revisar en pantalla ni semana que armar.
+- **7 almuerzos planificados** con recetas publicadas distintas (pollo, lentejas, merluza ×2, pasta, carne).
+- **Ricardo excluido del sábado** desde la fila "Comen:". La comida confirmó con **4 porciones, no 5**, y en "SE PREPARÓ" la merluza suma 1.146 g repartidos por método — 400 g frito (Sebastián), 400 g al horno (Paula y Constanza), 346 g guisado (Casa) — sin un gramo para quien no está. Es el número exacto que va a leer el ShoppingEngine.
+- **Asado agregado el sábado** con estrategia "con margen": el almuerzo ya confirmado quedó marcado **revisar** con el aviso "Se agregó un evento ese día. Las porciones guardadas quedaron como estaban" — y las cantidades guardadas no se movieron.
+- **"Ver lo guardado"** muestra quiénes comieron, el aviso de revisión, las versiones exactas (optimizador, perfil y receta) de cada porción y los totales por método.
+- **Sin desborde horizontal en 320, 375 ni 430 px** (`scrollWidth == clientWidth` en las tres). En 320 px la barra de navegación desbordaba la página: se corrigió con scroll interno de la propia barra.
 
-Todo lo demás de este QA corre contra PostgreSQL de verdad y está verde. Lo que falta es aplicar los dos archivos SQL en el editor del dashboard, que necesita la sesión de Francisco.
+Dos hallazgos más salieron de esta pasada en vivo:
 
-Ambas secciones se ejecutan y se agregan a este informe apenas estén aplicadas.
+### F-9 · Una familia recién creada no podía confirmar ninguna comida
+
+`confirmMeal` exigía que las cinco personas tuvieran un snapshot de perfil publicado, y el snapshot solo se publicaba al guardar algo en la ficha. Una familia nueva — exactamente el estado de la demo — no podía confirmar **nada** hasta abrir las cinco fichas una por una.
+
+**Corrección:** al confirmar, se publica el snapshot de quien no lo tenga (`publishProfileSnapshot`, compartido con las acciones de la ficha). Un perfil sin objetivos es un perfil válido: dice "esta persona no lleva conteo". El RPC deduplica por firma, así que confirmar de nuevo no crea versiones de más.
+
+### F-10 · "Falta publicar el perfil de algún integrante" no decía cuál
+
+Con cinco personas, ese mensaje obliga a abrir las cinco fichas para adivinar. Ahora el error nombra a las personas. Quedó como mensaje de error real solo para el caso en que la publicación automática de F-9 falle.
 
 ---
 
@@ -140,6 +152,10 @@ Ambas secciones se ejecutan y se agregan a este informe apenas estén aplicadas.
 - `web/src/integration/qa-sprint5.test.ts` (22 pruebas)
 - `docs/adr/0006-participantes-y-ciclo-de-vida-de-la-porcion.md`
 
+**Nuevos (segunda pasada)**
+
+- `web/src/app/family/profile-publish.ts` — `publishProfileSnapshot` compartido
+
 **Modificados**
 
 - `web/src/domain/portions/optimizer.ts` · `family.ts` — `resolvedTargets`
@@ -148,3 +164,5 @@ Ambas secciones se ejecutan y se agregan a este informe apenas estén aplicadas.
 - `web/src/app/recipes/queries.ts` — `loadAlternativesWithFacts()`
 - `web/src/app/recipes/[id]/family/page.tsx` · `web/src/app/family/nutrition-queries.ts`
 - `web/src/integration/harness.ts` — migración 0008
+- `web/src/components/AppNav.tsx` — scroll interno en 320 px
+- `web/src/app/family/nutrition-actions.ts` — delega en `publishProfileSnapshot`
