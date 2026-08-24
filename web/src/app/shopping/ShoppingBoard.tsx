@@ -377,6 +377,11 @@ function ItemRow({
                 manual
               </span>
             )}
+            {item.source === "STOCK_INTELLIGENCE" && (
+              <span className="ml-1.5 rounded-full bg-[var(--accent)]/10 px-1.5 py-0.5 text-[9px] text-[var(--accent)] no-underline">
+                sugerido por despensa
+              </span>
+            )}
           </p>
           <p className="text-xs text-[var(--ink)]/50">
             {comprar !== null ? formatQuantity(comprar, item.unit) : "sin cantidad"}
@@ -495,7 +500,7 @@ function ItemRow({
                   Volver a pendiente
                 </button>
               )}
-              {item.source === "MANUAL" && (
+              {(item.source === "MANUAL" || item.source === "STOCK_INTELLIGENCE") && (
                 <button
                   type="button"
                   disabled={pending}

@@ -5,6 +5,10 @@ import { effectiveDate } from "@/domain/nutrition/calendar";
 import { loadHouseholdMembers } from "@/app/family/nutrition-queries";
 import { DataAccessError } from "@/lib/supabase/unwrap";
 import { loadIngredientOptions, loadOpenShortfalls, loadPantry } from "./queries";
+import { loadStockInput } from "@/app/stock/queries";
+import { analyzeStock } from "@/domain/stock/engine";
+import { StockOverview } from "./StockOverview";
+import Link from "next/link";
 import { PantryBoard } from "./PantryBoard";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +48,8 @@ export default async function PantryPage() {
   const pantry = await loadPantry(supabase, householdId);
   const ingredientes = await loadIngredientOptions(supabase, householdId);
   const desajustes = await loadOpenShortfalls(supabase, householdId);
+  const stockInput = await loadStockInput(supabase, householdId, hoy, hogar?.timezone ?? "America/Santiago");
+  const inteligencia = analyzeStock(stockInput);
 
   return (
     <main className="mx-auto max-w-3xl px-4 pb-16">
@@ -56,6 +62,22 @@ export default async function PantryPage() {
             : `${pantry.lots.length} ${pantry.lots.length === 1 ? "lote" : "lotes"} en casa`}
         </p>
       </header>
+
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <p className="text-xs text-[var(--ink)]/50">
+          Reservas, cobertura y recomendaciones se calculan en vivo desde el libro mayor.
+        </p>
+        <Link
+          href="/pantry/reorder"
+          className="shrink-0 rounded-full border border-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent)]"
+        >
+          Ver reposición
+        </Link>
+      </div>
+
+      <div className="mb-4">
+        <StockOverview items={inteligencia} />
+      </div>
 
       <PantryBoard pantry={pantry} today={hoy} ingredientes={ingredientes} desajustes={desajustes} />
     </main>

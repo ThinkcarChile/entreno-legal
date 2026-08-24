@@ -238,7 +238,7 @@ export async function removeManualItem(itemId: string): Promise<ActionResult> {
     .from("shopping_list_items")
     .delete()
     .eq("id", itemId)
-    .eq("source", "MANUAL")
+    .in("source", ["MANUAL", "STOCK_INTELLIGENCE"])
     .select("id");
   if (error) return { ok: false, error: "No se pudo quitar el producto." };
   if (!data || data.length === 0) {

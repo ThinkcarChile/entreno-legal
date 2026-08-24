@@ -255,7 +255,7 @@ export async function loadShoppingContext(
 
 export interface ShoppingItem {
   id: string;
-  source: "FOOD_PLAN" | "MANUAL";
+  source: "FOOD_PLAN" | "MANUAL" | "STOCK_INTELLIGENCE";
   lineKey: string | null;
   ingredientId: string | null;
   productId: string | null;
@@ -289,7 +289,7 @@ const categoriaEmbebida = z
 
 const itemRowSchema = z.object({
   id: uuid,
-  source: z.enum(["FOOD_PLAN", "MANUAL"]),
+  source: z.enum(["FOOD_PLAN", "MANUAL", "STOCK_INTELLIGENCE"]),
   line_key: z.string().nullable(),
   ingredient_id: uuid.nullable(),
   product_id: uuid.nullable(),
