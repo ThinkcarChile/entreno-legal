@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { DemoFamilyButton } from "./DemoFamilyButton";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { signOut } from "@/app/login/actions";
@@ -78,13 +80,24 @@ export default async function FamilyPage({ searchParams }: Props) {
   const householdName =
     (membership.households as unknown as { name: string } | null)?.name ?? "Mi hogar";
 
-  const { data: members } = await supabase
+  const { data: members, error: membersError } = await supabase
     .from("household_members")
     .select(
-      "id, display_name, user_id, is_active, member_role_assignments(household_roles(code, name))",
+      // Dos claves foráneas apuntan de member_role_assignments a household_members
+      // (member_id y granted_by): PostgREST exige decir por cuál se navega.
+      `id, display_name, user_id, is_active,
+       member_role_assignments!member_role_assignments_member_id_fkey (
+         household_roles ( code, name )
+       )`,
     )
     .eq("household_id", membership.household_id)
     .order("created_at");
+
+  // Una lista vacía por error de consulta se ve igual que un hogar sin gente:
+  // exactamente la trampa que ya nos costó horas en el recetario.
+  if (membersError) {
+    throw new Error(`No se pudo leer el hogar (${membersError.code}): ${membersError.message}`);
+  }
 
   return (
     <main className="pt-2">
@@ -98,9 +111,12 @@ export default async function FamilyPage({ searchParams }: Props) {
         {((members ?? []) as unknown as MemberRow[]).map((m) => (
           <li key={m.id} className="rounded-xl border border-gray-200 bg-white px-4 py-3">
             <div className="flex items-center justify-between">
-              <span className="font-semibold">{m.display_name}</span>
+              <Link href={`/family/${m.id}`} className="font-semibold text-[var(--accent)]">
+                {m.display_name}
+              </Link>
               {!m.user_id ? <span className="text-xs opacity-60">sin cuenta</span> : null}
             </div>
+            <p className="mt-0.5 text-xs opacity-60">Tocar para ver su alimentación</p>
             <div className="mt-1 flex flex-wrap gap-1">
               {m.member_role_assignments.map((a) =>
                 a.household_roles ? (
@@ -116,6 +132,8 @@ export default async function FamilyPage({ searchParams }: Props) {
           </li>
         ))}
       </ul>
+
+      <DemoFamilyButton householdId={membership.household_id} />
 
       <section className="mt-8 rounded-xl border border-gray-200 bg-white p-4">
         <h2 className="font-semibold">Invitar integrante</h2>

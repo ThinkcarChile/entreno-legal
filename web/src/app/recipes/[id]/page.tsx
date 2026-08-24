@@ -74,6 +74,15 @@ export default async function RecipeDetailPage({ params, searchParams }: Props) 
         )}
       </header>
 
+      {recipe.status === "PUBLISHED" && (
+        <Link
+          href={`/recipes/${recipe.templateId}/family?v=${recipe.versionId}`}
+          className="mb-4 block rounded-2xl bg-[var(--accent)] px-4 py-3 text-center text-sm font-medium text-white"
+        >
+          Ver porciones para mi familia
+        </Link>
+      )}
+
       <RecipeVersionActions
         templateId={recipe.templateId}
         versionId={recipe.versionId}

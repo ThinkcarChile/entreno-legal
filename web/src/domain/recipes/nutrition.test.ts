@@ -49,6 +49,10 @@ function component(
     yieldFactor: null,
     isOptional: false,
     sortOrder: seq,
+    adjustability: "ADJUSTABLE" as const,
+    minQuantity: null,
+    maxQuantity: null,
+    categoryId: null,
     ...overrides,
   };
 }

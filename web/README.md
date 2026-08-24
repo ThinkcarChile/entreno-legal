@@ -30,6 +30,19 @@ Qué cubren:
 - `rls_catalog.sql` — aislamiento entre hogares, barcode único por ámbito, UNKNOWN ≠ ZERO, DEV_SEED nunca verificado.
 - `rls_recipes.sql` — la biblioteca global es intocable para un hogar (pero copiable), las recetas del hogar son invisibles para otros hogares, publicar congela la ficha nutricional, y una versión publicada no se puede editar ni por SQL directo.
 
+## Qué incluye el Sprint 4
+
+- **Una misma receta, una porción por persona** ([ADR 0003](../docs/adr/0003-portion-optimizer-and-member-profiles.md)). `PortionOptimizer` determinista y sin IA: porción estándar → restricciones HARD → preparación y grasa añadida → ensalada preferida → proteína hacia el rango → techo de calorías.
+- **Tracking OFF / BASIC / FULL** (K-25). OFF no es estar excluido: participa de recetas, porciones y planificación, pero no se le pide ni se le muestra conteo. Nunca se le dice "te quedan 0 kcal" a quien no tiene presupuesto.
+- **Objetivos con rango y vigencia**: mínimo, ideal y máximo, cualquiera opcional. La tabla es el historial: nada se actualiza en destructivo. Objetivos diarios y por comida.
+- **Patrón de comidas y ayuno**: cada comida ENABLED/DISABLED/OPTIONAL, primera comida del día, ventana de alimentación. Con el desayuno desactivado no se le reserva nada al desayuno.
+- **Preferencias HARD y SOFT**: una alergia bloquea el plato entero (no "una porción más chica"); un "no me gusta" penaliza, explica y como mucho sugiere un reemplazo.
+- **Preferencias de preparación** con prioridad ingrediente > categoría > global, y **grasa añadida** como preferencia propia: freír no cuesta lo mismo que air fryer sin aceite, y esa diferencia va en la porción de quien la eligió.
+- **Perfil versionado con huella**: cambiar un objetivo de Sebastián recalcula el perfil de Sebastián, no el de toda la familia. Emite `NUTRITION_PROFILE_CHANGED` al outbox con `dedupe_key`.
+- **`TARGET_CONFLICT` en vez de números inventados**: si el mínimo de proteína no cabe bajo el máximo de calorías, la app lo dice.
+- **Totales para cocinar**: la suma exacta de las porciones reales (no la receta × personas), agrupada por método de cocción.
+- Pantallas: perfil del integrante (seguimiento, objetivos del día, mis comidas, preparación, preferencias) y **"Ver porciones para mi familia"** con tarjeta por persona, "¿Por qué?" y totales.
+
 ## Qué incluye el Sprint 3
 
 - Recetas modulares y **versionadas** ([ADR 0002](../docs/adr/0002-recipe-versioning-and-nutrition-aggregation.md)): `MealTemplate` + `MealTemplateVersion` inmutable. Publicar congela la ficha nutricional de cada componente; editar crea la versión siguiente y la anterior queda intacta (reforzado con triggers, no solo en la UI).

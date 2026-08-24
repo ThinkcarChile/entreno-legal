@@ -131,6 +131,10 @@ export function RecipeForm({
           yieldFactor: null,
           isOptional: component.isOptional,
           sortOrder: 1,
+          adjustability: component.isOptional ? "OPTIONAL" : "ADJUSTABLE",
+          minQuantity: null,
+          maxQuantity: null,
+          categoryId: null,
         });
       }
     }

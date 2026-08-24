@@ -125,11 +125,18 @@ begin
   v_fact := pg_temp.fact(p_ing, p_basis);
   select basis_unit into v_unit from public.nutrition_facts where id = v_fact;
 
+  -- Ajustabilidad y limites (secciones 28 y 29): un opcional puede irse a 0; el
+  -- resto se mueve dentro de un margen razonable del plato, no "lo que el
+  -- algoritmo quiera".
   insert into public.meal_slot_components
     (slot_id, ingredient_id, quantity, unit, weight_basis, nutrition_fact_id,
-     cooking_method, is_optional, sort_order, yield_factor)
+     cooking_method, is_optional, sort_order, yield_factor,
+     adjustability, min_quantity, max_quantity)
   values (p_slot, pg_temp.ing(p_ing), p_qty, coalesce(v_unit, 'G'), p_basis, v_fact,
-          p_method, p_optional, p_order, p_yield);
+          p_method, p_optional, p_order, p_yield,
+          (case when p_optional then 'OPTIONAL' else 'ADJUSTABLE' end)::public.slot_adjustability,
+          case when p_optional then 0 else round(p_qty * 0.6, 3) end,
+          round(p_qty * 1.6, 3));
 end $$;
 
 /** Componente que reutiliza otra receta (ensalada/postre) por VERSIÓN. */
@@ -138,8 +145,10 @@ create or replace function pg_temp.comp_nested(
 ) returns void language plpgsql as $$
 begin
   insert into public.meal_slot_components
-    (slot_id, nested_version_id, quantity, unit, weight_basis, sort_order)
-  values (p_slot, p_version, p_qty, 'G', 'RAW', p_order);
+    (slot_id, nested_version_id, quantity, unit, weight_basis, sort_order,
+     adjustability, min_quantity, max_quantity)
+  values (p_slot, p_version, p_qty, 'G', 'RAW', p_order,
+          'ADJUSTABLE', round(p_qty * 0.6, 3), round(p_qty * 1.6, 3));
 end $$;
 
 create or replace function pg_temp.alt(

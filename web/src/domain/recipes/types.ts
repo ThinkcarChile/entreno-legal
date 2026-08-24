@@ -98,6 +98,15 @@ export interface RecipeComponent {
   yieldFactor: number | null;
   isOptional: boolean;
   sortOrder: number;
+  /**
+   * Hasta dónde se puede mover este componente al personalizar la porción
+   * (Sprint 4 §28, §29). FIXED = no se toca ni para cuadrar calorías.
+   */
+  adjustability: "FIXED" | "ADJUSTABLE" | "OPTIONAL";
+  minQuantity: number | null;
+  maxQuantity: number | null;
+  /** Categoría del alimento, para resolver preferencias por categoría. */
+  categoryId: string | null;
 }
 
 /**

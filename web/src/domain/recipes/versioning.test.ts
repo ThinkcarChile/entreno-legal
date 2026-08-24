@@ -27,6 +27,10 @@ function componente(label: string, quantity: number, nutrition: NutritionFact): 
     yieldFactor: null,
     isOptional: false,
     sortOrder: 1,
+    adjustability: "ADJUSTABLE",
+    minQuantity: null,
+    maxQuantity: null,
+    categoryId: null,
   };
 }
 

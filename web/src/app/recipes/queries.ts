@@ -118,8 +118,9 @@ function factFromFrozen(frozen: unknown): NutritionFact | null {
 const COMPONENT_SELECT = `
   id, slot_id, ingredient_id, product_id, nested_version_id,
   quantity, unit, weight_basis, cooking_method, yield_factor, is_optional, sort_order,
+  adjustability, min_quantity, max_quantity,
   frozen_nutrition, frozen_source,
-  ingredients ( display_name ),
+  ingredients ( display_name, category_id ),
   commercial_products ( name, brand ),
   nutrition_facts (
     id, weight_basis, basis_unit, source_type, source_name, verified,
@@ -141,9 +142,12 @@ interface ComponentRow {
   yield_factor: number | null;
   is_optional: boolean;
   sort_order: number;
+  adjustability: "FIXED" | "ADJUSTABLE" | "OPTIONAL";
+  min_quantity: number | null;
+  max_quantity: number | null;
   frozen_nutrition: unknown;
   frozen_source: { source_type?: string; source_name?: string; verified?: boolean } | null;
-  ingredients: { display_name: string } | null;
+  ingredients: { display_name: string; category_id: string | null } | null;
   commercial_products: { name: string; brand: string | null } | null;
   nutrition_facts: FactRow | null;
 }
@@ -195,6 +199,10 @@ function toComponent(row: ComponentRow, slotType: SlotType): LoadedComponent {
     yieldFactor: row.yield_factor === null ? null : Number(row.yield_factor),
     isOptional: row.is_optional,
     sortOrder: row.sort_order,
+    adjustability: row.adjustability ?? "ADJUSTABLE",
+    minQuantity: row.min_quantity === null ? null : Number(row.min_quantity),
+    maxQuantity: row.max_quantity === null ? null : Number(row.max_quantity),
+    categoryId: row.ingredients?.category_id ?? null,
   };
 }
 
@@ -234,8 +242,10 @@ async function expandNested(
   return inner.map((c) => ({
     ...c,
     id: `${component.id}:${c.id}`,
+    // El slot del plato manda para AGRUPAR en pantalla, pero cada componente
+    // conserva SU tipo: el aceite de la ensalada sigue siendo una grasa añadida
+    // y quien la evita tiene que poder sacarla.
     slotId: component.slotId,
-    slotType: component.slotType,
     quantity: c.quantity * factor,
     isOptional: component.isOptional || c.isOptional,
   }));
