@@ -248,3 +248,16 @@ begin
     source_type, source_name, notes)
   values (v_prod, 'AS_PACKAGED', 'ML', 35, 3.4, 4.9, 0.2, 4.9, 44, 150, 95, 'DEV_SEED', src, 'demo — por 100 ml');
 end $$;
+
+-- Rendimientos crudo→cocido de referencia (idempotente; en producción los
+-- insertó la migración 0009, acá el seed corre después de las migraciones).
+insert into public.ingredient_yields (ingredient_id, cooking_method, yield_factor, notes)
+select i.id, m.metodo::public.cooking_method, m.factor, m.nota
+from public.ingredients i
+join (values
+  ('arroz blanco',   'BOILED', 2.8,  'arroz blanco hervido ~2,8x su peso crudo'),
+  ('fideos',         'BOILED', 2.4,  'fideos hervidos ~2,4x su peso crudo'),
+  ('lentejas',       'BOILED', 2.5,  'lentejas cocidas ~2,5x su peso seco')
+) as m(nombre, metodo, factor, nota) on i.canonical_name = m.nombre
+where i.household_id is null
+on conflict do nothing;

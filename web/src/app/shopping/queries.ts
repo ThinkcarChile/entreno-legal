@@ -1,7 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { DataAccessError } from "@/lib/supabase/unwrap";
-import { dateString, nullableNumeric, numeric, parseRows, uuid } from "@/lib/supabase/rows";
+import {
+  dateString,
+  nullableNumeric,
+  numeric,
+  parseRows,
+  uuid,
+  weightBasis as weightBasisSchema,
+} from "@/lib/supabase/rows";
 import type {
   ConfirmedServing,
   IngredientMeta,
@@ -12,7 +19,6 @@ import type {
   YieldEntry,
 } from "@/domain/shopping/engine";
 import type { MealType } from "@/domain/recipes/types";
-import type { WeightBasis } from "@/domain/catalog/types";
 
 type Db = SupabaseClient;
 
@@ -30,7 +36,12 @@ export interface ShoppingContext {
   unconfirmed: { date: string; mealType: MealType; recipeName: string | null }[];
 }
 
-const servingRowSchema = z.object({
+/**
+ * Exportado para poder probarlo: una base de peso desconocida en una porción
+ * confirmada tiene que EXPLOTAR acá, no comprarse en silencio como si fuera
+ * cruda (hardening 1 post-Sprint 6).
+ */
+export const servingRowSchema = z.object({
   id: uuid,
   assignment_id: uuid,
   member_id: uuid,
@@ -48,7 +59,7 @@ const servingRowSchema = z.object({
           label: z.string(),
           proposed_quantity: numeric,
           unit: z.enum(["G", "ML"]),
-          weight_basis: z.string(),
+          weight_basis: weightBasisSchema,
           cooking_method: z.string().nullable(),
           added_fat_g: nullableNumeric,
         }),
@@ -148,7 +159,7 @@ export async function loadShoppingContext(
           label: c.label,
           quantity: c.proposed_quantity,
           unit: c.unit,
-          weightBasis: c.weight_basis as WeightBasis,
+          weightBasis: c.weight_basis,
           cookingMethod: c.cooking_method,
           addedFatG: c.added_fat_g ?? 0,
         })),

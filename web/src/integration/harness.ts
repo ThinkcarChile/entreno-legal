@@ -25,6 +25,7 @@ const MIGRACIONES = [
   "supabase/migrations/0007_weekly_planning.sql",
   "supabase/migrations/0008_participants_and_serving_lifecycle.sql",
   "supabase/migrations/0009_shopping.sql",
+  "supabase/migrations/0010_hardening_sprint6.sql",
 ];
 
 const SEEDS = [

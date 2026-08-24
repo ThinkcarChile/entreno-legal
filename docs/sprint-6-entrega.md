@@ -1,5 +1,14 @@
 # Sprint 6 — Entrega: ShoppingEngine y lista de compras familiar
 
+> **Estado: APPROVED** (2026-08-24). Aprobación funcional del director + las cuatro
+> verificaciones de hardening aplicadas en `0010_hardening_sprint6.sql` con 17
+> regresiones nuevas (284 pruebas al cierre del hardening): (1) sin fallbacks G/RAW en
+> porciones confirmadas, (2) `ingredient_yields` con fuente/verificación/ámbito por
+> hogar y historia congelada por revisión, (3) RPC SECURITY DEFINER validan que todo
+> UUID del cliente sea del hogar o global — con tests adversariales del hogar B
+> inyectando recursos privados del A, (4) borrado histórico bloqueado por trigger:
+> lo usado por porciones o compras se archiva con `is_active = false`.
+
 **Fecha:** 2026-08-24
 **Estado de verificación:** 267 pruebas verdes (31 de dominio del motor + 31 de integración de compras sobre PostgreSQL real + las 205 previas), `lint`, `typecheck` y `build` limpios.
 **Revisión adversarial:** workflow de 35 agentes en 5 lentes (correctitud, falla silenciosa, seguridad/RLS, cumplimiento de spec, UI) — 26 hallazgos confirmados, todos corregidos antes de esta entrega.
@@ -67,10 +76,9 @@ Progreso X/Y, secciones por categoría, checkbox grande, detalle con "¿Por qué
 ## 4. Deuda declarada
 
 - **Grasa añadida**: línea genérica en gramos, sin identidad de aceite (inventarla sería mentir). Futuro: grasa preferida del hogar.
-- `confirm_meal_assignment` no valida pertenencia de `profile_id`/`daily_plan_id` (server actions confiables hoy; hardening pre-producción).
 - Realtime multiusuario (§37): persistencia correcta primero.
 - Curado de `ingredient_yields` desde la UI: hoy solo seed.
-- Migración **0009 pendiente de aplicar en Supabase** (el editor SQL no carga en las pestañas que yo abro; esperando la de Francisco). Hasta aplicarla, `/shopping` no funciona contra la base real.
+- Migración **0010 pendiente de aplicar en Supabase** (queda copiada en el portapapeles junto a la 0011 del Sprint 7).
 
 ## 5. Riesgos antes del InventoryEngine
 
