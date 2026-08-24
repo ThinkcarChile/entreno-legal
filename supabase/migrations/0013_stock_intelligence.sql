@@ -252,11 +252,27 @@ select
   m.household_id,
   l.ingredient_id,
   l.unit,
+  l.weight_basis,
   -m.delta as quantity,
   m.reason,
   m.created_at,
+  -- El costo se estima SOLO para lotes "limpios" (sin split ni ajustes
+  -- positivos): en esos, valor × proporción de las entradas de compra es
+  -- exacto. Un lote partido o corregido mezclaría modelos contables y el
+  -- número mentiría — ahí va NULL hasta que exista cost_allocations.
   case
-    when l.acquisition_value is not null and entradas.total > 0
+    when l.acquisition_value is not null
+     and entradas.total > 0
+     and not exists (
+       -- "sucio" = el lote FUE partido (salida SPLIT/MERGE: su valor quedó
+       -- debitado y el denominador ya no calza) o recibió un ajuste al alza
+       -- (entrada sin valor que diluiría el costo para siempre). La ENTRADA
+       -- por split de un hijo es exacta: su valor se asignó en ese momento.
+       select 1 from public.inventory_movements x
+       where x.lot_id = m.lot_id
+         and ((x.reason in ('SPLIT', 'MERGE') and x.delta < 0)
+              or (x.reason = 'ADJUSTMENT' and x.delta > 0))
+     )
     then round(l.acquisition_value * (-m.delta) / entradas.total, 4)
   end as estimated_cost
 from public.inventory_movements m
@@ -265,6 +281,7 @@ left join lateral (
   select sum(e.delta) as total
   from public.inventory_movements e
   where e.lot_id = m.lot_id and e.delta > 0
+    and e.reason in ('PURCHASE', 'SPLIT', 'MERGE')
 ) entradas on true
 where m.reason in ('SPOILED', 'EXPIRED', 'DAMAGED', 'DISCARDED_LEFTOVER', 'PURCHASE_PROBLEM')
   and m.delta < 0;
@@ -277,8 +294,194 @@ select
   m.household_id,
   l.ingredient_id,
   l.unit,
+  l.weight_basis,
   m.delta as quantity,
   m.created_at
 from public.inventory_movements m
 join public.inventory_lots l on l.id = m.lot_id
 where m.reason = 'PURCHASE' and m.delta > 0 and l.ingredient_id is not null;
+
+-- ---------------------------------------------------------------------------
+-- consume_planned_meal v3: la MISMA regla de vencidos que Stock Intelligence
+-- ---------------------------------------------------------------------------
+--
+-- El motor excluye de "usable" todo lote con fecha vencida; el FEFO físico
+-- filtraba solo por status y además ponía los vencidos PRIMERO. Resultado:
+-- la app decía "faltan 300 g" y después se los comía de un lote vencido sin
+-- registrar nada. Ahora ambos sistemas cuentan la misma despensa: lo vencido
+-- no se consume — se descarta (EXPIRED) o cae como shortfall.
+
+create or replace function public.consume_planned_meal(p_assignment_id uuid)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_household uuid;
+  v_member uuid;
+  v_today date;
+  v_proj record;
+  v_comp record;
+  v_lot record;
+  v_log uuid;
+  v_pendiente numeric;
+  v_toma numeric;
+  v_factor numeric;
+  v_count int := 0;
+  v_shortfalls jsonb := '[]'::jsonb;
+begin
+  select p.household_id into v_household
+  from public.meal_assignments a
+  join public.weekly_plan_days d on d.id = a.day_id
+  join public.weekly_plans p on p.id = d.plan_id
+  where a.id = p_assignment_id;
+
+  if v_household is null or not app.is_household_member(v_household) then
+    raise exception 'no autorizado';
+  end if;
+
+  v_member := app.current_member_id(v_household);
+  -- El día del HOGAR, no el de la sesión: a las 22:30 de Santiago un lote
+  -- que vence mañana todavía sirve.
+  select (now() at time zone coalesce(h.timezone, 'America/Santiago'))::date
+  into v_today
+  from public.households h where h.id = v_household;
+
+  for v_proj in
+    select * from public.member_serving_projections
+    where assignment_id = p_assignment_id and status = 'PLANNED'
+  loop
+    insert into public.consumption_logs
+      (household_id, member_id, assignment_id, projection_id, kind, logged_by)
+    values (v_household, v_proj.member_id, p_assignment_id, v_proj.id, 'PLANNED', v_member)
+    on conflict (projection_id) where projection_id is not null do nothing
+    returning id into v_log;
+
+    if v_log is null then continue; end if;
+
+    update public.member_serving_projections
+    set status = 'CONSUMED' where id = v_proj.id;
+
+    for v_comp in
+      select * from public.member_serving_components
+      where projection_id = v_proj.id and ingredient_id is not null
+        and proposed_quantity > 0
+    loop
+      v_pendiente := v_comp.proposed_quantity;
+
+      for v_lot in
+        select l.* from public.inventory_lots l
+        where l.household_id = v_household
+          and l.ingredient_id = v_comp.ingredient_id
+          and l.unit = v_comp.unit::text
+          and l.weight_basis = v_comp.weight_basis
+          and l.status = 'AVAILABLE' and l.quantity > 0
+          -- vencido = no usable, igual que en Stock Intelligence
+          and (coalesce(l.use_by, l.expiry_date) is null
+               or coalesce(l.use_by, l.expiry_date) >= v_today)
+        order by l.use_by asc nulls last, l.expiry_date asc nulls last, l.created_at asc
+      loop
+        exit when v_pendiente <= 0;
+        v_toma := least(v_pendiente, v_lot.quantity);
+        insert into public.inventory_movements
+          (household_id, lot_id, reason, delta, idempotency_key,
+           consumption_log_id, actor_member_id)
+        values
+          (v_household, v_lot.id, 'CONSUMED', -v_toma,
+           'CONSUME:' || v_proj.id::text || ':' || v_comp.id::text || ':' || v_lot.id::text,
+           v_log, v_member);
+        v_pendiente := v_pendiente - v_toma;
+      end loop;
+
+      if v_pendiente > 0 and v_comp.weight_basis = 'COOKED' then
+        select y.yield_factor into v_factor
+        from public.ingredient_yields y
+        where y.ingredient_id = v_comp.ingredient_id
+          and (y.household_id is null or y.household_id = v_household)
+          and (y.cooking_method is null or y.cooking_method = v_comp.cooking_method)
+        order by (y.household_id is not null) desc, (y.cooking_method is not null) desc
+        limit 1;
+
+        if v_factor is not null and v_factor > 0 then
+          for v_lot in
+            select l.* from public.inventory_lots l
+            where l.household_id = v_household
+              and l.ingredient_id = v_comp.ingredient_id
+              and l.unit = v_comp.unit::text
+              and l.weight_basis = 'RAW'
+              and l.status = 'AVAILABLE' and l.quantity > 0
+              and (coalesce(l.use_by, l.expiry_date) is null
+                   or coalesce(l.use_by, l.expiry_date) >= v_today)
+            order by l.use_by asc nulls last, l.expiry_date asc nulls last, l.created_at asc
+          loop
+            exit when v_pendiente <= 0;
+            v_toma := least(v_pendiente / v_factor, v_lot.quantity);
+            insert into public.inventory_movements
+              (household_id, lot_id, reason, delta, idempotency_key,
+               consumption_log_id, actor_member_id, notes)
+            values
+              (v_household, v_lot.id, 'CONSUMED', -v_toma,
+               'CONSUME:' || v_proj.id::text || ':' || v_comp.id::text || ':' || v_lot.id::text,
+               v_log, v_member,
+               'conversión explícita cocido→crudo ×' || v_factor::text);
+            v_pendiente := v_pendiente - (v_toma * v_factor);
+          end loop;
+        end if;
+      end if;
+
+      if v_pendiente > 0.001 then
+        insert into public.consumption_shortfalls
+          (household_id, consumption_log_id, assignment_id, projection_id,
+           ingredient_id, label, quantity, unit, weight_basis, serving_date)
+        values
+          (v_household, v_log, p_assignment_id, v_proj.id,
+           v_comp.ingredient_id, v_comp.label, round(v_pendiente, 3),
+           v_comp.unit::text, v_comp.weight_basis, v_proj.serving_date);
+
+        v_shortfalls := v_shortfalls || jsonb_build_object(
+          'label', v_comp.label,
+          'quantity', round(v_pendiente, 3),
+          'unit', v_comp.unit::text,
+          'weight_basis', v_comp.weight_basis::text
+        );
+      end if;
+    end loop;
+
+    v_count := v_count + 1;
+  end loop;
+
+  if v_count > 0 then
+    update public.meal_assignments set status = 'SERVED' where id = p_assignment_id;
+  end if;
+
+  return jsonb_build_object('servings', v_count, 'shortfalls', v_shortfalls);
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- El sello de items de compra también valida ámbito del alimento
+-- ---------------------------------------------------------------------------
+--
+-- Sugerencias e items manuales se insertan directo (sin RPC): el trigger es
+-- el respaldo en la base para que un ingrediente privado de otro hogar no
+-- entre a la lista ni por PostgREST directo.
+
+create or replace function app.stamp_shopping_item()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare v_member uuid; v_household uuid;
+begin
+  v_household := app.shopping_household(new.list_id);
+  v_member := app.current_member_id(v_household);
+  if not app.ingredient_in_scope(new.ingredient_id, v_household) then
+    raise exception 'el alimento no pertenece a este hogar';
+  end if;
+  if not app.product_in_scope(new.product_id, v_household) then
+    raise exception 'el producto no pertenece a este hogar';
+  end if;
+  if tg_op = 'INSERT' and new.source = 'MANUAL' then
+    new.added_by := v_member;
+  end if;
+  if new.status = 'PURCHASED' and (tg_op = 'INSERT' or old.status is distinct from 'PURCHASED') then
+    new.purchased_by := v_member;
+    new.purchased_at := coalesce(new.purchased_at, now());
+  end if;
+  return new;
+end;
+$$;

@@ -1,7 +1,7 @@
 # Sprint 8 — Entrega: Stock Intelligence
 
 **Fecha:** 2026-08-24
-**Verificación:** 373 pruebas verdes (38 dominio stock + 11 integración stock sobre PostgreSQL real + las previas), lint/typecheck/build limpios. QA adversarial en [qa/sprint-8-report.md](./qa/sprint-8-report.md) (13 defectos confirmados y corregidos). Decisiones en [ADR 0009](./adr/0009-stock-intelligence.md).
+**Verificación:** 376 pruebas verdes (38 dominio stock + 12 integración stock sobre PostgreSQL real + las previas), lint/typecheck/build limpios. QA adversarial en [qa/sprint-8-report.md](./qa/sprint-8-report.md) (21 defectos confirmados y corregidos en dos pasadas). Decisiones en [ADR 0009](./adr/0009-stock-intelligence.md).
 **Estado:** demo viva §59 pendiente de aplicar la migración 0013 en Supabase (flujo acordado: portapapeles → Francisco).
 
 ---

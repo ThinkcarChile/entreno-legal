@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { DataAccessError } from "@/lib/supabase/unwrap";
 import { loadHouseholdMembers } from "@/app/family/nutrition-queries";
 
 export interface ActionResult {
@@ -114,14 +113,14 @@ export async function addReorderToShoppingList(input: {
     p_household_id: householdId,
     p_week_start: input.weekStart,
   });
-  if (planError) throw new DataAccessError("semana para la sugerencia", planError);
+  if (planError) return { ok: false, error: "No se pudo preparar la semana de compras." };
 
   const cabecera = await supabase
     .from("shopping_lists")
     .select("id, status")
     .eq("plan_id", planId)
     .maybeSingle();
-  if (cabecera.error) throw new DataAccessError("lista para la sugerencia", cabecera.error);
+  if (cabecera.error) return { ok: false, error: "No se pudo leer la lista de compras." };
   let lista = cabecera.data;
 
   if (!lista) {
@@ -136,7 +135,7 @@ export async function addReorderToShoppingList(input: {
       .select("id, status")
       .eq("plan_id", planId)
       .maybeSingle();
-    if (relectura.error) throw new DataAccessError("lista para la sugerencia", relectura.error);
+    if (relectura.error) return { ok: false, error: "No se pudo leer la lista de compras." };
     lista = relectura.data;
   }
   if (!lista) return { ok: false, error: "No se pudo preparar la lista de compras." };
@@ -146,22 +145,44 @@ export async function addReorderToShoppingList(input: {
 
   // Si ya existe la sugerencia para este alimento, se actualiza la cantidad
   // en vez de duplicar la línea.
+  // §8-C de la revisión: la línea del PLAN de esta lista ya cubre la demanda
+  // confirmada. La recomendación incluye ese faltante — sumar ambas sería
+  // doble conteo. Se descuenta lo que la lista ya pide pendiente.
+  const { data: delPlan, error: planItemError } = await supabase
+    .from("shopping_list_items")
+    .select("required_quantity, planned_quantity, status")
+    .eq("list_id", lista.id)
+    .eq("source", "FOOD_PLAN")
+    .eq("ingredient_id", input.ingredientId)
+    .eq("unit", input.unit);
+  if (planItemError) return { ok: false, error: "No se pudo revisar la lista." };
+  const yaPedido = (delPlan ?? [])
+    .filter((i) => i.status === "PENDING")
+    .reduce((acc, i) => acc + Number(i.planned_quantity ?? i.required_quantity ?? 0), 0);
+  const cantidad = Math.round(Math.max(0, input.quantity - yaPedido) * 1000) / 1000;
+  if (cantidad <= 0) {
+    return {
+      ok: true,
+      message: `La línea del plan en la lista ya cubre lo recomendado de ${input.label}.`,
+    };
+  }
+
   const { data: existentes, error: exError } = await supabase
     .from("shopping_list_items")
-    .select("id")
+    .select("id, planned_quantity")
     .eq("list_id", lista.id)
     .eq("source", "STOCK_INTELLIGENCE")
     .eq("ingredient_id", input.ingredientId)
     .limit(1);
-  if (exError) throw new DataAccessError("sugerencia existente", exError);
+  if (exError) return { ok: false, error: "No se pudo revisar la lista." };
   const existente = existentes?.[0] ?? null;
 
-  const actualizar = async (id: string) => {
+  const actualizar = async (id: string, original: number | null) => {
     // Solo una sugerencia PENDIENTE se re-cuantifica: si ya se compró o se
     // decidió sobre ella, tocarla en silencio reescribiría una decisión.
     const { data, error } = await supabase
       .from("shopping_list_items")
-      .update({ planned_quantity: input.quantity, updated_at: new Date().toISOString() })
+      .update({ planned_quantity: cantidad, updated_at: new Date().toISOString() })
       .eq("id", id)
       .eq("status", "PENDING")
       .select("id");
@@ -172,11 +193,18 @@ export async function addReorderToShoppingList(input: {
         error: "Esa sugerencia ya no está pendiente en la lista: revísala en Compras.",
       };
     }
+    // El cambio de cantidad queda auditado, como toda edición de compra (§22).
+    await supabase.from("shopping_item_overrides").insert({
+      item_id: id,
+      original_quantity: original,
+      new_quantity: cantidad,
+      reason: "recalculado por Stock Intelligence",
+    });
     return { ok: true as const };
   };
 
   if (existente) {
-    const r = await actualizar(existente.id);
+    const r = await actualizar(existente.id, Number(existente.planned_quantity ?? 0) || null);
     if (!r.ok) return r;
   } else {
     const { data, error } = await supabase
@@ -187,7 +215,7 @@ export async function addReorderToShoppingList(input: {
         ingredient_id: input.ingredientId,
         label: input.label,
         unit: input.unit,
-        planned_quantity: input.quantity,
+        planned_quantity: cantidad,
         purchase_basis: "RAW",
       })
       .select("id");
@@ -196,7 +224,7 @@ export async function addReorderToShoppingList(input: {
       // fila que llegó primero.
       const { data: fila, error: relecturaError } = await supabase
         .from("shopping_list_items")
-        .select("id")
+        .select("id, planned_quantity")
         .eq("list_id", lista.id)
         .eq("source", "STOCK_INTELLIGENCE")
         .eq("ingredient_id", input.ingredientId)
@@ -204,7 +232,7 @@ export async function addReorderToShoppingList(input: {
       if (relecturaError || !fila) {
         return { ok: false, error: "No se pudo agregar la sugerencia a la lista." };
       }
-      const r = await actualizar(fila.id);
+      const r = await actualizar(fila.id, Number(fila.planned_quantity ?? 0) || null);
       if (!r.ok) return r;
     } else if (error || !data || data.length === 0) {
       return { ok: false, error: "No se pudo agregar la sugerencia a la lista." };
@@ -212,5 +240,9 @@ export async function addReorderToShoppingList(input: {
   }
 
   refrescar();
-  return { ok: true, message: `${input.label} agregado a la próxima compra como sugerencia.` };
+  const nota =
+    cantidad < input.quantity
+      ? ` (descontando lo que la lista del plan ya pide: ${Math.round((input.quantity - cantidad) * 10) / 10})`
+      : "";
+  return { ok: true, message: `${input.label} agregado a la próxima compra como sugerencia${nota}.` };
 }

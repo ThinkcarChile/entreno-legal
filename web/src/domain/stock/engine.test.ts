@@ -355,7 +355,8 @@ describe("§2/§17 no doble conteo: confirmado GANA sobre forecast", () => {
     const input = conHistoria();
     const items = analyzeStock({ ...input, planningCoveredUntil: null, futureDemand: [] });
     const h7 = items[0]!.horizons.find((h) => h.days === 7)!;
-    expect(h7.forecastUncovered).toBeCloseTo(271.4 * 7, 0);
+    // El forecast parte MAÑANA (hoy ya se comió o está confirmado): 6 días.
+    expect(h7.forecastUncovered).toBeCloseTo(271.4 * 6, 0);
   });
 });
 
@@ -403,8 +404,8 @@ describe("§8/§19 políticas de objetivo", () => {
       }),
     );
     const item = items[0]!;
-    // demanda 14 días = 2.800; libre 1.400 → recomendar 1.400
-    expect(item.reorder.recommendedQuantity).toBe(1400);
+    // forecast desde mañana: 13 días × 200 = 2.600; libre 1.400 → 1.200
+    expect(item.reorder.recommendedQuantity).toBe(1200);
     expect(item.reorder.horizonDays).toBe(14);
     // libre cubre 7 días = la mitad del horizonte → límite SOON/WATCH
     expect(["REORDER_SOON", "WATCH"]).toContain(item.reorder.status);
@@ -444,7 +445,7 @@ describe("§8/§19 políticas de objetivo", () => {
       }),
     );
     expect(items[0]!.reorder.horizonDays).toBe(30);
-    expect(items[0]!.reorder.recommendedQuantity).toBe(3000); // 6.000 − 3.000
+    expect(items[0]!.reorder.recommendedQuantity).toBe(2800); // 29 días × 200 − 3.000
   });
 });
 
@@ -503,10 +504,10 @@ describe("§25/§43 desperdicio como señal, jamás corrección automática", ()
           { ingredientId: "ing-manzana", quantity: 12, unit: "UNIT", weightBasis: "RAW", cookingMethod: null, date: "2026-10-10" },
         ],
         waste: [
-          { ingredientId: "ing-manzana", quantity: 5, unit: "UNIT", estimatedCost: null, date: "2026-10-12" },
+          { ingredientId: "ing-manzana", quantity: 5, unit: "UNIT", weightBasis: "RAW", estimatedCost: null, date: "2026-10-12" },
         ],
         purchases: [
-          { ingredientId: "ing-manzana", quantity: 20, unit: "UNIT", date: "2026-10-05" },
+          { ingredientId: "ing-manzana", quantity: 20, unit: "UNIT", weightBasis: "RAW", date: "2026-10-05" },
         ],
         targets: [{ ingredientId: "ing-manzana", unit: "UNIT", minimumQuantity: null, targetQuantity: 20, targetDaysOfSupply: null, safetyStock: null, reviewCycle: "WEEKLY", reorderEnabled: true, source: "USER_DEFINED" }],
       }),
@@ -521,7 +522,7 @@ describe("§25/§43 desperdicio como señal, jamás corrección automática", ()
     const items = analyzeStock(
       base({
         waste: [
-          { ingredientId: "ing-pollo", quantity: 300, unit: "G", estimatedCost: 1350, date: "2026-10-15" },
+          { ingredientId: "ing-pollo", quantity: 300, unit: "G", weightBasis: "RAW", estimatedCost: 1350, date: "2026-10-15" },
         ],
         lots: [lot({ quantity: 100 })],
       }),
@@ -529,7 +530,7 @@ describe("§25/§43 desperdicio como señal, jamás corrección automática", ()
     expect(items[0]!.wasteCost30).toBe(1350);
     const sinValor = analyzeStock(
       base({
-        waste: [{ ingredientId: "ing-pollo", quantity: 300, unit: "G", estimatedCost: null, date: "2026-10-15" }],
+        waste: [{ ingredientId: "ing-pollo", quantity: 300, unit: "G", weightBasis: "RAW", estimatedCost: null, date: "2026-10-15" }],
         lots: [lot({ quantity: 100 })],
       }),
     );
@@ -642,7 +643,7 @@ describe("correcciones de la revisión adversarial (lote 2)", () => {
     const items = analyzeStock(
       base({
         lots: [lot({ quantity: 100 })],
-        waste: [{ ingredientId: "ing-pollo", quantity: 500, unit: "G", estimatedCost: null, date: "2026-10-25" }],
+        waste: [{ ingredientId: "ing-pollo", quantity: 500, unit: "G", weightBasis: "RAW", estimatedCost: null, date: "2026-10-25" }],
       }),
     );
     expect(items[0]!.waste30).toBe(0);
@@ -653,8 +654,8 @@ describe("correcciones de la revisión adversarial (lote 2)", () => {
       base({
         lots: [lot({ quantity: 100 })],
         waste: [
-          { ingredientId: "ing-pollo", quantity: 300, unit: "G", estimatedCost: 1350, date: "2026-10-15" },
-          { ingredientId: "ing-pollo", quantity: 200, unit: "G", estimatedCost: null, date: "2026-10-16" },
+          { ingredientId: "ing-pollo", quantity: 300, unit: "G", weightBasis: "RAW", estimatedCost: 1350, date: "2026-10-15" },
+          { ingredientId: "ing-pollo", quantity: 200, unit: "G", weightBasis: "RAW", estimatedCost: null, date: "2026-10-16" },
         ],
       }),
     );

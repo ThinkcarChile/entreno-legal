@@ -255,6 +255,7 @@ export async function loadStockInput(
     z.object({
       ingredient_id: uuid.nullable(),
       unit: unitSchema,
+      weight_basis: weightBasisSchema,
       quantity: numeric,
       estimated_cost: nullableNumeric,
       created_at: z.string(),
@@ -267,6 +268,7 @@ export async function loadStockInput(
       ingredientId: w.ingredient_id,
       quantity: w.quantity,
       unit: w.unit,
+      weightBasis: w.weight_basis,
       estimatedCost: w.estimated_cost,
       date: fechaEnHogar(w.created_at, timeZone),
     }));
@@ -275,6 +277,7 @@ export async function loadStockInput(
     z.object({
       ingredient_id: uuid,
       unit: unitSchema,
+      weight_basis: weightBasisSchema,
       quantity: numeric,
       created_at: z.string(),
     }),
@@ -283,6 +286,7 @@ export async function loadStockInput(
   ).map((p) => ({
     ingredientId: p.ingredient_id,
     unit: p.unit,
+    weightBasis: p.weight_basis,
     quantity: p.quantity,
     date: fechaEnHogar(p.created_at, timeZone),
   }));

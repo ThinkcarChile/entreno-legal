@@ -39,6 +39,8 @@ export function toBucketQuantity(
   yields: readonly YieldEntry[],
 ): number | null {
   if (weightBasis === bucketBasis) return quantity;
+  // La masa envasada ES la masa comprable: AS_PACKAGED equivale a crudo.
+  if (bucketBasis === "RAW" && weightBasis === "AS_PACKAGED") return quantity;
   if (bucketBasis === "RAW" && weightBasis === "COOKED") {
     const factor = yieldFactorFor(ingredientId, cookingMethod, yields);
     if (factor === null || factor <= 0) return null;
@@ -47,7 +49,11 @@ export function toBucketQuantity(
   return null;
 }
 
-/** Prioridad: hogar+método > global+método > hogar genérico > global genérico. */
+/**
+ * Prioridad IDÉNTICA a la del RPC de consumo (0012/0013): el dato del HOGAR
+ * le gana al global, y dentro de cada ámbito el del método al genérico.
+ * Dos motores con prioridades distintas contarían dos despensas distintas.
+ */
 export function yieldFactorFor(
   ingredientId: string,
   cookingMethod: string | null,
@@ -60,7 +66,7 @@ export function yieldFactorFor(
   );
   if (propios.length === 0) return null;
   const score = (y: YieldEntry) =>
-    (y.cookingMethod !== null ? 2 : 0) + (y.isHousehold ? 1 : 0);
+    (y.isHousehold ? 2 : 0) + (y.cookingMethod !== null ? 1 : 0);
   const mejor = [...propios].sort((a, b) => score(b) - score(a))[0]!;
   return mejor.factor;
 }
@@ -229,7 +235,12 @@ export function forecastConfidence(input: {
   const reasons: string[] = [];
 
   if (rate.observations === 0) {
-    return { confidence: null, reasons: ["Sin consumo registrado todavía."] };
+    return {
+      confidence: null,
+      reasons: input.hasUnresolvedUnits
+        ? ["Hay consumo registrado, pero en unidades o bases que no se pudieron convertir."]
+        : ["Sin consumo registrado todavía."],
+    };
   }
 
   let nivel: 0 | 1 | 2 = 2; // HIGH

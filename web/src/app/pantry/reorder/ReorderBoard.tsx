@@ -10,12 +10,21 @@ import { coverageText, statusBadge } from "../StockOverview";
 
 const CONFIDENCE_LABELS = { LOW: "baja", MEDIUM: "media", HIGH: "alta" } as const;
 
-export function ReorderBoard({ items, weekStart }: { items: StockItem[]; weekStart: string }) {
+export function ReorderBoard({
+  items,
+  weekStart,
+  yaSugeridos,
+}: {
+  items: StockItem[];
+  weekStart: string;
+  /** Alimentos que YA tienen sugerencia pendiente en la lista de la semana. */
+  yaSugeridos: string[];
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [agregados, setAgregados] = useState<Set<string>>(new Set());
+  const [agregados, setAgregados] = useState<Set<string>>(new Set(yaSugeridos));
 
   function agregar(item: StockItem) {
     if (item.reorder.recommendedQuantity === null) return;
@@ -34,7 +43,7 @@ export function ReorderBoard({ items, weekStart }: { items: StockItem[]; weekSta
         return;
       }
       setMessage(r.message ?? "Agregado.");
-      setAgregados(new Set([...agregados, item.ingredientId + item.unit]));
+      setAgregados((prev) => new Set([...prev, item.ingredientId + item.unit]));
       router.refresh();
     });
   }

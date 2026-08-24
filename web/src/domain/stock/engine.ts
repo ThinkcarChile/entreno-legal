@@ -161,8 +161,13 @@ export function analyzeStock(input: StockInput): StockItem[] {
     });
 
     // ---- Horizontes: confirmado + forecast SOLO en días no cubiertos (§17) ----
+    // §2/§17 afinado por la revisión: la cobertura del plan suprime el forecast
+    // SOLO para alimentos que aparecen en el plan confirmado. El yogur que se
+    // come todos los días pero jamás se planifica conserva su forecast — si
+    // no, la semana planificada lo dejaría en cero y habría quiebre.
+    const coveredUntil = demandas.length > 0 ? input.planningCoveredUntil : null;
     const horizons = ([7, 14, 30] as const).map((dias) =>
-      horizonNeed(dias, input.today, demandas, input, ingredientId, basis, rate.dailyRate),
+      horizonNeed(dias, input.today, demandas, input, ingredientId, basis, rate.dailyRate, coveredUntil),
     );
 
     // ---- Cobertura (§11) ----
@@ -181,7 +186,11 @@ export function analyzeStock(input: StockInput): StockItem[] {
       return edad >= 0 && edad < 30; // una fecha futura no es historia
     };
     const mermasPropias = input.waste.filter(
-      (w) => w.ingredientId === ingredientId && w.unit === unit && enVentana(w.date),
+      (w) =>
+        w.ingredientId === ingredientId &&
+        w.unit === unit &&
+        bucketDeLote(w.weightBasis) === basis &&
+        enVentana(w.date),
     );
     const waste30 = redondear(mermasPropias.reduce((acc, w) => acc + w.quantity, 0));
     // §26: el costo se muestra solo cuando se puede calcular ENTERO. Una suma
@@ -192,7 +201,13 @@ export function analyzeStock(input: StockInput): StockItem[] {
         : null;
     const purchases30 = redondear(
       input.purchases
-        .filter((p) => p.ingredientId === ingredientId && p.unit === unit && enVentana(p.date))
+        .filter(
+          (p) =>
+            p.ingredientId === ingredientId &&
+            p.unit === unit &&
+            bucketDeLote(p.weightBasis) === basis &&
+            enVentana(p.date),
+        )
         .reduce((acc, p) => acc + p.quantity, 0),
     );
     const consumo30 = rate.tracedTotal30 + rate.untrackedTotal30;
@@ -283,6 +298,7 @@ function horizonNeed(
   ingredientId: string,
   bucketBasis: string,
   dailyRate: number | null,
+  coveredUntil: string | null,
 ): HorizonNeed {
   let confirmed = 0;
   for (const d of demandas) {
@@ -300,15 +316,17 @@ function horizonNeed(
     }
   }
 
-  // Días del horizonte cubiertos por la planificación del hogar: ahí el
-  // forecast NO entra — lo confirmado gana (§2). Martes y jueves confirmados
-  // no reciben ADEMÁS pollo estadístico.
+  // El forecast estadístico empieza MAÑANA: lo de hoy o está confirmado o ya
+  // se comió y descontó — pronosticarlo de nuevo sería contar el día dos
+  // veces. Además, los días cubiertos por el plan (§2) no reciben forecast:
+  // martes confirmado no gana pollo estadístico encima.
+  const diasForecast = dias - 1; // offsets 1..dias-1
   let diasCubiertos = 0;
-  if (input.planningCoveredUntil !== null) {
-    const cobertura = diasEntre(today, input.planningCoveredUntil) + 1;
-    diasCubiertos = Math.max(0, Math.min(dias, cobertura));
+  if (coveredUntil !== null) {
+    const cobertura = diasEntre(today, coveredUntil); // offsets 1..cobertura
+    diasCubiertos = Math.max(0, Math.min(diasForecast, cobertura));
   }
-  const diasSinCubrir = dias - diasCubiertos;
+  const diasSinCubrir = Math.max(0, diasForecast - diasCubiertos);
   const forecastUncovered = dailyRate !== null ? redondear(dailyRate * diasSinCubrir) : 0;
 
   return {

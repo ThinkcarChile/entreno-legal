@@ -174,12 +174,14 @@ export function ItemDetailActions({
               type="button"
               disabled={pending}
               onClick={() => {
-                const num = (s: string) => {
-                  const t = s.trim();
-                  if (t === "") return null;
-                  const n = Number(t);
-                  return Number.isFinite(n) ? n : null;
-                };
+                // Un texto inválido NO se convierte en "sin valor" a escondidas:
+                // eso borraría un mínimo declarado sin que nadie lo pida.
+                const campos = [minimo, objetivo, dias];
+                if (campos.some((c) => c.trim() !== "" && !Number.isFinite(Number(c)))) {
+                  setError("Revisa los números: hay un valor que no se entiende.");
+                  return;
+                }
+                const num = (s: string) => (s.trim() === "" ? null : Number(s.trim()));
                 run(() =>
                   setStockTarget({
                     ingredientId,

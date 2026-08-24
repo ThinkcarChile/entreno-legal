@@ -68,6 +68,7 @@ export interface WasteStat {
   ingredientId: string;
   quantity: number;
   unit: StockUnit;
+  weightBasis: WeightBasis;
   /** Proporción del valor del lote, cuando el lote tenía valor. */
   estimatedCost: number | null;
   date: string;
@@ -78,6 +79,7 @@ export interface PurchaseStat {
   ingredientId: string;
   quantity: number;
   unit: StockUnit;
+  weightBasis: WeightBasis;
   date: string;
 }
 

@@ -8,6 +8,8 @@ import { loadHouseholdMembers } from "@/app/family/nutrition-queries";
 import { loadStockInput } from "@/app/stock/queries";
 import { DataAccessError } from "@/lib/supabase/unwrap";
 import { ReorderBoard } from "./ReorderBoard";
+import { z } from "zod";
+import { parseRows, uuid } from "@/lib/supabase/rows";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +42,23 @@ export default async function ReorderPage() {
     ["REORDER_NOW", "REORDER_SOON", "WATCH"].includes(i.reorder.status),
   );
 
+  // Sugerencias que YA están pendientes en la lista de esta semana, para que
+  // el botón no se resetee al navegar (idempotencia visible).
+  const inicioSemana = weekStart(hoy);
+  const { data: sugeridosData, error: sugeridosError } = await supabase
+    .from("shopping_list_items")
+    .select("ingredient_id, unit, status, shopping_lists!inner ( plan_id, weekly_plans!inner ( week_start ) )")
+    .eq("source", "STOCK_INTELLIGENCE")
+    .eq("status", "PENDING");
+  if (sugeridosError) throw new DataAccessError("sugerencias existentes", sugeridosError);
+  const sugeridos = parseRows(
+    z.object({ ingredient_id: uuid.nullable(), unit: z.string() }).passthrough(),
+    sugeridosData,
+    "sugerencias existentes",
+  )
+    .filter((f) => f.ingredient_id !== null)
+    .map((f) => `${f.ingredient_id}${f.unit}`);
+
   return (
     <main className="mx-auto max-w-3xl px-4 pb-16">
       <AppNav active="pantry" />
@@ -55,7 +74,7 @@ export default async function ReorderPage() {
         </p>
       </header>
 
-      <ReorderBoard items={accionables} weekStart={weekStart(hoy)} />
+      <ReorderBoard items={accionables} weekStart={inicioSemana} yaSugeridos={sugeridos} />
     </main>
   );
 }

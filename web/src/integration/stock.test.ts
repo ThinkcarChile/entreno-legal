@@ -166,13 +166,14 @@ async function stockInputDesdeBase(): Promise<StockInput> {
 
     const waste = (
       await h.filas<{ ingredient_id: string; unit: string; quantity: string; estimated_cost: string | null; created_at: string }>(
-        `select ingredient_id, unit, quantity, estimated_cost, created_at::text
+        `select ingredient_id, unit, weight_basis::text as weight_basis, quantity, estimated_cost, created_at::text
          from public.waste_movements where household_id = $1`,
         [hogarA.householdId],
       )
     ).map((w) => ({
       ingredientId: w.ingredient_id,
       unit: w.unit as "G",
+      weightBasis: (w as unknown as { weight_basis: string }).weight_basis as "RAW",
       quantity: Number(w.quantity),
       estimatedCost: w.estimated_cost === null ? null : Number(w.estimated_cost),
       date: w.created_at.slice(0, 10),
@@ -180,13 +181,14 @@ async function stockInputDesdeBase(): Promise<StockInput> {
 
     const purchases = (
       await h.filas<{ ingredient_id: string; unit: string; quantity: string; created_at: string }>(
-        `select ingredient_id, unit, quantity, created_at::text
+        `select ingredient_id, unit, weight_basis::text as weight_basis, quantity, created_at::text
          from public.purchase_movements where household_id = $1`,
         [hogarA.householdId],
       )
     ).map((p) => ({
       ingredientId: p.ingredient_id,
       unit: p.unit as "G",
+      weightBasis: (p as unknown as { weight_basis: string }).weight_basis as "RAW",
       quantity: Number(p.quantity),
       date: p.created_at.slice(0, 10),
     }));
@@ -502,5 +504,56 @@ describe("vistas de merma y compra: RLS por security_invoker", () => {
       ]),
     );
     expect(compras).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("lotes vencidos: la MISMA regla en el motor y en el consumo físico", () => {
+  it("consumir NO toca un lote vencido: el faltante cae como shortfall", async () => {
+    const ayer = addDays(HOY, -1);
+    const manana = addDays(HOY, 1);
+    // Lote vencido de 500 g + lote fresco de 100 g.
+    await h.como(USER_A, async () => {
+      await h.db.query(
+        "select public.add_manual_lot($1, 'Merluza vencida', 500, 'G', $2, null, $3, null)",
+        [hogarA.householdId, merluzaId, ayer],
+      );
+      await h.db.query(
+        "select public.add_manual_lot($1, 'Merluza fresca', 100, 'G', $2, null, $3, null)",
+        [hogarA.householdId, merluzaId, manana],
+      );
+    });
+
+    const comida = await comidaEn(addDays(SEMANA, 5));
+    await confirmar(comida, addDays(SEMANA, 5), {
+      label: "Merluza",
+      ingredient_id: merluzaId,
+      proposed_quantity: 300,
+    });
+    const r = await h.como(USER_A, () =>
+      h.fila<{ consume_planned_meal: { shortfalls: { quantity: number }[] } }>(
+        "select public.consume_planned_meal($1)",
+        [comida],
+      ),
+    );
+
+    // FEFO consumió el FRESCO (100 g) y el resto es shortfall (200 g): el
+    // vencido quedó intacto, esperando su descarte con causa EXPIRED.
+    const vencido = await h.como(USER_A, () =>
+      h.fila<{ quantity: string }>(
+        "select quantity from public.inventory_lots where household_id = $1 and label = 'Merluza vencida'",
+        [hogarA.householdId],
+      ),
+    );
+    expect(Number(vencido!.quantity)).toBe(500);
+    const fresco = await h.como(USER_A, () =>
+      h.fila<{ quantity: string }>(
+        "select quantity from public.inventory_lots where household_id = $1 and label = 'Merluza fresca'",
+        [hogarA.householdId],
+      ),
+    );
+    expect(Number(fresco!.quantity)).toBe(0);
+    expect(r!.consume_planned_meal.shortfalls).toHaveLength(1);
+    expect(r!.consume_planned_meal.shortfalls[0]!.quantity).toBe(200);
   });
 });

@@ -258,6 +258,9 @@ export async function loadHouseholdMembers(db: Db): Promise<{
     .select("id, household_id")
     .eq("user_id", user.id)
     .eq("is_active", true)
+    // Determinista para quien pertenece a más de un hogar: siempre el más
+    // antiguo, no el que el planificador de la base quiera devolver hoy.
+    .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
   if (err1Me) throw new DataAccessError("integrante del usuario", err1Me);
