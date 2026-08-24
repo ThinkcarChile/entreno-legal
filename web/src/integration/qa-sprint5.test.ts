@@ -396,9 +396,12 @@ describe("§18 un evento nuevo marca para revisión, no recalcula solo", () => {
 // ---------------------------------------------------------------------------
 describe("§19 lo del hogar A no se ve desde el hogar B", () => {
   it("los participantes de una comida ajena no se leen", async () => {
+    // Desde el Sprint 6 (§0B) confirmar ya materializa las filas de
+    // participantes, así que esta puede existir: se asegura, no se re-inserta.
     await h.como(USER_A, async () => {
       await h.db.query(
-        "insert into public.meal_assignment_participants (assignment_id, member_id) values ($1, $2)",
+        `insert into public.meal_assignment_participants (assignment_id, member_id)
+         values ($1, $2) on conflict do nothing`,
         [almuerzoSabado, hogarA.memberId],
       );
     });

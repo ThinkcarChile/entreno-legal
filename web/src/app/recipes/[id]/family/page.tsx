@@ -72,6 +72,7 @@ export default async function FamilyServingsPage({ params, searchParams }: Props
     minQuantity: c.minQuantity,
     maxQuantity: c.maxQuantity,
     ingredientId: c.target.kind === "INGREDIENT" ? c.target.ingredientId : null,
+    productId: c.target.kind === "PRODUCT" ? c.target.productId : null,
     categoryId: c.categoryId,
     isOptional: c.isOptional,
   }));

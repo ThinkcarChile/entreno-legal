@@ -98,6 +98,7 @@ async function componentesDeReceta(versionId: string): Promise<PortionComponent[
       role: c.role,
       minQuantity: c.minQuantity,
       maxQuantity: c.maxQuantity,
+      productId: c.target.kind === "PRODUCT" ? c.target.productId : null,
       ingredientId: c.target.kind === "INGREDIENT" ? c.target.ingredientId : null,
       categoryId: c.categoryId,
       isOptional: c.isOptional,

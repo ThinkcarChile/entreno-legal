@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { effectiveDate } from "@/domain/nutrition/calendar";
-import { applyEventEffect, effectFor } from "@/domain/nutrition/events";
+import { applyEventEffect, effectFor, frozenEffectConfig } from "@/domain/nutrition/events";
 import { effectiveMealTargets } from "@/domain/nutrition/profile";
 import type { TargetSet } from "@/domain/nutrition/types";
 import { projectFamilyServings } from "@/domain/portions/family";
@@ -237,6 +237,7 @@ export async function confirmMeal(
     minQuantity: c.minQuantity,
     maxQuantity: c.maxQuantity,
     ingredientId: c.target.kind === "INGREDIENT" ? c.target.ingredientId : null,
+    productId: c.target.kind === "PRODUCT" ? c.target.productId : null,
     categoryId: c.categoryId,
     isOptional: c.isOptional,
   }));
@@ -269,6 +270,7 @@ export async function confirmMeal(
   // §5: los eventos de ese día dejan de ser decorativos. La estrategia cambia
   // los objetivos de verdad, y solo para las personas que el evento nombra.
   const eventos = await loadEventsForDate(supabase, fechaEfectiva);
+  const efectosPorMiembro = new Map<string, ReturnType<typeof effectFor>>();
 
   const proyeccion = projectFamilyServings({
     versionId: asignacion.version_id,
@@ -300,6 +302,7 @@ export async function confirmMeal(
       );
       const efecto = effectFor(eventos, profile.memberId, fechaEfectiva, mealType);
       const conEvento = applyEventEffect(base, efecto);
+      efectosPorMiembro.set(profile.memberId, efecto);
 
       return {
         profile,
@@ -328,6 +331,10 @@ export async function confirmMeal(
       completeness: serving.nutrition.completeness,
       reasons: serving.reasons,
       unmet_constraints: serving.unmetConstraints,
+      // §0A: la configuración efectiva del evento queda congelada en la fila.
+      event_effect: frozenEffectConfig(
+        efectosPorMiembro.get(serving.memberId) ?? { kind: "NONE", event: null, text: "" },
+      ),
       components: serving.components.map((c, i) => ({
         component_id: c.id.includes(":") ? null : c.id,
         label: c.label,
@@ -338,6 +345,9 @@ export async function confirmMeal(
         cooking_method: c.cookingMethod,
         added_fat_g: c.addedFatG,
         sort_order: i + 1,
+        // §3 del Sprint 6: la identidad REAL (ya con sustitución) se congela.
+        ingredient_id: c.ingredientId,
+        product_id: c.productId,
       })),
       substitutions: aceptados.map((s) => ({
         component_id: s.componentId.includes(":") ? null : s.componentId,

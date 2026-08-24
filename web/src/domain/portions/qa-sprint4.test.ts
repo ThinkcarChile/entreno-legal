@@ -38,6 +38,7 @@ function comp(over: Partial<PortionComponent> = {}): PortionComponent {
     minQuantity: null,
     maxQuantity: null,
     ingredientId: `ing${n}`,
+    productId: null,
     categoryId: null,
     isOptional: false,
     ...over,

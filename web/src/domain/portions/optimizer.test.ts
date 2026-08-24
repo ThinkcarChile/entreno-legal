@@ -36,22 +36,22 @@ function receta(): PortionComponent[] {
     {
       id: "c-pollo", slotId: "s-protein", label: "Pollo", slotType: "PROTEIN", quantity: 900, unit: "G",
       weightBasis: "RAW", nutrition: POLLO, cookingMethod: "BAKED", adjustability: "ADJUSTABLE",
-      minQuantity: 500, maxQuantity: 1400, ingredientId: ING.pollo, categoryId: "cat-aves", isOptional: false, role: "MAIN",
+      minQuantity: 500, maxQuantity: 1400, ingredientId: ING.pollo, productId: null, categoryId: "cat-aves", isOptional: false, role: "MAIN",
     },
     {
       id: "c-arroz", slotId: "s-carbo", label: "Arroz", slotType: "CARBOHYDRATE", quantity: 375, unit: "G",
       weightBasis: "RAW", nutrition: ARROZ, cookingMethod: "BOILED", adjustability: "ADJUSTABLE",
-      minQuantity: 150, maxQuantity: 600, ingredientId: ING.arroz, categoryId: "cat-granos", isOptional: false, role: "MAIN",
+      minQuantity: 150, maxQuantity: 600, ingredientId: ING.arroz, productId: null, categoryId: "cat-granos", isOptional: false, role: "MAIN",
     },
     {
       id: "c-ensalada", slotId: "s-salad", label: "Ensalada", slotType: "SALAD", quantity: 570, unit: "G",
       weightBasis: "RAW", nutrition: ENSALADA, cookingMethod: "RAW", adjustability: "ADJUSTABLE",
-      minQuantity: 300, maxQuantity: 900, ingredientId: ING.ensalada, categoryId: "cat-verduras", isOptional: false, role: "MAIN",
+      minQuantity: 300, maxQuantity: 900, ingredientId: ING.ensalada, productId: null, categoryId: "cat-verduras", isOptional: false, role: "MAIN",
     },
     {
       id: "c-aceite", slotId: "s-fat", label: "Aceite de oliva", slotType: "FAT", quantity: 20, unit: "ML",
       weightBasis: "AS_PACKAGED", nutrition: ACEITE, cookingMethod: null, adjustability: "OPTIONAL",
-      minQuantity: 0, maxQuantity: 40, ingredientId: ING.aceite, categoryId: "cat-aceites", isOptional: true, role: "ADDED_FAT",
+      minQuantity: 0, maxQuantity: 40, ingredientId: ING.aceite, productId: null, categoryId: "cat-aceites", isOptional: true, role: "ADDED_FAT",
     },
   ];
 }
@@ -321,8 +321,8 @@ describe("I. grasa añadida: cuenta solo para quien la usa (§35)", () => {
     conLimon.push({
       id: "c-limon", slotId: "s-fat", label: "Limón", slotType: "FAT", quantity: 50, unit: "G",
       weightBasis: "RAW", nutrition: LIMON, cookingMethod: null, adjustability: "OPTIONAL",
-      minQuantity: 0, maxQuantity: 100, ingredientId: "ing-limon", categoryId: "cat-frutas",
-      isOptional: true, role: "SEASONING",
+      minQuantity: 0, maxQuantity: 100, ingredientId: "ing-limon", productId: null,
+      categoryId: "cat-frutas", isOptional: true, role: "SEASONING",
     });
 
     const resultado = correr(francisco(), null, conLimon);

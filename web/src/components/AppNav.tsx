@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export function AppNav({ active }: { active: "family" | "catalog" | "recipes" | "plan" }) {
+export function AppNav({ active }: { active: "family" | "catalog" | "recipes" | "plan" | "shopping" }) {
   const base = "rounded-full px-4 py-1.5 text-sm font-medium";
   const on = "bg-[var(--accent)] text-white";
   const off = "text-[var(--accent)] border border-[var(--accent)]";
@@ -19,6 +19,9 @@ export function AppNav({ active }: { active: "family" | "catalog" | "recipes" | 
       </Link>
       <Link href="/plan" className={`${base} ${active === "plan" ? on : off}`}>
         Semana
+      </Link>
+      <Link href="/shopping" className={`${base} ${active === "shopping" ? on : off}`}>
+        Compras
       </Link>
     </nav>
   );

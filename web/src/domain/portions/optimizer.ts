@@ -42,6 +42,8 @@ export interface PortionComponent {
   minQuantity: number | null;
   maxQuantity: number | null;
   ingredientId: string | null;
+  /** Producto comercial, cuando el componente apunta a uno (§11 del Sprint 6). */
+  productId: string | null;
   categoryId: string | null;
   isOptional: boolean;
 }

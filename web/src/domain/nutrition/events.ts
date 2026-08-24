@@ -51,10 +51,62 @@ export interface EventEffect {
 
 const SIN_EFECTO: EventEffect = { kind: "NONE", event: null, text: "" };
 
-/** Cuánto se ensancha el techo en la comida del evento. */
-const MARGEN_EVENTO = 1.25;
-/** Cuánto se aprieta el resto del día. Tope duro: nunca más del 10%. */
-const AJUSTE_ALREDEDOR = 0.9;
+/**
+ * §0A del Sprint 6 — los parámetros de la estrategia son configuración
+ * VERSIONADA, no constantes enterradas. Cada porción confirmada guarda la
+ * configuración efectiva con la que se calculó (`event_effect` en la base):
+ * cambiar estos defaults mañana no reescribe ninguna semana histórica.
+ */
+export const EVENT_STRATEGY_VERSION = "event-strategy/1.0.0";
+
+export interface EventStrategyParams {
+  /** Cuánto se ensancha el techo en la comida del evento. */
+  energyCeilingMultiplier: number;
+  /** Cuánto se aprieta el resto del día. */
+  aroundTargetMultiplier: number;
+  /** Ningún ajuste baja del mínimo declarado: un asado no se paga con ayuno. */
+  minimumFloorPolicy: "NEVER_BELOW_DECLARED_MINIMUM";
+}
+
+export const DEFAULT_EVENT_STRATEGY: EventStrategyParams = {
+  energyCeilingMultiplier: 1.25,
+  aroundTargetMultiplier: 0.9,
+  minimumFloorPolicy: "NEVER_BELOW_DECLARED_MINIMUM",
+};
+
+/**
+ * Lo que se congela junto a la porción confirmada cuando un evento afectó su
+ * cálculo. `null` cuando ningún evento tocó esta comida.
+ */
+export interface FrozenEventEffect {
+  strategy_version: string;
+  kind: Exclude<EventEffect["kind"], "NONE">;
+  event_id: string | null;
+  event_title: string | null;
+  params: {
+    energy_ceiling_multiplier: number;
+    around_target_multiplier: number;
+    minimum_floor_policy: string;
+  };
+}
+
+export function frozenEffectConfig(
+  effect: EventEffect,
+  params: EventStrategyParams = DEFAULT_EVENT_STRATEGY,
+): FrozenEventEffect | null {
+  if (effect.kind === "NONE") return null;
+  return {
+    strategy_version: EVENT_STRATEGY_VERSION,
+    kind: effect.kind,
+    event_id: effect.event?.id ?? null,
+    event_title: effect.event?.title ?? null,
+    params: {
+      energy_ceiling_multiplier: params.energyCeilingMultiplier,
+      around_target_multiplier: params.aroundTargetMultiplier,
+      minimum_floor_policy: params.minimumFloorPolicy,
+    },
+  };
+}
 
 /** Un evento afecta a esta persona si es familiar o si la nombra. */
 export function eventIncludes(event: DayEvent, memberId: string): boolean {
@@ -160,11 +212,16 @@ function escalar(range: GoalRange, factor: number, apretar: boolean): GoalRange 
  * Aplica el efecto sobre los objetivos ya efectivos (patrón + excepción del día).
  * Devuelve objetivos nuevos: no muta ni el perfil ni la excepción (§19).
  */
-export function applyEventEffect(targets: TargetSet, effect: EventEffect): TargetSet {
+export function applyEventEffect(
+  targets: TargetSet,
+  effect: EventEffect,
+  params: EventStrategyParams = DEFAULT_EVENT_STRATEGY,
+): TargetSet {
   if (effect.kind === "NONE") return targets;
   if (effect.kind === "UNTRACKED") return {};
 
-  const factor = effect.kind === "RELAXED" ? MARGEN_EVENTO : AJUSTE_ALREDEDOR;
+  const factor =
+    effect.kind === "RELAXED" ? params.energyCeilingMultiplier : params.aroundTargetMultiplier;
   const apretar = effect.kind === "LIGHTER";
 
   const salida: TargetSet = {};
