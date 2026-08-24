@@ -24,3 +24,4 @@ Formato: `NNNN-titulo-corto.md`, correlativo. Plantilla:
 | [0002](./0002-recipe-versioning-and-nutrition-aggregation.md) | Versionado de recetas y agregación nutricional | APROBADO (Sprint 3) |
 | [0003](./0003-portion-optimizer-and-member-profiles.md) | Perfiles nutricionales y PortionOptimizer | APROBADO (Sprint 4) |
 | [0004](./0004-explicit-component-roles.md) | El rol culinario de un componente se declara, no se infiere | APROBADO (QA Sprint 4) |
+| [0005](./0005-confirmed-servings-share-the-projection-table.md) | La porción confirmada es la misma proyección, con asignación | APROBADO (Sprint 5) |

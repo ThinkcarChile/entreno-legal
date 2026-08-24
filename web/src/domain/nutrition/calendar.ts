@@ -41,3 +41,54 @@ export function formatDate(date: string, locale = "es-CL"): string {
     month: "long",
   });
 }
+
+/**
+ * Lunes de la semana a la que pertenece una fecha. En Chile la semana empieza
+ * el lunes, y la semana se identifica siempre por ese día.
+ */
+export function weekStart(date: string): string {
+  const [y, m, d] = date.split("-").map(Number);
+  const base = new Date(Date.UTC(y!, m! - 1, d!));
+  // getUTCDay: 0 = domingo. Se retrocede hasta el lunes.
+  const diaSemana = base.getUTCDay();
+  const retroceso = diaSemana === 0 ? 6 : diaSemana - 1;
+  return addDays(date, -retroceso);
+}
+
+/** Los siete días de una semana, de lunes a domingo. */
+export function weekDays(start: string): string[] {
+  return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+}
+
+/** Nombre corto del día, con mayúscula inicial. */
+export function weekdayName(date: string, locale = "es-CL"): string {
+  const [y, m, d] = date.split("-").map(Number);
+  const nombre = new Date(Date.UTC(y!, m! - 1, d!)).toLocaleDateString(locale, {
+    timeZone: "UTC",
+    weekday: "long",
+  });
+  return nombre.charAt(0).toUpperCase() + nombre.slice(1);
+}
+
+/** Día del mes, para la cabecera de cada columna. */
+export function dayOfMonth(date: string): number {
+  return Number(date.split("-")[2]);
+}
+
+/** Rango legible de una semana: "1 al 7 de septiembre". */
+export function weekLabel(start: string, locale = "es-CL"): string {
+  const fin = addDays(start, 6);
+  const [, mesInicio] = start.split("-");
+  const [, mesFin] = fin.split("-");
+  const mes = (fecha: string) => {
+    const [y, m, d] = fecha.split("-").map(Number);
+    return new Date(Date.UTC(y!, m! - 1, d!)).toLocaleDateString(locale, {
+      timeZone: "UTC",
+      month: "long",
+    });
+  };
+  if (mesInicio === mesFin) {
+    return `${dayOfMonth(start)} al ${dayOfMonth(fin)} de ${mes(start)}`;
+  }
+  return `${dayOfMonth(start)} de ${mes(start)} al ${dayOfMonth(fin)} de ${mes(fin)}`;
+}

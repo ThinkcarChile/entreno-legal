@@ -30,6 +30,21 @@ Qué cubren:
 - `rls_catalog.sql` — aislamiento entre hogares, barcode único por ámbito, UNKNOWN ≠ ZERO, DEV_SEED nunca verificado.
 - `rls_recipes.sql` — la biblioteca global es intocable para un hogar (pero copiable), las recetas del hogar son invisibles para otros hogares, publicar congela la ficha nutricional, y una versión publicada no se puede editar ni por SQL directo.
 
+## Qué incluye el Sprint 5
+
+- **Semana**: siete días, cuatro comidas por día, con recetas publicadas o sin receta (comemos afuera, sobras, evento, libre). La semana se ancla al día del **hogar**, no al de UTC, y empieza el lunes.
+- **Eventos**: asado, cumpleaños, viaje o comida libre, con su estrategia (`con margen`, `más liviano alrededor`, `sin conteo ese día`). Dan margen ese día sin compensar en los otros: nadie "paga" una comida con un día de ayuno.
+- **Porciones confirmadas** ([ADR 0005](../docs/adr/0005-confirmed-servings-share-the-projection-table.md)). Confirmar una comida recalcula con el motor y **persiste** cantidades, nutrición, razones, reemplazos aceptados y las versiones exactas de receta, perfil y optimizador. Meses después se puede responder "¿por qué se sirvió esto?" abriendo la comida.
+- **Los reemplazos dejan de vivir en la URL**: al confirmar quedan en `member_serving_substitutions`, con quién los aceptó.
+- Confirmar dos veces **reemplaza**, no duplica; deshacer devuelve la comida a planificada y borra sus porciones.
+- Ver porciones **sigue sin persistir nada**: es exploratorio y recalcula al vuelo.
+
+### Preflight de endurecimiento
+
+- **Cero `as unknown as`** sobre datos de Supabase: schemas Zod en el límite de Data Access. Una fila con forma inesperada lanza `DataShapeError` con el detalle en vez de convertirse en un objeto de dominio incompleto. Los `numeric` (que PostgREST entrega como texto) y las columnas `date` (que según el cliente llegan como texto o como `Date`) se normalizan una sola vez, en el borde.
+- **Pruebas de integración** base → capa de datos → dominio contra un PostgreSQL real (PGlite) con migraciones y seeds aplicados: carga de familia, alergia HARD, dislike SOFT con sustitución, cambio de objetivo selectivo, totales corregidos, excepción del día, porciones familiares, semana, confirmación y aislamiento entre hogares.
+- El editor de recetas declara el **rol** de cada componente y permite crear **alternativas de slot**.
+
 ## Qué incluye el Sprint 4
 
 - **Una misma receta, una porción por persona** ([ADR 0003](../docs/adr/0003-portion-optimizer-and-member-profiles.md)). `PortionOptimizer` determinista y sin IA: porción estándar → restricciones HARD → preparación y grasa añadida → ensalada preferida → proteína hacia el rango → techo de calorías.

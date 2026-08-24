@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { addDays, effectiveDate, formatDate } from "./calendar";
+import {
+  addDays,
+  effectiveDate,
+  formatDate,
+  weekDays,
+  weekLabel,
+  weekStart,
+  weekdayName,
+} from "./calendar";
 
 describe("§15 la fecha efectiva es la del hogar, no la de UTC", () => {
   it("22:30 del domingo en Santiago sigue siendo domingo, aunque en UTC ya sea lunes", () => {
@@ -38,5 +46,34 @@ describe("aritmética de fechas sin desfase", () => {
     // El clásico: new Date("2026-08-24") es medianoche UTC, que en Chile es el 23.
     expect(formatDate("2026-08-24")).toContain("24");
     expect(formatDate("2026-01-01")).toContain("1");
+  });
+});
+
+describe("la semana empieza el lunes", () => {
+  it("un miércoles pertenece a la semana de su lunes", () => {
+    expect(weekStart("2026-09-02")).toBe("2026-08-31"); // miércoles -> lunes
+  });
+
+  it("un lunes es su propio inicio de semana", () => {
+    expect(weekStart("2026-08-31")).toBe("2026-08-31");
+  });
+
+  it("un domingo pertenece a la semana que ya termina, no a la siguiente", () => {
+    expect(weekStart("2026-09-06")).toBe("2026-08-31");
+  });
+
+  it("la semana tiene siete días de lunes a domingo", () => {
+    const dias = weekDays("2026-08-31");
+    expect(dias).toHaveLength(7);
+    expect(dias[0]).toBe("2026-08-31");
+    expect(dias[6]).toBe("2026-09-06");
+    expect(weekdayName(dias[0]!)).toBe("Lunes");
+    expect(weekdayName(dias[6]!)).toBe("Domingo");
+  });
+
+  it("cruza el cambio de mes sin perderse", () => {
+    expect(weekLabel("2026-08-31")).toContain("agosto");
+    expect(weekLabel("2026-08-31")).toContain("septiembre");
+    expect(weekLabel("2026-09-07")).toBe("7 al 13 de septiembre");
   });
 });

@@ -76,6 +76,20 @@ export const uuid = z.string().uuid();
  * acá, en el borde, y no con un `Number(...)` suelto en cada punto de uso.
  */
 export const numeric = z.coerce.number();
+
+/**
+ * Una columna `date` llega como texto por PostgREST y como objeto `Date` por
+ * otros clientes. Convertirla con `toISOString()` en zona local corre el día:
+ * 2026-08-31 se vuelve el 30. Se normaliza siempre a `YYYY-MM-DD` leyendo los
+ * componentes UTC.
+ */
+export const dateString = z.union([z.string(), z.date()]).transform((valor) => {
+  if (typeof valor === "string") return valor.slice(0, 10);
+  const y = valor.getUTCFullYear();
+  const m = String(valor.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(valor.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+});
 export const nullableNumeric = z.coerce.number().nullable();
 
 /**
