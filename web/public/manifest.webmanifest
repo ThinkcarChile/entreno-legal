@@ -1,0 +1,13 @@
+{
+  "name": "Mesa Familiar",
+  "short_name": "Mesa",
+  "description": "Plataforma familiar inteligente de alimentación",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafaf6",
+  "theme_color": "#2f7d4f",
+  "lang": "es-CL",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
