@@ -7,6 +7,8 @@ import { aggregateDemand, demandSignature } from "@/domain/shopping/engine";
 import { loadHouseholdMembers } from "@/app/family/nutrition-queries";
 import { DataAccessError } from "@/lib/supabase/unwrap";
 import { loadShoppingContext, loadShoppingList } from "./queries";
+import { loadAvailableLots } from "@/app/pantry/queries";
+import { expiryInfo, stockByIngredient } from "@/domain/inventory/fefo";
 import { ShoppingBoard } from "./ShoppingBoard";
 
 export const dynamic = "force-dynamic";
@@ -54,6 +56,17 @@ export default async function ShoppingPage({ searchParams }: Props) {
   const contexto = await loadShoppingContext(supabase, householdId, inicio);
   const lista = await loadShoppingList(supabase, contexto.planId);
 
+  // Descuento en compra (Sprint 7): cuánto de cada alimento YA está en casa.
+  // Es un dato informativo junto a la línea — la demanda calculada no se toca.
+  const idsDeLista = [
+    ...new Set((lista?.items ?? []).map((i) => i.ingredientId).filter(Boolean)),
+  ] as string[];
+  const lotes = await loadAvailableLots(supabase, householdId, idsDeLista);
+  // Un lote vencido no cuenta como "lo tienes en casa": sugerir no comprar
+  // basándose en comida vencida sería mentir dos veces.
+  const vigentes = lotes.filter((l) => expiryInfo(l, hoy).state !== "EXPIRED");
+  const stock = Object.fromEntries(stockByIngredient(vigentes));
+
   // ¿La planificación cambió desde la última generación? (§34)
   const firmaActual = demandSignature(contexto.input);
   const desactualizada =
@@ -99,6 +112,7 @@ export default async function ShoppingPage({ searchParams }: Props) {
         unconfirmed={contexto.unconfirmed}
         desactualizada={desactualizada}
         demandaDisponible={demandaFresca.length > 0}
+        stock={stock}
       />
     </main>
   );

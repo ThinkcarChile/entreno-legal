@@ -16,6 +16,7 @@ import {
   setMealParticipants,
   unconfirmMeal,
 } from "./actions";
+import { consumePlannedMeal } from "@/app/pantry/actions";
 
 /**
  * El tablero de la semana. Mobile-first: siete tarjetas de día, una debajo de la
@@ -261,6 +262,16 @@ export function WeekBoard({
                             >
                               Ver lo guardado
                             </Link>
+                            {asignacion.status === "CONFIRMED" && (
+                              <button
+                                type="button"
+                                disabled={pending}
+                                onClick={() => run(() => consumePlannedMeal(asignacion.id))}
+                                className="rounded-full border border-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent)] disabled:opacity-50"
+                              >
+                                Comimos lo planificado
+                              </button>
+                            )}
                             <button
                               type="button"
                               disabled={pending}

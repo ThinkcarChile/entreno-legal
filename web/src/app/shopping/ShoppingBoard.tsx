@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDate } from "@/domain/nutrition/calendar";
+import { stockKey } from "@/domain/inventory/fefo";
 import {
   formatQuantity,
   groupForCategory,
@@ -22,6 +23,7 @@ import {
   reopenList,
   setItemStatus,
 } from "./actions";
+import { receiveShoppingList } from "@/app/pantry/actions";
 
 /**
  * El checklist de la compra. Cada línea sabe explicar de dónde salió (§16, §17)
@@ -42,12 +44,15 @@ export function ShoppingBoard({
   unconfirmed,
   desactualizada,
   demandaDisponible,
+  stock = {},
 }: {
   weekStart: string;
   lista: ShoppingListData | null;
   unconfirmed: { date: string; mealType: MealType; recipeName: string | null }[];
   desactualizada: boolean;
   demandaDisponible: boolean;
+  /** Stock disponible por `ingredientId::unidad::base` (Sprint 7). */
+  stock?: Record<string, { quantity: number; lots: number }>;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -249,6 +254,19 @@ export function ShoppingBoard({
                   <ItemRow
                     key={item.id}
                     item={item}
+                    enDespensa={
+                      item.ingredientId
+                        ? (stock[
+                            // La misma base con que receive_shopping_list crea el
+                            // lote: DRAINED se recibe DRAINED, el resto RAW.
+                            stockKey(
+                              item.ingredientId,
+                              item.unit,
+                              item.purchaseBasis === "DRAINED" ? "DRAINED" : "RAW",
+                            )
+                          ] ?? null)
+                        : null
+                    }
                     abierto={abierto === item.id}
                     onToggle={() => setAbierto(abierto === item.id ? null : item.id)}
                     pending={pending || completada}
@@ -282,14 +300,24 @@ export function ShoppingBoard({
           )}
 
           {completada ? (
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => run(() => reopenList(lista.id))}
-              className="w-full rounded-full border border-[var(--ink)]/20 px-4 py-2.5 text-sm"
-            >
-              Reabrir compra
-            </button>
+            <div className="space-y-2">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => run(() => receiveShoppingList(lista.id))}
+                className="w-full rounded-full bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+              >
+                Recibir compra en la despensa
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => run(() => reopenList(lista.id))}
+                className="w-full rounded-full border border-[var(--ink)]/20 px-4 py-2.5 text-sm disabled:opacity-50"
+              >
+                Reabrir compra
+              </button>
+            </div>
           ) : (
             <button
               type="button"
@@ -308,12 +336,14 @@ export function ShoppingBoard({
 
 function ItemRow({
   item,
+  enDespensa,
   abierto,
   onToggle,
   pending,
   run,
 }: {
   item: ShoppingItem;
+  enDespensa: { quantity: number; lots: number } | null;
   abierto: boolean;
   onToggle: () => void;
   pending: boolean;
@@ -362,6 +392,11 @@ function ItemRow({
                 falta rendimiento
               </span>
             )}
+            {enDespensa && enDespensa.quantity > 0 && (
+              <span className="ml-1.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] text-emerald-900">
+                en casa: {formatQuantity(enDespensa.quantity, item.unit)}
+              </span>
+            )}
             {item.status !== "PENDING" && item.status !== "PURCHASED" && (
               <span className="ml-1.5 text-[var(--ink)]/40">· {STATUS_LABELS[item.status]}</span>
             )}
@@ -390,6 +425,15 @@ function ItemRow({
               </p>
             )}
           </div>
+
+          {enDespensa && enDespensa.quantity > 0 && item.requiredQuantity !== null && (
+            <p className="rounded-lg bg-emerald-50 px-2 py-1.5 text-emerald-900">
+              Tienes {formatQuantity(enDespensa.quantity, item.unit)} en la despensa
+              {enDespensa.quantity >= item.requiredQuantity
+                ? ": alcanzaría sin comprar. Puedes marcar «Ya lo tengo»."
+                : `: te faltarían ${formatQuantity(item.requiredQuantity - enDespensa.quantity, item.unit)}.`}
+            </p>
+          )}
 
           {item.unresolvedReason && (
             <p className="rounded-lg bg-amber-50 px-2 py-1.5 text-amber-900">{item.unresolvedReason}</p>

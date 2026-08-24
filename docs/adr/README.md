@@ -27,3 +27,4 @@ Formato: `NNNN-titulo-corto.md`, correlativo. Plantilla:
 | [0005](./0005-confirmed-servings-share-the-projection-table.md) | La porción confirmada es la misma proyección, con asignación | APROBADO (Sprint 5) |
 | [0006](./0006-participantes-y-ciclo-de-vida-de-la-porcion.md) | Participantes por comida y ciclo de vida de una porción | APROBADO (QA Sprint 5) |
 | [0007](./0007-shopping-engine.md) | ShoppingEngine: la lista de compras sale de las porciones confirmadas | APROBADO (Sprint 6) |
+| [0008](./0008-inventario-por-lotes.md) | Despensa: lotes con libro mayor append-only | APROBADO (Sprint 7) |

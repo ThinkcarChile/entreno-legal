@@ -329,6 +329,10 @@ begin
   -- Hardening 3: ningún item puede referenciar alimentos/productos privados
   -- de otro hogar.
   for v_item in select * from jsonb_array_elements(coalesce(p_items, '[]'::jsonb)) loop
+    if (v_item->>'required_quantity')::numeric = 'NaN'::numeric
+       or (v_item->>'required_quantity')::numeric = 'Infinity'::numeric then
+      raise exception 'la cantidad de "%" no es un número válido', v_item->>'label';
+    end if;
     if not app.ingredient_in_scope(nullif(v_item->>'ingredient_id', '')::uuid, v_household) then
       raise exception 'el alimento "%" no pertenece a este hogar', v_item->>'label';
     end if;
@@ -446,3 +450,45 @@ $$;
 create trigger products_protect_history
   before delete on public.commercial_products
   for each row execute function app.protect_historical_product();
+
+
+-- La cantidad planificada tampoco acepta NaN/Infinity: en numeric, NaN pasa un
+-- `>= 0` sin inmutarse y desde ahí envenena cada suma.
+create or replace function public.set_planned_quantity(
+  p_item_id  uuid,
+  p_quantity numeric,
+  p_reason   text default null
+) returns void language plpgsql security definer set search_path = public as $$
+declare
+  v_household uuid;
+  v_status public.shopping_list_status;
+  v_original numeric;
+begin
+  select app.shopping_household(i.list_id), l.status,
+         coalesce(i.planned_quantity, i.required_quantity)
+  into v_household, v_status, v_original
+  from public.shopping_list_items i
+  join public.shopping_lists l on l.id = i.list_id
+  where i.id = p_item_id
+  for update of i;
+
+  if v_household is null or not app.can_manage_shopping(v_household) then
+    raise exception 'no autorizado';
+  end if;
+  if v_status = 'COMPLETED' then
+    raise exception 'Esta compra ya se finalizó: la lista quedó cerrada.'
+      using errcode = 'check_violation';
+  end if;
+  if p_quantity is not null and (p_quantity < 0
+     or p_quantity = 'NaN'::numeric or p_quantity = 'Infinity'::numeric) then
+    raise exception 'la cantidad tiene que ser un número válido y no negativo';
+  end if;
+
+  update public.shopping_list_items
+  set planned_quantity = p_quantity, updated_at = now()
+  where id = p_item_id;
+
+  insert into public.shopping_item_overrides (item_id, original_quantity, new_quantity, reason)
+  values (p_item_id, v_original, p_quantity, nullif(trim(p_reason), ''));
+end;
+$$;
