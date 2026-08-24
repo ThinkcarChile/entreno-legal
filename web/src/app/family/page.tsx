@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { signOut } from "@/app/login/actions";
+import { AppNav } from "@/components/AppNav";
 import { createHousehold, createInvitation } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +39,8 @@ export default async function FamilyPage({ searchParams }: Props) {
 
   if (!membership) {
     return (
-      <main className="pt-16">
+      <main className="pt-2">
+        <AppNav active="family" />
         <h1 className="text-3xl font-bold">Crea tu hogar</h1>
         <p className="mt-1 text-sm opacity-70">
           Tu familia parte aquí. Después podrás invitar a los demás integrantes.
@@ -85,7 +87,8 @@ export default async function FamilyPage({ searchParams }: Props) {
     .order("created_at");
 
   return (
-    <main className="pt-10">
+    <main className="pt-2">
+      <AppNav active="family" />
       <h1 className="text-3xl font-bold">{householdName}</h1>
       <p className="mt-1 text-sm opacity-70">Integrantes del hogar</p>
       {error ? <Alert text={error} /> : null}

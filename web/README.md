@@ -19,6 +19,18 @@ Migraciones: aplicar `../supabase/migrations/*.sql` al proyecto Supabase (SQL ed
 npm run lint && npm run typecheck && npm test && npm run build
 ```
 
+## Tests de base de datos
+
+`scripts/db-test.sh` levanta un PostgreSQL local efímero, aplica `supabase/migrations/*.sql` + el seed de desarrollo y ejecuta `supabase/tests/rls_catalog.sql` (aislamiento RLS entre hogares, barcode único por ámbito, UNKNOWN ≠ ZERO, DEV_SEED nunca verificado). Corre también en CI.
+
+## Qué incluye el Sprint 2
+
+- Catálogo nutricional multi-fuente ([ADR 0001](../docs/adr/0001-food-data-provenance.md)): ingredientes genéricos globales/privados, productos comerciales del hogar, nutrición por 100 g/ml con estado (crudo/cocido/…), procedencia completa y **nutrientes desconocidos como NULL, nunca 0**.
+- Seed de desarrollo (~19 ingredientes + 3 productos demo, `source=DEV_SEED`, explícitamente no oficial).
+- Dominio puro testeado: normalización etiqueta→100 g (conservando el original), cálculo por cantidad, porciones con peso real prioritario, no-mezcla crudo/cocido ni g/ml, validación GS1 de barcodes (EAN-8/UPC-A/EAN-13/GTIN-14).
+- Pantallas: CATÁLOGO (búsqueda por nombre/marca/barcode + filtros), detalle de ingrediente y de producto con calculadora inmediata, AGREGAR PRODUCTO con resumen de confirmación ("Interpretamos: …").
+- Abstracciones `FoodDataProvider` / `BarcodeProductProvider` para USDA y Open Food Facts futuros (sin implementación productiva).
+
 ## Qué incluye el Sprint 1
 
 - Next.js 15 (App Router) + TypeScript strict + Tailwind 4, PWA shell mobile-first.
