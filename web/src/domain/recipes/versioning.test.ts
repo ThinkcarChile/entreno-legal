@@ -28,6 +28,7 @@ function componente(label: string, quantity: number, nutrition: NutritionFact): 
     isOptional: false,
     sortOrder: 1,
     adjustability: "ADJUSTABLE",
+    role: "MAIN" as const,
     minQuantity: null,
     maxQuantity: null,
     categoryId: null,

@@ -20,8 +20,13 @@ export const OPTIMIZER_VERSION = "portion-optimizer/1.0.0";
 
 export type SlotAdjustability = "FIXED" | "ADJUSTABLE" | "OPTIONAL";
 
+/** MAIN = comida. ADDED_FAT = grasa de preparación. SEASONING = aliño sin peso nutricional relevante. */
+export type ComponentRole = "MAIN" | "ADDED_FAT" | "SEASONING";
+
 export interface PortionComponent {
   id: string;
+  /** Slot al que pertenece: las alternativas culinarias se declaran por slot. */
+  slotId: string;
   label: string;
   slotType: SlotType;
   /** Cantidad de la receta TOTAL, para `baseServings` personas. */
@@ -31,6 +36,8 @@ export interface PortionComponent {
   nutrition: NutritionFact | null;
   cookingMethod: CookingMethod | null;
   adjustability: SlotAdjustability;
+  /** Rol culinario declarado por la receta (ADR 0004). */
+  role: ComponentRole;
   /** Límites de la receta, también en cantidad total. `null` = sin definir (§29). */
   minQuantity: number | null;
   maxQuantity: number | null;
@@ -73,14 +80,48 @@ export interface MemberServingProjection {
   metConstraints: string[];
   unmetConstraints: string[];
   reasons: Reason[];
+  /** Reemplazos propuestos, NO aplicados. La persona decide (§37). */
+  suggestions: SubstitutionSuggestion[];
   score: number;
   optimizerVersion: string;
   profileVersion: number;
 }
 
+/** Alternativa culinaria disponible para un slot (viene de la receta). */
+export interface AvailableAlternative {
+  slotId: string;
+  ingredientId: string;
+  label: string;
+  nutrition: NutritionFact | null;
+}
+
+/**
+ * Reemplazo ACEPTADO por la persona (§37). Nunca se aplica solo: el motor
+ * sugiere, alguien decide, y recién ahí se vuelve a optimizar sobre el plato
+ * cambiado.
+ */
+export interface AcceptedSubstitution {
+  componentId: string;
+  ingredientId: string;
+  label: string;
+  nutrition: NutritionFact | null;
+}
+
+export interface SubstitutionSuggestion {
+  componentId: string;
+  componentLabel: string;
+  ingredientId: string;
+  alternativeLabel: string;
+  reason: string;
+}
+
 export interface OptimizeInput {
   versionId: string;
   components: readonly PortionComponent[];
+  /** Alternativas que la receta declara para cada slot. */
+  alternatives?: readonly AvailableAlternative[];
+  /** Reemplazos ya aceptados por la persona. */
+  substitutions?: readonly AcceptedSubstitution[];
   baseServings: number;
   profile: MemberNutritionProfile;
   mealType: MealType;
@@ -213,25 +254,20 @@ function softDislike(profile: MemberNutritionProfile, component: PortionComponen
 }
 
 /**
- * ¿Es grasa añadida? Tres condiciones, no una: va en un slot de grasa, es
- * opcional, y su energía viene mayoritariamente de la grasa.
+ * ¿Es grasa añadida? Lo dice la receta, no la composición del alimento.
  *
- * La tercera existe porque un slot llamado "aliño" suele mezclar el aceite con
- * el limón. Quitarle el aceite a quien evita la grasa añadida es correcto;
- * quitarle el limón sería una arbitrariedad.
+ * La versión anterior lo inferia: "slot FAT + opcional + más del 70 % de su
+ * energía viene de la grasa". Medida contra casos reales borraba la palta
+ * (82,7 %) y las semillas (78,6 %) del plato de quien evita la grasa añadida, y
+ * el queso se salvaba por 0,7 puntos. Ningún umbral arregla eso: el rol
+ * culinario de un ingrediente no se deduce de sus macros (ADR 0004).
+ *
+ * Además tiene que poder sacarse: una grasa que la receta declara obligatoria
+ * no se quita por preferencia, se respeta la receta.
  */
-const FAT_ENERGY_SHARE = 0.7;
-
 function isAddedFat(component: ServingComponent): boolean {
-  if (component.slotType !== "FAT") return false;
-  if (component.adjustability !== "OPTIONAL" && !component.isOptional) return false;
-
-  const values = component.nutrition?.values;
-  const energy = values?.energy_kcal ?? null;
-  const fat = values?.fat_g ?? null;
-  // Sin datos no se adivina: se trata como grasa añadida porque el slot lo dice.
-  if (energy === null || fat === null || energy <= 0) return true;
-  return (fat * 9) / energy >= FAT_ENERGY_SHARE;
+  if (component.role !== "ADDED_FAT") return false;
+  return component.adjustability === "OPTIONAL" || component.isOptional;
 }
 
 export function optimizePortion(input: OptimizeInput): MemberServingProjection {
@@ -243,15 +279,40 @@ export function optimizePortion(input: OptimizeInput): MemberServingProjection {
   const reasons: Reason[] = [];
   const metConstraints: string[] = [];
   const unmetConstraints: string[] = [];
+  const suggestions: SubstitutionSuggestion[] = [];
 
-  // Nivel 0: la porción estándar es siempre el punto de partida.
-  const components: ServingComponent[] = input.components.map((component) => ({
-    ...component,
-    baseQuantity: component.quantity / baseServings,
-    proposedQuantity: component.quantity / baseServings,
-    addedFatG: 0,
-    changed: false,
-  }));
+  const accepted = new Map((input.substitutions ?? []).map((s) => [s.componentId, s]));
+
+  // Nivel 0: la porción estándar es siempre el punto de partida. Si hay un
+  // reemplazo aceptado, se aplica ANTES de optimizar: el motor vuelve a correr
+  // completo sobre el plato cambiado, no parcha el resultado anterior.
+  const components: ServingComponent[] = input.components.map((component) => {
+    const swap = accepted.get(component.id);
+    const base = swap
+      ? {
+          ...component,
+          label: swap.label,
+          ingredientId: swap.ingredientId,
+          nutrition: swap.nutrition,
+        }
+      : component;
+    return {
+      ...base,
+      baseQuantity: base.quantity / baseServings,
+      proposedQuantity: base.quantity / baseServings,
+      addedFatG: 0,
+      changed: false,
+    };
+  });
+
+  for (const swap of accepted.values()) {
+    const original = input.components.find((c) => c.id === swap.componentId);
+    if (original) {
+      reasons.push(
+        reason("SUBSTITUTION_SUGGESTED", { component: original.label, alternative: swap.label }),
+      );
+    }
+  }
 
   const finish = (fit: PersonalMealFit, level: number, targets: TargetSet): MemberServingProjection => {
     for (const component of components) {
@@ -281,6 +342,7 @@ export function optimizePortion(input: OptimizeInput): MemberServingProjection {
       metConstraints,
       unmetConstraints,
       reasons,
+      suggestions,
       score: scoreOf(nutrition, targets, components, unmetConstraints),
       optimizerVersion: OPTIMIZER_VERSION,
       profileVersion: profile.version,
@@ -309,9 +371,39 @@ export function optimizePortion(input: OptimizeInput): MemberServingProjection {
 
   // --- Preferencias SOFT: anotan, no prohíben (§12) ---
   for (const component of components) {
-    if (softDislike(profile, component)) {
-      reasons.push(reason("SOFT_PREFERENCE", { component: component.label }));
-      metConstraints.push(`SOFT_NOTED:${component.label}`);
+    if (!softDislike(profile, component)) continue;
+    reasons.push(reason("SOFT_PREFERENCE", { component: component.label }));
+    metConstraints.push(`SOFT_NOTED:${component.label}`);
+
+    // Si la receta ofrece un reemplazo culinario y la persona no lo rechaza
+    // también, se PROPONE. No se aplica: eso lo decide ella (§37).
+    const alternativa = (input.alternatives ?? []).find(
+      (a) =>
+        a.slotId === component.slotId &&
+        !accepted.has(component.id) &&
+        !profile.preferences.some(
+          (p) =>
+            (p.preferenceType === "DISLIKE" ||
+              p.preferenceType === "AVOID" ||
+              isHardPreference(p.preferenceType)) &&
+            p.targetKind === "INGREDIENT" &&
+            p.targetId === a.ingredientId,
+        ),
+    );
+    if (alternativa) {
+      suggestions.push({
+        componentId: component.id,
+        componentLabel: component.label,
+        ingredientId: alternativa.ingredientId,
+        alternativeLabel: alternativa.label,
+        reason: `${component.label} no es de tu gusto y la receta acepta ${alternativa.label}.`,
+      });
+      reasons.push(
+        reason("SUBSTITUTION_SUGGESTED", {
+          component: component.label,
+          alternative: alternativa.label,
+        }),
+      );
     }
   }
 

@@ -76,6 +76,25 @@ export interface MemberPreference {
   label?: string;
 }
 
+/**
+ * Tipos de preferencia que una persona puede fijarse a sí misma.
+ * `MEDICAL_RESTRICTION` no está: nace del pipeline clínico y la base lo bloquea.
+ *
+ * Vive acá y no junto a las server actions porque un módulo "use server" solo
+ * puede exportar funciones async: una constante exportada desde ahí llega rota
+ * al cliente.
+ */
+export const USER_SETTABLE_PREFERENCES = [
+  "FAVORITE",
+  "LIKE",
+  "NEUTRAL",
+  "DISLIKE",
+  "AVOID",
+  "INTOLERANCE",
+  "ALLERGY",
+] as const;
+export type UserSettablePreference = (typeof USER_SETTABLE_PREFERENCES)[number];
+
 export const COOKING_STANCES = ["PREFERRED", "ACCEPTED", "AVOID"] as const;
 export type CookingStance = (typeof COOKING_STANCES)[number];
 

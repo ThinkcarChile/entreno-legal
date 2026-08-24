@@ -96,7 +96,7 @@ export default async function RecipeDetailPage({ params, searchParams }: Props) 
             <Link
               key={version.id}
               href={`/recipes/${recipe.templateId}?v=${version.id}`}
-              className={`rounded-full px-3 py-1 text-xs ${
+              className={`rounded-full px-3 py-2 text-xs ${
                 version.id === recipe.versionId
                   ? "bg-[var(--accent)] text-white"
                   : "border border-[var(--ink)]/20 text-[var(--ink)]/70"

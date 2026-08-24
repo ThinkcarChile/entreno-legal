@@ -3,20 +3,24 @@ import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { AppNav } from "@/components/AppNav";
 import { roundForDisplay } from "@/domain/catalog/nutrition";
-import { NUTRIENT_LABELS } from "@/domain/catalog/types";
+import { NUTRIENT_KEYS, NUTRIENT_LABELS } from "@/domain/catalog/types";
 import { countsCalories } from "@/domain/nutrition/profile";
 import { TRACKING_LABELS } from "@/domain/nutrition/types";
 import { projectFamilyServings } from "@/domain/portions/family";
 import type { PortionComponent } from "@/domain/portions/optimizer";
 import { COOKING_METHOD_LABELS, MEAL_TYPES, MEAL_TYPE_LABELS, type MealType } from "@/domain/recipes/types";
-import { loadHouseholdProfiles } from "@/app/family/nutrition-queries";
+import { effectiveDate } from "@/domain/nutrition/calendar";
+import type { TargetSet } from "@/domain/nutrition/types";
+import type { AcceptedSubstitution, AvailableAlternative } from "@/domain/portions/optimizer";
+import { DataAccessError } from "@/lib/supabase/unwrap";
+import { loadDailyOverride, loadHouseholdProfiles } from "@/app/family/nutrition-queries";
 import { loadRecipeDetail } from "../../queries";
 
 export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ meal?: string; v?: string }>;
+  searchParams: Promise<{ meal?: string; v?: string; sub?: string | string[] }>;
 }
 
 const FIT_LABELS: Record<string, string> = {
@@ -39,7 +43,7 @@ const FIT_TONE: Record<string, string> = {
 
 export default async function FamilyServingsPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { meal, v } = await searchParams;
+  const { meal, v, sub } = await searchParams;
   const mealType: MealType = MEAL_TYPES.includes(meal as MealType) ? (meal as MealType) : "LUNCH";
 
   const supabase = await createSupabaseServer();
@@ -55,6 +59,7 @@ export default async function FamilyServingsPage({ params, searchParams }: Props
 
   const components: PortionComponent[] = recipe.components.map((c) => ({
     id: c.id,
+    slotId: c.slotId,
     label: c.label,
     slotType: c.slotType,
     quantity: c.quantity,
@@ -63,6 +68,7 @@ export default async function FamilyServingsPage({ params, searchParams }: Props
     nutrition: c.nutrition,
     cookingMethod: c.cookingMethod,
     adjustability: c.adjustability,
+    role: c.role,
     minQuantity: c.minQuantity,
     maxQuantity: c.maxQuantity,
     ingredientId: c.target.kind === "INGREDIENT" ? c.target.ingredientId : null,
@@ -70,14 +76,106 @@ export default async function FamilyServingsPage({ params, searchParams }: Props
     isOptional: c.isOptional,
   }));
 
+  // --- Alternativas culinarias con su nutrición, para poder sustituir (§26) ---
+  const alternativeIds = [
+    ...new Set(
+      recipe.alternatives
+        .map((a) => (a.target.kind === "INGREDIENT" ? a.target.ingredientId : null))
+        .filter((x): x is string => Boolean(x)),
+    ),
+  ];
+
+  let alternatives: AvailableAlternative[] = [];
+  if (alternativeIds.length > 0) {
+    const { data: factRows, error: factsError } = await supabase
+      .from("nutrition_facts")
+      .select(
+        `id, ingredient_id, weight_basis, basis_unit,
+         energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g,
+         saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg`,
+      )
+      .in("ingredient_id", alternativeIds);
+    if (factsError) throw new DataAccessError("fichas de las alternativas", factsError);
+
+    const factByIngredient = new Map<string, (typeof factRows)[number]>();
+    for (const row of factRows ?? []) {
+      // Se prefiere la ficha en crudo, que es como se declara el plato base.
+      if (!factByIngredient.has(row.ingredient_id) || row.weight_basis === "RAW") {
+        factByIngredient.set(row.ingredient_id, row);
+      }
+    }
+
+    alternatives = recipe.alternatives
+      .filter((a) => a.target.kind === "INGREDIENT")
+      .map((a) => {
+        const ingredientId = a.target.kind === "INGREDIENT" ? a.target.ingredientId : "";
+        const row = factByIngredient.get(ingredientId);
+        const values: Record<string, number | null> = {};
+        for (const key of NUTRIENT_KEYS) {
+          const raw = row?.[key as keyof typeof row];
+          values[key] = raw === null || raw === undefined ? null : Number(raw);
+        }
+        return {
+          slotId: a.slotId,
+          ingredientId,
+          label: a.label,
+          nutrition: row
+            ? {
+                values,
+                weightBasis: row.weight_basis as never,
+                basisUnit: row.basis_unit as never,
+              }
+            : null,
+        };
+      });
+  }
+
+  // --- Reemplazos aceptados por URL: "memberId~componentId~ingredientId" ---
+  const subParams = Array.isArray(sub) ? sub : sub ? [sub] : [];
+  const acceptedByMember = new Map<string, AcceptedSubstitution[]>();
+  for (const raw of subParams) {
+    const [memberId, componentId, ingredientId] = raw.split("~");
+    if (!memberId || !componentId || !ingredientId) continue;
+    const alternativa = alternatives.find((a) => a.ingredientId === ingredientId);
+    if (!alternativa) continue;
+    const lista = acceptedByMember.get(memberId) ?? [];
+    lista.push({
+      componentId,
+      ingredientId,
+      label: alternativa.label,
+      nutrition: alternativa.nutrition,
+    });
+    acceptedByMember.set(memberId, lista);
+  }
+
+  // --- Excepción del día, en la zona horaria del hogar (§15) ---
+  const { data: household, error: householdError } = await supabase
+    .from("households")
+    .select("timezone")
+    .limit(1)
+    .maybeSingle();
+  if (householdError) throw new DataAccessError("zona horaria del hogar", householdError);
+  const hoy = effectiveDate(new Date(), household?.timezone ?? "America/Santiago");
+
+  const overrides = new Map<string, TargetSet | null>();
+  for (const profile of profiles) {
+    const plan = await loadDailyOverride(supabase, profile.memberId, hoy, mealType);
+    overrides.set(profile.memberId, (plan?.targets as TargetSet) ?? null);
+  }
+
   const proyeccion =
     profiles.length > 0
       ? projectFamilyServings({
           versionId: recipe.versionId,
           components,
+          alternatives,
           baseServings: recipe.baseServings,
           mealType,
-          members: profiles.map((profile) => ({ profile })),
+          members: profiles.map((profile) => ({
+            profile,
+            override: overrides.get(profile.memberId) ?? null,
+            substitutions: acceptedByMember.get(profile.memberId) ?? [],
+          })),
         })
       : null;
 
@@ -102,7 +200,7 @@ export default async function FamilyServingsPage({ params, searchParams }: Props
           <Link
             key={m}
             href={`/recipes/${id}/family?meal=${m}${v ? `&v=${v}` : ""}`}
-            className={`rounded-full px-3 py-1 text-xs font-medium ${
+            className={`rounded-full px-3 py-2 text-xs font-medium ${
               m === mealType
                 ? "bg-[var(--accent)] text-white"
                 : "border border-[var(--ink)]/20 text-[var(--ink)]/70"
@@ -205,6 +303,41 @@ export default async function FamilyServingsPage({ params, searchParams }: Props
                       )}
                     </>
                   )}
+
+                  {serving.suggestions.length > 0 && (
+                    <div className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                      {serving.suggestions.map((s) => (
+                        <div key={s.componentId} className="flex items-center justify-between gap-2">
+                          <span>
+                            Sugerencia: cambiar <strong>{s.componentLabel}</strong> por{" "}
+                            <strong>{s.alternativeLabel}</strong>.
+                          </span>
+                          <Link
+                            href={`/recipes/${id}/family?meal=${mealType}${v ? `&v=${v}` : ""}${subParams
+                              .map((x) => `&sub=${encodeURIComponent(x)}`)
+                              .join("")}&sub=${encodeURIComponent(
+                              `${serving.memberId}~${s.componentId}~${s.ingredientId}`,
+                            )}`}
+                            className="shrink-0 rounded-full bg-amber-200 px-3 py-1 font-medium"
+                          >
+                            Aplicar
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {acceptedByMember.get(serving.memberId)?.length ? (
+                    <p className="mb-3 text-[11px] text-[var(--ink)]/60">
+                      Reemplazo aplicado.{" "}
+                      <Link
+                        href={`/recipes/${id}/family?meal=${mealType}${v ? `&v=${v}` : ""}`}
+                        className="underline"
+                      >
+                        Deshacer
+                      </Link>
+                    </p>
+                  ) : null}
 
                   {serving.reasons.length > 0 && (
                     <details className="text-sm">

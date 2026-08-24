@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { buildProfile, type ProfileInputs } from "@/domain/nutrition/profile";
 import type {
   AddedFatStance,
@@ -9,6 +9,7 @@ import type {
   TrackingMode,
 } from "@/domain/nutrition/types";
 import type { MealType } from "@/domain/recipes/types";
+import { DataAccessError } from "@/lib/supabase/unwrap";
 
 type Db = SupabaseClient;
 
@@ -60,6 +61,22 @@ export async function loadMemberProfile(
       .maybeSingle(),
   ]);
 
+  // Siete consultas en paralelo: si una falla en silencio, el perfil sale
+  // incompleto y el optimizador calcula una porción EQUIVOCADA, que es mucho
+  // peor que una pantalla vacía. Ninguna puede pasar sin revisar.
+  const partes: [string, { error: PostgrestError | null }][] = [
+    ["seguimiento", tracking],
+    ["objetivos", goals],
+    ["patron de comidas", pattern],
+    ["preferencias", preferences],
+    ["preferencias de coccion", cooking],
+    ["preferencia de grasa anadida", fat],
+    ["snapshot del perfil", snapshot],
+  ];
+  for (const [contexto, resultado] of partes) {
+    if (resultado.error) throw new DataAccessError(`${contexto} de ${memberName}`, resultado.error);
+  }
+
   const slots = (pattern.data?.meal_pattern_slots ?? []) as {
     meal_type: MealType;
     availability: "ENABLED" | "DISABLED" | "OPTIONAL";
@@ -99,7 +116,15 @@ export async function loadMemberProfile(
       priority: g.priority,
     })),
     pattern: mealPattern,
-    preferences: (preferences.data ?? []) as unknown as MemberPreference[],
+    // Se MAPEA, no se castea: la base devuelve snake_case y el dominio usa
+    // camelCase. Un `as unknown as` acá dejaba todas las preferencias con
+    // claves que el optimizador nunca leía — una alergia no bloqueaba el plato
+    // y un "no me gusta" no se anotaba, sin ningún error a la vista.
+    preferences: (preferences.data ?? []).map((p) => ({
+      preferenceType: p.preference_type,
+      targetKind: p.target_kind,
+      targetId: p.target_id,
+    })) as MemberPreference[],
     cookingPreferences: (cooking.data ?? []).map((c) => ({
       ingredientId: c.ingredient_id,
       categoryId: c.category_id,
@@ -127,21 +152,23 @@ export async function loadHouseholdMembers(db: Db): Promise<{
   } = await db.auth.getUser();
   if (!user) return { householdId: null, members: [] };
 
-  const { data: me } = await db
+  const { data: me, error: err1Me } = await db
     .from("household_members")
     .select("id, household_id")
     .eq("user_id", user.id)
     .eq("is_active", true)
     .limit(1)
     .maybeSingle();
+  if (err1Me) throw new DataAccessError("integrante del usuario", err1Me);
   if (!me) return { householdId: null, members: [] };
 
-  const { data } = await db
+  const { data, error: err1Data } = await db
     .from("household_members")
     .select("id, display_name")
     .eq("household_id", me.household_id)
     .eq("is_active", true)
     .order("display_name");
+  if (err1Data) throw new DataAccessError("integrantes del hogar", err1Data);
 
   return {
     householdId: me.household_id,
@@ -169,7 +196,7 @@ export async function loadDailyOverride(
   date: string,
   mealType: MealType,
 ): Promise<{ planId: string; targets: Record<string, unknown> } | null> {
-  const { data } = await db
+  const { data, error: err2Data } = await db
     .from("member_daily_nutrition_plans")
     .select(
       `id, member_daily_plan_meals ( meal_type, enabled, energy_min, energy_preferred, energy_max,
@@ -178,6 +205,7 @@ export async function loadDailyOverride(
     .eq("member_id", memberId)
     .eq("plan_date", date)
     .maybeSingle();
+  if (err2Data) throw new DataAccessError("excepcion del dia", err2Data);
   if (!data) return null;
 
   const meals = (data.member_daily_plan_meals ?? []) as {
@@ -208,4 +236,112 @@ export async function loadDailyOverride(
     };
   }
   return { planId: data.id, targets };
+}
+
+// ---------------------------------------------------------------------------
+// QA §27 — Datos para editar preferencias
+// ---------------------------------------------------------------------------
+
+export interface PreferenceContext {
+  ingredients: { id: string; name: string; categoryId: string | null }[];
+  categories: { id: string; name: string }[];
+  /** Preferencias de alimentos con nombre, no con uuid. */
+  foodPreferences: {
+    ingredientId: string;
+    label: string;
+    preferenceType: string;
+    /** Las médicas se muestran pero no se editan. */
+    editable: boolean;
+  }[];
+  cookingPreferences: {
+    id: string;
+    ingredientId: string | null;
+    categoryId: string | null;
+    label: string;
+    cookingMethod: string;
+    stance: string;
+  }[];
+}
+
+export async function loadPreferenceContext(
+  db: Db,
+  memberId: string,
+): Promise<PreferenceContext> {
+  const [ingredients, categories, prefs, cooking] = await Promise.all([
+    db.from("ingredients").select("id, display_name, category_id").eq("is_active", true).order("display_name"),
+    db.from("ingredient_categories").select("id, name").order("sort_order"),
+    db
+      .from("member_preferences")
+      // `target_id` es polimórfico (ingrediente, categoría, receta o producto):
+      // no tiene clave foránea y por lo tanto no admite embed. El nombre se
+      // resuelve con el mapa de ingredientes que ya se está trayendo.
+      .select("target_id, preference_type, target_kind")
+      .eq("member_id", memberId)
+      .eq("target_kind", "INGREDIENT"),
+    db
+      .from("member_cooking_preferences")
+      .select("id, ingredient_id, category_id, cooking_method, stance")
+      .eq("member_id", memberId),
+  ]);
+
+  for (const [contexto, resultado] of [
+    ["alimentos", ingredients],
+    ["categorias", categories],
+    ["preferencias de alimentos", prefs],
+    ["preferencias de coccion", cooking],
+  ] as [string, { error: PostgrestError | null }][]) {
+    if (resultado.error) throw new DataAccessError(contexto, resultado.error);
+  }
+
+  const byIngredient = new Map((ingredients.data ?? []).map((i) => [i.id, i.display_name]));
+  const byCategory = new Map((categories.data ?? []).map((c) => [c.id, c.name]));
+
+  return {
+    ingredients: (ingredients.data ?? []).map((i) => ({
+      id: i.id,
+      name: i.display_name,
+      categoryId: i.category_id,
+    })),
+    categories: (categories.data ?? []).map((c) => ({ id: c.id, name: c.name })),
+    foodPreferences: (prefs.data ?? []).map((p) => ({
+      ingredientId: p.target_id,
+      label: byIngredient.get(p.target_id) ?? "Alimento",
+      preferenceType: p.preference_type,
+      editable: p.preference_type !== "MEDICAL_RESTRICTION",
+    })),
+    cookingPreferences: (cooking.data ?? []).map((c) => ({
+      id: c.id,
+      ingredientId: c.ingredient_id,
+      categoryId: c.category_id,
+      label: c.ingredient_id
+        ? (byIngredient.get(c.ingredient_id) ?? "Alimento")
+        : c.category_id
+          ? (byCategory.get(c.category_id) ?? "Categoría")
+          : "Todos los alimentos",
+      cookingMethod: c.cooking_method,
+      stance: c.stance,
+    })),
+  };
+}
+
+/** Excepciones del día ya guardadas para un integrante, de hoy en adelante. */
+export async function loadUpcomingOverrides(
+  db: Db,
+  memberId: string,
+  fromDate: string,
+): Promise<{ date: string; meals: { mealType: MealType; energyMax: number | null }[] }[]> {
+  const { data, error } = await db
+    .from("member_daily_nutrition_plans")
+    .select(`plan_date, member_daily_plan_meals ( meal_type, energy_max )`)
+    .eq("member_id", memberId)
+    .gte("plan_date", fromDate)
+    .order("plan_date");
+  if (error) throw new DataAccessError("excepciones del dia", error);
+
+  return (data ?? []).map((plan) => ({
+    date: plan.plan_date,
+    meals: ((plan.member_daily_plan_meals ?? []) as { meal_type: MealType; energy_max: number | null }[]).map(
+      (m) => ({ mealType: m.meal_type, energyMax: m.energy_max }),
+    ),
+  }));
 }

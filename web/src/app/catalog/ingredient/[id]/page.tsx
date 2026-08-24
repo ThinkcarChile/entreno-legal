@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { AppNav } from "@/components/AppNav";
 import { QuantityCalculator } from "@/components/QuantityCalculator";
+import { DataAccessError } from "@/lib/supabase/unwrap";
 import {
   NUTRIENT_KEYS,
   SOURCE_TYPE_LABELS,
@@ -47,26 +48,29 @@ export default async function IngredientPage({ params, searchParams }: Props) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/catalog");
 
-  const { data: ingredient } = await supabase
+  const { data: ingredient, error: errorIngredient } = await supabase
     .from("ingredients")
     .select("id, display_name, ingredient_categories(name)")
     .eq("id", id)
     .maybeSingle();
+  if (errorIngredient) throw new DataAccessError("ingrediente", errorIngredient);
   if (!ingredient) notFound();
 
-  const { data: factsData } = await supabase
+  const { data: factsData, error: errorFactsData } = await supabase
     .from("nutrition_facts")
     .select("*")
     .eq("ingredient_id", id);
+  if (errorFactsData) throw new DataAccessError("fichas nutricionales del ingrediente", errorFactsData);
   const facts = (factsData ?? []) as unknown as FactRow[];
   if (facts.length === 0) notFound();
 
   const selected = facts.find((f) => f.weight_basis === basis) ?? facts[0]!;
 
-  const { data: measuresData } = await supabase
+  const { data: measuresData, error: errorMeasuresData } = await supabase
     .from("household_measures")
     .select("measure_name, quantity, unit")
     .eq("ingredient_id", id);
+  if (errorMeasuresData) throw new DataAccessError("medidas domesticas del ingrediente", errorMeasuresData);
   const measures = (measuresData ?? []).map((m) => ({
     name: m.measure_name as string,
     quantity: Number(m.quantity),

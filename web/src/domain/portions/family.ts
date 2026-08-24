@@ -1,6 +1,12 @@
 import type { MealType } from "../recipes/types";
 import type { MemberNutritionProfile, TargetSet } from "../nutrition/types";
-import { optimizePortion, type MemberServingProjection, type PortionComponent } from "./optimizer";
+import {
+  optimizePortion,
+  type AcceptedSubstitution,
+  type AvailableAlternative,
+  type MemberServingProjection,
+  type PortionComponent,
+} from "./optimizer";
 
 /**
  * FamilyServingProjector (§32) y totales para cocinar (§33, §34).
@@ -13,12 +19,15 @@ import { optimizePortion, type MemberServingProjection, type PortionComponent } 
 export interface FamilyProjectionInput {
   versionId: string;
   components: readonly PortionComponent[];
+  alternatives?: readonly AvailableAlternative[];
   baseServings: number;
   mealType: MealType;
   members: {
     profile: MemberNutritionProfile;
     /** Excepción del día de esta persona, si tiene. */
     override?: TargetSet | null;
+    /** Reemplazos que ESTA persona aceptó. */
+    substitutions?: readonly AcceptedSubstitution[];
   }[];
 }
 
@@ -42,10 +51,12 @@ export interface FamilyServingProjection {
 }
 
 export function projectFamilyServings(input: FamilyProjectionInput): FamilyServingProjection {
-  const servings = input.members.map(({ profile, override }) =>
+  const servings = input.members.map(({ profile, override, substitutions }) =>
     optimizePortion({
       versionId: input.versionId,
       components: input.components,
+      alternatives: input.alternatives,
+      substitutions,
       baseServings: input.baseServings,
       profile,
       mealType: input.mealType,
@@ -81,7 +92,12 @@ export function preparationTotals(
     for (const component of serving.components) {
       if (component.proposedQuantity <= 0 && component.addedFatG <= 0) continue;
 
-      let entry = byComponent.get(component.id);
+      // Se agrupa por ALIMENTO, no por ranura de la receta. Si alguien reemplazó
+      // el pollo por merluza, sus gramos no pueden sumarse al total del pollo:
+      // el precursor de la lista de compras diría que hay que comprar pollo de
+      // más y nada de merluza.
+      const clave = `${component.ingredientId ?? component.id}::${component.label}`;
+      let entry = byComponent.get(clave);
       if (!entry) {
         entry = {
           componentId: component.id,
@@ -92,7 +108,7 @@ export function preparationTotals(
           byMethod: [],
           perMember: [],
         };
-        byComponent.set(component.id, entry);
+        byComponent.set(clave, entry);
       }
 
       entry.total += component.proposedQuantity;

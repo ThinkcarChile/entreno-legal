@@ -103,6 +103,12 @@ export interface RecipeComponent {
    * (Sprint 4 §28, §29). FIXED = no se toca ni para cuadrar calorías.
    */
   adjustability: "FIXED" | "ADJUSTABLE" | "OPTIONAL";
+  /**
+   * Rol culinario declarado. ADDED_FAT es lo unico que el optimizador puede
+   * quitar por preferencia de grasa anadida: la palta y las semillas son grasas
+   * pero son comida, no alino (ADR 0004).
+   */
+  role: "MAIN" | "ADDED_FAT" | "SEASONING";
   minQuantity: number | null;
   maxQuantity: number | null;
   /** Categoría del alimento, para resolver preferencias por categoría. */

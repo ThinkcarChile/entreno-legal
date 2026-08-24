@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { AppNav } from "@/components/AppNav";
 import { QuantityCalculator } from "@/components/QuantityCalculator";
+import { DataAccessError } from "@/lib/supabase/unwrap";
 import {
   NUTRIENT_KEYS,
   SOURCE_TYPE_LABELS,
@@ -24,19 +25,21 @@ export default async function ProductPage({ params }: Props) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/catalog");
 
-  const { data: product } = await supabase
+  const { data: product, error: errorProduct } = await supabase
     .from("commercial_products")
     .select("*")
     .eq("id", id)
     .maybeSingle();
+  if (errorProduct) throw new DataAccessError("producto comercial", errorProduct);
   if (!product) notFound();
 
-  const { data: factData } = await supabase
+  const { data: factData, error: errorFactData } = await supabase
     .from("nutrition_facts")
     .select("*")
     .eq("product_id", id)
     .limit(1)
     .maybeSingle();
+  if (errorFactData) throw new DataAccessError("ficha nutricional del producto", errorFactData);
 
   const per100: NutritionValues = {};
   if (factData) {
@@ -47,10 +50,11 @@ export default async function ProductPage({ params }: Props) {
   }
   const basisUnit = ((factData?.basis_unit as BasisUnit | undefined) ?? "G") satisfies BasisUnit;
 
-  const { data: measuresData } = await supabase
+  const { data: measuresData, error: errorMeasuresData } = await supabase
     .from("household_measures")
     .select("measure_name, quantity, unit")
     .eq("product_id", id);
+  if (errorMeasuresData) throw new DataAccessError("medidas domesticas del producto", errorMeasuresData);
   const measures = (measuresData ?? []).map((m) => ({
     name: m.measure_name as string,
     quantity: Number(m.quantity),

@@ -7,6 +7,7 @@ import { NUTRIENT_KEYS } from "@/domain/catalog/types";
 import { calculateMealNutrition } from "@/domain/recipes/nutrition";
 import { recipeDraftSchema, type RecipeDraftInput } from "@/domain/recipes/schemas";
 import { loadRecipeDetail } from "./queries";
+import { DataAccessError } from "@/lib/supabase/unwrap";
 
 export interface ActionResult {
   ok: boolean;
@@ -22,13 +23,14 @@ async function currentMembership() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/recipes");
 
-  const { data: membership } = await supabase
+  const { data: membership, error: err1Membership } = await supabase
     .from("household_members")
     .select("id, household_id")
     .eq("user_id", user.id)
     .eq("is_active", true)
     .limit(1)
     .maybeSingle();
+  if (err1Membership) throw new DataAccessError("hogar del usuario", err1Membership);
 
   return { supabase, membership };
 }
@@ -60,11 +62,12 @@ export async function createRecipe(input: RecipeDraftInput): Promise<ActionResul
   const saved = await saveDraft(versionId as string, draft);
   if (!saved.ok) return saved;
 
-  const { data: version } = await supabase
+  const { data: version, error: err1Version } = await supabase
     .from("meal_template_versions")
     .select("template_id")
     .eq("id", versionId)
     .maybeSingle();
+  if (err1Version) throw new DataAccessError("version de la receta", err1Version);
 
   return { ok: true, versionId: versionId as string, templateId: version?.template_id };
 }

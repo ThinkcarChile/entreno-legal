@@ -50,6 +50,7 @@ function component(
     isOptional: false,
     sortOrder: seq,
     adjustability: "ADJUSTABLE" as const,
+    role: "MAIN" as const,
     minQuantity: null,
     maxQuantity: null,
     categoryId: null,

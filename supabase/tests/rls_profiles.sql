@@ -214,4 +214,114 @@ begin
   if not ok then raise exception 'FALLO S5: una propuesta de IA no entra en cálculo sin confirmar'; end if;
 end $$;
 
+-- ---------------------------------------------------------------------------
+-- QA §23 — A guarda una excepción del día y una porción; B no ve ninguna
+-- ---------------------------------------------------------------------------
+
+-- El bloque anterior quedó como postgres, y un superusuario se salta la RLS:
+-- probar aislamiento sin volver a 'authenticated' no probaría absolutamente nada.
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000020a', false);
+
+do $$
+declare v_member uuid; v_plan uuid; v_profile uuid; v_version uuid;
+begin
+  select m.id into v_member from public.household_members m
+  join public.households h on h.id = m.household_id where h.name = 'Hogar Perfil A';
+
+  insert into public.member_daily_nutrition_plans (member_id, plan_date, note)
+  values (v_member, current_date + 1, 'asado del sábado') returning id into v_plan;
+  insert into public.member_daily_plan_meals (plan_id, meal_type, energy_max)
+  values (v_plan, 'LUNCH', 1000);
+
+  select id into v_profile from public.member_nutrition_profiles
+  where member_id = v_member and is_current;
+  select id into v_version from public.meal_template_versions
+  where status = 'PUBLISHED' limit 1;
+
+  insert into public.member_serving_projections
+    (member_id, version_id, profile_id, optimizer_version, meal_type, fit, adaptation_level)
+  values (v_member, v_version, v_profile, 'portion-optimizer/1.0.0', 'LUNCH',
+          'COMPATIBLE_WITH_PORTION_CHANGE', 1);
+end $$;
+
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000020b', false);
+
+do $$
+declare n int;
+begin
+  select count(*) into n from public.member_daily_nutrition_plans;
+  if n <> 0 then raise exception 'FALLO R9: B NO debería ver las excepciones del día de A (n=%)', n; end if;
+
+  select count(*) into n from public.member_daily_plan_meals;
+  if n <> 0 then raise exception 'FALLO R10: B NO debería ver las comidas de esas excepciones (n=%)', n; end if;
+
+  select count(*) into n from public.member_serving_projections;
+  if n <> 0 then raise exception 'FALLO R11: B NO debería ver las porciones de A (n=%)', n; end if;
+
+  select count(*) into n from public.member_cooking_preferences;
+  if n <> 0 then raise exception 'FALLO R12: B NO debería ver las preferencias de cocción de A (n=%)', n; end if;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- QA §27 — Una restricción médica no se degrada desde la aplicación
+-- ---------------------------------------------------------------------------
+
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000020a', false);
+
+do $$
+declare v_member uuid; v_ing uuid; ok boolean := false;
+begin
+  select m.id into v_member from public.household_members m
+  join public.households h on h.id = m.household_id where h.name = 'Hogar Perfil A';
+  select id into v_ing from public.ingredients where household_id is null limit 1;
+
+  -- El usuario SÍ puede declarar sus propios gustos y alergias
+  insert into public.member_preferences (member_id, preference_type, target_kind, target_id)
+  values (v_member, 'DISLIKE', 'INGREDIENT', v_ing);
+
+  -- ...pero no puede crear una restricción médica
+  begin
+    insert into public.member_preferences (member_id, preference_type, target_kind, target_id)
+    values (v_member, 'MEDICAL_RESTRICTION', 'INGREDIENT',
+            (select id from public.ingredients where household_id is null offset 1 limit 1));
+  exception when others then ok := true;
+  end;
+  if not ok then raise exception 'FALLO M1: un usuario no puede crear una restricción médica'; end if;
+end $$;
+
+-- Una restricción médica creada por el sistema no se degrada ni se borra
+set role postgres;
+do $$
+declare v_member uuid; v_ing uuid;
+begin
+  select m.id into v_member from public.household_members m
+  join public.households h on h.id = m.household_id where h.name = 'Hogar Perfil A';
+  select id into v_ing from public.ingredients where household_id is null offset 2 limit 1;
+  insert into public.member_preferences (member_id, preference_type, target_kind, target_id)
+  values (v_member, 'MEDICAL_RESTRICTION', 'INGREDIENT', v_ing);
+end $$;
+
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000020a', false);
+
+do $$
+declare ok boolean := false; v_id uuid;
+begin
+  select id into v_id from public.member_preferences where preference_type = 'MEDICAL_RESTRICTION' limit 1;
+
+  begin
+    update public.member_preferences set preference_type = 'DISLIKE' where id = v_id;
+  exception when others then ok := true;
+  end;
+  if not ok then raise exception 'FALLO M2: se pudo degradar una restricción médica a SOFT'; end if;
+
+  ok := false;
+  begin
+    delete from public.member_preferences where id = v_id;
+  exception when others then ok := true;
+  end;
+  if not ok then raise exception 'FALLO M3: se pudo borrar una restricción médica'; end if;
+end $$;
+
 reset role;

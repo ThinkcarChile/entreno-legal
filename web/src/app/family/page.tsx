@@ -2,6 +2,7 @@ import Link from "next/link";
 import { DemoFamilyButton } from "./DemoFamilyButton";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { DataAccessError } from "@/lib/supabase/unwrap";
 import { signOut } from "@/app/login/actions";
 import { AppNav } from "@/components/AppNav";
 import { createHousehold, createInvitation } from "./actions";
@@ -31,13 +32,14 @@ export default async function FamilyPage({ searchParams }: Props) {
     redirect("/login?next=/family");
   }
 
-  const { data: membership } = await supabase
+  const { data: membership, error: membershipError } = await supabase
     .from("household_members")
     .select("household_id, households(name)")
     .eq("user_id", user.id)
     .eq("is_active", true)
     .limit(1)
     .maybeSingle();
+  if (membershipError) throw new DataAccessError("hogar del usuario", membershipError);
 
   if (!membership) {
     return (

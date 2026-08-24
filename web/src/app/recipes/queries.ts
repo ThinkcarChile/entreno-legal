@@ -6,6 +6,7 @@ import {
   resolveComponentNutrition,
   type MealNutrition,
 } from "@/domain/recipes/nutrition";
+import { DataAccessError } from "@/lib/supabase/unwrap";
 import type {
   CookingMethod,
   MealType,
@@ -118,7 +119,7 @@ function factFromFrozen(frozen: unknown): NutritionFact | null {
 const COMPONENT_SELECT = `
   id, slot_id, ingredient_id, product_id, nested_version_id,
   quantity, unit, weight_basis, cooking_method, yield_factor, is_optional, sort_order,
-  adjustability, min_quantity, max_quantity,
+  adjustability, min_quantity, max_quantity, role,
   frozen_nutrition, frozen_source,
   ingredients ( display_name, category_id ),
   commercial_products ( name, brand ),
@@ -143,6 +144,7 @@ interface ComponentRow {
   is_optional: boolean;
   sort_order: number;
   adjustability: "FIXED" | "ADJUSTABLE" | "OPTIONAL";
+  role: "MAIN" | "ADDED_FAT" | "SEASONING" | null;
   min_quantity: number | null;
   max_quantity: number | null;
   frozen_nutrition: unknown;
@@ -200,6 +202,7 @@ function toComponent(row: ComponentRow, slotType: SlotType): LoadedComponent {
     isOptional: row.is_optional,
     sortOrder: row.sort_order,
     adjustability: row.adjustability ?? "ADJUSTABLE",
+    role: row.role ?? "MAIN",
     minQuantity: row.min_quantity === null ? null : Number(row.min_quantity),
     maxQuantity: row.max_quantity === null ? null : Number(row.max_quantity),
     categoryId: row.ingredients?.category_id ?? null,
@@ -217,16 +220,18 @@ async function expandNested(
   component: LoadedComponent,
   versionId: string,
 ): Promise<LoadedComponent[]> {
-  const { data: slots } = await db
+  const { data: slots, error: err1Slots } = await db
     .from("meal_slots")
     .select(`id, slot_type, version_id`)
     .eq("version_id", versionId);
+  if (err1Slots) throw new DataAccessError("slots de la receta anidada", err1Slots);
   if (!slots?.length) return [];
 
-  const { data: rows } = await db
+  const { data: rows, error: err1Rows } = await db
     .from("meal_slot_components")
     .select(COMPONENT_SELECT)
     .in("slot_id", slots.map((s) => s.id));
+  if (err1Rows) throw new DataAccessError("componentes de la receta anidada", err1Rows);
   if (!rows?.length) return [];
 
   const slotTypeById = new Map(slots.map((s) => [s.id, s.slot_type as SlotType]));
@@ -317,14 +322,15 @@ export async function loadRecipeDetail(
   templateId: string,
   versionId?: string,
 ): Promise<RecipeDetail | null> {
-  const { data: template } = await db
+  const { data: template, error: err1Template } = await db
     .from("meal_templates")
     .select(`id, name, kind, household_id, current_version_id`)
     .eq("id", templateId)
     .maybeSingle();
+  if (err1Template) throw new DataAccessError("plantilla de receta", err1Template);
   if (!template) return null;
 
-  const { data: versionRows } = await db
+  const { data: versionRows, error: err1VersionRows } = await db
     .from("meal_template_versions")
     .select(
       `id, version_number, status, name, description, meal_types,
@@ -332,6 +338,7 @@ export async function loadRecipeDetail(
     )
     .eq("template_id", templateId)
     .order("version_number", { ascending: false });
+  if (err1VersionRows) throw new DataAccessError("versiones de la receta", err1VersionRows);
   if (!versionRows?.length) return null;
 
   const target =
@@ -339,11 +346,12 @@ export async function loadRecipeDetail(
     versionRows.find((v) => v.id === template.current_version_id) ??
     versionRows[0]!;
 
-  const { data: slotRows } = await db
+  const { data: slotRows, error: err1SlotRows } = await db
     .from("meal_slots")
     .select(`id, slot_type, label, is_required, sort_order`)
     .eq("version_id", target.id)
     .order("sort_order");
+  if (err1SlotRows) throw new DataAccessError("slots de la receta", err1SlotRows);
   const slots: RecipeSlot[] = (slotRows ?? []).map((s) => ({
     id: s.id,
     slotType: s.slot_type as SlotType,
@@ -359,11 +367,12 @@ export async function loadRecipeDetail(
     const slotIds = slots.map((s) => s.id);
     const slotTypeById = new Map(slots.map((s) => [s.id, s.slotType]));
 
-    const { data: componentRows } = await db
+    const { data: componentRows, error: err1ComponentRows } = await db
       .from("meal_slot_components")
       .select(COMPONENT_SELECT)
       .in("slot_id", slotIds)
       .order("sort_order");
+    if (err1ComponentRows) throw new DataAccessError("componentes de la receta", err1ComponentRows);
 
     for (const row of (componentRows ?? []) as unknown as ComponentRow[]) {
       const component = toComponent(row, slotTypeById.get(row.slot_id) ?? "OTHER");
@@ -374,7 +383,7 @@ export async function loadRecipeDetail(
       }
     }
 
-    const { data: altRows } = await db
+    const { data: altRows, error: err1AltRows } = await db
       .from("meal_slot_alternatives")
       .select(
         `id, slot_id, ingredient_id, product_id, nested_version_id,
@@ -382,6 +391,7 @@ export async function loadRecipeDetail(
          ingredients ( display_name ), commercial_products ( name, brand )`,
       )
       .in("slot_id", slotIds);
+    if (err1AltRows) throw new DataAccessError("alternativas de la receta", err1AltRows);
 
     alternatives = (altRows ?? []).map((row) => {
       const ingredient = row.ingredients as unknown as { display_name: string } | null;
@@ -406,7 +416,7 @@ export async function loadRecipeDetail(
     });
   }
 
-  const { data: stepRows } = await db
+  const { data: stepRows, error: err1StepRows } = await db
     .from("recipe_steps")
     .select(
       `id, step_number, instruction, duration_minutes, temperature_c,
@@ -414,6 +424,7 @@ export async function loadRecipeDetail(
     )
     .eq("version_id", target.id)
     .order("step_number");
+  if (err1StepRows) throw new DataAccessError("pasos de la receta", err1StepRows);
 
   const steps: RecipeStep[] = (stepRows ?? []).map((s) => ({
     id: s.id,
@@ -499,7 +510,7 @@ export interface IngredientOption {
  * nutrición actualizándose mientras se escribe, sin ir al servidor por cada tecla.
  */
 export async function loadIngredientOptions(db: Db): Promise<IngredientOption[]> {
-  const { data } = await db
+  const { data, error: err1Data } = await db
     .from("ingredients")
     .select(
       `id, display_name,
@@ -511,6 +522,7 @@ export async function loadIngredientOptions(db: Db): Promise<IngredientOption[]>
     )
     .eq("is_active", true)
     .order("display_name");
+  if (err1Data) throw new DataAccessError("alimentos del catalogo", err1Data);
 
   return (data ?? []).map((row) => ({
     id: row.id,

@@ -132,6 +132,7 @@ export function RecipeForm({
           isOptional: component.isOptional,
           sortOrder: 1,
           adjustability: component.isOptional ? "OPTIONAL" : "ADJUSTABLE",
+          role: "MAIN",
           minQuantity: null,
           maxQuantity: null,
           categoryId: null,
@@ -259,7 +260,7 @@ export function RecipeForm({
 
   const field =
     "w-full rounded-xl border border-[var(--ink)]/20 bg-white px-3 py-2 text-base";
-  const chip = "rounded-full px-3 py-1 text-xs font-medium";
+  const chip = "rounded-full px-3 py-2 text-xs font-medium";
 
   return (
     <div className="space-y-5 pb-28">

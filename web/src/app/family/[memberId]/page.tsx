@@ -5,8 +5,17 @@ import { AppNav } from "@/components/AppNav";
 import { firstMeal } from "@/domain/nutrition/profile";
 import { TRACKING_LABELS } from "@/domain/nutrition/types";
 import { MEAL_TYPE_LABELS } from "@/domain/recipes/types";
-import { loadMemberProfile } from "../nutrition-queries";
+import { effectiveDate } from "@/domain/nutrition/calendar";
+import {
+  loadMemberProfile,
+  loadPreferenceContext,
+  loadUpcomingOverrides,
+} from "../nutrition-queries";
 import { MemberNutritionEditor } from "./MemberNutritionEditor";
+import { PreferencesEditor } from "./PreferencesEditor";
+import { MemberNameEditor } from "./MemberNameEditor";
+import { DailyOverrideEditor } from "./DailyOverrideEditor";
+import { DataAccessError } from "@/lib/supabase/unwrap";
 
 export const dynamic = "force-dynamic";
 
@@ -23,14 +32,29 @@ export default async function MemberPage({ params }: Props) {
   } = await supabase.auth.getUser();
   if (!user) redirect(`/login?next=/family/${memberId}`);
 
-  const { data: member } = await supabase
+  const { data: member, error: err1Member } = await supabase
     .from("household_members")
     .select("id, display_name")
     .eq("id", memberId)
     .maybeSingle();
+  if (err1Member) throw new DataAccessError("integrante", err1Member);
   if (!member) notFound();
 
-  const profile = await loadMemberProfile(supabase, member.id, member.display_name);
+  // La zona horaria es del HOGAR: a las 22:30 en Santiago todavía es hoy,
+  // aunque en UTC ya sea mañana.
+  const { data: household, error: householdError } = await supabase
+    .from("households")
+    .select("timezone")
+    .eq("id", (await supabase.from("household_members").select("household_id").eq("id", memberId).maybeSingle()).data?.household_id ?? "")
+    .maybeSingle();
+  if (householdError) throw new DataAccessError("zona horaria del hogar", householdError);
+  const hoy = effectiveDate(new Date(), household?.timezone ?? "America/Santiago");
+
+  const [profile, preferenceContext, overrides] = await Promise.all([
+    loadMemberProfile(supabase, member.id, member.display_name),
+    loadPreferenceContext(supabase, member.id),
+    loadUpcomingOverrides(supabase, member.id, hoy),
+  ]);
   const primera = firstMeal(profile);
 
   return (
@@ -41,7 +65,7 @@ export default async function MemberPage({ params }: Props) {
       </Link>
 
       <header className="mb-4 mt-2">
-        <h1 className="text-2xl font-semibold">{member.display_name}</h1>
+        <MemberNameEditor memberId={member.id} displayName={member.display_name} />
         <p className="mt-1 text-sm text-[var(--ink)]/60">
           {TRACKING_LABELS[profile.trackingMode]}
           {primera && <> · primera comida: {MEAL_TYPE_LABELS[primera]}</>}
@@ -49,11 +73,21 @@ export default async function MemberPage({ params }: Props) {
         </p>
       </header>
 
-      <MemberNutritionEditor
-        memberId={member.id}
-        memberName={member.display_name}
-        profile={profile}
-      />
+      <div className="space-y-5">
+        <MemberNutritionEditor
+          memberId={member.id}
+          memberName={member.display_name}
+          profile={profile}
+        />
+
+        <DailyOverrideEditor memberId={member.id} today={hoy} existing={overrides} />
+
+        <PreferencesEditor
+          memberId={member.id}
+          memberName={member.display_name}
+          context={preferenceContext}
+        />
+      </div>
     </main>
   );
 }

@@ -3,9 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import type { GoalType, TrackingMode } from "@/domain/nutrition/types";
+import {
+  USER_SETTABLE_PREFERENCES,
+  type GoalType,
+  type TrackingMode,
+  type UserSettablePreference,
+} from "@/domain/nutrition/types";
 import type { MealType } from "@/domain/recipes/types";
 import { loadMemberProfile } from "./nutrition-queries";
+import { DataAccessError } from "@/lib/supabase/unwrap";
 
 export interface ActionResult {
   ok: boolean;
@@ -144,19 +150,21 @@ export async function saveMealGoals(
   }
 
   // Patrón de la comida (habilitada, primera del día, ensalada).
-  const { data: pattern } = await supabase
+  const { data: pattern, error: errorPattern } = await supabase
     .from("meal_patterns")
     .select("id")
     .eq("member_id", memberId)
     .maybeSingle();
+  if (errorPattern) throw new DataAccessError("patron de comidas", errorPattern);
 
   let patternId = pattern?.id as string | undefined;
   if (!patternId) {
-    const { data: created } = await supabase
+    const { data: created, error: errorCreated } = await supabase
       .from("meal_patterns")
       .insert({ member_id: memberId })
       .select("id")
       .single();
+    if (errorCreated) throw new DataAccessError("creacion del patron de comidas", errorCreated);
     patternId = created?.id;
   }
   if (patternId) {
@@ -217,4 +225,219 @@ export async function loadDemoFamily(householdId: string): Promise<ActionResult>
   revalidatePath("/family");
   revalidatePath("/recipes");
   return { ok: true, message: "Familia de demostración cargada. Todo es editable." };
+}
+
+// ---------------------------------------------------------------------------
+// QA §27 — Preferencias de alimentos y de preparación
+// ---------------------------------------------------------------------------
+
+/**
+ * Tipos que una persona puede fijarse a sí misma. `MEDICAL_RESTRICTION` no está
+ * y no va a estar: nace del pipeline clínico, y la base lo bloquea además de la
+ * interfaz.
+ */
+export async function setIngredientPreference(
+  memberId: string,
+  memberName: string,
+  ingredientId: string,
+  preferenceType: UserSettablePreference | "REMOVE",
+): Promise<ActionResult> {
+  const supabase = await client();
+
+  if (preferenceType !== "REMOVE" && !USER_SETTABLE_PREFERENCES.includes(preferenceType)) {
+    return { ok: false, error: "Ese tipo de preferencia no se fija desde la aplicación." };
+  }
+
+  if (preferenceType === "REMOVE") {
+    const { error } = await supabase
+      .from("member_preferences")
+      .delete()
+      .eq("member_id", memberId)
+      .eq("target_kind", "INGREDIENT")
+      .eq("target_id", ingredientId);
+    if (error) {
+      return {
+        ok: false,
+        error: error.message.includes("restricción médica")
+          ? "Una restricción médica no se elimina desde acá."
+          : "No se pudo quitar la preferencia.",
+      };
+    }
+  } else {
+    const { error } = await supabase.from("member_preferences").upsert(
+      {
+        member_id: memberId,
+        preference_type: preferenceType,
+        target_kind: "INGREDIENT",
+        target_id: ingredientId,
+      },
+      { onConflict: "member_id,target_kind,target_id" },
+    );
+    if (error) {
+      return {
+        ok: false,
+        error: error.message.includes("restricción médica")
+          ? "Esa restricción es médica y no se cambia desde acá."
+          : "No se pudo guardar la preferencia.",
+      };
+    }
+  }
+
+  await republishProfile(supabase, memberId, memberName, "Preferencias de alimentos");
+  revalidatePath(`/family/${memberId}`);
+  return { ok: true, message: "Tu perfil nutricional fue actualizado." };
+}
+
+export interface CookingPreferenceInput {
+  /** Exactamente uno, o ninguno para la regla global (§14). */
+  ingredientId?: string | null;
+  categoryId?: string | null;
+  cookingMethod: string;
+  stance: "PREFERRED" | "ACCEPTED" | "AVOID";
+}
+
+export async function setCookingPreference(
+  memberId: string,
+  memberName: string,
+  input: CookingPreferenceInput,
+): Promise<ActionResult> {
+  const supabase = await client();
+
+  if (input.ingredientId && input.categoryId) {
+    return { ok: false, error: "Una preferencia apunta a un alimento o a una categoría, no a ambos." };
+  }
+
+  const { error } = await supabase.from("member_cooking_preferences").upsert(
+    {
+      member_id: memberId,
+      ingredient_id: input.ingredientId ?? null,
+      category_id: input.categoryId ?? null,
+      cooking_method: input.cookingMethod,
+      stance: input.stance,
+    },
+    { onConflict: "member_id,ingredient_id,category_id,cooking_method" },
+  );
+  if (error) return { ok: false, error: "No se pudo guardar la preferencia de preparación." };
+
+  await republishProfile(supabase, memberId, memberName, "Preferencias de preparación");
+  revalidatePath(`/family/${memberId}`);
+  return { ok: true, message: "Tu perfil nutricional fue actualizado." };
+}
+
+export async function removeCookingPreference(
+  memberId: string,
+  memberName: string,
+  preferenceId: string,
+): Promise<ActionResult> {
+  const supabase = await client();
+  const { error } = await supabase
+    .from("member_cooking_preferences")
+    .delete()
+    .eq("id", preferenceId)
+    .eq("member_id", memberId);
+  if (error) return { ok: false, error: "No se pudo quitar la preferencia." };
+
+  await republishProfile(supabase, memberId, memberName, "Preferencias de preparación");
+  revalidatePath(`/family/${memberId}`);
+  return { ok: true, message: "Tu perfil nutricional fue actualizado." };
+}
+
+// ---------------------------------------------------------------------------
+// QA §28 — Excepción de un solo día
+// ---------------------------------------------------------------------------
+
+export interface DailyOverrideInput {
+  date: string; // YYYY-MM-DD en la zona del hogar
+  mealType: MealType;
+  enabled: boolean;
+  energyMax: number | null;
+  proteinMin: number | null;
+  proteinPreferred: number | null;
+  proteinMax: number | null;
+  note?: string | null;
+}
+
+/** La excepción vive aparte: no toca el patrón habitual (§19). */
+export async function saveDailyOverride(
+  memberId: string,
+  input: DailyOverrideInput,
+): Promise<ActionResult> {
+  const supabase = await client();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
+    return { ok: false, error: "Fecha inválida." };
+  }
+  if (input.proteinMin !== null && input.proteinMax !== null && input.proteinMin > input.proteinMax) {
+    return { ok: false, error: "El mínimo de proteína no puede ser mayor que el máximo." };
+  }
+
+  const { data: plan, error: planError } = await supabase
+    .from("member_daily_nutrition_plans")
+    .upsert(
+      { member_id: memberId, plan_date: input.date, note: input.note ?? null },
+      { onConflict: "member_id,plan_date" },
+    )
+    .select("id")
+    .single();
+  if (planError || !plan) return { ok: false, error: "No se pudo crear la excepción del día." };
+
+  const { error } = await supabase.from("member_daily_plan_meals").upsert(
+    {
+      plan_id: plan.id,
+      meal_type: input.mealType,
+      enabled: input.enabled,
+      energy_max: input.energyMax,
+      protein_min: input.proteinMin,
+      protein_preferred: input.proteinPreferred,
+      protein_max: input.proteinMax,
+    },
+    { onConflict: "plan_id,meal_type" },
+  );
+  if (error) return { ok: false, error: "No se pudo guardar la excepción." };
+
+  revalidatePath(`/family/${memberId}`);
+  revalidatePath("/recipes");
+  return { ok: true, message: `Excepción guardada solo para el ${input.date}.` };
+}
+
+/** Volver al patrón habitual: se borra la excepción, no se "reescribe". */
+export async function clearDailyOverride(
+  memberId: string,
+  date: string,
+): Promise<ActionResult> {
+  const supabase = await client();
+  const { error } = await supabase
+    .from("member_daily_nutrition_plans")
+    .delete()
+    .eq("member_id", memberId)
+    .eq("plan_date", date);
+  if (error) return { ok: false, error: "No se pudo restaurar el patrón habitual." };
+
+  revalidatePath(`/family/${memberId}`);
+  revalidatePath("/recipes");
+  return { ok: true, message: "Volviste a tu patrón habitual." };
+}
+
+/**
+ * QA §29 — El nombre del hogar y el de una persona son cosas distintas, y hasta
+ * ahora no había forma de corregir el segundo. Si alguien escribió "Casa" en
+ * "Tu nombre" al crear el hogar, quedaba así para siempre.
+ */
+export async function renameMember(memberId: string, displayName: string): Promise<ActionResult> {
+  const nombre = displayName.trim();
+  if (nombre.length < 1 || nombre.length > 80) {
+    return { ok: false, error: "El nombre debe tener entre 1 y 80 caracteres." };
+  }
+
+  const supabase = await client();
+  const { error } = await supabase
+    .from("household_members")
+    .update({ display_name: nombre, updated_at: new Date().toISOString() })
+    .eq("id", memberId);
+  if (error) return { ok: false, error: "No se pudo cambiar el nombre." };
+
+  revalidatePath(`/family/${memberId}`);
+  revalidatePath("/family");
+  revalidatePath("/recipes");
+  return { ok: true, message: `Ahora se llama ${nombre}.` };
 }

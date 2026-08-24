@@ -5,6 +5,7 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { createProductSchema, type CreateProductInput } from "@/domain/catalog/schemas";
 import { normalizeLabelToPer100 } from "@/domain/catalog/nutrition";
 import { NUTRIENT_KEYS, type NutritionValues } from "@/domain/catalog/types";
+import { DataAccessError } from "@/lib/supabase/unwrap";
 
 export interface CreateProductResult {
   ok: boolean;
@@ -31,13 +32,14 @@ export async function createProduct(input: CreateProductInput): Promise<CreatePr
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/catalog/product/new");
 
-  const { data: membership } = await supabase
+  const { data: membership, error: errorMembership } = await supabase
     .from("household_members")
     .select("id, household_id")
     .eq("user_id", user.id)
     .eq("is_active", true)
     .limit(1)
     .maybeSingle();
+  if (errorMembership) throw new DataAccessError("hogar del usuario", errorMembership);
   if (!membership) {
     return { ok: false, error: "Primero crea o únete a un hogar (pestaña Familia)." };
   }

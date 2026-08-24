@@ -198,44 +198,6 @@ export function MemberNutritionEditor({
           ))}
         </div>
 
-        {profile.cookingPreferences.length === 0 ? (
-          <p className="text-sm text-[var(--ink)]/60">Sin preferencias de cocción configuradas.</p>
-        ) : (
-          <ul className="space-y-1 text-sm">
-            {profile.cookingPreferences.map((pref, i) => (
-              <li key={i} className="flex justify-between text-[var(--ink)]/70">
-                <span>
-                  {pref.ingredientId
-                    ? "Un alimento en particular"
-                    : pref.categoryId
-                      ? "Una categoría"
-                      : "En general"}
-                </span>
-                <span className="text-xs">
-                  {pref.cookingMethod} · {pref.stance === "PREFERRED" ? "preferido" : pref.stance === "AVOID" ? "evitar" : "acepta"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* ---- Preferencias de alimentos ---- */}
-      <section className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4">
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--ink)]/60">
-          Preferencias
-        </h2>
-        {profile.preferences.length === 0 ? (
-          <p className="text-sm text-[var(--ink)]/60">Sin preferencias registradas.</p>
-        ) : (
-          <ul className="space-y-1 text-sm text-[var(--ink)]/70">
-            {profile.preferences.map((pref, i) => (
-              <li key={i}>
-                {pref.label ?? pref.targetId.slice(0, 8)} · {pref.preferenceType}
-              </li>
-            ))}
-          </ul>
-        )}
       </section>
 
       {message && (
@@ -352,7 +314,7 @@ function MealGoalForm({
               key={s}
               type="button"
               onClick={() => setForm({ ...form, saladPreference: s })}
-              className={`rounded-full px-3 py-1 text-xs ${
+              className={`rounded-full px-3 py-2 text-xs ${
                 form.saladPreference === s
                   ? "bg-[var(--accent)] text-white"
                   : "border border-[var(--ink)]/20 text-[var(--ink)]/70"

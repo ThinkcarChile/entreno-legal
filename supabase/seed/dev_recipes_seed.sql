@@ -116,7 +116,8 @@ end $$;
 create or replace function pg_temp.comp(
   p_slot uuid, p_ing text, p_basis public.weight_basis, p_qty numeric,
   p_method public.cooking_method default null, p_optional boolean default false,
-  p_order int default 1, p_yield numeric default null
+  p_order int default 1, p_yield numeric default null,
+  p_role public.component_role default 'MAIN'
 ) returns void language plpgsql as $$
 declare
   v_fact uuid;
@@ -131,12 +132,12 @@ begin
   insert into public.meal_slot_components
     (slot_id, ingredient_id, quantity, unit, weight_basis, nutrition_fact_id,
      cooking_method, is_optional, sort_order, yield_factor,
-     adjustability, min_quantity, max_quantity)
+     adjustability, min_quantity, max_quantity, role)
   values (p_slot, pg_temp.ing(p_ing), p_qty, coalesce(v_unit, 'G'), p_basis, v_fact,
           p_method, p_optional, p_order, p_yield,
           (case when p_optional then 'OPTIONAL' else 'ADJUSTABLE' end)::public.slot_adjustability,
           case when p_optional then 0 else round(p_qty * 0.6, 3) end,
-          round(p_qty * 1.6, 3));
+          round(p_qty * 1.6, 3), p_role);
 end $$;
 
 /** Componente que reutiliza otra receta (ensalada/postre) por VERSIÓN. */
@@ -223,8 +224,8 @@ begin
   perform pg_temp.comp(s, 'cebolla',  'RAW', 150, 'RAW', false, 2);
   perform pg_temp.comp(s, 'cilantro', 'RAW',  20, 'RAW', false, 3);
   s := pg_temp.slot(v_ensalada, 'FAT', 2, 'Aliño', false);
-  perform pg_temp.comp(s, 'aceite de oliva', 'AS_PACKAGED', 20, null, true, 1);
-  perform pg_temp.comp(s, 'limon', 'RAW', 50, 'RAW', true, 2);
+  perform pg_temp.comp(s, 'aceite de oliva', 'AS_PACKAGED', 20, null, true, 1, null, 'ADDED_FAT');
+  perform pg_temp.comp(s, 'limon', 'RAW', 50, 'RAW', true, 2, null, 'SEASONING');
   perform pg_temp.step(v_ensalada, 1, 'Cortar el tomate en gajos y la cebolla en pluma.', 10,
     null, 'FOOD_PROCESSOR', 'A cuchillo sobre tabla, en pluma fina.', 1);
   perform pg_temp.step(v_ensalada, 2, 'Lavar la cebolla en agua fría para quitarle el picor.', 3);
@@ -237,7 +238,7 @@ begin
   perform pg_temp.comp(s, 'lechuga',   'RAW', 300, 'RAW', false, 1);
   perform pg_temp.comp(s, 'zanahoria', 'RAW', 120, 'RAW', false, 2);
   s := pg_temp.slot(v_verde, 'FAT', 2, 'Aliño', false);
-  perform pg_temp.comp(s, 'aceite de oliva', 'AS_PACKAGED', 15, null, true, 1);
+  perform pg_temp.comp(s, 'aceite de oliva', 'AS_PACKAGED', 15, null, true, 1, null, 'ADDED_FAT');
   perform pg_temp.step(v_verde, 1, 'Lavar y cortar la lechuga; rallar la zanahoria.', 8);
   perform pg_temp.publish(v_verde);
 
@@ -269,7 +270,7 @@ begin
   s := pg_temp.slot(v_carne, 'SALAD', 3, 'Ensalada verde');
   perform pg_temp.comp_nested(s, v_verde, 435);
   s := pg_temp.slot(v_carne, 'FAT', 4, 'Para cocinar', false);
-  perform pg_temp.comp(s, 'aceite de oliva', 'AS_PACKAGED', 15, null, true, 1);
+  perform pg_temp.comp(s, 'aceite de oliva', 'AS_PACKAGED', 15, null, true, 1, null, 'ADDED_FAT');
   perform pg_temp.step(v_carne, 1, 'Cocer las papas con cáscara 20 minutos.', 20, null, null, null, 1);
   perform pg_temp.step(v_carne, 2, 'Sellar la carne a fuego fuerte, 4 minutos por lado.', 8, null, null, null, 1);
   perform pg_temp.step(v_carne, 3, 'Dejar reposar la carne 5 minutos antes de cortar.', 5);
@@ -285,7 +286,7 @@ begin
   s := pg_temp.slot(v_pescado, 'SALAD', 3, 'Ensalada verde');
   perform pg_temp.comp_nested(s, v_verde, 435);
   s := pg_temp.slot(v_pescado, 'FAT', 4, 'Aliño', false);
-  perform pg_temp.comp(s, 'limon', 'RAW', 60, 'RAW', true, 1);
+  perform pg_temp.comp(s, 'limon', 'RAW', 60, 'RAW', true, 1, null, 'SEASONING');
   perform pg_temp.step(v_pescado, 1, 'Hornear la merluza 15 minutos a 190 °C con limón.', 15, 190,
     'AIR_FRYER', 'En air fryer, 12 minutos a 180 °C.', 1);
   perform pg_temp.step(v_pescado, 2, 'Cocer el arroz mientras se hornea el pescado.', 15, null, null, null, 1);
@@ -301,7 +302,7 @@ begin
   perform pg_temp.comp(s, 'zanahoria', 'RAW', 250, 'STEWED', false, 2);
   perform pg_temp.comp(s, 'papa',      'RAW', 400, 'STEWED', false, 3);
   s := pg_temp.slot(v_lentejas, 'FAT', 3, 'Para el sofrito', false);
-  perform pg_temp.comp(s, 'aceite de oliva', 'AS_PACKAGED', 30, null, true, 1);
+  perform pg_temp.comp(s, 'aceite de oliva', 'AS_PACKAGED', 30, null, true, 1, null, 'ADDED_FAT');
   perform pg_temp.step(v_lentejas, 1, 'Sofreír cebolla y zanahoria hasta que estén blandas.', 10);
   perform pg_temp.step(v_lentejas, 2, 'Agregar las lentejas, la papa y agua; cocer 40 minutos.', 40);
   perform pg_temp.publish(v_lentejas);

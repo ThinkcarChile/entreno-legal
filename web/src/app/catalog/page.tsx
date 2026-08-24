@@ -4,6 +4,7 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { AppNav } from "@/components/AppNav";
 import { isValidBarcode, normalizeBarcode } from "@/domain/catalog/barcode";
 import { SOURCE_TYPE_LABELS, type SourceType } from "@/domain/catalog/types";
+import { DataAccessError } from "@/lib/supabase/unwrap";
 
 export const dynamic = "force-dynamic";
 
@@ -45,10 +46,11 @@ export default async function CatalogPage({ searchParams }: Props) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/catalog");
 
-  const { data: categories } = await supabase
+  const { data: categories, error: errorCategories } = await supabase
     .from("ingredient_categories")
     .select("id, name")
     .order("sort_order");
+  if (errorCategories) throw new DataAccessError("categorias del catalogo", errorCategories);
 
   const barcodeQuery = q !== "" && isValidBarcode(q) ? normalizeBarcode(q) : null;
 
@@ -64,7 +66,8 @@ export default async function CatalogPage({ searchParams }: Props) {
       .limit(50);
     if (q !== "") query = query.ilike("display_name", `%${q}%`);
     if (params.category) query = query.eq("category_id", params.category);
-    const { data } = await query;
+    const { data, error } = await query;
+    if (error) throw new DataAccessError("ingredientes del catalogo", error);
     ingredients = (data ?? []) as unknown as IngredientRow[];
   }
 
@@ -81,7 +84,8 @@ export default async function CatalogPage({ searchParams }: Props) {
       query = query.or(`name.ilike.%${q}%,brand.ilike.%${q}%`);
     }
     if (verifiedOnly) query = query.eq("verified", true);
-    const { data } = await query;
+    const { data, error } = await query;
+    if (error) throw new DataAccessError("productos del catalogo", error);
     products = (data ?? []) as unknown as ProductRow[];
   }
 

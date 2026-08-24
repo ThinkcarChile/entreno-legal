@@ -45,7 +45,7 @@ export default async function RecipesPage({ searchParams }: Props) {
     scope === "mine" ? !r.isGlobal : scope === "global" ? r.isGlobal : true,
   );
 
-  const chip = "rounded-full px-3 py-1 text-xs font-medium";
+  const chip = "rounded-full px-3 py-2 text-xs font-medium";
   const chipOn = `${chip} bg-[var(--accent)] text-white`;
   const chipOff = `${chip} border border-[var(--ink)]/20 text-[var(--ink)]/70`;
 
