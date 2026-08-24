@@ -5,8 +5,15 @@ import { useRouter } from "next/navigation";
 import { expiryInfo, fefoOrder, type PantryLot } from "@/domain/inventory/fefo";
 import { formatQuantity } from "@/domain/shopping/engine";
 import { formatDate } from "@/domain/nutrition/calendar";
-import type { PantryData, StorageLocation } from "./queries";
-import { addManualLot, adjustLot, discardLot, ensureLocations, moveLot } from "./actions";
+import type { PantryData, Shortfall, StorageLocation } from "./queries";
+import {
+  addManualLot,
+  adjustLot,
+  discardLot,
+  ensureLocations,
+  moveLot,
+  resolveShortfall,
+} from "./actions";
 
 /**
  * El tablero de la despensa: lotes por ubicación en orden FEFO, con el
@@ -32,11 +39,14 @@ export function PantryBoard({
   pantry,
   today,
   ingredientes,
+  desajustes,
 }: {
   pantry: PantryData;
   today: string;
   /** Para vincular el alta manual a un alimento del catálogo. */
   ingredientes: { id: string; name: string }[];
+  /** La comida declaró más de lo que la despensa tenía (hotfix Sprint 7). */
+  desajustes: Shortfall[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -87,6 +97,49 @@ export function PantryBoard({
         >
           {error}
         </p>
+      )}
+
+      {desajustes.length > 0 && (
+        <section className="rounded-2xl border border-red-200 bg-red-50 p-3">
+          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-red-900">
+            Desajustes de inventario
+          </h2>
+          <p className="mb-2 text-[11px] text-red-800">
+            Estas comidas consumieron más de lo que la despensa tenía registrado. El consumo
+            declarado no se tocó: decide tú qué pasó con la diferencia.
+          </p>
+          <ul className="space-y-2">
+            {desajustes.map((d) => (
+              <li key={d.id} className="rounded-xl bg-white/70 px-3 py-2 text-xs">
+                <p className="mb-1">
+                  <strong>{d.label}</strong>: faltaron {formatQuantity(d.quantity, d.unit)}
+                  {d.weightBasis === "COOKED" && " (cocido)"}
+                  {d.servingDate && (
+                    <span className="text-red-800/70"> · {formatDate(d.servingDate)}</span>
+                  )}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => run(() => resolveShortfall(d.id, "RESOLVED_ADJUSTMENT"))}
+                    className="rounded-full border border-red-300 px-3 py-1 disabled:opacity-50"
+                  >
+                    Ya ajusté el inventario
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => run(() => resolveShortfall(d.id, "ACCEPTED_UNTRACED"))}
+                    className="rounded-full border border-red-300 px-3 py-1 disabled:opacity-50"
+                  >
+                    Dejar como consumo no trazado
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {porVencer.length > 0 && (

@@ -452,12 +452,12 @@ describe("comimos lo planificado", () => {
       ),
     );
     const n = await h.como(USER_A, () =>
-      h.fila<{ consume_planned_meal: number }>(
+      h.fila<{ consume_planned_meal: { servings: number } }>(
         "select public.consume_planned_meal($1)",
         [almuerzoA],
       ),
     );
-    expect(Number(n!.consume_planned_meal)).toBe(1);
+    expect(n!.consume_planned_meal.servings).toBe(1);
 
     // Porción CONSUMED, registro único, y 180 g menos de pollo (había stock).
     const porcion = await h.como(USER_A, () =>
@@ -497,12 +497,12 @@ describe("comimos lo planificado", () => {
       ),
     );
     const n = await h.como(USER_A, () =>
-      h.fila<{ consume_planned_meal: number }>(
+      h.fila<{ consume_planned_meal: { servings: number } }>(
         "select public.consume_planned_meal($1)",
         [almuerzoA],
       ),
     );
-    expect(Number(n!.consume_planned_meal)).toBe(0);
+    expect(n!.consume_planned_meal.servings).toBe(0);
     const despues = await h.como(USER_A, () =>
       h.fila<{ total: string }>(
         "select sum(quantity) as total from public.inventory_lots where household_id = $1 and ingredient_id = $2",

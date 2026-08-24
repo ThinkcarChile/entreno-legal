@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-08-24
 **Alcance:** roadmap "Despensa e inventario" sobre el modelo congelado (K-11, K-18, K-19, K-22). Decisión de implementación en [ADR 0008](./adr/0008-inventario-por-lotes.md).
-**Verificación:** 315 pruebas verdes (7 dominio FEFO + 24 integración despensa sobre PostgreSQL real + las 284 previas), lint/typecheck/build limpios, revisión adversarial por workflow (ver §4).
+**Verificación:** 324 pruebas verdes (7 dominio FEFO + 24 integración despensa sobre PostgreSQL real + las 284 previas), lint/typecheck/build limpios, revisión adversarial por workflow (ver §4).
 
 ---
 
@@ -62,8 +62,19 @@ Workflow de 28 agentes en 4 lentes (libro mayor, falla silenciosa, seguridad, UX
 9. **FEFO cruzaba representaciones** — un lote cocido podía pagar demanda cruda. El descuento exige la misma base de peso.
 10. Más: FK + índice para `consumption_log_id`, validación de `source_assignment_id` contra el hogar, ubicaciones con lotes no se borran, mensajes de error que no delatan existencia de recursos ajenos, y mensajes de consumo honestos ("donde había stock", no "por vencimiento").
 
-## 5. Riesgos para el stock inteligente (roadmap 9)
+## 5. Hotfix final (cierre del sprint)
 
-1. El aprendizaje de consumo debe leer `consumption_logs` + movimientos CONSUMED — nunca inventar consumos iniciales (regla del baseline).
+**El consumo declarado y el inventario físico son dos fuentes distintas y ninguna falsifica a la otra** (`0012_consumption_shortfall.sql`):
+
+- Cuando la comida declara X y FEFO solo encuentra Y: se consumen los Y reales (jamás bajo cero), el consumo declarado **sigue siendo X** (las porciones congeladas no se tocan — es lo que leerá el pronóstico), y `shortfall = X − Y` queda **persistido** en `consumption_shortfalls` con alimento, unidad, base, comida, porción y fecha.
+- El desajuste se **muestra** en la Despensa y la persona lo resuelve: "Ya ajusté el inventario" o "Dejar como consumo no trazado" — sellado por la base con quién y cuándo.
+- **Regresión explícita del director en verde**: demanda 1.155 g, stock 1.120 g → lotes consumidos 1.120 + shortfall 35 = consumo 1.155.
+- **Bases físicas al consumir**: FEFO solo toca lotes de la MISMA representación. La única conversión permitida es EXPLÍCITA — demanda cocida contra lotes crudos con rendimiento conocido (280 g de arroz cocido ÷ 2,8 = 100 g crudos descontados, con la conversión anotada en el movimiento). Sin rendimiento, el lote crudo queda intacto y todo es shortfall: **UNKNOWN nunca equivale a 1:1**. Un lote en unidades jamás paga demanda en gramos.
+
+9 regresiones nuevas de integración (324 pruebas en total del proyecto).
+
+## 6. Riesgos para el stock inteligente (roadmap 9)
+
+1. El aprendizaje de consumo debe leer el consumo DECLARADO (porciones + `consumption_shortfalls`), no solo los movimientos: los Y descontados subestiman lo que la familia realmente come. Nunca inventar consumos iniciales (regla del baseline).
 2. Cuando lleguen las reservas, `AVAILABLE` del hint de compra debe pasar a "no reservado": hoy son lo mismo.
 3. El hint "en casa" compara por representación exacta; con conversiones de unidad (§7 del catálogo) habrá que decidir qué mostrar sin mentir.

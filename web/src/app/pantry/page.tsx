@@ -4,7 +4,7 @@ import { AppNav } from "@/components/AppNav";
 import { effectiveDate } from "@/domain/nutrition/calendar";
 import { loadHouseholdMembers } from "@/app/family/nutrition-queries";
 import { DataAccessError } from "@/lib/supabase/unwrap";
-import { loadIngredientOptions, loadPantry } from "./queries";
+import { loadIngredientOptions, loadOpenShortfalls, loadPantry } from "./queries";
 import { PantryBoard } from "./PantryBoard";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +43,7 @@ export default async function PantryPage() {
 
   const pantry = await loadPantry(supabase, householdId);
   const ingredientes = await loadIngredientOptions(supabase, householdId);
+  const desajustes = await loadOpenShortfalls(supabase, householdId);
 
   return (
     <main className="mx-auto max-w-3xl px-4 pb-16">
@@ -56,7 +57,7 @@ export default async function PantryPage() {
         </p>
       </header>
 
-      <PantryBoard pantry={pantry} today={hoy} ingredientes={ingredientes} />
+      <PantryBoard pantry={pantry} today={hoy} ingredientes={ingredientes} desajustes={desajustes} />
     </main>
   );
 }

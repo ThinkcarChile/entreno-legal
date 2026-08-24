@@ -158,3 +158,45 @@ export async function loadIngredientOptions(
     "alimentos del catálogo",
   ).map((i) => ({ id: i.id, name: i.display_name }));
 }
+
+export interface Shortfall {
+  id: string;
+  label: string;
+  quantity: number;
+  unit: "G" | "ML" | "UNIT";
+  weightBasis: string;
+  servingDate: string | null;
+  createdAt: string;
+}
+
+/** Desajustes ABIERTOS: la comida declaró más de lo que la despensa tenía. */
+export async function loadOpenShortfalls(db: Db, householdId: string): Promise<Shortfall[]> {
+  const { data, error } = await db
+    .from("consumption_shortfalls")
+    .select("id, label, quantity, unit, weight_basis, serving_date, created_at")
+    .eq("household_id", householdId)
+    .eq("status", "OPEN")
+    .order("created_at", { ascending: false });
+  if (error) throw new DataAccessError("desajustes de inventario", error);
+  return parseRows(
+    z.object({
+      id: uuid,
+      label: z.string(),
+      quantity: numeric,
+      unit: z.enum(["G", "ML", "UNIT"]),
+      weight_basis: weightBasisSchema,
+      serving_date: dateString.nullable(),
+      created_at: z.string(),
+    }),
+    data,
+    "desajustes de inventario",
+  ).map((f) => ({
+    id: f.id,
+    label: f.label,
+    quantity: f.quantity,
+    unit: f.unit,
+    weightBasis: f.weight_basis,
+    servingDate: f.serving_date,
+    createdAt: f.created_at,
+  }));
+}

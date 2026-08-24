@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { z } from "zod";
 import { loadHouseholdMembers } from "@/app/family/nutrition-queries";
 
 export interface ActionResult {
@@ -49,7 +50,11 @@ export async function receiveShoppingList(listId: string): Promise<ActionResult>
   };
 }
 
-/** "Comimos lo planificado": porciones a CONSUMED + descuento FEFO. */
+/**
+ * "Comimos lo planificado": porciones a CONSUMED + descuento FEFO. Si la
+ * despensa tenía menos de lo declarado, el desajuste queda persistido y se
+ * dice de inmediato — el consumo declarado jamás se reduce.
+ */
 export async function consumePlannedMeal(assignmentId: string): Promise<ActionResult> {
   const supabase = await client();
   const { data, error } = await supabase.rpc("consume_planned_meal", {
@@ -57,14 +62,54 @@ export async function consumePlannedMeal(assignmentId: string): Promise<ActionRe
   });
   if (error) return { ok: false, error: `No se pudo registrar el consumo: ${error.message}` };
 
+  const parsed = z
+    .object({
+      servings: z.number(),
+      shortfalls: z.array(
+        z.object({ label: z.string(), quantity: z.number(), unit: z.string() }),
+      ),
+    })
+    .safeParse(data);
+  if (!parsed.success) {
+    return { ok: false, error: "El registro de consumo devolvió una forma inesperada." };
+  }
+  const { servings, shortfalls } = parsed.data;
+
   refrescar();
-  const n = Number(data);
+  if (servings === 0) {
+    return { ok: true, message: "No había porciones pendientes de registrar en esta comida." };
+  }
+  const base = `Registrado: ${servings} ${servings === 1 ? "porción comida" : "porciones comidas"}.`;
+  if (shortfalls.length === 0) {
+    return { ok: true, message: `${base} La despensa se descontó completa.` };
+  }
+  const detalle = shortfalls
+    .map((s) => `${s.label} (${s.quantity} ${s.unit === "G" ? "g" : s.unit === "ML" ? "ml" : "u"})`)
+    .join(", ");
+  return {
+    ok: true,
+    message: `${base} Ojo: la despensa no tenía todo — faltó ${detalle}. El desajuste quedó anotado en Despensa.`,
+  };
+}
+
+/** Cerrar un desajuste: ajusté el inventario, o lo acepto como no trazado. */
+export async function resolveShortfall(
+  shortfallId: string,
+  resolution: "RESOLVED_ADJUSTMENT" | "ACCEPTED_UNTRACED",
+): Promise<ActionResult> {
+  const supabase = await client();
+  const { error } = await supabase.rpc("resolve_shortfall", {
+    p_shortfall_id: shortfallId,
+    p_resolution: resolution,
+  });
+  if (error) return { ok: false, error: `No se pudo resolver: ${error.message}` };
+  refrescar();
   return {
     ok: true,
     message:
-      n === 0
-        ? "No había porciones pendientes de registrar en esta comida."
-        : `Registrado: ${n} ${n === 1 ? "porción comida" : "porciones comidas"}. La despensa se descontó donde había stock.`,
+      resolution === "ACCEPTED_UNTRACED"
+        ? "Quedó como consumo no trazado."
+        : "Desajuste resuelto con ajuste de inventario.",
   };
 }
 
