@@ -1,6 +1,6 @@
 # SPRINT 0 — Arquitectura de la Plataforma Familiar Inteligente de Alimentación
 
-> Estado: **Sprint 0 conceptualmente aprobado · Addendum 0.1 PARA REVISIÓN DEL DIRECTOR**
+> Estado: **Sprint 0 y 0.1 conceptualmente aprobados · Addendum 0.2 (final) PARA REVISIÓN DEL DIRECTOR** — con su aprobación se congela la arquitectura principal y comienza el Sprint 1
 > Fecha: 2026-08-24 (0.1: mismo día)
 > Fuente de verdad funcional: el **Prompt Maestro** (documento maestro entregado por el director del proyecto) + la ampliación Sprint 0.1. Este Sprint 0 lo convierte en arquitectura ejecutable; no elimina ninguna funcionalidad del diseño.
 >
@@ -24,6 +24,7 @@ Este directorio contiene el entregable completo del Sprint 0. No incluye código
 | J | [J-risks.md](./J-risks.md) | Los 10 riesgos principales |
 | K | [K-decisions.md](./K-decisions.md) | Decisiones que deben tomarse ahora |
 | 0.1 | [12-addendum.md](./12-addendum.md) | **Addendum Sprint 0.1**: finanzas, boletas, desperdicio, pronóstico, procurement, prep & storage, equipamiento, etiquetas/QR, ClinicalImpactReview, revisión del modelo |
+| 0.2 | [13-addendum-0.2.md](./13-addendum-0.2.md) | **Addendum Sprint 0.2 (final)**: tracking opcional, productos custom/barcode, consumo real, peso/TDEE observado, pasos y entrenamientos, entrada NL, hard vs soft constraints, versionado de recetas, yields crudo→cocido; correcciones a estados de lote, costo en split/merge, moneda/timezone e idempotencia del outbox |
 
 ## Principios rectores (resumen del Prompt Maestro)
 

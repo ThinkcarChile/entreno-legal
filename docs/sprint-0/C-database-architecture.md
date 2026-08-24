@@ -21,7 +21,7 @@ Esquema relacional inicial para PostgreSQL (Supabase). **Este documento es para 
 
 ### `households`
 - **Propósito**: la familia; raíz de aislamiento.
-- **Campos**: `id`, `name`, `locale` (default `es-CL`), `timezone`, `created_at`.
+- **Campos**: `id`, `name`, `locale` (default `es-CL`), `timezone` (0.2: define el corte de día de planes, vencimientos y períodos financieros), `currency char(3)` (0.2, default `CLP` — moneda única de todos los montos del hogar), `created_at`.
 - **Relaciones**: 1—N con casi todo.
 
 ### `household_members`

@@ -35,9 +35,9 @@ Cada cosa concreta que existe en la casa es un lote:
 - `id` (identificador opaco — es lo que va en el QR), `household_id`
 - `ingredient_id | product_id` y `origin`: `purchase_item_id null` | `parent_lot_id null` | `source_assignment_id null` (cocción/sobras)
 - `quantity_canonical` + `unit`, `weight_basis` (RAW/COOKED/…)
-- `state`: `RAW | PREPPED | COOKED | FROZEN | THAWED`
+- `state`: `RAW | PREPPED | COOKED | FROZEN | THAWED` — **⚠️ corregido en 0.2**: se separa en `processing_state` (RAW/PREPPED/COOKED) × `temperature_state` (AMBIENT/CHILLED/FROZEN) + `thawed_at` (ver [Addendum 0.2 §1.1](./13-addendum-0.2.md)); un lote puede ser COOKED + FROZEN
 - `location_id` (→ `storage_locations`), `vacuum_sealed boolean`
-- `unit_cost null` (heredado del purchase_item; se propaga en splits/transformaciones — base del costeo, §3)
+- `unit_cost null` (heredado del purchase_item; se propaga en splits/transformaciones — base del costeo, §3) — **precisado en 0.2**: el campo canónico es `acquisition_value` (valor total del lote); `unit_cost` es derivado, y en SPLIT/MERGE se conserva el **valor**, no el precio unitario ([0.2 §1.2](./13-addendum-0.2.md))
 - `expiry_date null` / `use_by null` (calculada por el FoodStorageSafetyEngine al cambiar de estado)
 - **Uso previsto** (opcional): `planned_assignment_id`, `planned_use_date`, `planned_cooking_method`, `planned_member_id null`
 - `prep_metadata` (método de corte/disco usado, instrucciones breves — para la etiqueta)
