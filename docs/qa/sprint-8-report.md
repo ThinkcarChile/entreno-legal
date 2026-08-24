@@ -23,7 +23,7 @@
 3. **Consultas de porciones sin filtro de hogar** (lente D) — una persona en DOS hogares mezclaba consumos y reservas de ambos en el forecast. Las proyecciones ahora se filtran por los integrantes del hogar analizado.
 4. **Shortfall en base declarada restado de totales en otra base** (lente H) — un shortfall COCIDO se restaba 1:1 de un total CRUDO. Se convierte con la misma regla que todo (rendimiento explícito) o degrada aparte, jamás se mezcla ni desaparece.
 5. **El objetivo ignoraba su unidad** (lente H) — un mínimo declarado en UNIDADES se comparaba contra gramos. El target aplica solo cuando su unidad calza con el bucket.
-6. **Prioridad de rendimientos indefinida** (lente B) — con factor global Y del hogar para el mismo alimento, ganaba el orden de llegada. Ahora: hogar+método > global+método > hogar genérico > global genérico, consistente con el RPC de consumo.
+6. **Prioridad de rendimientos indefinida** (lente B) — con factor global Y del hogar para el mismo alimento, ganaba el orden de llegada. La segunda pasada afinó la regla final (ver #18): hogar domina, método desempata.
 7. **Fechas futuras colándose en las ventanas de 30 días** (lente G) — mermas/compras con fecha futura contaban como historia. Guarda `edad >= 0`.
 8. **Fechas de merma/compra en día UTC** (lente G) — a las 22:30 de Santiago un descarte caía en "mañana". El cargador convierte `created_at` al día del hogar con su zona horaria.
 9. **Costo de merma como suma parcial** (lente F) — mitad de las mermas con costo y mitad sin, presentado junto a la cantidad total: un número que miente. §26 aplicado en serio: el costo se muestra solo cuando se puede calcular ENTERO.
@@ -44,4 +44,4 @@
 
 ## Regresiones agregadas
 
-8 pruebas nuevas de dominio (38 en el módulo stock) cubriendo cada corrección: buckets por base, tasa mínima de observaciones, target por unidad, prioridad de yields, fechas futuras, costo entero-o-null, shortfall inconvertible. Total del proyecto: **373 verdes**, lint/typecheck/build limpios.
+Regresión por cada corrección: buckets por base, tasa mínima de observaciones, target por unidad, prioridad de yields, fechas futuras, costo entero-o-null, shortfall inconvertible, forecast desde mañana, y la integración del lote vencido (intacto + shortfall exacto). Total del proyecto: **376 verdes**, lint/typecheck/build limpios.
