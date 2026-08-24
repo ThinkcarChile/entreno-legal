@@ -7,6 +7,17 @@ import {
   type MealNutrition,
 } from "@/domain/recipes/nutrition";
 import { DataAccessError } from "@/lib/supabase/unwrap";
+import {
+  basisUnit,
+  nullableNumeric,
+  numeric,
+  nutrientColumns,
+  parseRows,
+  sourceType as sourceTypeSchema,
+  uuid,
+  weightBasis,
+} from "@/lib/supabase/rows";
+import { z } from "zod";
 import type {
   CookingMethod,
   MealType,
@@ -72,28 +83,48 @@ export interface RecipeDetail {
   versions: { id: string; versionNumber: number; status: TemplateStatus }[];
 }
 
-interface FactRow {
-  id: string;
-  weight_basis: string;
-  basis_unit: string;
-  source_type: string;
-  source_name: string;
-  verified: boolean;
-  [key: string]: unknown;
-}
+/** Embeds concretos: se aceptan objeto o arreglo y se normaliza a "uno o ninguno". */
+const ingredienteEmbebido = z.object({ display_name: z.string(), category_id: uuid.nullable() });
+const oneIngrediente = z
+  .union([ingredienteEmbebido, z.array(ingredienteEmbebido), z.null()])
+  .transform((v) => (Array.isArray(v) ? (v[0] ?? null) : v));
+
+const productoEmbebido = z.object({ name: z.string(), brand: z.string().nullable() });
+const oneProducto = z
+  .union([productoEmbebido, z.array(productoEmbebido), z.null()])
+  .transform((v) => (Array.isArray(v) ? (v[0] ?? null) : v));
+
+const soloNombre = z.object({ display_name: z.string() });
+const oneNombre = z
+  .union([soloNombre, z.array(soloNombre), z.null()])
+  .transform((v) => (Array.isArray(v) ? (v[0] ?? null) : v));
+
+/** Ficha nutricional tal como la devuelve la base. */
+const factRowSchema = nutrientColumns.extend({
+  id: uuid,
+  weight_basis: weightBasis,
+  basis_unit: basisUnit,
+  source_type: sourceTypeSchema.nullable().optional(),
+  source_name: z.string().nullable().optional(),
+  verified: z.boolean().nullable().optional(),
+});
+type FactRow = z.infer<typeof factRowSchema>;
+
+const oneFicha = z
+  .union([factRowSchema, z.array(factRowSchema), z.null()])
+  .transform((v) => (Array.isArray(v) ? (v[0] ?? null) : v));
+
+const manyFichas = z
+  .union([z.array(factRowSchema), factRowSchema, z.null()])
+  .transform((v) => (v === null ? [] : Array.isArray(v) ? v : [v]));
 
 function factFromRow(row: FactRow | null): NutritionFact | null {
   if (!row) return null;
   const values: NutritionValues = {};
   for (const key of NUTRIENT_KEYS) {
-    const raw = row[key];
-    values[key] = raw === null || raw === undefined ? null : Number(raw);
+    values[key] = row[key] ?? null;
   }
-  return {
-    values,
-    weightBasis: row.weight_basis as NutritionFact["weightBasis"],
-    basisUnit: row.basis_unit as NutritionFact["basisUnit"],
-  };
+  return { values, weightBasis: row.weight_basis, basisUnit: row.basis_unit };
 }
 
 function factFromFrozen(frozen: unknown): NutritionFact | null {
@@ -130,29 +161,40 @@ const COMPONENT_SELECT = `
   )
 `;
 
-interface ComponentRow {
-  id: string;
-  slot_id: string;
-  ingredient_id: string | null;
-  product_id: string | null;
-  nested_version_id: string | null;
-  quantity: number;
-  unit: string;
-  weight_basis: string;
-  cooking_method: string | null;
-  yield_factor: number | null;
-  is_optional: boolean;
-  sort_order: number;
-  adjustability: "FIXED" | "ADJUSTABLE" | "OPTIONAL";
-  role: "MAIN" | "ADDED_FAT" | "SEASONING" | null;
-  min_quantity: number | null;
-  max_quantity: number | null;
-  frozen_nutrition: unknown;
-  frozen_source: { source_type?: string; source_name?: string; verified?: boolean } | null;
-  ingredients: { display_name: string; category_id: string | null } | null;
-  commercial_products: { name: string; brand: string | null } | null;
-  nutrition_facts: FactRow | null;
-}
+/**
+ * Componente de una receta. Se valida en el borde: si la base cambia de forma,
+ * esto grita en vez de producir un objeto de dominio a medio armar.
+ */
+export const componentRowSchema = z.object({
+  id: uuid,
+  slot_id: uuid,
+  ingredient_id: uuid.nullable(),
+  product_id: uuid.nullable(),
+  nested_version_id: uuid.nullable(),
+  quantity: numeric,
+  unit: basisUnit,
+  weight_basis: weightBasis,
+  cooking_method: z.string().nullable(),
+  yield_factor: nullableNumeric,
+  is_optional: z.boolean(),
+  sort_order: z.number().int(),
+  adjustability: z.enum(["FIXED", "ADJUSTABLE", "OPTIONAL"]).nullable(),
+  role: z.enum(["MAIN", "ADDED_FAT", "SEASONING"]).nullable(),
+  min_quantity: nullableNumeric,
+  max_quantity: nullableNumeric,
+  frozen_nutrition: z.unknown().nullable(),
+  frozen_source: z
+    .object({
+      source_type: z.string().optional(),
+      source_name: z.string().optional(),
+      verified: z.boolean().optional(),
+    })
+    .nullable(),
+  ingredients: oneIngrediente,
+  commercial_products: oneProducto,
+  nutrition_facts: oneFicha,
+});
+type ComponentRow = z.infer<typeof componentRowSchema>;
 
 function componentLabel(row: ComponentRow): string {
   if (row.ingredients) return row.ingredients.display_name;
@@ -166,7 +208,7 @@ function componentLabel(row: ComponentRow): string {
 /** Componente + de dónde salió su nutrición, para no perder la procedencia. */
 type LoadedComponent = RecipeComponent & { source: RecipeSource | null };
 
-function toComponent(row: ComponentRow, slotType: SlotType): LoadedComponent {
+export function toComponent(row: ComponentRow, slotType: SlotType): LoadedComponent {
   const frozen = factFromFrozen(row.frozen_nutrition);
   const frozenSource = row.frozen_source;
   const liveSource = row.nutrition_facts;
@@ -235,7 +277,7 @@ async function expandNested(
   if (!rows?.length) return [];
 
   const slotTypeById = new Map(slots.map((s) => [s.id, s.slot_type as SlotType]));
-  const inner = (rows as unknown as ComponentRow[]).map((row) =>
+  const inner = parseRows(componentRowSchema, rows, "componentes de la receta anidada").map((row) =>
     toComponent(row, slotTypeById.get(row.slot_id) ?? "OTHER"),
   );
 
@@ -374,7 +416,7 @@ export async function loadRecipeDetail(
       .order("sort_order");
     if (err1ComponentRows) throw new DataAccessError("componentes de la receta", err1ComponentRows);
 
-    for (const row of (componentRows ?? []) as unknown as ComponentRow[]) {
+    for (const row of parseRows(componentRowSchema, componentRows, "componentes de la receta")) {
       const component = toComponent(row, slotTypeById.get(row.slot_id) ?? "OTHER");
       if (row.nested_version_id) {
         components.push(...(await expandNested(db, component, row.nested_version_id)));
@@ -393,12 +435,22 @@ export async function loadRecipeDetail(
       .in("slot_id", slotIds);
     if (err1AltRows) throw new DataAccessError("alternativas de la receta", err1AltRows);
 
-    alternatives = (altRows ?? []).map((row) => {
-      const ingredient = row.ingredients as unknown as { display_name: string } | null;
-      const product = row.commercial_products as unknown as {
-        name: string;
-        brand: string | null;
-      } | null;
+    const alternativeRowSchema = z.object({
+      id: uuid,
+      slot_id: uuid,
+      ingredient_id: uuid.nullable(),
+      product_id: uuid.nullable(),
+      nested_version_id: uuid.nullable(),
+      culinary_compatibility: z.enum(["EXCELLENT", "GOOD", "ACCEPTABLE"]),
+      quantity_equivalence: nullableNumeric,
+      notes: z.string().nullable(),
+      ingredients: oneNombre,
+      commercial_products: oneProducto,
+    });
+
+    alternatives = parseRows(alternativeRowSchema, altRows, "alternativas de la receta").map((row) => {
+      const ingredient = row.ingredients;
+      const product = row.commercial_products;
       return {
         id: row.id,
         slotId: row.slot_id,
@@ -524,10 +576,16 @@ export async function loadIngredientOptions(db: Db): Promise<IngredientOption[]>
     .order("display_name");
   if (err1Data) throw new DataAccessError("alimentos del catalogo", err1Data);
 
-  return (data ?? []).map((row) => ({
+  const optionRowSchema = z.object({
+    id: uuid,
+    display_name: z.string(),
+    nutrition_facts: manyFichas,
+  });
+
+  return parseRows(optionRowSchema, data, "alimentos del catálogo").map((row) => ({
     id: row.id,
     name: row.display_name,
-    facts: ((row.nutrition_facts ?? []) as unknown as FactRow[]).map((fact) => {
+    facts: row.nutrition_facts.map((fact) => {
       const parsed = factFromRow(fact)!;
       return {
         id: fact.id,

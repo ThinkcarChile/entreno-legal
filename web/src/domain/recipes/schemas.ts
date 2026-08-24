@@ -20,6 +20,8 @@ export const componentDraftSchema = z
     weightBasis: z.enum(["RAW", "COOKED", "DRAINED", "EDIBLE_PORTION", "AS_PACKAGED"]),
     nutritionFactId: uuid.optional().nullable(),
     cookingMethod: z.enum(COOKING_METHODS).optional().nullable(),
+    /** Rol culinario declarado (ADR 0004). Ver `component_role` en la base. */
+    role: z.enum(["MAIN", "ADDED_FAT", "SEASONING"]).default("MAIN"),
     yieldFactor: z.number().positive().max(2).optional().nullable(),
     isOptional: z.boolean().default(false),
   })

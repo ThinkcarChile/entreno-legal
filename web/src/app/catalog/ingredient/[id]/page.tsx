@@ -4,13 +4,21 @@ import { AppNav } from "@/components/AppNav";
 import { QuantityCalculator } from "@/components/QuantityCalculator";
 import { DataAccessError } from "@/lib/supabase/unwrap";
 import {
+  basisUnit,
+  nutrientColumns,
+  parseRow,
+  parseRows,
+  sourceType as sourceTypeSchema,
+  uuid,
+  weightBasis,
+} from "@/lib/supabase/rows";
+import { z } from "zod";
+import {
   NUTRIENT_KEYS,
   SOURCE_TYPE_LABELS,
   WEIGHT_BASIS_LABELS,
   type BasisUnit,
   type NutritionValues,
-  type SourceType,
-  type WeightBasis,
 } from "@/domain/catalog/types";
 
 export const dynamic = "force-dynamic";
@@ -20,15 +28,20 @@ interface Props {
   searchParams: Promise<{ basis?: string }>;
 }
 
-interface FactRow {
-  id: string;
-  weight_basis: WeightBasis;
-  basis_unit: BasisUnit;
-  source_type: SourceType;
-  source_name: string;
-  verified: boolean;
-  [key: string]: unknown;
-}
+const factRowSchema = nutrientColumns.extend({
+  id: uuid,
+  weight_basis: weightBasis,
+  basis_unit: basisUnit,
+  source_type: sourceTypeSchema,
+  source_name: z.string(),
+  verified: z.boolean(),
+});
+type FactRow = z.infer<typeof factRowSchema>;
+
+const categoriaEmbebida = z.object({ name: z.string() });
+const oneCategoria = z
+  .union([categoriaEmbebida, z.array(categoriaEmbebida), z.null()])
+  .transform((v) => (Array.isArray(v) ? (v[0] ?? null) : v));
 
 function factValues(row: FactRow): NutritionValues {
   const values: NutritionValues = {};
@@ -61,7 +74,7 @@ export default async function IngredientPage({ params, searchParams }: Props) {
     .select("*")
     .eq("ingredient_id", id);
   if (errorFactsData) throw new DataAccessError("fichas nutricionales del ingrediente", errorFactsData);
-  const facts = (factsData ?? []) as unknown as FactRow[];
+  const facts = parseRows(factRowSchema, factsData, "fichas del ingrediente");
   if (facts.length === 0) notFound();
 
   const selected = facts.find((f) => f.weight_basis === basis) ?? facts[0]!;
@@ -77,7 +90,11 @@ export default async function IngredientPage({ params, searchParams }: Props) {
     unit: m.unit as BasisUnit,
   }));
 
-  const category = (ingredient.ingredient_categories as unknown as { name: string } | null)?.name;
+  const category = parseRow(
+    z.object({ ingredient_categories: oneCategoria }),
+    ingredient,
+    "categoría del ingrediente",
+  ).ingredient_categories?.name;
 
   return (
     <main className="pt-2">

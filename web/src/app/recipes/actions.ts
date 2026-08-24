@@ -107,6 +107,7 @@ export async function saveDraft(
         cooking_method: component.cookingMethod ?? null,
         yield_factor: component.yieldFactor ?? null,
         is_optional: component.isOptional,
+        role: component.role ?? "MAIN",
         sort_order: index + 1,
       })),
       alternatives: slot.alternatives.map((alternative) => ({

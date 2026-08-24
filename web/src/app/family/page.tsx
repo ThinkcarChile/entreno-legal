@@ -3,6 +3,8 @@ import { DemoFamilyButton } from "./DemoFamilyButton";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { DataAccessError } from "@/lib/supabase/unwrap";
+import { parseRow, parseRows, uuid } from "@/lib/supabase/rows";
+import { z } from "zod";
 import { signOut } from "@/app/login/actions";
 import { AppNav } from "@/components/AppNav";
 import { createHousehold, createInvitation } from "./actions";
@@ -13,13 +15,28 @@ interface Props {
   searchParams: Promise<{ error?: string; invite?: string }>;
 }
 
-interface MemberRow {
-  id: string;
-  display_name: string;
-  user_id: string | null;
-  is_active: boolean;
-  member_role_assignments: { household_roles: { code: string; name: string } | null }[];
-}
+const rolEmbebido = z.object({ code: z.string(), name: z.string() });
+const oneRol = z
+  .union([rolEmbebido, z.array(rolEmbebido), z.null()])
+  .transform((v) => (Array.isArray(v) ? (v[0] ?? null) : v));
+
+const asignacion = z.object({ household_roles: oneRol });
+const manyAsignaciones = z
+  .union([z.array(asignacion), asignacion, z.null()])
+  .transform((v) => (v === null ? [] : Array.isArray(v) ? v : [v]));
+
+const memberRowSchema = z.object({
+  id: uuid,
+  display_name: z.string(),
+  user_id: uuid.nullable(),
+  is_active: z.boolean(),
+  member_role_assignments: manyAsignaciones,
+});
+
+const hogarEmbebido = z.object({ name: z.string() });
+const oneHogar = z
+  .union([hogarEmbebido, z.array(hogarEmbebido), z.null()])
+  .transform((v) => (Array.isArray(v) ? (v[0] ?? null) : v));
 
 export default async function FamilyPage({ searchParams }: Props) {
   const { error, invite } = await searchParams;
@@ -80,7 +97,8 @@ export default async function FamilyPage({ searchParams }: Props) {
   }
 
   const householdName =
-    (membership.households as unknown as { name: string } | null)?.name ?? "Mi hogar";
+    parseRow(z.object({ households: oneHogar }), membership, "hogar").households?.name ??
+    "Mi hogar";
 
   const { data: members, error: membersError } = await supabase
     .from("household_members")
@@ -110,7 +128,7 @@ export default async function FamilyPage({ searchParams }: Props) {
       {invite ? <InviteLink token={invite} /> : null}
 
       <ul className="mt-6 flex flex-col gap-2">
-        {((members ?? []) as unknown as MemberRow[]).map((m) => (
+        {parseRows(memberRowSchema, members, "integrantes del hogar").map((m) => (
           <li key={m.id} className="rounded-xl border border-gray-200 bg-white px-4 py-3">
             <div className="flex items-center justify-between">
               <Link href={`/family/${m.id}`} className="font-semibold text-[var(--accent)]">

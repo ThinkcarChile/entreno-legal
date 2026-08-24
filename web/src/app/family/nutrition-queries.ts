@@ -1,15 +1,73 @@
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { buildProfile, type ProfileInputs } from "@/domain/nutrition/profile";
 import type {
-  AddedFatStance,
   CookingPreference,
   MealPattern,
   MemberNutritionProfile,
   MemberPreference,
-  TrackingMode,
 } from "@/domain/nutrition/types";
 import type { MealType } from "@/domain/recipes/types";
 import { DataAccessError } from "@/lib/supabase/unwrap";
+import { nullableNumeric, parseMaybeRow, parseRows, uuid } from "@/lib/supabase/rows";
+import { z } from "zod";
+
+/**
+ * Schemas del perfil. Este es exactamente el módulo donde un `as unknown as`
+ * hizo que el optimizador ignorara todas las preferencias: la base devuelve
+ * snake_case, el dominio lee camelCase, y el casteo no se quejó nunca.
+ */
+const trackingSchema = z.object({ mode: z.enum(["OFF", "BASIC", "FULL"]) });
+
+const goalRowSchema = z.object({
+  goal_type: z.enum(["ENERGY_KCAL", "PROTEIN_G", "CARBOHYDRATE_G", "FAT_G", "FIBER_G"]),
+  scope: z.enum(["DAILY", "PER_MEAL"]),
+  meal_type: z.string().nullable(),
+  minimum: nullableNumeric,
+  preferred: nullableNumeric,
+  maximum: nullableNumeric,
+  priority: z.number().int(),
+});
+
+const patternSlotSchema = z.object({
+  meal_type: z.string(),
+  availability: z.enum(["ENABLED", "DISABLED", "OPTIONAL"]),
+  is_first_meal: z.boolean(),
+  salad_preference: z.enum(["PREFERRED", "NEUTRAL", "AVOID"]),
+  priority: z.number().int(),
+  sort_order: z.number().int(),
+});
+
+const manySlots = z
+  .union([z.array(patternSlotSchema), patternSlotSchema, z.null()])
+  .transform((v) => (v === null ? [] : Array.isArray(v) ? v : [v]));
+
+const patternSchema = z.object({
+  uses_fasting_pattern: z.boolean(),
+  first_meal_type: z.string().nullable(),
+  feeding_window_start: z.string().nullable(),
+  feeding_window_end: z.string().nullable(),
+  meal_pattern_slots: manySlots,
+});
+
+const preferenceRowSchema = z.object({
+  preference_type: z.enum([
+    "FAVORITE", "LIKE", "NEUTRAL", "DISLIKE", "AVOID",
+    "INTOLERANCE", "ALLERGY", "MEDICAL_RESTRICTION",
+  ]),
+  target_kind: z.enum(["INGREDIENT", "CATEGORY", "MEAL_TEMPLATE", "PRODUCT"]),
+  target_id: uuid,
+});
+
+const cookingRowSchema = z.object({
+  ingredient_id: uuid.nullable(),
+  category_id: uuid.nullable(),
+  cooking_method: z.string(),
+  stance: z.enum(["PREFERRED", "ACCEPTED", "AVOID"]),
+});
+
+const fatSchema = z.object({ stance: z.enum(["AVOID", "ALLOWED", "PREFERRED"]) });
+
+const snapshotSchema = z.object({ id: uuid, version: z.number().int() });
 
 type Db = SupabaseClient;
 
@@ -77,24 +135,53 @@ export async function loadMemberProfile(
     if (resultado.error) throw new DataAccessError(`${contexto} de ${memberName}`, resultado.error);
   }
 
-  const slots = (pattern.data?.meal_pattern_slots ?? []) as {
-    meal_type: MealType;
-    availability: "ENABLED" | "DISABLED" | "OPTIONAL";
-    is_first_meal: boolean;
-    salad_preference: "PREFERRED" | "NEUTRAL" | "AVOID";
-    priority: number;
-    sort_order: number;
-  }[];
+  return profileFromRows(
+    {
+      tracking: tracking.data,
+      goals: goals.data,
+      pattern: pattern.data,
+      preferences: preferences.data,
+      cooking: cooking.data,
+      fat: fat.data,
+      snapshot: snapshot.data,
+    },
+    memberId,
+    memberName,
+  );
+}
+
+/** Filas crudas tal como las devuelve la base, sin interpretar. */
+export interface ProfileRows {
+  tracking: unknown;
+  goals: unknown;
+  pattern: unknown;
+  preferences: unknown;
+  cooking: unknown;
+  fat: unknown;
+  snapshot: unknown;
+}
+
+/**
+ * Construye el perfil a partir de filas crudas. Es una función PURA a propósito:
+ * es la costura exacta donde vivía el bug crítico del Sprint 4, y así se puede
+ * probar contra filas reales de PostgreSQL sin levantar la aplicación entera.
+ */
+export function profileFromRows(
+  rows: ProfileRows,
+  memberId: string,
+  memberName: string,
+): MemberNutritionProfile {
+  const patternRow = parseMaybeRow(patternSchema, rows.pattern, `patrón de ${memberName}`);
 
   const mealPattern: MealPattern = {
-    usesFastingPattern: pattern.data?.uses_fasting_pattern ?? false,
-    firstMealType: (pattern.data?.first_meal_type as MealType | null) ?? null,
-    feedingWindowStart: pattern.data?.feeding_window_start ?? null,
-    feedingWindowEnd: pattern.data?.feeding_window_end ?? null,
-    meals: [...slots]
+    usesFastingPattern: patternRow?.uses_fasting_pattern ?? false,
+    firstMealType: (patternRow?.first_meal_type as MealType | null) ?? null,
+    feedingWindowStart: patternRow?.feeding_window_start ?? null,
+    feedingWindowEnd: patternRow?.feeding_window_end ?? null,
+    meals: [...(patternRow?.meal_pattern_slots ?? [])]
       .sort((a, b) => a.sort_order - b.sort_order)
       .map((s) => ({
-        mealType: s.meal_type,
+        mealType: s.meal_type as MealType,
         availability: s.availability,
         isFirstMeal: s.is_first_meal,
         saladPreference: s.salad_preference,
@@ -105,40 +192,54 @@ export async function loadMemberProfile(
   const inputs: ProfileInputs = {
     memberId,
     memberName,
-    trackingMode: (tracking.data?.mode as TrackingMode) ?? "OFF",
-    goals: (goals.data ?? []).map((g) => ({
+    trackingMode:
+      parseMaybeRow(trackingSchema, rows.tracking, `seguimiento de ${memberName}`)?.mode ?? "OFF",
+    goals: parseRows(goalRowSchema, rows.goals, `objetivos de ${memberName}`).map((g) => ({
       goalType: g.goal_type,
       scope: g.scope,
-      mealType: g.meal_type,
-      minimum: g.minimum === null ? null : Number(g.minimum),
-      preferred: g.preferred === null ? null : Number(g.preferred),
-      maximum: g.maximum === null ? null : Number(g.maximum),
+      mealType: g.meal_type as MealType | null,
+      minimum: g.minimum,
+      preferred: g.preferred,
+      maximum: g.maximum,
       priority: g.priority,
     })),
     pattern: mealPattern,
-    // Se MAPEA, no se castea: la base devuelve snake_case y el dominio usa
-    // camelCase. Un `as unknown as` acá dejaba todas las preferencias con
-    // claves que el optimizador nunca leía — una alergia no bloqueaba el plato
-    // y un "no me gusta" no se anotaba, sin ningún error a la vista.
-    preferences: (preferences.data ?? []).map((p) => ({
-      preferenceType: p.preference_type,
-      targetKind: p.target_kind,
-      targetId: p.target_id,
-    })) as MemberPreference[],
-    cookingPreferences: (cooking.data ?? []).map((c) => ({
-      ingredientId: c.ingredient_id,
-      categoryId: c.category_id,
-      cookingMethod: c.cooking_method,
-      stance: c.stance,
-    })) as CookingPreference[],
-    addedFatStance: (fat.data?.stance as AddedFatStance) ?? "ALLOWED",
+    // Validadas y mapeadas, nunca casteadas: acá es donde un cast dejó todas las
+    // preferencias con claves que el optimizador jamás leyó, y una alergia dejó
+    // de bloquear el plato sin que nada avisara.
+    preferences: parseRows(
+      preferenceRowSchema,
+      rows.preferences,
+      `preferencias de ${memberName}`,
+    ).map(
+      (p): MemberPreference => ({
+        preferenceType: p.preference_type,
+        targetKind: p.target_kind,
+        targetId: p.target_id,
+      }),
+    ),
+    cookingPreferences: parseRows(
+      cookingRowSchema,
+      rows.cooking,
+      `preferencias de cocción de ${memberName}`,
+    ).map(
+      (c): CookingPreference => ({
+        ingredientId: c.ingredient_id,
+        categoryId: c.category_id,
+        cookingMethod: c.cooking_method,
+        stance: c.stance,
+      }),
+    ),
+    addedFatStance:
+      parseMaybeRow(fatSchema, rows.fat, `grasa añadida de ${memberName}`)?.stance ?? "ALLOWED",
   };
 
+  const snapshotRow = parseMaybeRow(snapshotSchema, rows.snapshot, `perfil de ${memberName}`);
   const profile = buildProfile(inputs);
   return {
     ...profile,
-    profileId: snapshot.data?.id ?? null,
-    version: snapshot.data?.version ?? 0,
+    profileId: snapshotRow?.id ?? null,
+    version: snapshotRow?.version ?? 0,
   };
 }
 

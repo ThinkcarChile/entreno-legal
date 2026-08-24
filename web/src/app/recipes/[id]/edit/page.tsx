@@ -54,6 +54,14 @@ export default async function EditRecipePage({ params, searchParams }: Props) {
           weightBasis: c.weightBasis as WeightBasis,
           cookingMethod: c.cookingMethod ?? "",
           isOptional: c.isOptional,
+          role: c.role,
+        })),
+      alternatives: draft.alternatives
+        .filter((a) => a.slotId === slot.id && a.target.kind === "INGREDIENT")
+        .map((a) => ({
+          key: a.id,
+          ingredientId: a.target.kind === "INGREDIENT" ? a.target.ingredientId : "",
+          compatibility: a.culinaryCompatibility,
         })),
     })),
     steps: draft.steps.map((step) => ({

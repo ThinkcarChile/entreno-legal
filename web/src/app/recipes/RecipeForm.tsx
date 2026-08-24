@@ -50,13 +50,34 @@ interface DraftComponent {
   weightBasis: WeightBasis;
   cookingMethod: string;
   isOptional: boolean;
+  /** ADR 0004: el rol se declara, no se adivina desde los macros. */
+  role: "MAIN" | "ADDED_FAT" | "SEASONING";
 }
+
+interface DraftAlternative {
+  key: string;
+  ingredientId: string;
+  compatibility: "EXCELLENT" | "GOOD" | "ACCEPTABLE";
+}
+
+const ROLE_LABELS: Record<DraftComponent["role"], string> = {
+  MAIN: "Comida",
+  ADDED_FAT: "Grasa añadida",
+  SEASONING: "Aliño",
+};
+
+const COMPATIBILITY_LABELS: Record<DraftAlternative["compatibility"], string> = {
+  EXCELLENT: "Reemplazo directo",
+  GOOD: "Buen reemplazo",
+  ACCEPTABLE: "Aceptable",
+};
 
 interface DraftSlot {
   key: string;
   slotType: SlotType;
   isRequired: boolean;
   components: DraftComponent[];
+  alternatives: DraftAlternative[];
 }
 
 interface DraftStep {
@@ -169,8 +190,12 @@ export function RecipeForm({
             weightBasis: "RAW",
             cookingMethod: "",
             isOptional: false,
+            // Una grasa se marca sola por su slot; el resto es comida hasta que
+            // alguien diga lo contrario.
+            role: slotType === "FAT" ? "ADDED_FAT" : "MAIN",
           },
         ],
+        alternatives: [],
       },
     ]);
   }
@@ -216,9 +241,17 @@ export function RecipeForm({
               cookingMethod: (c.cookingMethod || null) as RecipeDraftInput["slots"][number]["components"][number]["cookingMethod"],
               yieldFactor: null,
               isOptional: c.isOptional,
+              role: c.role,
             };
           }),
-        alternatives: [],
+        alternatives: slot.alternatives
+          .filter((a) => a.ingredientId)
+          .map((a) => ({
+            ingredientId: a.ingredientId,
+            culinaryCompatibility: a.compatibility,
+            quantityEquivalence: null,
+            notes: null,
+          })),
       })),
       steps: steps
         .filter((s) => s.instruction.trim())
@@ -471,6 +504,29 @@ export function RecipeForm({
                   )}
                 </div>
 
+                <div>
+                  <p className="mb-1 text-[11px] text-[var(--ink)]/60">
+                    ¿Qué es en el plato? Solo la <strong>grasa añadida</strong> se le puede quitar a
+                    quien prefiere evitarla; la palta o el queso son comida aunque sean grasos.
+                  </p>
+                  <div className="flex gap-2">
+                    {(["MAIN", "ADDED_FAT", "SEASONING"] as DraftComponent["role"][]).map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => updateComponent(slot.key, component.key, { role: r })}
+                        className={`rounded-full px-3 py-2 text-xs ${
+                          component.role === r
+                            ? "bg-[var(--accent)] text-white"
+                            : "border border-[var(--ink)]/20 text-[var(--ink)]/70"
+                        }`}
+                      >
+                        {ROLE_LABELS[r]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {component.ingredientId &&
                   byId.get(component.ingredientId)?.facts.length === 0 && (
                     <p className="text-[11px] text-amber-700">
@@ -480,6 +536,111 @@ export function RecipeForm({
                   )}
               </div>
             ))}
+          </div>
+
+          <div className="mt-3 border-t border-[var(--ink)]/10 pt-3">
+            <p className="mb-1 text-xs font-medium text-[var(--ink)]/70">
+              En vez de esto también sirve
+            </p>
+            <p className="mb-2 text-[11px] text-[var(--ink)]/50">
+              Reemplazos válidos en la cocina. No afirman equivalencia nutricional: la cantidad la
+              recalcula el motor de porciones.
+            </p>
+
+            {slot.alternatives.map((alt) => (
+              <div key={alt.key} className="mb-2 flex gap-2">
+                <select
+                  value={alt.ingredientId}
+                  onChange={(e) =>
+                    setSlots((current) =>
+                      current.map((s) =>
+                        s.key !== slot.key
+                          ? s
+                          : {
+                              ...s,
+                              alternatives: s.alternatives.map((a) =>
+                                a.key === alt.key ? { ...a, ingredientId: e.target.value } : a,
+                              ),
+                            },
+                      ),
+                    )
+                  }
+                  className={`${field} flex-1`}
+                >
+                  <option value="">Elegir alimento…</option>
+                  {ingredients.map((i) => (
+                    <option key={i.id} value={i.id}>
+                      {i.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={alt.compatibility}
+                  onChange={(e) =>
+                    setSlots((current) =>
+                      current.map((s) =>
+                        s.key !== slot.key
+                          ? s
+                          : {
+                              ...s,
+                              alternatives: s.alternatives.map((a) =>
+                                a.key === alt.key
+                                  ? { ...a, compatibility: e.target.value as DraftAlternative["compatibility"] }
+                                  : a,
+                              ),
+                            },
+                      ),
+                    )
+                  }
+                  className={`${field} flex-1`}
+                >
+                  {(["EXCELLENT", "GOOD", "ACCEPTABLE"] as DraftAlternative["compatibility"][]).map(
+                    (c) => (
+                      <option key={c} value={c}>
+                        {COMPATIBILITY_LABELS[c]}
+                      </option>
+                    ),
+                  )}
+                </select>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSlots((current) =>
+                      current.map((s) =>
+                        s.key !== slot.key
+                          ? s
+                          : { ...s, alternatives: s.alternatives.filter((a) => a.key !== alt.key) },
+                      ),
+                    )
+                  }
+                  className="text-xs text-[var(--ink)]/50 underline"
+                >
+                  Quitar
+                </button>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={() =>
+                setSlots((current) =>
+                  current.map((s) =>
+                    s.key !== slot.key
+                      ? s
+                      : {
+                          ...s,
+                          alternatives: [
+                            ...s.alternatives,
+                            { key: nextKey(), ingredientId: "", compatibility: "GOOD" as const },
+                          ],
+                        },
+                  ),
+                )
+              }
+              className="text-sm text-[var(--accent)] underline"
+            >
+              Agregar alternativa
+            </button>
           </div>
 
           <button
@@ -500,6 +661,8 @@ export function RecipeForm({
                             weightBasis: "RAW" as WeightBasis,
                             cookingMethod: "",
                             isOptional: false,
+                            role: (slot.slotType === "FAT" ? "ADDED_FAT" : "MAIN") as
+                              DraftComponent["role"],
                           },
                         ],
                       },

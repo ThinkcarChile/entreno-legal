@@ -5,6 +5,8 @@ import { AppNav } from "@/components/AppNav";
 import { isValidBarcode, normalizeBarcode } from "@/domain/catalog/barcode";
 import { SOURCE_TYPE_LABELS, type SourceType } from "@/domain/catalog/types";
 import { DataAccessError } from "@/lib/supabase/unwrap";
+import { parseRows, uuid } from "@/lib/supabase/rows";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
@@ -18,21 +20,28 @@ interface Props {
   }>;
 }
 
-interface IngredientRow {
-  id: string;
-  display_name: string;
-  household_id: string | null;
-  ingredient_categories: { name: string } | null;
-}
+const categoriaEmbebida = z.object({ name: z.string() });
+const oneCategoria = z
+  .union([categoriaEmbebida, z.array(categoriaEmbebida), z.null()])
+  .transform((v) => (Array.isArray(v) ? (v[0] ?? null) : v));
 
-interface ProductRow {
-  id: string;
-  name: string;
-  brand: string | null;
-  barcode: string | null;
-  household_id: string | null;
-  verified: boolean;
-}
+const ingredientRowSchema = z.object({
+  id: uuid,
+  display_name: z.string(),
+  household_id: uuid.nullable(),
+  ingredient_categories: oneCategoria,
+});
+type IngredientRow = z.infer<typeof ingredientRowSchema>;
+
+const productRowSchema = z.object({
+  id: uuid,
+  name: z.string(),
+  brand: z.string().nullable(),
+  barcode: z.string().nullable(),
+  household_id: uuid.nullable(),
+  verified: z.boolean(),
+});
+type ProductRow = z.infer<typeof productRowSchema>;
 
 export default async function CatalogPage({ searchParams }: Props) {
   const params = await searchParams;
@@ -68,7 +77,7 @@ export default async function CatalogPage({ searchParams }: Props) {
     if (params.category) query = query.eq("category_id", params.category);
     const { data, error } = await query;
     if (error) throw new DataAccessError("ingredientes del catalogo", error);
-    ingredients = (data ?? []) as unknown as IngredientRow[];
+    ingredients = parseRows(ingredientRowSchema, data, "ingredientes del catálogo");
   }
 
   if (kind !== "ingredient") {
@@ -86,7 +95,7 @@ export default async function CatalogPage({ searchParams }: Props) {
     if (verifiedOnly) query = query.eq("verified", true);
     const { data, error } = await query;
     if (error) throw new DataAccessError("productos del catalogo", error);
-    products = (data ?? []) as unknown as ProductRow[];
+    products = parseRows(productRowSchema, data, "productos del catálogo");
   }
 
   // Filtro por fuente: aplica sobre nutrition_facts del sujeto (consulta simple)
