@@ -108,17 +108,27 @@ begin
   return v_s;
 end $$;
 
-/** Componente por nombre de ingrediente: resuelve su ficha para esa base. */
+/**
+ * Componente por nombre de ingrediente: resuelve su ficha para esa base.
+ * La unidad SALE DE LA FICHA, no se asume gramos: el aceite se mide por 100 ml
+ * y forzar 'G' haría que el motor se niegue a calcular (y con razón).
+ */
 create or replace function pg_temp.comp(
   p_slot uuid, p_ing text, p_basis public.weight_basis, p_qty numeric,
   p_method public.cooking_method default null, p_optional boolean default false,
   p_order int default 1, p_yield numeric default null
 ) returns void language plpgsql as $$
+declare
+  v_fact uuid;
+  v_unit public.nutrition_basis_unit;
 begin
+  v_fact := pg_temp.fact(p_ing, p_basis);
+  select basis_unit into v_unit from public.nutrition_facts where id = v_fact;
+
   insert into public.meal_slot_components
     (slot_id, ingredient_id, quantity, unit, weight_basis, nutrition_fact_id,
      cooking_method, is_optional, sort_order, yield_factor)
-  values (p_slot, pg_temp.ing(p_ing), p_qty, 'G', p_basis, pg_temp.fact(p_ing, p_basis),
+  values (p_slot, pg_temp.ing(p_ing), p_qty, coalesce(v_unit, 'G'), p_basis, v_fact,
           p_method, p_optional, p_order, p_yield);
 end $$;
 

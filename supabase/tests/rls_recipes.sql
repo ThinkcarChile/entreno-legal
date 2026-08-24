@@ -242,6 +242,58 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- Coherencia: ninguna cantidad publicada puede estar en otra representación que
+-- su ficha. (Regresión: el aceite tiene ficha por 100 ml y se pedía en gramos.)
+-- ---------------------------------------------------------------------------
+
+do $$
+declare v_bad text;
+begin
+  select string_agg(distinct coalesce(i.display_name, 'ingrediente'), ', ')
+  into v_bad
+  from public.meal_slot_components c
+  join public.nutrition_facts f on f.id = c.nutrition_fact_id
+  left join public.ingredients i on i.id = c.ingredient_id
+  where c.unit <> f.basis_unit or c.weight_basis <> f.weight_basis;
+
+  if v_bad is not null then
+    raise exception 'FALLO U1: cantidad y ficha en distinta representación: %', v_bad;
+  end if;
+end $$;
+
+-- Publicar una receta incoherente debe fallar, no producir un cálculo inventado
+do $$
+declare v_version uuid; v_household uuid; ok boolean := false;
+begin
+  select id into v_household from public.households where name = 'Hogar Receta A';
+  v_version := public.create_meal_template(v_household, 'Receta incoherente', 'MEAL', '{LUNCH}', 2);
+
+  -- aceite: ficha por 100 ML, pero la cantidad se declara en gramos
+  perform public.replace_draft_content(v_version, jsonb_build_object(
+    'name', 'Receta incoherente', 'base_servings', 2,
+    'meal_types', jsonb_build_array('LUNCH'),
+    'slots', jsonb_build_array(jsonb_build_object(
+      'slot_type', 'FAT', 'sort_order', 1,
+      'components', jsonb_build_array(jsonb_build_object(
+        'ingredient_id', (select id from public.ingredients
+                          where canonical_name = 'aceite de oliva' and household_id is null),
+        'nutrition_fact_id', (select f.id from public.nutrition_facts f
+                              join public.ingredients i on i.id = f.ingredient_id
+                              where i.canonical_name = 'aceite de oliva' and i.household_id is null),
+        'quantity', 20, 'unit', 'G', 'weight_basis', 'AS_PACKAGED', 'sort_order', 1))))
+  ));
+
+  begin
+    perform public.publish_meal_template_version(v_version);
+  exception when others then ok := true;
+  end;
+
+  if not ok then
+    raise exception 'FALLO U2: se publicó una receta cuya cantidad no coincide con su ficha';
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Estructura: alternativas culinarias sin equivalencia nutricional
 -- ---------------------------------------------------------------------------
 

@@ -154,6 +154,20 @@ export default async function RecipeDetailPage({ params, searchParams }: Props) 
         ))}
       </section>
 
+      {recipe.issues.length > 0 && (
+        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <p className="font-medium">Hay ingredientes que no se pudieron calcular</p>
+          <ul className="mt-1 list-disc pl-5 text-xs">
+            {recipe.issues.map((issue) => (
+              <li key={issue}>{issue}</li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs">
+            Esos ingredientes aportan <strong>desconocido</strong> al total, nunca cero.
+          </p>
+        </div>
+      )}
+
       <section className="mb-5">
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--ink)]/60">
           Nutrición

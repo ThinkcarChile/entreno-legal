@@ -1,7 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { NutritionFact, NutritionValues, SourceType } from "@/domain/catalog/types";
 import { NUTRIENT_KEYS } from "@/domain/catalog/types";
-import { calculateMealNutrition, type MealNutrition } from "@/domain/recipes/nutrition";
+import {
+  calculateMealNutrition,
+  resolveComponentNutrition,
+  type MealNutrition,
+} from "@/domain/recipes/nutrition";
 import type {
   CookingMethod,
   MealType,
@@ -61,6 +65,8 @@ export interface RecipeDetail {
   alternatives: SlotAlternative[];
   steps: RecipeStep[];
   nutrition: MealNutrition;
+  /** Componentes que no se pudieron calcular. Se muestran; jamás se ocultan. */
+  issues: string[];
   sources: RecipeSource[];
   versions: { id: string; versionNumber: number; status: TemplateStatus }[];
 }
@@ -151,13 +157,30 @@ function componentLabel(row: ComponentRow): string {
   return "Componente";
 }
 
-function toComponent(row: ComponentRow, slotType: SlotType): RecipeComponent {
+/** Componente + de dónde salió su nutrición, para no perder la procedencia. */
+type LoadedComponent = RecipeComponent & { source: RecipeSource | null };
+
+function toComponent(row: ComponentRow, slotType: SlotType): LoadedComponent {
   const frozen = factFromFrozen(row.frozen_nutrition);
+  const frozenSource = row.frozen_source;
+  const liveSource = row.nutrition_facts;
+  const label = componentLabel(row);
+  const source: RecipeSource | null =
+    frozenSource || liveSource
+      ? {
+          label,
+          sourceType: ((frozenSource?.source_type ?? liveSource?.source_type) as SourceType) ?? null,
+          sourceName: frozenSource?.source_name ?? liveSource?.source_name ?? null,
+          verified: Boolean(frozenSource?.verified ?? liveSource?.verified),
+          frozen: Boolean(frozenSource),
+        }
+      : null;
   return {
+    source,
     id: row.id,
     slotId: row.slot_id,
     slotType,
-    label: componentLabel(row),
+    label,
     target: row.ingredient_id
       ? { kind: "INGREDIENT", ingredientId: row.ingredient_id }
       : row.product_id
@@ -183,9 +206,9 @@ function toComponent(row: ComponentRow, slotType: SlotType): RecipeComponent {
  */
 async function expandNested(
   db: Db,
-  component: RecipeComponent,
+  component: LoadedComponent,
   versionId: string,
-): Promise<RecipeComponent[]> {
+): Promise<LoadedComponent[]> {
   const { data: slots } = await db
     .from("meal_slots")
     .select(`id, slot_type, version_id`)
@@ -226,8 +249,12 @@ export async function loadRecipes(
   let query = db
     .from("meal_templates")
     .select(
+      // Hay DOS claves foráneas entre estas tablas (versión->receta y
+      // receta.current_version_id): PostgREST exige decir cuál se usa.
       `id, name, kind, household_id, current_version_id,
-       meal_template_versions ( id, version_number, status, meal_types )`,
+       meal_template_versions!meal_template_versions_template_id_fkey (
+         id, version_number, status, meal_types
+       )`,
     )
     .eq("is_active", true)
     .order("name");
@@ -235,7 +262,12 @@ export async function loadRecipes(
   if (filters.kind) query = query.eq("kind", filters.kind);
   if (filters.search) query = query.ilike("name", `%${filters.search}%`);
 
-  const { data } = await query;
+  const { data, error } = await query;
+  // Un fallo de consulta no puede disfrazarse de "no hay recetas": esa mentira
+  // fue justo lo que escondió el error de relaciones ambiguas de PostgREST.
+  if (error) {
+    throw new Error(`No se pudo leer el recetario (${error.code}): ${error.message}`);
+  }
   if (!data) return [];
 
   const items: RecipeListItem[] = [];
@@ -310,7 +342,7 @@ export async function loadRecipeDetail(
     sortOrder: s.sort_order,
   }));
 
-  const components: RecipeComponent[] = [];
+  const components: LoadedComponent[] = [];
   let alternatives: SlotAlternative[] = [];
 
   if (slots.length) {
@@ -386,36 +418,29 @@ export async function loadRecipeDetail(
     notes: s.notes,
   }));
 
+  // La procedencia sale de los componentes YA expandidos: así la ensalada
+  // anidada también declara de dónde vienen sus números.
+  const seen = new Set<string>();
   const sources: RecipeSource[] = [];
-
-  // Procedencia por componente: de dónde salió cada número que se muestra.
-  const { data: sourceRows } = slots.length
-    ? await db
-        .from("meal_slot_components")
-        .select(
-          `frozen_source, ingredients ( display_name ), commercial_products ( name ),
-           nutrition_facts ( source_type, source_name, verified )`,
-        )
-        .in("slot_id", slots.map((s) => s.id))
-    : { data: [] };
-
-  for (const row of (sourceRows ?? []) as unknown as {
-    frozen_source: { source_type?: string; source_name?: string; verified?: boolean } | null;
-    ingredients: { display_name: string } | null;
-    commercial_products: { name: string } | null;
-    nutrition_facts: { source_type: string; source_name: string; verified: boolean } | null;
-  }[]) {
-    const label = row.ingredients?.display_name ?? row.commercial_products?.name;
-    if (!label) continue;
-    const frozen = row.frozen_source;
-    sources.push({
-      label,
-      sourceType: ((frozen?.source_type ?? row.nutrition_facts?.source_type) as SourceType) ?? null,
-      sourceName: frozen?.source_name ?? row.nutrition_facts?.source_name ?? null,
-      verified: Boolean(frozen?.verified ?? row.nutrition_facts?.verified),
-      frozen: Boolean(frozen),
-    });
+  for (const component of components) {
+    if (!component.source || seen.has(component.label)) continue;
+    seen.add(component.label);
+    sources.push(component.source);
   }
+
+  // Un componente con datos inconsistentes (p. ej. cantidad en g con ficha por
+  // 100 ml) no puede tumbar la receta entera, pero tampoco puede pasar callado:
+  // aporta DESCONOCIDO y el problema se muestra en pantalla.
+  const issues: string[] = [];
+  const usable = components.map((component) => {
+    try {
+      resolveComponentNutrition(component);
+      return component;
+    } catch (error) {
+      issues.push(`${component.label}: ${(error as Error).message}`);
+      return { ...component, nutrition: null };
+    }
+  });
 
   return {
     templateId: template.id,
@@ -433,10 +458,11 @@ export async function loadRecipeDetail(
     totalYieldFactor:
       target.total_yield_factor === null ? null : Number(target.total_yield_factor),
     slots,
-    components,
+    components: usable,
     alternatives,
     steps,
-    nutrition: calculateMealNutrition(components, target.base_servings),
+    nutrition: calculateMealNutrition(usable, target.base_servings),
+    issues,
     sources,
     versions: versionRows.map((v) => ({
       id: v.id,
