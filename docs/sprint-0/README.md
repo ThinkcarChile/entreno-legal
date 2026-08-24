@@ -1,6 +1,6 @@
 # SPRINT 0 — Arquitectura de la Plataforma Familiar Inteligente de Alimentación
 
-> Estado: **Sprint 0 y 0.1 conceptualmente aprobados · Addendum 0.2 (final) PARA REVISIÓN DEL DIRECTOR** — con su aprobación se congela la arquitectura principal y comienza el Sprint 1
+> Estado: **ARQUITECTURA CONGELADA — [ARCHITECTURE BASELINE 1.0 — FROZEN](../architecture/BASELINE.md)** (Sprint 0 + 0.1 + 0.2 con revisión final, todos aprobados). Cambios estructurales posteriores: vía [ADR](../adr/README.md). Sprint 1 en desarrollo.
 > Fecha: 2026-08-24 (0.1: mismo día)
 > Fuente de verdad funcional: el **Prompt Maestro** (documento maestro entregado por el director del proyecto) + la ampliación Sprint 0.1. Este Sprint 0 lo convierte en arquitectura ejecutable; no elimina ninguna funcionalidad del diseño.
 >
