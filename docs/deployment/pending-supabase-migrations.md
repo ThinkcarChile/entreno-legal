@@ -7,7 +7,7 @@
 
 ## Estado remoto conocido
 
-**Aplicado en Supabase** (proyecto `smwyxfnlxoohenhsdcjx`): `0001 → 0025` **COMPLETO** (0026/0027 del Sprint 11 pendientes, abajo)
+**Aplicado en Supabase** (proyecto `smwyxfnlxoohenhsdcjx`): `0001 → 0028` **COMPLETO**
 + bloque de reglas USDA del seed. Verificado en vivo el 2026-08-25:
 
 - `0001 → 0015` — Sprints 0-10, aplicadas con checksum verificado.
@@ -54,9 +54,15 @@
   columna 200, `unverifiable_constraints: ["ENERGY_MAX"]` congelada por el
   RPC, dedupe obligatorio rechaza con su mensaje, `/plan/comida` volvió a 200.
 
-## Pendientes de aplicar (en este orden exacto)
+- **0026 — Sprint 11 salud parte 1** · `bcaeba23f2988dc4ce6adad0ca1edde06a9863a05cbc948f7381d36b6666432a` · aplicada y verificada en vivo.
+- **0027 — Sprint 11 salud parte 2** · `31e7d6a4ef48cb3817a0b326aa0a8fe54f7fc792cf5d5748cf001b16039d02ca` · aplicada y verificada en vivo.
+- **0028 — corrección de codificación** · `8d9b868f9138818e9dc0234ac503444b1db22997c8542ae4e484af11cb3de5d1` · aplicada: 5 nombres de biomarcador y 22 funciones tenían los acentos rotos porque las entregué con `clip` en vez de `Set-Clipboard` UTF-8. **Regla: entregar SIEMPRE con `Get-Content -Raw -Encoding UTF8 | Set-Clipboard` y verificar con `Get-Clipboard` antes de avisar.**
 
-### 0026 — Sprint 11: documentos médicos, biomarcadores y grants
+## Pendientes de aplicar
+
+**Ninguna. Remoto = cadena local completa (0001→0028).**
+
+### Referencia: 0026 — Sprint 11: documentos médicos, biomarcadores y grants
 
 - **Archivo:** `supabase/migrations/0026_health_documents.sql`
 - **Propósito:** catálogo de biomarcadores (17 globales, solo ESTRUCTURA),
