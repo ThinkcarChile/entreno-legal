@@ -7,7 +7,20 @@
 
 ## Estado remoto conocido
 
-**Aplicado en Supabase** (proyecto `smwyxfnlxoohenhsdcjx`): `0001 → 0015` **COMPLETO**
+**Aplicado en Supabase** (proyecto `smwyxfnlxoohenhsdcjx`): `0001 → 0017` **COMPLETO**
+(0016 y 0017 nacieron de la DEMO VIVA del 2026-08-25, aplicadas y verificadas
+el mismo día — ver `docs/qa/sprint-10-demo-viva.md`).
+
+- **0016 — reglas de congelado/refrigerado por categoría** · SHA-256
+  `a44691d4864a1cdd68139d08db5cef963fd984d0e4c59e5958b7f564db7ef3bd` ·
+  migración de DATOS idempotente (no toca schema).
+- **0017 — sin pgcrypto** · SHA-256
+  `57c04125981ac327084d620d16dfada029a8ba7fa0ffbd444b35c71ecf4ce5d5` ·
+  reemplaza `gen_random_bytes` por `gen_random_uuid` en `ensure_lot_token` y
+  `complete_prep_task` (pgcrypto vive en el schema `extensions` y esas
+  funciones corren con `search_path = public`).
+
+Estado anterior: `0001 → 0015`
 + el bloque de reglas USDA del seed. Todo aplicado por Francisco el 2026-08-25
 con checksums verificados; las 18 tablas/vistas nuevas de los Sprints 8-10
 verificadas por API (200). **No quedan migraciones pendientes.**

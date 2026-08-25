@@ -1,7 +1,9 @@
 # Sprint 10 — Entrega: Batch prep, conservación y etiquetas
 
 **Fecha:** 2026-08-25
-**Verificación:** 518 pruebas verdes (35 dominio prep + 18 seguridad + 7 PDF + 32 integración + 6 demo §90 sobre PostgreSQL real vía PGlite, rol authenticated + las previas), lint/typecheck/build limpios, cadena 0001→0015 validada completa. QA §92 en [qa/sprint-10-report.md](./qa/sprint-10-report.md) (12 lentes revisados a mano tras la caída del workflow por límite de uso: 11 hallazgos → 8 corregidos + 3 documentados). Decisiones en [ADR 0011](./adr/0011-batch-prep.md).
+**Verificación:** 534 pruebas verdes (35 dominio prep + 18 seguridad + 7 PDF + 32 integración + 6 demo §90 sobre PostgreSQL real vía PGlite, rol authenticated + las previas), lint/typecheck/build limpios, cadena 0001→0015 validada completa. QA §92 en [qa/sprint-10-report.md](./qa/sprint-10-report.md) (12 lentes revisados a mano tras la caída del workflow por límite de uso: 11 hallazgos → 8 corregidos + 3 documentados). Decisiones en [ADR 0011](./adr/0011-batch-prep.md).
+**Demo viva ejecutada contra Supabase real el 2026-08-25** — 22 gates, todos PASS (uno con limitación declarada); 8 defectos encontrados en vivo y corregidos con regresión, incluidos dos que ningún test podía ver (pgcrypto ausente en Supabase y el `select` desincronizado del cargador). Detalle en [qa/sprint-10-demo-viva.md](./qa/sprint-10-demo-viva.md). Migraciones nuevas: **0016** (reglas de congelado/refrigerado por categoría) y **0017** (sin pgcrypto), ambas aplicadas y verificadas.
+
 **Estado: `IMPLEMENTED_LOCAL_PENDING_LIVE_VERIFICATION`** (§96 — techo permitido; NO CLOSED). 0013 y 0014 YA están aplicadas en el Supabase remoto (verificadas por API el 2026-08-25); **0015 congelada y pendiente de aplicar** (checksum en el [manifiesto](./deployment/pending-supabase-migrations.md)) junto con el bloque de reglas USDA del seed. La demo viva (§91) y la revisión móvil quedan para después de aplicarla.
 
 ---
