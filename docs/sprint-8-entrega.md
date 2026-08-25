@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-08-24
 **Verificación:** 376 pruebas verdes (38 dominio stock + 12 integración stock sobre PostgreSQL real + las previas), lint/typecheck/build limpios. QA adversarial en [qa/sprint-8-report.md](./qa/sprint-8-report.md) (21 defectos confirmados y corregidos en dos pasadas). Decisiones en [ADR 0009](./adr/0009-stock-intelligence.md).
-**Estado:** demo viva §59 pendiente de aplicar la migración 0013 en Supabase (flujo acordado: portapapeles → Francisco).
+**Estado: `IMPLEMENTED_LOCAL_PENDING_LIVE_VERIFICATION`** (directiva del director 2026-08-24). Implementación, tests, checks y revisión adversarial completos EN LOCAL; NO marcado APPROVED/CLOSED. Falta contra Supabase real: aplicar 0013 (congelada, checksum en [pending-supabase-migrations.md](./deployment/pending-supabase-migrations.md)), demo §59 (**BLOCKED_BY_REMOTE_MIGRATION_0013** — no simulada; los resultados de PGlite NO se presentan como resultados del Supabase real) y revisión móvil 320/375/430 en vivo.
 
 ---
 
