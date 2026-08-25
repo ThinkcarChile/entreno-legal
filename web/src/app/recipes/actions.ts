@@ -172,7 +172,14 @@ export async function publishVersion(
       const value = total.values[key];
       row[key] = value === null || value === undefined ? null : Math.round(value * 1000) / 1000;
     }
-    await supabase.from("recipe_nutrition").upsert(row, { onConflict: "version_id" });
+    // Gate final §5: si la ficha agregada de la receta no se pudo guardar, la
+    // publicación NO puede reportar éxito con la nutrición vieja en caché.
+    const { error: nutricionError } = await supabase
+      .from("recipe_nutrition")
+      .upsert(row, { onConflict: "version_id" });
+    if (nutricionError) {
+      throw new DataAccessError("nutrición agregada de la receta", nutricionError);
+    }
   }
 
   revalidatePath("/recipes");

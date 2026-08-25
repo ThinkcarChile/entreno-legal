@@ -1,3 +1,4 @@
+import { uuidParam } from "@/lib/route-params";
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { AppNav } from "@/components/AppNav";
@@ -53,7 +54,8 @@ function factValues(row: FactRow): NutritionValues {
 }
 
 export default async function IngredientPage({ params, searchParams }: Props) {
-  const { id } = await params;
+  const { id: idCrudo } = await params;
+  const id = uuidParam(idCrudo);
   const { basis } = await searchParams;
   const supabase = await createSupabaseServer();
   const {

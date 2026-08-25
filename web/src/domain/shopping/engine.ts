@@ -449,12 +449,15 @@ export interface DemandDelta {
   after: number | null;
   /** after - before (positivo = comprar más). */
   difference: number;
+  /** La línea tiene cantidad sin resolver: el número mostrado no es un dato. */
+  unresolved: boolean;
 }
 
 const TOLERANCIA = 0.001;
 
 /** Lo mínimo que hace falta para comparar: una fila de la lista guardada sirve. */
-export type DeltaSource = Pick<DemandLine, "key" | "label" | "unit" | "requiredQuantity">;
+export type DeltaSource = Pick<DemandLine, "key" | "label" | "unit" | "requiredQuantity"> &
+  Partial<Pick<DemandLine, "unresolved">>;
 
 export function computeDeltas(
   before: readonly DeltaSource[],
@@ -485,6 +488,8 @@ export function computeDeltas(
       before: qa,
       after: qd,
       difference: diff,
+      // §6 [U-6]: una línea sin rendimiento tiene cantidad DESCONOCIDA, no 0.
+      unresolved: (d ?? a)!.unresolved === true,
     };
   });
 }

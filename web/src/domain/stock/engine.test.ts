@@ -728,3 +728,27 @@ describe("Gate 0→9 [S-1] — la cobertura del plan cuenta dÍas, no un máximo
     expect(h7.confirmed).toBe(0);
   });
 });
+
+describe("Gate final §6 [U-1/U-2] — el veredicto verde se gana", () => {
+  it("sin tasa de consumo, la razón NO afirma que el stock cubre el horizonte", () => {
+    const items = analyzeStock(base({ lots: [lot({ quantity: 500 })], consumption: [] }));
+    const item = items[0]!;
+    expect(item.reorder.status).toBe("NO_ACTION");
+    expect(item.coverage.kind).not.toBe("DAYS");
+    const razones = item.reorder.reasons.join(" ");
+    expect(razones).not.toContain("cubre el horizonte");
+    expect(razones).toContain("Sin datos de consumo suficientes");
+  });
+
+  it("con tasa real, el veredicto se sostiene en cobertura CALCULADA", () => {
+    const items = analyzeStock(
+      base({ lots: [lot({ quantity: 90000 })], consumption: consumoDiario(100, 30) }),
+    );
+    const item = items[0]!;
+    expect(item.reorder.status).toBe("NO_ACTION");
+    expect(item.coverage.kind).toBe("DAYS");
+    // Con tasa real las razones hablan de consumo estimado, jamás del
+    // disclaimer de falta de datos.
+    expect(item.reorder.reasons.join(" ")).not.toContain("Sin datos de consumo suficientes");
+  });
+});

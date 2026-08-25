@@ -1,3 +1,4 @@
+import { uuidParam } from "@/lib/route-params";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -25,7 +26,8 @@ interface Props {
  * perfil y optimizador con las que se calculó. Nada se recalcula acá — se lee.
  */
 export default async function ComidaConfirmadaPage({ params }: Props) {
-  const { assignmentId } = await params;
+  const { assignmentId: assignmentIdCrudo } = await params;
+  const assignmentId = uuidParam(assignmentIdCrudo);
 
   const supabase = await createSupabaseServer();
   const {
@@ -150,6 +152,14 @@ export default async function ComidaConfirmadaPage({ params }: Props) {
                     nivel {s.adaptationLevel} · {s.fit}
                   </span>
                 </div>
+
+                {s.unverifiableConstraints.length > 0 && (
+                  <p className="mb-2 inline-block rounded-full bg-amber-100 px-2.5 py-1 text-[11px] text-amber-900">
+                    {s.unverifiableConstraints.includes("ENERGY_MAX")
+                      ? "Tope de calorías SIN verificar (ficha incompleta)"
+                      : "Mínimo de proteína SIN verificar (ficha incompleta)"}
+                  </p>
+                )}
 
                 <ul className="mb-3 space-y-1 text-sm">
                   {s.components

@@ -1,3 +1,4 @@
+import { uuidParam } from "@/lib/route-params";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -24,7 +25,8 @@ interface Props {
 }
 
 export default async function MemberPage({ params }: Props) {
-  const { memberId } = await params;
+  const { memberId: memberIdCrudo } = await params;
+  const memberId = uuidParam(memberIdCrudo);
 
   const supabase = await createSupabaseServer();
   const {

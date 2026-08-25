@@ -250,12 +250,19 @@ export async function addReorderToShoppingList(input: {
       };
     }
     // El cambio de cantidad queda auditado, como toda edición de compra (§22).
-    await supabase.from("shopping_item_overrides").insert({
+    // Gate final §5: una edición sin su rastro de auditoría no es un éxito.
+    const { error: auditError } = await supabase.from("shopping_item_overrides").insert({
       item_id: id,
       original_quantity: original,
       new_quantity: cantidad,
       reason: "recalculado por Stock Intelligence",
     });
+    if (auditError) {
+      return {
+        ok: false as const,
+        error: "La cantidad se actualizó pero no se pudo dejar el registro de auditoría.",
+      };
+    }
     return { ok: true as const };
   };
 

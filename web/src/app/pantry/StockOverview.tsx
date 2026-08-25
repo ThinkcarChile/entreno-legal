@@ -36,7 +36,10 @@ export function statusBadge(item: StockItem): { text: string; cls: string } {
     case "UNRESOLVED":
       return { text: "sin resolver", cls: "bg-[var(--ink)]/10 text-[var(--ink)]/70" };
     case "NO_ACTION":
-      return { text: "bien", cls: "bg-emerald-100 text-emerald-900" };
+      // §6 [U-1]: "bien" es un veredicto — sin cobertura calculada no se da.
+      return item.coverage.kind === "DAYS"
+        ? { text: "bien", cls: "bg-emerald-100 text-emerald-900" }
+        : { text: "sin datos", cls: "bg-[var(--ink)]/10 text-[var(--ink)]/70" };
   }
 }
 
@@ -58,13 +61,16 @@ export function StockOverview({ items }: { items: StockItem[] }) {
     },
     {
       titulo: "Bien abastecido",
-      filtro: (i) => i.reorder.status === "NO_ACTION" && i.confidence !== null,
+      // Gate final §6 [U-1]: verde SOLO con cobertura CALCULADA. Un alimento
+      // cuya cobertura el motor declara incalculable (INSUFFICIENT_DATA)
+      // caía acá con badge "bien" — desconocido vestido de seguro.
+      filtro: (i) => i.reorder.status === "NO_ACTION" && i.coverage.kind === "DAYS",
       tono: "border-emerald-200 bg-emerald-50",
     },
     {
       titulo: "Sin datos suficientes",
       filtro: (i) =>
-        (i.reorder.status === "NO_ACTION" && i.confidence === null) ||
+        (i.reorder.status === "NO_ACTION" && i.coverage.kind !== "DAYS") ||
         i.reorder.status === "UNRESOLVED",
       tono: "border-[var(--ink)]/15 bg-[var(--ink)]/5",
     },

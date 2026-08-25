@@ -126,7 +126,7 @@ describe("ámbito por hogar (lentes F y §25 hogar A vs B)", () => {
   it("inyección de UUID: el hogar B no crea órdenes A NOMBRE del hogar A", async () => {
     await expect(
       h.como(USER_B, () =>
-        h.db.query("select public.create_procurement_order($1, null, null, null, null, 'v', $2::jsonb)", [
+        h.db.query("select public.create_procurement_order($1, null, null, null, 'PO-T-' || gen_random_uuid()::text, 'v', $2::jsonb)", [
           hogarA.householdId,
           itemsPollo(),
         ]),
@@ -173,7 +173,7 @@ describe("aceptación idempotente (§22) y máquina de estados (§13)", () => {
   it("una orden no acepta alimentos privados de otro hogar", async () => {
     await expect(
       h.como(USER_A, () =>
-        h.db.query("select public.create_procurement_order($1, null, null, null, null, 'v', $2::jsonb)", [
+        h.db.query("select public.create_procurement_order($1, null, null, null, 'PO-T-' || gen_random_uuid()::text, 'v', $2::jsonb)", [
           hogarA.householdId,
           JSON.stringify([
             { ingredient_id: privadoB, label: "Contrabando", required_quantity: 1, suggested_quantity: 1, unit: "G" },
@@ -337,7 +337,7 @@ describe("aceptación idempotente (§22) y máquina de estados (§13)", () => {
     // presentación de OTRO proveedor en una orden del proveedor A
     await expect(
       h.como(USER_A, () =>
-        h.db.query("select public.create_procurement_order($1, $2, null, null, null, 'v', $3::jsonb)", [
+        h.db.query("select public.create_procurement_order($1, $2, null, null, 'PO-T-' || gen_random_uuid()::text, 'v', $3::jsonb)", [
           hogarA.householdId,
           proveedorA,
           itemsPollo(1000, { supplier_product_id: otraPresentacion }),
@@ -350,7 +350,7 @@ describe("aceptación idempotente (§22) y máquina de estados (§13)", () => {
     await expect(
       h.como(USER_A, () =>
         h.db.query(
-          "select public.create_procurement_order($1, $2, (current_date - 2)::date, null, null, 'v', $3::jsonb)",
+          "select public.create_procurement_order($1, $2, (current_date - 2)::date, null, 'PO-T-' || gen_random_uuid()::text, 'v', $3::jsonb)",
           [hogarA.householdId, proveedorA, itemsPollo(1000)],
         ),
       ),

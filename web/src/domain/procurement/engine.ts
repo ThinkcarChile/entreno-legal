@@ -278,9 +278,21 @@ export function planPurchases(input: PurchaseScheduleInput): PurchaseScheduleRes
 
   const suggestions: PurchaseSuggestion[] = [];
   const coveredByIncoming: PurchaseScheduleResult["coveredByIncoming"] = [];
+  const unresolved: PurchaseScheduleResult["unresolved"] = [];
 
   for (const need of input.needs) {
     const rec = need.reorder;
+    // §6 [U-8]: UNRESOLVED no es NO_ACTION — se declara, no se omite.
+    if (rec.status === "UNRESOLVED") {
+      unresolved.push({
+        ingredientId: need.ingredientId,
+        label: need.label,
+        unit: need.unit,
+        weightBasis: need.weightBasis,
+        reason: "demanda confirmada en una base sin factor de conversión anotado",
+      });
+      continue;
+    }
     if (rec.status === "NO_ACTION" || rec.recommendedQuantity == null || rec.recommendedQuantity <= 0) {
       continue;
     }
@@ -484,7 +496,8 @@ export function planPurchases(input: PurchaseScheduleInput): PurchaseScheduleRes
     return ca - cb || a.label.localeCompare(b.label);
   });
 
-  return { suggestions, coveredByIncoming, engineVersion: PURCHASE_SCHEDULE_VERSION };
+  return { suggestions, coveredByIncoming,
+    unresolved, engineVersion: PURCHASE_SCHEDULE_VERSION };
 }
 
 function coberturaOrden(s: PurchaseSuggestion): number {

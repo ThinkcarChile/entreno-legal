@@ -38,12 +38,16 @@ const MIGRACIONES = [
   "supabase/migrations/0020_gate_scope_and_basis.sql",
   "supabase/migrations/0021_gate_netting_basis.sql",
   "supabase/migrations/0022_consume_product_identity.sql",
+  "supabase/migrations/0023_confirm_consume_serialization.sql",
+  "supabase/migrations/0024_demo_family_function.sql",
+  "supabase/migrations/0025_unknown_never_normal.sql",
 ];
 
+// Fixtures de DEMO: datos, jamás schema. Todo objeto que la app referencia
+// vive en MIGRACIONES (gate final §3; lo vigila gate-schema-parity.test.ts).
 const SEEDS = [
   "supabase/seed/dev_catalog_seed.sql",
   "supabase/seed/dev_recipes_seed.sql",
-  "supabase/seed/dev_family_profiles.sql",
 ];
 
 /** Lo que Supabase ya trae de fábrica y las migraciones dan por hecho. */
@@ -70,12 +74,22 @@ export interface Harness {
   cerrar(): Promise<void>;
 }
 
-export async function levantarBase(): Promise<Harness> {
+export async function levantarBase(
+  opciones: {
+    /**
+     * Gate final §3: `false` levanta la base SOLO con migraciones — el schema
+     * que Supabase puede reproducir. Los seeds son fixtures de demo, no schema.
+     */
+    conSeeds?: boolean;
+  } = {},
+): Promise<Harness> {
   const db = await PGlite.create({ extensions: { pg_trgm, pgcrypto } });
   await db.exec("create extension if not exists pg_trgm; create extension if not exists pgcrypto;");
   await db.exec(ENTORNO_SUPABASE);
 
-  for (const archivo of [...MIGRACIONES, ...SEEDS]) {
+  const archivos =
+    opciones.conSeeds === false ? MIGRACIONES : [...MIGRACIONES, ...SEEDS];
+  for (const archivo of archivos) {
     await db.exec(readFileSync(path.join(ROOT, archivo), "utf8"));
   }
 

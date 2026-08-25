@@ -479,7 +479,15 @@ function recommendReorder(input: {
     }
   } else {
     status = "NO_ACTION";
-    if (reasons.length === 0) reasons.push("El stock libre cubre el horizonte configurado.");
+    // Gate final §6 [U-2]: "cubre el horizonte" es una afirmación VERIFICADA.
+    // Sin tasa de consumo nadie calculó cobertura alguna: se dice eso.
+    if (reasons.length === 0) {
+      reasons.push(
+        input.dailyRate !== null
+          ? "El stock libre cubre el horizonte configurado."
+          : "Sin datos de consumo suficientes para evaluar el horizonte; el plan confirmado tampoco pide comprar.",
+      );
+    }
   }
 
   return {

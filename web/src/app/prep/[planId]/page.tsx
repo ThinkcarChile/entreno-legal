@@ -1,3 +1,4 @@
+import { uuidParam } from "@/lib/route-params";
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { loadHouseholdMembers } from "@/app/family/nutrition-queries";
@@ -11,7 +12,8 @@ export const dynamic = "force-dynamic";
 
 /** /prep/[planId] (§16): modo cocina — un paso por vez, grande, de pie. */
 export default async function PrepPlanPage({ params }: { params: Promise<{ planId: string }> }) {
-  const { planId } = await params;
+  const { planId: planIdCrudo } = await params;
+  const planId = uuidParam(planIdCrudo);
   const supabase = await createSupabaseServer();
   const {
     data: { user },

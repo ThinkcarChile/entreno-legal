@@ -11,7 +11,11 @@ import {
 } from "@/domain/nutrition/types";
 import type { MealType } from "@/domain/recipes/types";
 import { publishProfileSnapshot } from "./profile-publish";
+
+type Db = Awaited<ReturnType<typeof createSupabaseServer>>;
 import { DataAccessError } from "@/lib/supabase/unwrap";
+import { z } from "zod";
+import { effectiveDate } from "@/domain/nutrition/calendar";
 
 export interface ActionResult {
   ok: boolean;
@@ -57,6 +61,35 @@ export async function setTrackingMode(
   return { ok: true, message: "Tu perfil nutricional fue actualizado." };
 }
 
+/**
+ * Día civil del HOGAR del integrante (Gate final §4). `new Date().toISOString()`
+ * es el día UTC del servidor: a las 21:30 de Santiago ya es "mañana" y una meta
+ * cerrada esa noche quedaba vigente/cerrada con la fecha equivocada.
+ */
+async function diaDelHogar(supabase: Db, memberId: string): Promise<string> {
+  const { data, error } = await supabase
+    .from("household_members")
+    .select("households ( timezone )")
+    .eq("id", memberId)
+    .maybeSingle();
+  if (error) throw new DataAccessError("zona horaria del hogar", error);
+  // El embed llega como objeto O arreglo según PostgREST: se valida con Zod,
+  // nunca con un cast (regla de la casa).
+  const fila = z
+    .object({
+      households: z
+        .union([
+          z.object({ timezone: z.string().nullable() }),
+          z.array(z.object({ timezone: z.string().nullable() })),
+          z.null(),
+        ])
+        .transform((v) => (Array.isArray(v) ? (v[0] ?? null) : v)),
+    })
+    .nullable()
+    .parse(data);
+  return effectiveDate(new Date(), fila?.households?.timezone ?? "America/Santiago");
+}
+
 export interface MealGoalInput {
   mealType: MealType;
   proteinMin: number | null;
@@ -84,15 +117,22 @@ export async function saveMealGoals(
     return { ok: false, error: "El mínimo de proteína no puede ser mayor que el máximo." };
   }
 
+  // Gate final §4: las fechas de vigencia son el día CIVIL del hogar.
+  const hoy = await diaDelHogar(supabase, memberId);
+
+  // Gate final §5: NINGUNA escritura de esta acción traga su error. Antes las
+  // 4 primeras descartaban el resultado y la pantalla decía "guardado" con la
+  // meta vieja todavía viva.
   const supersede = async (goalType: GoalType) => {
-    await supabase
+    const { error } = await supabase
       .from("nutrition_goals")
-      .update({ status: "SUPERSEDED", end_date: new Date().toISOString().slice(0, 10) })
+      .update({ status: "SUPERSEDED", end_date: hoy })
       .eq("member_id", memberId)
       .eq("goal_type", goalType)
       .eq("scope", "PER_MEAL")
       .eq("meal_type", input.mealType)
       .eq("status", "ACTIVE");
+    if (error) throw new DataAccessError(`cierre del objetivo ${goalType}`, error);
   };
 
   await supersede("PROTEIN_G");
@@ -110,6 +150,7 @@ export async function saveMealGoals(
       maximum: input.proteinMax,
       unit: "g",
       priority: 10,
+      start_date: hoy,
     });
   }
   if (input.energyMax !== null) {
@@ -123,6 +164,7 @@ export async function saveMealGoals(
       maximum: input.energyMax,
       unit: "kcal",
       priority: 20,
+      start_date: hoy,
     });
   }
   if (rows.length > 0) {
@@ -149,7 +191,7 @@ export async function saveMealGoals(
     patternId = created?.id;
   }
   if (patternId) {
-    await supabase.from("meal_pattern_slots").upsert(
+    const { error: errorSlot } = await supabase.from("meal_pattern_slots").upsert(
       {
         pattern_id: patternId,
         meal_type: input.mealType,
@@ -159,16 +201,19 @@ export async function saveMealGoals(
       },
       { onConflict: "pattern_id,meal_type" },
     );
+    if (errorSlot) throw new DataAccessError("patrón de la comida", errorSlot);
     if (input.isFirstMeal) {
-      await supabase
+      const { error: errorOtras } = await supabase
         .from("meal_pattern_slots")
         .update({ is_first_meal: false })
         .eq("pattern_id", patternId)
         .neq("meal_type", input.mealType);
-      await supabase
+      if (errorOtras) throw new DataAccessError("primera comida del día (resto)", errorOtras);
+      const { error: errorPatron } = await supabase
         .from("meal_patterns")
         .update({ first_meal_type: input.mealType })
         .eq("id", patternId);
+      if (errorPatron) throw new DataAccessError("primera comida del día", errorPatron);
     }
   }
 

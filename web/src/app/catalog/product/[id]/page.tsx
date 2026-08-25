@@ -1,3 +1,4 @@
+import { uuidParam } from "@/lib/route-params";
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { AppNav } from "@/components/AppNav";
@@ -18,7 +19,8 @@ interface Props {
 }
 
 export default async function ProductPage({ params }: Props) {
-  const { id } = await params;
+  const { id: idCrudo } = await params;
+  const id = uuidParam(idCrudo);
   const supabase = await createSupabaseServer();
   const {
     data: { user },

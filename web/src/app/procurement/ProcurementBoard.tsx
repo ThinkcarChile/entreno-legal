@@ -173,6 +173,24 @@ export function ProcurementBoard({
       </section>
 
       {/* ---- Necesita acción ---- */}
+      {plan.unresolved.length > 0 && (
+        <section className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900">
+          <p className="font-medium">
+            {plan.unresolved.length}{" "}
+            {plan.unresolved.length === 1
+              ? "necesidad no se pudo evaluar"
+              : "necesidades no se pudieron evaluar"}
+          </p>
+          <ul className="mt-1 space-y-0.5">
+            {plan.unresolved.map((u) => (
+              <li key={`${u.ingredientId}:${u.unit}:${u.weightBasis}`}>
+                {u.label}: {u.reason}.
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {(necesitanAccion.length > 0 || plan.coveredByIncoming.length > 0) && (
         <section>
           <h2 className="mb-2 text-sm font-semibold">Necesita acción</h2>

@@ -172,6 +172,12 @@ export interface PurchaseSuggestion {
 
 export interface PurchaseScheduleResult {
   suggestions: PurchaseSuggestion[];
+  /**
+   * Gate final §6 [U-8]: necesidades que el motor NO pudo evaluar (demanda en
+   * base inconvertible). Antes se saltaban con `continue` y la pantalla decía
+   * "todo cubierto". Desconocido se declara, no se omite.
+   */
+  unresolved: { ingredientId: string; label: string; unit: StockUnit; weightBasis: WeightBasis; reason: string }[];
   /** Necesidades COMPLETAS con órdenes en camino o lista pendiente (informativo). */
   coveredByIncoming: {
     ingredientId: string;

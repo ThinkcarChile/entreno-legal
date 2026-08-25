@@ -393,6 +393,10 @@ export async function confirmMeal(
       completeness: serving.nutrition.completeness,
       reasons: serving.reasons,
       unmet_constraints: serving.unmetConstraints,
+      // Gate final §6 [U-4]: lo que NO se pudo verificar se congela COMO
+      // desconocido. Antes se descartaba y la porción quedaba idéntica a una
+      // con todos los límites verificados.
+      unverifiable_constraints: serving.unverifiableConstraints,
       // §0A: la configuración efectiva del evento queda congelada en la fila.
       event_effect: frozenEffectConfig(
         efectosPorMiembro.get(serving.memberId) ?? { kind: "NONE", event: null, text: "" },
@@ -493,8 +497,20 @@ export async function saveEvent(input: {
       .insert(memberIds.map((member_id) => ({ event_id: creado.id, member_id })));
     if (miembrosError) {
       // Un evento que dice ser de toda la familia cuando era de una persona
-      // cambia las porciones de todos: mejor no dejarlo a medias.
-      await supabase.from("nutrition_events").delete().eq("id", creado.id);
+      // cambia las porciones de todos: mejor no dejarlo a medias. Y si NI
+      // SIQUIERA se pudo deshacer, se dice — un evento a medias que afecta a
+      // todos es justo lo que este bloque existe para impedir (gate final §5).
+      const { error: deshacerError } = await supabase
+        .from("nutrition_events")
+        .delete()
+        .eq("id", creado.id);
+      if (deshacerError) {
+        return {
+          ok: false,
+          error:
+            "No se pudo guardar a quiénes afecta el evento Y el evento quedó a medias: bórralo a mano desde el plan.",
+        };
+      }
       return { ok: false, error: "No se pudo guardar a quiénes afecta el evento." };
     }
   }

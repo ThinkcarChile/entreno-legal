@@ -1,3 +1,4 @@
+import { uuidParam } from "@/lib/route-params";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -22,7 +23,8 @@ interface Props {
 }
 
 export default async function RecipeDetailPage({ params, searchParams }: Props) {
-  const { id } = await params;
+  const { id: idCrudo } = await params;
+  const id = uuidParam(idCrudo);
   const { v } = await searchParams;
 
   const supabase = await createSupabaseServer();

@@ -335,3 +335,96 @@ describe("§40 — outbox sin duplicados funcionales", () => {
     expect(despues).toBe(antes);
   });
 });
+
+// ---------------------------------------------------------------------------
+// GATE FINAL §2/§15 — lo que falta de la matriz de doble invocación
+// ---------------------------------------------------------------------------
+
+describe("gate final §2/§15", () => {
+  it("doble RECEPCIÓN de la lista de compras crea los lotes UNA vez", async () => {
+    await h.como(USER, async () => {
+      const lista = (await h.fila<{ id: string }>(
+        `insert into public.shopping_lists (household_id, plan_id, status)
+         values ($1, $2, 'ACTIVE')
+         on conflict (plan_id) do update set status = 'ACTIVE'
+         returning id`,
+        [hogar.householdId, plan],
+      ))!.id;
+      await h.db.query(
+        `insert into public.shopping_list_items
+           (list_id, ingredient_id, label, required_quantity, planned_quantity, unit,
+            purchase_basis, status, source)
+         values ($1, $2, 'Pollo recepción doble', 900, 900, 'G', 'RAW', 'PURCHASED', 'MANUAL')`,
+        [lista, polloId],
+      );
+      await h.db.query("update public.shopping_lists set status = 'COMPLETED' where id = $1", [
+        lista,
+      ]);
+
+      await dobleSubmit(() => h.db.query("select public.receive_shopping_list($1)", [lista]));
+
+      const lotes = await h.filas(
+        `select id from public.inventory_lots
+         where household_id = $1 and label = 'Pollo recepción doble'`,
+        [hogar.householdId],
+      );
+      expect(lotes).toHaveLength(1);
+      const movs = await h.filas(
+        `select id from public.inventory_movements
+         where lot_id = $1 and reason = 'PURCHASE'`,
+        [(lotes[0] as { id: string }).id],
+      );
+      expect(movs).toHaveLength(1);
+    });
+  });
+
+  it("confirm y consume v5 llevan el candado (contrato de serialización)", async () => {
+    // PGlite es mono-sesión: la carrera REAL se prueba en vivo con doble
+    // disparo contra Supabase. Acá se congela el CONTRATO: si alguien borra el
+    // `for update of a` de cualquiera de los dos RPC, este test lo delata.
+    const defs = await h.filas<{ nombre: string; def: string }>(
+      `select p.proname as nombre, pg_get_functiondef(p.oid) as def
+       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public'
+         and p.proname in ('confirm_meal_assignment', 'consume_planned_meal')`,
+    );
+    expect(defs).toHaveLength(2);
+    for (const fn of defs) {
+      expect(fn.def, `${fn.nombre} perdió el candado de la asignación`).toMatch(
+        /for update of a/i,
+      );
+    }
+    // Y los recorridos FEFO del consumo bloquean los lotes.
+    const consume = defs.find((d) => d.nombre === "consume_planned_meal")!;
+    expect(consume.def).toMatch(/for update of l/i);
+  });
+
+  it("tras consumir, confirmar ESPERA el candado y rechaza con la verdad", async () => {
+    // Secuencial (mono-sesión): consumir deja CONSUMED; reconfirmar debe
+    // rechazar — la misma decisión que tomará el que pierda la carrera viva.
+    const fecha = (await h.fila<{ f: string }>("select current_date::text as f"))!.f;
+    await h.como(USER, async () => {
+      const dia2 = (await h.fila<{ id: string }>(
+        "select id from public.weekly_plan_days where plan_id = $1 order by plan_date limit 1 offset 2",
+        [plan],
+      ))!.id;
+      const asig = (await h.fila<{ id: string }>(
+        `insert into public.meal_assignments (day_id, meal_type, kind, template_id, version_id)
+         select $1, 'DINNER', 'RECIPE', v.template_id, v.id
+         from public.meal_template_versions v where v.id = $2 returning id`,
+        [dia2, versionPollo],
+      ))!.id;
+      await h.db.query("select public.confirm_meal_assignment($1, $2::jsonb)", [
+        asig,
+        porciones(fecha).replace(/"LUNCH"/g, '"DINNER"'),
+      ]);
+      await h.db.query("select public.consume_planned_meal($1)", [asig]);
+      await expect(
+        h.db.query("select public.confirm_meal_assignment($1, $2::jsonb)", [
+          asig,
+          porciones(fecha).replace(/"LUNCH"/g, '"DINNER"'),
+        ]),
+      ).rejects.toThrow(/ya se sirvió/);
+    });
+  });
+});

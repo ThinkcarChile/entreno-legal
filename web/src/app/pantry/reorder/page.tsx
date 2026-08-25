@@ -41,6 +41,10 @@ export default async function ReorderPage() {
   const accionables = items.filter((i) =>
     ["REORDER_NOW", "REORDER_SOON", "WATCH"].includes(i.reorder.status),
   );
+  // Gate final §6 [U-3]: lo que NO se pudo evaluar se dice acá mismo, en la
+  // pantalla donde se decide qué comprar — no solo en /pantry. "Nada que
+  // reponer" con demanda sin resolver escondida era un verde mentiroso.
+  const sinResolver = items.filter((i) => i.reorder.status === "UNRESOLVED");
 
   // Sugerencias que YA están pendientes en la lista de esta semana, para que
   // el botón no se resetee al navegar (idempotencia visible).
@@ -75,6 +79,23 @@ export default async function ReorderPage() {
             : `${accionables.length} ${accionables.length === 1 ? "alimento necesita" : "alimentos necesitan"} atención`}
         </p>
       </header>
+
+      {sinResolver.length > 0 && (
+        <div className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <p className="font-medium">
+            {sinResolver.length}{" "}
+            {sinResolver.length === 1 ? "alimento no se pudo evaluar" : "alimentos no se pudieron evaluar"}
+          </p>
+          <ul className="mt-1 space-y-0.5">
+            {sinResolver.map((i) => (
+              <li key={i.ingredientId + i.unit + i.weightBasis}>
+                {i.label}: demanda en una base sin factor de conversión anotado — puede esconder un
+                faltante real.
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {input.excludedProductLots > 0 && (
         <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">

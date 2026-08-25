@@ -170,7 +170,10 @@ export function ShoppingBoard({
                             : "font-medium text-[var(--accent)]"
                         }
                       >
-                        {d.kind === "ADDED" && `+${formatQuantity(d.after ?? 0, d.unit)} (nuevo)`}
+                        {d.kind === "ADDED" &&
+                          (d.unresolved
+                            ? "+ cantidad por confirmar (nuevo)"
+                            : `+${formatQuantity(d.after ?? 0, d.unit)} (nuevo)`)}
                         {d.kind === "REMOVED" && `−${formatQuantity(d.before ?? 0, d.unit)} (sale)`}
                         {(d.kind === "QUANTITY_INCREASED" || d.kind === "QUANTITY_DECREASED") &&
                           `${d.difference > 0 ? "+" : "−"}${formatQuantity(Math.abs(d.difference), d.unit)}`}
@@ -444,14 +447,15 @@ function ItemRow({
             )}
           </div>
 
-          {enDespensa && enDespensa.quantity > 0 && cantidadIncierta && (
+          {enDespensa && enDespensa.quantity > 0 && item.unresolved && (
             <p className="rounded-lg bg-emerald-50 px-2 py-1.5 text-emerald-900">
               Tienes {formatQuantity(enDespensa.quantity, item.unit)} en la despensa. No se puede
-              decir si alcanza hasta saber cuánto rinde cocido.
+              decir si alcanza hasta saber cuánto rinde cocido
+              {item.plannedQuantity !== null ? " (la cantidad fijada a mano es una decisión, no un cálculo)" : ""}.
             </p>
           )}
 
-          {enDespensa && enDespensa.quantity > 0 && !cantidadIncierta && item.requiredQuantity !== null && (
+          {enDespensa && enDespensa.quantity > 0 && !item.unresolved && item.requiredQuantity !== null && (
             <p className="rounded-lg bg-emerald-50 px-2 py-1.5 text-emerald-900">
               Tienes {formatQuantity(enDespensa.quantity, item.unit)} en la despensa
               {enDespensa.quantity >= item.requiredQuantity

@@ -1,3 +1,4 @@
+import { uuidParam } from "@/lib/route-params";
 import Link from "next/link";
 import { SubstitutionButton } from "./SubstitutionButton";
 import { notFound, redirect } from "next/navigation";
@@ -43,7 +44,8 @@ const FIT_TONE: Record<string, string> = {
 };
 
 export default async function FamilyServingsPage({ params, searchParams }: Props) {
-  const { id } = await params;
+  const { id: idCrudo } = await params;
+  const id = uuidParam(idCrudo);
   const { meal, v, sub, assignment } = await searchParams;
   const mealType: MealType = MEAL_TYPES.includes(meal as MealType) ? (meal as MealType) : "LUNCH";
 

@@ -1,3 +1,4 @@
+import { uuidParam } from "@/lib/route-params";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -26,7 +27,8 @@ const CONFIDENCE_LABELS = { LOW: "baja", MEDIUM: "media", HIGH: "alta" } as cons
  * objetivo y la recomendación con su "¿Por qué?" completo (§29).
  */
 export default async function StockItemPage({ params, searchParams }: Props) {
-  const { ingredientId } = await params;
+  const { ingredientId: ingredientIdCrudo } = await params;
+  const ingredientId = uuidParam(ingredientIdCrudo);
   const { unit } = await searchParams;
 
   const supabase = await createSupabaseServer();

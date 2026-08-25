@@ -300,6 +300,7 @@ export async function loadConfirmedServings(db: Db, assignmentId: string) {
     .from("member_serving_projections")
     .select(
       `id, member_id, fit, adaptation_level, nutrition, completeness, reasons, status,
+       unverifiable_constraints,
        optimizer_version, version_id, profile_id,
        household_members ( display_name ),
        member_serving_components (
@@ -334,6 +335,7 @@ export async function loadConfirmedServings(db: Db, assignmentId: string) {
     nutrition: z.record(z.unknown()),
     completeness: z.record(z.unknown()),
     reasons: z.array(z.unknown()),
+    unverifiable_constraints: z.array(z.string()).catch([]),
     status: z.string(),
     optimizer_version: z.string(),
     version_id: uuid,
@@ -362,6 +364,7 @@ export async function loadConfirmedServings(db: Db, assignmentId: string) {
     nutrition: row.nutrition,
     completeness: row.completeness,
     reasons: row.reasons as { code: string; text: string }[],
+    unverifiableConstraints: row.unverifiable_constraints,
     components: [...row.member_serving_components].sort((a, b) => a.sort_order - b.sort_order),
     substitutions: row.member_serving_substitutions,
   }));

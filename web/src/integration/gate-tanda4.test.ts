@@ -126,6 +126,17 @@ describe("[P-1] aprobar revalida lo pendiente en la lista", () => {
     });
   });
 
+  it("sin dedupe_key NO hay orden: la idempotencia es obligatoria (0025)", async () => {
+    await h.como(USER, async () => {
+      await expect(
+        h.db.query(
+          "select public.create_procurement_order($1, null, current_date, null, null, 'v', $2::jsonb)",
+          [hogar.householdId, JSON.stringify([itemBase({})])],
+        ),
+      ).rejects.toThrow(/clave de idempotencia/);
+    });
+  });
+
   it("la guarda vieja de known_incoming sigue viva (no se cambió una por otra)", async () => {
     await h.como(USER, async () => {
       // Ahora HAY una orden en camino con 1000 g: known_incoming 0 está viejo.

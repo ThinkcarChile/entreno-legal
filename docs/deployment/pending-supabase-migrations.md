@@ -62,6 +62,56 @@
   `confirm_meal_assignment`→`consume_planned_meal` en
   `web/src/integration/gate-tanda5.test.ts`).
 
+### 0023 — Gate FINAL §2: confirm/consume serializados
+
+- **Archivo:** `supabase/migrations/0023_confirm_consume_serialization.sql`
+- **Propósito:** cierra el ALTO residual 1. `confirm_meal_assignment` v5 y
+  `consume_planned_meal` v5 toman `for update` sobre LA MISMA fila de
+  `meal_assignments` antes de leer o tocar estado físico: dos confirmaciones
+  simultáneas (o confirmar mientras se consume) ya no pueden ambas ver "0
+  servidas" — la segunda espera y decide con la verdad. Además los recorridos
+  FEFO del consumo toman `for update of l` (dos consumos de comidas distintas
+  no sobregiran el mismo lote). Cuerpos idénticos a 0010/0022 salvo los locks.
+- **Dependencias:** 0001→0022 aplicadas (¡después de 0022!).
+- **Checksum SHA-256:** `a13a60e34532a4024d303e55a44abedaf462708cbc92d9831fefd8c089bf384f`
+- **¿Destructiva?:** NO (`create or replace` ×2).
+- **Regresiones:** contrato de candado + doble recepción + consumir→confirmar
+  en `gate-concurrency.test.ts`; la carrera real se prueba en vivo con doble
+  disparo tras aplicar.
+
+### 0024 — Gate FINAL §3: la función demo es schema real
+
+- **Archivo:** `supabase/migrations/0024_demo_family_function.sql`
+- **Propósito:** cierra el ALTO residual 2. `seed_demo_family_profiles` (que
+  la APP llama en `loadDemoFamily`) pasa del seed a migración: schema de test
+  == schema producible mediante migraciones. El seed queda como puntero y el
+  arnés ya no lo carga. En el remoto la función YA existe (el seed se corrió
+  a mano): aplicar esta migración la deja idéntica y con dueño correcto.
+- **Dependencias:** ninguna nueva (función autónoma). Aplicar tras 0023 por
+  orden del manifiesto.
+- **Checksum SHA-256:** `d591e64b593d53973c2a1d422348f10b87548c86c51885c411fa8dd9cbf831ca`
+- **¿Destructiva?:** NO (`create or replace` idéntica a la del seed).
+- **Regresiones:** `gate-schema-parity.test.ts` — levanta la base SOLO con
+  migraciones y exige que todo `.rpc()`/`.from()` de la app exista (probado
+  por mutación: sin 0024 delata `seed_demo_family_profiles`); además prohíbe
+  que un seed defina objetos permanentes de schema.
+
+### 0025 — Gate FINAL §6: UNKNOWN nunca significa normal
+
+- **Archivo:** `supabase/migrations/0025_unknown_never_normal.sql`
+- **Propósito:** columna `unverifiable_constraints` en
+  `member_serving_projections` (los límites SIN verificar se congelan como
+  desconocidos, no desaparecen) + `confirm_meal_assignment` v6 (= v5 con la
+  columna) + `create_procurement_order` v3 (dedupe_key OBLIGATORIO: con NULL
+  no había idempotencia alguna y dos aprobaciones paralelas creaban dos
+  órdenes).
+- **Dependencias:** 0001→0024 aplicadas.
+- **Checksum SHA-256:** `e47ee86c28966c7055b3f87b80bc7235fbe8b44ec65cbb14a1cdc386cba4b62d`
+- **¿Destructiva?:** NO (columna aditiva con default + `create or replace` ×2).
+- **Regresiones:** dedupe obligatorio en `gate-tanda4.test.ts`; veredicto
+  verde ganado en `stock/engine.test.ts`; persistencia del desconocido cubierta
+  por la cadena 0001→0025 (612 tests).
+
 ### Referencia: 0021 — Gate tanda 4: neteo lista↔proveedor por base física
 
 - **Archivo:** `supabase/migrations/0021_gate_netting_basis.sql`
@@ -118,6 +168,9 @@
 
 ```bash
 sha256sum supabase/migrations/0022_consume_product_identity.sql
+sha256sum supabase/migrations/0023_confirm_consume_serialization.sql
+sha256sum supabase/migrations/0024_demo_family_function.sql
+sha256sum supabase/migrations/0025_unknown_never_normal.sql
 ```
 
 Debe coincidir EXACTAMENTE con el registrado acá. Si no coincide, NO aplicar:
