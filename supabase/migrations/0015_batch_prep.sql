@@ -569,7 +569,12 @@ begin
       end if;
     end if;
     v_total := v_total + v_lot.quantity;
-    if v_lot.acquisition_value is not null then
+    if v_lot.acquisition_value is null then
+      -- K-19: si UNA parte tiene valor desconocido, el total es desconocido.
+      -- Sumar solo lo conocido falsificaría el valor por gramo del lote nuevo.
+      v_hay_valor := false;
+      v_valor := null;
+    elsif v_valor is not null then
       v_valor := v_valor + v_lot.acquisition_value;
       v_hay_valor := true;
     end if;
@@ -591,7 +596,7 @@ begin
     -- Conservador: el nuevo lote hereda la fecha MÁS RESTRICTIVA.
     (select min(l.expiry_date) from public.inventory_lots l where l.id = any(v_ids)),
     (select min(l.use_by) from public.inventory_lots l where l.id = any(v_ids)),
-    case when v_hay_valor then v_valor else null end, v_member
+    case when v_hay_valor and v_valor is not null then v_valor else null end, v_member
   ) returning id into v_nuevo;
 
   foreach v_id in array v_ids loop
@@ -675,6 +680,20 @@ begin
     raise exception 'no autorizado';
   end;
 
+  -- §83: la sugerencia nueva reemplaza a las sugerencias VIEJAS del mismo día
+  -- que nadie empezó (READY/DRAFT → CANCELLED, tareas pendientes incluidas).
+  -- Un plan IN_PROGRESS sigue vivo: hay alguien cocinando con él.
+  update public.batch_prep_tasks t
+  set status = 'CANCELLED'
+  from public.batch_prep_plans p
+  where t.plan_id = p.id and p.household_id = p_household_id
+    and p.plan_date = p_plan_date and p.id <> v_plan
+    and p.status in ('READY', 'DRAFT') and t.status = 'PENDING';
+  update public.batch_prep_plans p
+  set status = 'CANCELLED', updated_at = now()
+  where p.household_id = p_household_id and p.plan_date = p_plan_date
+    and p.id <> v_plan and p.status in ('READY', 'DRAFT');
+
   for v_task in select * from jsonb_array_elements(p_tasks) loop
     v_seq := v_seq + 1;
     v_lot := nullif(v_task->>'lot_id', '')::uuid;
@@ -732,6 +751,9 @@ begin
   where id = p_plan_id for update;
   if v_household is null or not app.is_household_member(v_household) then
     raise exception 'no autorizado';
+  end if;
+  if (select status from public.batch_prep_plans where id = p_plan_id) = 'COMPLETED' then
+    raise exception 'un plan completado es historia: no se cancela retroactivamente';
   end if;
   update public.batch_prep_tasks set status = 'CANCELLED'
   where plan_id = p_plan_id and status = 'PENDING';
@@ -824,6 +846,9 @@ begin
     v_output := coalesce(nullif(p_outputs->>'output_quantity', '')::numeric, v_input);
     v_waste := coalesce(nullif(p_outputs->>'waste_quantity', '')::numeric, v_input - v_output);
     perform app.assert_finite(v_output, 'lo utilizable');
+    if v_output < 0 then
+      raise exception 'lo utilizable no puede ser negativo';
+    end if;
     if v_waste < -0.001 or abs((v_output + v_waste) - v_input) > 0.001 then
       raise exception 'no cuadra: entrada % = utilizable % + merma % (§44)', v_input, v_output, v_waste;
     end if;
@@ -972,6 +997,17 @@ begin
   if not app.is_household_member(v_household) then raise exception 'no autorizado'; end if;
   if v_task.status <> 'PENDING' then return; end if;
   update public.batch_prep_tasks set status = 'SKIPPED' where id = p_task_id;
+
+  -- El plan cuya última tarea pendiente se saltó queda COMPLETADO, no colgado.
+  update public.batch_prep_plans p
+  set status = case
+        when not exists (select 1 from public.batch_prep_tasks t
+                         where t.plan_id = p.id and t.status = 'PENDING')
+        then 'COMPLETED'::public.prep_plan_status
+        else p.status
+      end,
+      updated_at = now()
+  where p.id = v_task.plan_id and p.status in ('READY', 'IN_PROGRESS', 'DRAFT');
 end;
 $$;
 

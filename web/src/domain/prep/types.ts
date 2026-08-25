@@ -109,6 +109,8 @@ export interface EquipmentConfig {
   capability: string;
   params: Record<string, unknown>;
   maxBatchQuantity: number | null;
+  /** Unidad de la capacidad por tanda: solo se compara si calza con el lote. */
+  maxBatchUnit: "G" | "ML" | "UNIT" | null;
   isActive: boolean;
 }
 

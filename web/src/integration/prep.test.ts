@@ -535,6 +535,104 @@ describe("§43 — merge validado", () => {
   });
 });
 
+describe("correcciones de la revisión adversarial", () => {
+  it("merge con valor DESCONOCIDO en una parte → valor desconocido (jamás suma parcial)", async () => {
+    const conValor = await crearLote("Con valor", polloId, 300, 1000);
+    const sinValor = await crearLote("Sin valor", polloId, 200, null);
+    const nuevo = await h.como(USER_A, async () =>
+      (await h.fila<{ merge_lots: string }>("select public.merge_lots(array[$1, $2]::uuid[])", [conValor, sinValor]))!
+        .merge_lots,
+    );
+    const l = await lote(nuevo);
+    expect(Number(l.quantity)).toBe(500);
+    expect(l.acquisition_value).toBeNull(); // K-19: desconocido domina
+  });
+
+  it("saltar la ÚLTIMA tarea pendiente también cierra el plan", async () => {
+    const id = await crearLote("Skip final", polloId, 100, null);
+    const { planId, taskIds } = await planCon(
+      [{ task_type: "WASH", lot_id: id, ingredient_id: polloId, label: "Lavar", planned_quantity: 100, unit: "G" }],
+      "PREP:skip-final",
+    );
+    await h.como(USER_A, () => h.db.query("select public.skip_prep_task($1)", [taskIds[0]]));
+    const plan = await h.como(USER_A, () =>
+      h.fila<{ status: string }>("select status from public.batch_prep_plans where id = $1", [planId]),
+    );
+    expect(plan!.status).toBe("COMPLETED");
+  });
+
+  it("un plan COMPLETADO no se cancela retroactivamente: es historia", async () => {
+    const id = await crearLote("Historia", polloId, 100, null);
+    const { planId, taskIds } = await planCon(
+      [{ task_type: "WASH", lot_id: id, ingredient_id: polloId, label: "Lavar", planned_quantity: 100, unit: "G" }],
+      "PREP:historia",
+    );
+    await h.como(USER_A, () => h.db.query("select public.complete_prep_task($1)", [taskIds[0]]));
+    await expect(
+      h.como(USER_A, () => h.db.query("select public.cancel_prep_plan($1)", [planId])),
+    ).rejects.toThrow(/historia/);
+  });
+
+  it("§83: un plan nuevo del mismo día REEMPLAZA a la sugerencia vieja (READY→CANCELLED)", async () => {
+    const id = await crearLote("Supersede", polloId, 400, null);
+    const { planId: viejo } = await planCon(
+      [{ task_type: "WASH", lot_id: id, ingredient_id: polloId, label: "Lavar v1", planned_quantity: 400, unit: "G" }],
+      "PREP:supersede-v1",
+    );
+    const { planId: nuevo } = await planCon(
+      [{ task_type: "WASH", lot_id: id, ingredient_id: polloId, label: "Lavar v2", planned_quantity: 300, unit: "G" }],
+      "PREP:supersede-v2",
+    );
+    expect(nuevo).not.toBe(viejo);
+    const estados = await h.como(USER_A, () =>
+      h.filas<{ id: string; status: string }>(
+        "select id, status from public.batch_prep_plans where id in ($1, $2) order by created_at",
+        [viejo, nuevo],
+      ),
+    );
+    expect(estados.find((e) => e.id === viejo)!.status).toBe("CANCELLED");
+    expect(estados.find((e) => e.id === nuevo)!.status).toBe("READY");
+    // …pero un plan EN CURSO no se le quita a quien cocina: se prueba aparte.
+  });
+
+  it("un plan IN_PROGRESS no es reemplazado por la regeneración", async () => {
+    const a = await crearLote("EnCurso A", polloId, 200, null);
+    const b = await crearLote("EnCurso B", polloId, 200, null);
+    const { planId: enCurso, taskIds } = await planCon(
+      [
+        { task_type: "WASH", lot_id: a, ingredient_id: polloId, label: "Lavar 1", planned_quantity: 200, unit: "G" },
+        { task_type: "WASH", lot_id: b, ingredient_id: polloId, label: "Lavar 2", planned_quantity: 200, unit: "G" },
+      ],
+      "PREP:encurso-v1",
+    );
+    await h.como(USER_A, () => h.db.query("select public.complete_prep_task($1)", [taskIds[0]])); // → IN_PROGRESS
+    await planCon(
+      [{ task_type: "WASH", lot_id: a, ingredient_id: polloId, label: "Lavar v2", planned_quantity: 100, unit: "G" }],
+      "PREP:encurso-v2",
+    );
+    const estado = await h.como(USER_A, () =>
+      h.fila<{ status: string }>("select status from public.batch_prep_plans where id = $1", [enCurso]),
+    );
+    expect(estado!.status).toBe("IN_PROGRESS"); // hay alguien cocinando con él
+  });
+
+  it("utilizable negativo se rechaza con mensaje claro", async () => {
+    const id = await crearLote("Negativo", tomateId, 500, null);
+    const { taskIds } = await planCon(
+      [{ task_type: "CUT", lot_id: id, ingredient_id: tomateId, label: "Picar", planned_quantity: 500, unit: "G" }],
+      "PREP:negativo",
+    );
+    await expect(
+      h.como(USER_A, () =>
+        h.db.query("select public.complete_prep_task($1, 500, $2::jsonb)", [
+          taskIds[0],
+          JSON.stringify({ output_quantity: -100, waste_quantity: 600 }),
+        ]),
+      ),
+    ).rejects.toThrow(/negativo/);
+  });
+});
+
 describe("§45/§46 — rendimiento observado: observación, jamás sobrescritura", () => {
   it("guardar 1.000→760 crea la observación con factor 0,76 y NO toca ingredient_yields", async () => {
     const referencias = await h.comoAdmin(() =>

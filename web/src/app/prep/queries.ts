@@ -79,6 +79,7 @@ const configRow = z.object({
   capability: z.string(),
   params: z.record(z.string(), z.unknown()).catch({}),
   max_batch_quantity: nullableNumeric,
+  max_batch_unit: z.enum(["G", "ML", "UNIT"]).nullable(),
   is_active: z.boolean(),
   household_equipment: z
     .union([
@@ -158,7 +159,7 @@ export async function loadEquipment(db: Db, householdId: string): Promise<Equipm
     db
       .from("household_equipment_configs")
       .select(
-        "id, equipment_id, capability, params, max_batch_quantity, is_active, household_equipment!inner ( name, is_active, household_id )",
+        "id, equipment_id, capability, params, max_batch_quantity, max_batch_unit, is_active, household_equipment!inner ( name, is_active, household_id )",
       )
       .eq("household_equipment.household_id", householdId),
   ]);
@@ -174,6 +175,7 @@ export async function loadEquipment(db: Db, householdId: string): Promise<Equipm
       capability: c.capability,
       params: c.params,
       maxBatchQuantity: c.max_batch_quantity,
+      maxBatchUnit: c.max_batch_unit,
       isActive: c.is_active,
     }),
   );

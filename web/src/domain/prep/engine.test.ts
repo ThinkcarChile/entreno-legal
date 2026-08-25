@@ -63,6 +63,8 @@ function regla(partial: Partial<SafetyRule> = {}): SafetyRule {
 }
 
 const REGLAS: SafetyRule[] = [
+  // Como el seed real (USDA): crudo Y porcionado-crudo comparten la ventana.
+  regla({ id: "r-raw", ingredientId: "ing-pollo", processingState: "RAW", temperatureState: "CHILLED", maxDays: 2 }),
   regla({ id: "r-prepped", ingredientId: "ing-pollo", processingState: "PREPPED", temperatureState: "CHILLED", maxDays: 2 }),
   regla({ id: "r-frozen", temperatureState: "FROZEN", maxDays: null }),
   regla({ id: "r-thaw", ingredientId: "ing-pollo", ruleKind: "THAW", temperatureState: "FROZEN", thawFridgeHours: 24 }),
@@ -142,6 +144,19 @@ describe("§2/§9 — no sobrepreparar: preparar X, dejar Y, con razón", () => 
   });
 });
 
+describe("el estado del paquete es el REAL: porcionar sin cortar sigue crudo", () => {
+  it("con SOLO una regla RAW/CHILLED, el paquete del martes se refrigera igual", () => {
+    const soloRaw = [
+      regla({ id: "r-raw", ingredientId: "ing-pollo", processingState: "RAW", temperatureState: "CHILLED", maxDays: 2 }),
+      regla({ id: "r-frozen", temperatureState: "FROZEN", maxDays: null }),
+    ];
+    const plan = planPrep(entrada({ safetyRules: soloRaw }));
+    const paquetes = plan.tasks.find((t) => t.taskType === "PORTION")!.params.packages!;
+    // Sin el fix, el motor consultaba PREPPED (sin regla) → REVIEW_REQUIRED falso.
+    expect(paquetes[0]!.storage).toBe("REFRIGERATE");
+  });
+});
+
 describe("§52/§88 — FEFO: usar primero lo que vence primero", () => {
   it("dos lotes compatibles: el de use_by más cercano se prepara primero", () => {
     const viejo = lote({ id: "lot-viejo", quantity: 1000, useBy: "2026-08-26" });
@@ -165,6 +180,7 @@ describe("§11/§12/§86 — cortes desde preferencias del hogar, manual siempre
     capability: "CUT_SHRED",
     params: { size_mm: 4 },
     maxBatchQuantity: null,
+    maxBatchUnit: null,
     isActive: true,
   };
   const pref: PrepPreference = {
@@ -201,8 +217,23 @@ describe("§11/§12/§86 — cortes desde preferencias del hogar, manual siempre
     expect(corte.params.manualAlternative).toBe("rallador manual");
   });
 
+  it("la capacidad por tanda en OTRA unidad no se compara (sin conversiones a ciegas)", () => {
+    const capUnidades = { ...cap, maxBatchQuantity: 2, maxBatchUnit: "UNIT" as const };
+    const plan = planPrep(
+      entrada({
+        lots: [lote({ id: "lot-zana", ingredientId: "ing-zanahoria", label: "Zanahoria", quantity: 2000 })],
+        demand: [demanda({ ingredientId: "ing-zanahoria", quantity: 1500 })],
+        preferences: [pref],
+        capabilities: [capUnidades],
+        safetyRules: [],
+      }),
+    );
+    const corte = plan.tasks.find((t) => t.taskType === "SHRED")!;
+    expect(corte.params.batches).toBeUndefined(); // 2 UNIT vs 1.500 G: no se inventa
+  });
+
   it("§53/§87: capacidad por tanda — 1.500 g en equipo de 800 g → 2 tandas, cantidad intacta", () => {
-    const capChica = { ...cap, maxBatchQuantity: 800 };
+    const capChica = { ...cap, maxBatchQuantity: 800, maxBatchUnit: "G" as const };
     const plan = planPrep(
       entrada({
         lots: [lote({ id: "lot-zana", ingredientId: "ing-zanahoria", label: "Zanahoria", quantity: 2000 })],
@@ -222,7 +253,7 @@ describe("§13/§56 — agrupar por herramienta, dependencias intactas (§14)", 
   it("dos alimentos con la MISMA cuchilla quedan contiguos en el bloque de corte", () => {
     const cap4: EquipmentConfig = {
       id: "cap4", equipmentId: "eq-c", equipmentName: "Cortadora", equipmentActive: true,
-      capability: "CUT_SHRED", params: { size_mm: 4 }, maxBatchQuantity: null, isActive: true,
+      capability: "CUT_SHRED", params: { size_mm: 4 }, maxBatchQuantity: null, maxBatchUnit: null, isActive: true,
     };
     const cap9: EquipmentConfig = { ...cap4, id: "cap9", capability: "CUT_DICE", params: { size_mm: 9 } };
     const plan = planPrep(

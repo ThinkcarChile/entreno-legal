@@ -7,8 +7,12 @@
 
 ## Estado remoto conocido
 
-**Aplicado en Supabase** (proyecto `smwyxfnlxoohenhsdcjx`): `0001 → 0012`
-(última aplicación verificada por API el 2026-08-24; `consumption_shortfalls` responde).
+**Aplicado en Supabase** (proyecto `smwyxfnlxoohenhsdcjx`): `0001 → 0014`
+(0013 y 0014 aplicadas por Francisco el 2026-08-25 y verificadas por API:
+`stock_targets`, `waste_movements`, `purchase_movements`, `suppliers`,
+`procurement_orders`, `procurement_order_events` → 200).
+**Pendiente: 0015** (esperando el cierre de la revisión adversarial del Sprint 10
+para congelarla) + el bloque de reglas USDA del seed.
 
 ## Pendientes de aplicar (en este orden exacto)
 

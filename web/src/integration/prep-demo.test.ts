@@ -187,6 +187,7 @@ async function prepInputDesdeBase(): Promise<PrepEngineInput> {
       capability: c.capability,
       params: c.params,
       maxBatchQuantity: c.max_batch_quantity == null ? null : Number(c.max_batch_quantity),
+      maxBatchUnit: null,
       isActive: c.is_active,
     }));
 

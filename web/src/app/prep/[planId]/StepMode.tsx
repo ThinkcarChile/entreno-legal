@@ -25,6 +25,7 @@ export function StepMode({
   const [message, setMessage] = useState<string | null>(null);
   const [cantidadReal, setCantidadReal] = useState("");
   const [paquetesReales, setPaquetesReales] = useState<Record<number, string>>({});
+  const [paqueteUbicacion, setPaqueteUbicacion] = useState<Record<number, string>>({});
 
   const tareas = plan.batch_prep_tasks;
   const pendientes = tareas.filter((t) => t.status === "PENDING");
@@ -87,7 +88,8 @@ export function StepMode({
         const q = texto === "" ? p.quantity : Number(texto);
         return {
           quantity: q,
-          location_id: ubicacionPara(p.storage),
+          // §19: la ubicación CONCRETA la elige la persona; la sugerida es el default.
+          location_id: paqueteUbicacion[i] || ubicacionPara(p.storage),
           intended_use_date: p.intendedUseDate,
           intended_assignment_id: p.intendedAssignmentId,
         };
@@ -189,6 +191,18 @@ export function StepMode({
                   <p className="text-xs text-[var(--ink)]/60">
                     {p.storage === "FREEZE" ? "Congelar" : p.storage === "REFRIGERATE" ? "Refrigerar" : "Guardado: revisar"}
                   </p>
+                  <select
+                    value={paqueteUbicacion[i] ?? ubicacionPara(p.storage) ?? ""}
+                    onChange={(e) => setPaqueteUbicacion((prev) => ({ ...prev, [i]: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-[var(--ink)]/15 bg-white px-2 py-1.5 text-xs"
+                  >
+                    <option value="">Sin mover</option>
+                    {locations.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <input
                   type="number"

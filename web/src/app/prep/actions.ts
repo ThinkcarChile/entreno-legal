@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -92,7 +93,13 @@ export async function generatePrepPlan(): Promise<ActionResult> {
       thaw_suggestions: draft.thawSuggestions,
       warnings: draft.warnings,
     },
-    p_dedupe_key: `PREP:${ctx.householdId}:${hoy}`,
+    // El hash del contenido hace que una demanda DISTINTA genere un plan
+    // NUEVO (el RPC cancela las sugerencias viejas del día, §83); el mismo
+    // contenido sigue siendo idempotente (doble clic = mismo plan).
+    p_dedupe_key: `PREP:${ctx.householdId}:${hoy}:${createHash("sha256")
+      .update(JSON.stringify(tareas))
+      .digest("hex")
+      .slice(0, 16)}`,
     p_tasks: tareas,
   });
   if (error) return { ok: false, error: `No se pudo guardar el plan: ${error.message}` };

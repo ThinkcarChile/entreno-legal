@@ -32,7 +32,11 @@ export async function GET(request: NextRequest) {
   const filas = z
     .array(z.object({ id: z.string(), snapshot: z.unknown() }))
     .parse(data ?? []);
-  if (filas.length === 0) return NextResponse.json({ error: "no autorizado" }, { status: 404 });
+  // Todo o nada: un id ajeno o inexistente en la lista invalida la petición
+  // completa (jamás un PDF "parcial" que esconda que faltaron etiquetas).
+  if (filas.length !== ids.length) {
+    return NextResponse.json({ error: "no autorizado" }, { status: 404 });
+  }
 
   // Zod en el borde (§65): un snapshot corrupto es un error dicho, no un PDF roto.
   const snapshots = [];

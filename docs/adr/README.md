@@ -30,3 +30,4 @@ Formato: `NNNN-titulo-corto.md`, correlativo. Plantilla:
 | [0008](./0008-inventario-por-lotes.md) | Despensa: lotes con libro mayor append-only | APROBADO (Sprint 7) |
 | [0009](./0009-stock-intelligence.md) | Stock Intelligence: derivado en vivo, reservas lógicas, motores versionados | APROBADO (Sprint 8) |
 | [0010](./0010-procurement.md) | Procurement: planificar el abastecimiento sin falsificar el stock | PROPUESTO (Sprint 9, local) |
+| [0011](./0011-batch-prep.md) | Batch prep: sugerir arriba, transformar solo al confirmar | PROPUESTO (Sprint 10, local) |

@@ -210,7 +210,9 @@ export function planPrep(input: PrepEngineInput): PrepPlanDraft {
         const cutLabel = `${corte.taskType}${sizeMm ? ` ${sizeMm} mm` : ""}`;
         // §53: capacidad por tanda del equipo.
         const batches =
-          capActiva?.maxBatchQuantity != null && deEste > capActiva.maxBatchQuantity
+          capActiva?.maxBatchQuantity != null &&
+          capActiva.maxBatchUnit === lote.unit &&
+          deEste > capActiva.maxBatchQuantity
             ? Math.ceil(deEste / capActiva.maxBatchQuantity)
             : undefined;
         toolKey = capActiva ? `${capActiva.equipmentId}::${capActiva.capability}::${JSON.stringify(capActiva.params)}` : null;
@@ -243,6 +245,9 @@ export function planPrep(input: PrepEngineInput): PrepPlanDraft {
       const paquetes: SuggestedPackage[] = [];
       let restoLote = deEste;
       const sinAsignar: PrepDemand[] = [];
+      // El estado del paquete al guardarse: PREPPED solo si esta cadena corta;
+      // porcionar sin cortar deja el alimento en su estado actual (§5).
+      const estadoPaquete = corte ? ("PREPPED" as const) : lote.processingState;
       for (const d of demandaRestante) {
         if (restoLote <= 0.001) {
           sinAsignar.push(d);
@@ -254,7 +259,7 @@ export function planPrep(input: PrepEngineInput): PrepPlanDraft {
           {
             ingredientId: lote.ingredientId,
             categoryId: lote.categoryId,
-            processingState: "PREPPED",
+            processingState: estadoPaquete,
             vacuumSealed: lote.vacuumSealed,
             storedSince: input.today,
           },
@@ -279,7 +284,7 @@ export function planPrep(input: PrepEngineInput): PrepPlanDraft {
           {
             ingredientId: lote.ingredientId,
             categoryId: lote.categoryId,
-            processingState: "PREPPED",
+            processingState: estadoPaquete,
             vacuumSealed: lote.vacuumSealed,
             storedSince: input.today,
           },
