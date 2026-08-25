@@ -118,10 +118,14 @@ export interface StockInput {
   targets: readonly StockTarget[];
   /**
    * Hasta qué fecha (inclusive) la planificación confirmada cubre el
-   * calendario del hogar (§2, §17): hasta ahí NO se agrega forecast
+   * calendario del hogar (§2, §17): esos días NO reciben forecast
    * estadístico — la demanda confirmada GANA sobre el pronóstico.
+   *
+   * Gate 0→10 [S-1]: son los DÍAS CON COMIDAS PLANIFICADAS, uno a uno. Antes
+   * era el máximo global de fechas: una sola comida el sábado apagaba el
+   * forecast de lunes a viernes aunque nadie hubiera planificado esos días.
    */
-  planningCoveredUntil: string | null;
+  planningCoveredDates: readonly string[];
   ingredients: readonly { id: string; label: string; categoryCode: string | null }[];
 }
 

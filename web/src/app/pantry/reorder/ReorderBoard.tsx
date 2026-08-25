@@ -26,6 +26,12 @@ export function ReorderBoard({
   const [error, setError] = useState<string | null>(null);
   const [agregados, setAgregados] = useState<Set<string>>(new Set(yaSugeridos));
 
+  // La clave de "ya sugerido" usa la base DE COMPRA: un bucket COCIDO se
+  // compra convertido a crudo, así que su línea en la lista es RAW.
+  function claveDe(item: StockItem): string {
+    return item.ingredientId + item.unit + (item.weightBasis === "DRAINED" ? "DRAINED" : "RAW");
+  }
+
   function agregar(item: StockItem) {
     if (item.reorder.recommendedQuantity === null) return;
     setError(null);
@@ -37,13 +43,18 @@ export function ReorderBoard({
         label: item.label,
         quantity: item.reorder.recommendedQuantity!,
         unit: item.unit,
+        weightBasis: item.weightBasis,
       });
       if (!r.ok) {
         setError(r.error ?? "No se pudo agregar.");
         return;
       }
       setMessage(r.message ?? "Agregado.");
-      setAgregados((prev) => new Set([...prev, item.ingredientId + item.unit]));
+      // Gate 0→10 [M-3]: el botón dice "Agregado" SOLO si se escribió una
+      // línea. "Ya estaba cubierto" es información, no una línea nueva.
+      if (r.added) {
+        setAgregados((prev) => new Set([...prev, claveDe(item)]));
+      }
       router.refresh();
     });
   }
@@ -120,11 +131,11 @@ export function ReorderBoard({
           {item.reorder.recommendedQuantity !== null && (
             <button
               type="button"
-              disabled={pending || agregados.has(item.ingredientId + item.unit)}
+              disabled={pending || agregados.has(claveDe(item))}
               onClick={() => agregar(item)}
               className="mt-2 rounded-full border border-[var(--accent)] px-4 py-1.5 text-xs font-medium text-[var(--accent)] disabled:opacity-50"
             >
-              {agregados.has(item.ingredientId + item.unit)
+              {agregados.has(claveDe(item))
                 ? "Agregado a la próxima compra"
                 : "Agregar a próxima compra"}
             </button>

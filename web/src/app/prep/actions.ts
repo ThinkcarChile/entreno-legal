@@ -91,6 +91,10 @@ export async function generatePrepPlan(): Promise<ActionResult> {
       ...draft.summary,
       leave_whole: draft.leaveWhole,
       thaw_suggestions: draft.thawSuggestions,
+      // Gate 0→10 [B-2]: demanda que NO se pudo planificar por base física
+      // incompatible sin factor anotado. Se guarda y se muestra: jamás se
+      // disimula con una conversión 1:1.
+      unresolved: draft.unresolved,
       warnings: draft.warnings,
     },
     // El hash del contenido hace que una demanda DISTINTA genere un plan

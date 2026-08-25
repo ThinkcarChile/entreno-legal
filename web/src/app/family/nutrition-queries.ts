@@ -244,7 +244,16 @@ export function profileFromRows(
 }
 
 /** Integrantes del hogar del usuario, con "yo" marcado. */
-export async function loadHouseholdMembers(db: Db): Promise<{
+export async function loadHouseholdMembers(
+  db: Db,
+  /**
+   * Gate 0→10 [F-1]: cuando quien llama YA sabe de qué hogar habla (porque lo
+   * sacó de la comida, del plan o del lote), lo manda. Sin esto se caía al
+   * "hogar más antiguo del usuario", que para alguien de dos casas es la casa
+   * equivocada.
+   */
+  householdId?: string,
+): Promise<{
   householdId: string | null;
   members: MemberSummary[];
 }> {
@@ -253,40 +262,53 @@ export async function loadHouseholdMembers(db: Db): Promise<{
   } = await db.auth.getUser();
   if (!user) return { householdId: null, members: [] };
 
-  const { data: me, error: err1Me } = await db
-    .from("household_members")
-    .select("id, household_id")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    // Determinista para quien pertenece a más de un hogar: siempre el más
-    // antiguo, no el que el planificador de la base quiera devolver hoy.
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (err1Me) throw new DataAccessError("integrante del usuario", err1Me);
-  if (!me) return { householdId: null, members: [] };
+  let hogar = householdId ?? null;
+  if (!hogar) {
+    const { data: me, error: err1Me } = await db
+      .from("household_members")
+      .select("id, household_id")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      // Determinista para quien pertenece a más de un hogar: siempre el más
+      // antiguo, no el que el planificador de la base quiera devolver hoy.
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (err1Me) throw new DataAccessError("integrante del usuario", err1Me);
+    if (!me) return { householdId: null, members: [] };
+    hogar = parseMaybeRow(z.object({ household_id: uuid }), me, "integrante del usuario")!
+      .household_id;
+  }
 
   const { data, error: err1Data } = await db
     .from("household_members")
-    .select("id, display_name")
-    .eq("household_id", me.household_id)
+    .select("id, display_name, user_id")
+    .eq("household_id", hogar)
     .eq("is_active", true)
     .order("display_name");
   if (err1Data) throw new DataAccessError("integrantes del hogar", err1Data);
 
   return {
-    householdId: me.household_id,
-    members: (data ?? []).map((m) => ({
+    householdId: hogar,
+    members: parseRows(
+      z.object({ id: uuid, display_name: z.string(), user_id: uuid.nullable() }),
+      data,
+      "integrantes del hogar",
+    ).map((m) => ({
       id: m.id,
       displayName: m.display_name,
-      isMe: m.id === me.id,
+      // "Yo" es mi ficha EN ESTE hogar: en la otra casa soy otro integrante.
+      isMe: m.user_id === user.id,
     })),
   };
 }
 
 /** Todos los perfiles del hogar, para proyectar una comida familiar. */
-export async function loadHouseholdProfiles(db: Db): Promise<MemberNutritionProfile[]> {
-  const { members } = await loadHouseholdMembers(db);
+export async function loadHouseholdProfiles(
+  db: Db,
+  householdId?: string,
+): Promise<MemberNutritionProfile[]> {
+  const { members } = await loadHouseholdMembers(db, householdId);
   return Promise.all(members.map((m) => loadMemberProfile(db, m.id, m.displayName)));
 }
 
@@ -299,7 +321,7 @@ export async function loadDailyOverride(
   memberId: string,
   date: string,
   mealType: MealType,
-): Promise<{ planId: string; targets: Record<string, unknown> } | null> {
+): Promise<{ planId: string; targets: Record<string, unknown>; enabled: boolean } | null> {
   const { data, error: err2Data } = await db
     .from("member_daily_nutrition_plans")
     .select(
@@ -312,17 +334,34 @@ export async function loadDailyOverride(
   if (err2Data) throw new DataAccessError("excepcion del dia", err2Data);
   if (!data) return null;
 
-  const meals = (data.member_daily_plan_meals ?? []) as {
-    meal_type: MealType;
-    energy_min: number | null;
-    energy_preferred: number | null;
-    energy_max: number | null;
-    protein_min: number | null;
-    protein_preferred: number | null;
-    protein_max: number | null;
-  }[];
+  // Gate 0→10 [H-2]: esto era un `as` a mano que OMITÍA `enabled`, la columna
+  // que dice "ese día no almuerzo". Se pedía en el select y no la leía nadie:
+  // la persona quedaba con porción igual. Ahora pasa por Zod como todo lo demás
+  // y `enabled` sale de la función.
+  const comidaDelDia = z.object({
+    meal_type: z.string(),
+    enabled: z.boolean(),
+    energy_min: nullableNumeric,
+    energy_preferred: nullableNumeric,
+    energy_max: nullableNumeric,
+    protein_min: nullableNumeric,
+    protein_preferred: nullableNumeric,
+    protein_max: nullableNumeric,
+  });
+  const meals = parseRows(comidaDelDia, data.member_daily_plan_meals ?? [], "excepcion del dia");
   const meal = meals.find((m) => m.meal_type === mealType);
   if (!meal) return null;
+  // Sin objetivos y sin apagar nada, la excepción no dice nada de esta comida.
+  if (meal.enabled) {
+    const vacia =
+      meal.energy_min === null &&
+      meal.energy_preferred === null &&
+      meal.energy_max === null &&
+      meal.protein_min === null &&
+      meal.protein_preferred === null &&
+      meal.protein_max === null;
+    if (vacia) return null;
+  }
 
   const targets: Record<string, unknown> = {};
   if (meal.energy_min !== null || meal.energy_preferred !== null || meal.energy_max !== null) {
@@ -339,7 +378,7 @@ export async function loadDailyOverride(
       maximum: meal.protein_max,
     };
   }
-  return { planId: data.id, targets };
+  return { planId: data.id, targets, enabled: meal.enabled };
 }
 
 // ---------------------------------------------------------------------------

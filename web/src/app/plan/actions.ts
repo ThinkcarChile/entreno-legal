@@ -19,7 +19,7 @@ import { publishProfileSnapshot } from "@/app/family/profile-publish";
 import { loadAlternativesWithFacts, loadRecipeDetail } from "@/app/recipes/queries";
 import { loadEventsForDate } from "./queries";
 import { DataAccessError } from "@/lib/supabase/unwrap";
-import { DataShapeError, dateString } from "@/lib/supabase/rows";
+import { DataShapeError, dateString, parseRows, uuid } from "@/lib/supabase/rows";
 import { z } from "zod";
 
 export interface ActionResult {
@@ -155,9 +155,40 @@ export async function confirmMeal(
 ): Promise<ActionResult> {
   const supabase = await client();
 
+  // Gate 0→10 [A-1]: los reemplazos ACEPTADOS son una decisión guardada, no un
+  // parámetro que el botón de turno tenga que acordarse de pasar. Antes vivían
+  // en un query param de la vista de porciones: quien confirmaba desde la
+  // semana los perdía y la porción quedaba con el alimento de la receta —
+  // Sebastián terminaba con pollo aunque hubiera aceptado merluza.
+  const { data: elegidas, error: elegidasError } = await supabase
+    .from("meal_substitution_choices")
+    .select("member_id, component_id, to_ingredient_id")
+    .eq("assignment_id", assignmentId);
+  if (elegidasError) throw new DataAccessError("reemplazos aceptados", elegidasError);
+  const elegidasFilas = parseRows(
+    z.object({ member_id: uuid, component_id: uuid, to_ingredient_id: uuid }),
+    elegidas,
+    "reemplazos aceptados",
+  );
+  const sustituciones: Record<string, { componentId: string; ingredientId: string }[]> = {
+    ...substitutionsByMember,
+  };
+  for (const e of elegidasFilas) {
+    const previas = sustituciones[e.member_id] ?? [];
+    if (!previas.some((p) => p.componentId === e.component_id)) {
+      sustituciones[e.member_id] = [
+        ...previas,
+        { componentId: e.component_id, ingredientId: e.to_ingredient_id },
+      ];
+    }
+  }
+  substitutionsByMember = sustituciones;
+
   const { data: asignacion, error: asigError } = await supabase
     .from("meal_assignments")
-    .select("id, meal_type, version_id, template_id, weekly_plan_days ( plan_date )")
+    .select(
+      "id, meal_type, version_id, template_id, weekly_plan_days ( plan_date, weekly_plans ( household_id ) )",
+    )
     .eq("id", assignmentId)
     .maybeSingle();
   if (asigError) throw new DataAccessError("comida a confirmar", asigError);
@@ -169,22 +200,38 @@ export async function confirmMeal(
   // mismo schema que el resto de la capa de datos — nunca se castea. Si llegara
   // como Date, leerlo directo movería la comida un día y la porción quedaría
   // guardada con la fecha equivocada.
+  const planSchema = z.union([
+    z.array(z.object({ household_id: uuid })),
+    z.object({ household_id: uuid }),
+    z.null(),
+  ]);
   const diaSchema = z.union([
-    z.array(z.object({ plan_date: dateString })),
-    z.object({ plan_date: dateString }),
+    z.array(z.object({ plan_date: dateString, weekly_plans: planSchema })),
+    z.object({ plan_date: dateString, weekly_plans: planSchema }),
     z.null(),
   ]);
   const diaParseado = diaSchema.safeParse(asignacion.weekly_plan_days);
   if (!diaParseado.success) {
     throw new DataShapeError("día de la comida a confirmar", diaParseado.error.issues);
   }
-  const dia = diaParseado.data;
-  const fecha = (Array.isArray(dia) ? (dia[0]?.plan_date ?? null) : (dia?.plan_date ?? null)) ?? null;
+  const uno = <T,>(v: T[] | T | null): T | null =>
+    v === null ? null : Array.isArray(v) ? (v[0] ?? null) : v;
+  const dia = uno(diaParseado.data);
+  const fecha = dia?.plan_date ?? null;
+
+  // Gate 0→10 [F-1]: TODO lo que sigue (integrantes, zona horaria, eventos) es
+  // del hogar DE ESTA COMIDA. Antes cada lectura elegía hogar por su cuenta —
+  // "el más antiguo", "el primero", "todos los míos"— y para quien pertenece a
+  // dos casas eso mezclaba familias enteras.
+  const householdId = uno(dia?.weekly_plans ?? null)?.household_id ?? null;
+  if (!householdId) {
+    return { ok: false, error: "Esa comida no está colgada de ningún plan: no se puede confirmar." };
+  }
 
   const recipe = await loadRecipeDetail(supabase, asignacion.template_id, asignacion.version_id);
   if (!recipe) return { ok: false, error: "No se encontró la receta de esa comida." };
 
-  const todosLosPerfiles = await loadHouseholdProfiles(supabase);
+  const todosLosPerfiles = await loadHouseholdProfiles(supabase, householdId);
   if (todosLosPerfiles.length === 0) return { ok: false, error: "El hogar no tiene integrantes." };
 
   // §2: solo come quien participa. Sin filas de participantes, comen todos.
@@ -253,23 +300,38 @@ export async function confirmMeal(
   const { data: hogar, error: hogarError } = await supabase
     .from("households")
     .select("timezone")
-    .limit(1)
+    .eq("id", householdId)
     .maybeSingle();
   if (hogarError) throw new DataAccessError("zona horaria del hogar", hogarError);
   const fechaEfectiva = fecha ?? effectiveDate(new Date(), hogar?.timezone ?? "America/Santiago");
 
   const overrides = new Map<string, { planId: string; targets: TargetSet } | null>();
+  // Gate 0→10 [H-2]: quien marcó "ese día no almuerzo" no come. Antes la
+  // columna `enabled` se leía de la base y se tiraba a la basura, así que la
+  // persona igual aparecía servida.
+  const seSaltanLaComida: string[] = [];
   for (const profile of profiles) {
     const plan = await loadDailyOverride(supabase, profile.memberId, fechaEfectiva, mealType);
+    if (plan && !plan.enabled) {
+      seSaltanLaComida.push(profile.memberId);
+      continue;
+    }
     overrides.set(
       profile.memberId,
       plan ? { planId: plan.planId, targets: plan.targets as TargetSet } : null,
     );
   }
+  const comen = profiles.filter((p) => !seSaltanLaComida.includes(p.memberId));
+  if (comen.length === 0) {
+    return {
+      ok: false,
+      error: "Nadie come esta comida: todos marcaron que ese día se la saltan.",
+    };
+  }
 
   // §5: los eventos de ese día dejan de ser decorativos. La estrategia cambia
   // los objetivos de verdad, y solo para las personas que el evento nombra.
-  const eventos = await loadEventsForDate(supabase, fechaEfectiva);
+  const eventos = await loadEventsForDate(supabase, fechaEfectiva, householdId);
   const efectosPorMiembro = new Map<string, ReturnType<typeof effectFor>>();
 
   const proyeccion = projectFamilyServings({
@@ -278,7 +340,7 @@ export async function confirmMeal(
     alternatives,
     baseServings: recipe.baseServings,
     mealType,
-    members: profiles.map((profile) => {
+    members: comen.map((profile) => {
       const aceptados = substitutionsByMember[profile.memberId] ?? [];
       const substitutions: AcceptedSubstitution[] = aceptados
         .map((s) => {
@@ -447,4 +509,44 @@ export async function deleteEvent(eventId: string): Promise<ActionResult> {
   if (error) return { ok: false, error: "No se pudo borrar el evento." };
   revalidatePath("/plan");
   return { ok: true, message: "Evento borrado." };
+}
+
+/**
+ * Gate 0→10 [A-1]: guardar el reemplazo aceptado para una persona en una
+ * comida concreta. La decisión sobrevive a la recarga y la ve cualquiera de
+ * la casa al confirmar — antes se perdía en un query param.
+ */
+export async function saveSubstitution(input: {
+  assignmentId: string;
+  memberId: string;
+  componentId: string;
+  ingredientId: string;
+}): Promise<ActionResult> {
+  const supabase = await client();
+  const { error } = await supabase.rpc("set_substitution_choice", {
+    p_assignment_id: input.assignmentId,
+    p_member_id: input.memberId,
+    p_component_id: input.componentId,
+    p_to_ingredient_id: input.ingredientId,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/plan");
+  return { ok: true, message: "Reemplazo guardado para esta comida." };
+}
+
+/** Volver al alimento de la receta. */
+export async function clearSubstitution(input: {
+  assignmentId: string;
+  memberId: string;
+  componentId: string;
+}): Promise<ActionResult> {
+  const supabase = await client();
+  const { error } = await supabase.rpc("clear_substitution_choice", {
+    p_assignment_id: input.assignmentId,
+    p_member_id: input.memberId,
+    p_component_id: input.componentId,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/plan");
+  return { ok: true, message: "Reemplazo deshecho." };
 }

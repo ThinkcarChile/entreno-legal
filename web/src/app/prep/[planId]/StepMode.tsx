@@ -61,6 +61,13 @@ export function StepMode({
       if (r.message) setMessage(r.message);
       setCantidadReal("");
       setPaquetesReales({});
+      // Gate 0→10 [L-2]: esto NO se limpiaba. Como el estado va por posición
+      // (0,1,2…) y `router.refresh()` no desmonta el componente, el "al vacío"
+      // y la ubicación del paso anterior se aplicaban solos a los paquetes del
+      // paso siguiente. El ledger es append-only: se registraba una mentira que
+      // después hay que corregir a mano.
+      setPaqueteUbicacion({});
+      setPaqueteVacio({});
       router.refresh();
     });
   }
@@ -89,8 +96,17 @@ export function StepMode({
         const q = texto === "" ? p.quantity : Number(texto);
         return {
           quantity: q,
-          // §19: la ubicación CONCRETA la elige la persona; la sugerida es el default.
-          location_id: paqueteUbicacion[i] || ubicacionPara(p.storage),
+          // §19: la ubicación CONCRETA la elige la persona; la sugerida es el
+          // default. Gate 0→10 [L-1]: "Sin mover" vale "" y con `||` se caía al
+          // default sugerido — la pantalla decía una cosa y el ledger guardaba
+          // otra (el paquete terminaba congelado sin que nadie lo pidiera).
+          // Sin tocar = undefined = sugerida. Elegido "Sin mover" = null.
+          location_id:
+            paqueteUbicacion[i] === undefined
+              ? ubicacionPara(p.storage)
+              : paqueteUbicacion[i] === ""
+                ? null
+                : paqueteUbicacion[i]!,
           // §74: el sellado es EMPAQUE — el RPC no toca temperatura ni fechas.
           vacuum: paqueteVacio[i] ?? false,
           intended_use_date: p.intendedUseDate,

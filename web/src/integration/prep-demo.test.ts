@@ -101,8 +101,10 @@ async function prepInputDesdeBase(): Promise<PrepEngineInput> {
         processing_state: string; temperature_state: string; vacuum_sealed: boolean;
         use_by: string | null; expiry_date: string | null; created_at: string;
         intended_use_date: string | null; category_id: string | null; kind: string | null;
+        weight_basis: string;
       }>(
         `select l.id, l.ingredient_id, l.label, l.quantity::text, l.unit,
+                l.weight_basis::text,
                 l.processing_state::text, l.temperature_state::text, l.vacuum_sealed,
                 l.use_by::text, l.expiry_date::text, l.created_at::text,
                 l.intended_use_date::text, i.category_id, s.kind::text
@@ -119,6 +121,7 @@ async function prepInputDesdeBase(): Promise<PrepEngineInput> {
       label: l.label,
       quantity: Number(l.quantity),
       unit: l.unit as "G",
+      weightBasis: l.weight_basis,
       processingState: l.processing_state as "RAW",
       temperatureState: l.temperature_state as "CHILLED",
       vacuumSealed: l.vacuum_sealed,
@@ -133,9 +136,11 @@ async function prepInputDesdeBase(): Promise<PrepEngineInput> {
       await h.filas<{
         assignment_id: string; serving_date: string; meal_type: string;
         ingredient_id: string; proposed_quantity: string; unit: string;
+        weight_basis: string; cooking_method: string | null;
       }>(
         `select p.assignment_id, p.serving_date::text, p.meal_type::text,
-                c.ingredient_id, c.proposed_quantity::text, c.unit::text
+                c.ingredient_id, c.proposed_quantity::text, c.unit::text,
+                c.weight_basis::text, c.cooking_method::text
          from public.member_serving_projections p
          join public.member_serving_components c on c.projection_id = p.id
          where p.member_id = $1 and p.status = 'PLANNED' and p.serving_date >= $2
@@ -149,6 +154,8 @@ async function prepInputDesdeBase(): Promise<PrepEngineInput> {
       ingredientId: d.ingredient_id,
       quantity: Number(d.proposed_quantity),
       unit: d.unit as "G",
+      weightBasis: d.weight_basis,
+      cookingMethod: d.cooking_method,
     }));
 
     const preferences = (
@@ -228,7 +235,8 @@ async function prepInputDesdeBase(): Promise<PrepEngineInput> {
       preferences,
       capabilities,
       safetyRules,
-      freezerCapacityKnown: null,
+      yields: [],
+    freezerCapacityKnown: null,
     };
   });
 }

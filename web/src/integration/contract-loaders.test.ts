@@ -51,7 +51,28 @@ function extraerConsultas(archivo: string, fuente: string): Consulta[] {
       else if (ch === ")") nivel--;
       i++;
     }
-    const argumento = fuente.slice(inicio, i - 1);
+    let argumento = fuente.slice(inicio, i - 1);
+    // Solo el PRIMER argumento: `.select("id", { count: "exact", head: true })`
+    // lleva opciones cuyos literales ("exact") NO son columnas. Se corta en la
+    // primera coma de nivel cero (fuera de paréntesis y de strings).
+    {
+      let nivel = 0;
+      let enString: string | null = null;
+      for (let k = 0; k < argumento.length; k++) {
+        const ch = argumento[k]!;
+        if (enString) {
+          if (ch === enString && argumento[k - 1] !== "\\") enString = null;
+          continue;
+        }
+        if (ch === '"' || ch === "'" || ch === "`") enString = ch;
+        else if (ch === "(" || ch === "{" || ch === "[") nivel++;
+        else if (ch === ")" || ch === "}" || ch === "]") nivel--;
+        else if (ch === "," && nivel === 0) {
+          argumento = argumento.slice(0, k);
+          break;
+        }
+      }
+    }
     if (argumento.includes("${")) continue; // interpolado: no verificable
     const literales = [...argumento.matchAll(/(["'`])([\s\S]*?)\1/g)].map((x) => x[2]!);
     if (literales.length === 0) continue;
@@ -184,10 +205,22 @@ describe("§35 — lo que el schema EXIGE, el select lo pide", () => {
     for (const archivo of archivosDeCargadores()) {
       const fuente = readFileSync(archivo, "utf8");
       const rel = path.relative(APP, archivo);
-      if (/columnsOf\(/.test(fuente)) continue; // derivado del schema: no se desincroniza
+      // Gate 0→10 [M-4]: antes, UN solo `columnsOf(` apagaba el chequeo del
+      // ARCHIVO entero — y stock/queries.ts lo usa en 2 de 9 consultas,
+      // dejando 7 schemas a mano sin guardián (el mismo agujero que tumbó
+      // /pantry en vivo). Ahora se exime SOLO al schema derivado: sus selects
+      // no pueden desincronizarse por construcción.
+      const derivados = new Set(
+        [...fuente.matchAll(/columnsOf\((\w+)/g)].map((x) => x[1]!),
+      );
       const extraidas = extraerConsultas(rel, fuente);
-      const totales = (fuente.match(/\.select\(/g) ?? []).length;
-      if (extraidas.length < totales) continue; // declarado en "no verificables"
+      // Los comentarios que MENCIONAN `.select()` no son consultas: contarlos
+      // hacía que el archivo pareciera tener selects sin verificar y el
+      // chequeo se apagara entero.
+      const sinComentarios = fuente.replace(/^\s*(\/\/|\*).*$/gm, "");
+      const totales = (sinComentarios.match(/\.select\(/g) ?? []).length;
+      const porDerivacion = (sinComentarios.match(/\.select\([^)"'`]*columnsOf\(/g) ?? []).length;
+      if (extraidas.length + porDerivacion < totales) continue; // declarado en "no verificables"
 
       const pedidas = new Set<string>();
       for (const c of extraidas) {
@@ -195,6 +228,7 @@ describe("§35 — lo que el schema EXIGE, el select lo pide", () => {
         c.embeds.forEach((e) => e.columnas.forEach((x) => pedidas.add(x)));
       }
       for (const s of extraerSchemas(fuente)) {
+        if (derivados.has(s.nombre)) continue; // su select SALE del schema
         for (const req of s.requeridas) {
           if (!pedidas.has(req)) {
             fallos.push(`${rel} · ${s.nombre} exige "${req}" y ningún select lo pide`);

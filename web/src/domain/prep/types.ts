@@ -72,6 +72,8 @@ export interface PrepLot {
   label: string;
   quantity: number;
   unit: StockUnit;
+  /** Base física del lote (Gate 0→10 [B-2]: crudo y cocido NO se suman). */
+  weightBasis: string;
   processingState: ProcessingState;
   temperatureState: TemperatureState;
   vacuumSealed: boolean;
@@ -91,6 +93,33 @@ export interface PrepDemand {
   ingredientId: string;
   quantity: number;
   unit: StockUnit;
+  /** Base física de la DEMANDA (la porción suele pedir gramos COCIDOS). */
+  weightBasis: string;
+  /** Método de cocción de la porción, para elegir el rendimiento correcto. */
+  cookingMethod: string | null;
+}
+
+/** Rendimiento crudo→cocido anotado (jamás se inventa un 1:1). */
+export interface PrepYield {
+  ingredientId: string;
+  cookingMethod: string | null;
+  /** peso cocido = peso crudo × factor */
+  factor: number;
+}
+
+/**
+ * Demanda que NO se pudo planificar porque su base física no coincide con la
+ * de ningún lote y no hay factor de conversión anotado. Se declara, no se
+ * disimula con un 1:1 inventado.
+ */
+export interface PrepUnresolvedNote {
+  ingredientId: string;
+  label: string;
+  quantity: number;
+  unit: StockUnit;
+  demandBasis: string;
+  lotBasis: string;
+  reason: string;
 }
 
 export interface PrepPreference {
@@ -123,6 +152,8 @@ export interface PrepEngineInput {
   preferences: PrepPreference[];
   capabilities: EquipmentConfig[];
   safetyRules: SafetyRule[];
+  /** Rendimientos crudo→cocido anotados (para convertir demanda COOKED a RAW). */
+  yields: PrepYield[];
   /** §54: capacidad del congelador si se CONOCE; null = desconocida, sin tope. */
   freezerCapacityKnown: number | null;
 }
@@ -183,6 +214,8 @@ export interface PrepPlanDraft {
   tasks: DraftTask[];
   leaveWhole: LeaveWholeNote[];
   thawSuggestions: ThawSuggestion[];
+  /** Gate 0→10 [B-2]: demanda sin base compatible ni factor anotado. */
+  unresolved: PrepUnresolvedNote[];
   /** Avisos del plan (§54: congelador conocido y sobrepasado, etc.). */
   warnings: string[];
   summary: {

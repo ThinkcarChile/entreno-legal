@@ -81,6 +81,12 @@ export interface MemberServingProjection {
   targets: TargetSet;
   metConstraints: string[];
   unmetConstraints: string[];
+  /**
+   * Límites que NO se pudieron verificar porque la ficha del plato está
+   * incompleta. No son "cumplidos" ni "incumplidos": son desconocidos, y la
+   * pantalla los muestra como tales.
+   */
+  unverifiableConstraints: string[];
   reasons: Reason[];
   /** Reemplazos propuestos, NO aplicados. La persona decide (§37). */
   suggestions: SubstitutionSuggestion[];
@@ -291,6 +297,8 @@ export function optimizePortion(input: OptimizeInput): MemberServingProjection {
   const reasons: Reason[] = [];
   const metConstraints: string[] = [];
   const unmetConstraints: string[] = [];
+  /** Límites que no se pueden dar por cumplidos porque falta la ficha (§J-1). */
+  const unverifiableConstraints: string[] = [];
   const suggestions: SubstitutionSuggestion[] = [];
 
   const accepted = new Map((input.substitutions ?? []).map((s) => [s.componentId, s]));
@@ -353,6 +361,7 @@ export function optimizePortion(input: OptimizeInput): MemberServingProjection {
       targets,
       metConstraints,
       unmetConstraints,
+      unverifiableConstraints,
       reasons,
       suggestions,
       score: scoreOf(nutrition, targets, components, unmetConstraints),
@@ -581,15 +590,44 @@ export function optimizePortion(input: OptimizeInput): MemberServingProjection {
   const proteinOk = proteinMin === null || finalProtein >= proteinMin - 0.5;
   const energyOk = calorieMax === null || finalEnergy <= calorieMax + 0.5;
 
+  // Gate 0→10 [J-1]: un plato con energía DESCONOCIDA sumaba 0 kcal y el techo
+  // se declaraba cumplido. "No sé cuántas calorías tiene" no es "tiene pocas":
+  // el techo queda SIN VERIFICAR y se dice, en vez de mentir en verde.
+  const energiaCompleta = finalNutrition.completeness.energy_kcal === "COMPLETE";
+  const proteinaCompleta = finalNutrition.completeness.protein_g === "COMPLETE";
+
   if (proteinOk) {
-    if (proteinMin !== null) metConstraints.push("PROTEIN_MIN");
+    if (proteinMin !== null) {
+      // El mínimo con datos parciales sí puede darse por cumplido: lo que falta
+      // solo puede SUMAR proteína, nunca restarla.
+      metConstraints.push("PROTEIN_MIN");
+    }
+  } else if (proteinMin !== null && !proteinaCompleta) {
+    unverifiableConstraints.push("PROTEIN_MIN");
   } else {
     unmetConstraints.push("PROTEIN_MIN");
   }
-  if (energyOk) {
+  if (calorieMax !== null && !energiaCompleta) {
+    // Lo que falta solo puede SUMAR calorías: un techo "cumplido" con datos
+    // incompletos no vale, y uno excedido ya está excedido con lo que se sabe.
+    if (energyOk) unverifiableConstraints.push("ENERGY_MAX");
+    else unmetConstraints.push("ENERGY_MAX");
+  } else if (energyOk) {
     if (calorieMax !== null) metConstraints.push("ENERGY_MAX");
   } else {
     unmetConstraints.push("ENERGY_MAX");
+  }
+
+  for (const limite of unverifiableConstraints) {
+    reasons.push(
+      reason("LIMIT_UNVERIFIABLE", {
+        limit: limite,
+        faltan: components.filter((c) => {
+          const v = c.nutrition?.values;
+          return c.proposedQuantity > 0 && (!v || v.energy_kcal === null);
+        }).length,
+      }),
+    );
   }
 
   if (!proteinOk || !energyOk) {

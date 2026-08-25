@@ -249,7 +249,7 @@ export function WeekBoard({
                     {asignacion?.kind === "RECIPE" && (
                       <div className="flex flex-wrap items-center gap-2 border-t border-[var(--ink)]/5 px-3 py-2">
                         <Link
-                          href={`/recipes/${asignacion.templateId}/family?meal=${mealType}&v=${asignacion.versionId}`}
+                          href={`/recipes/${asignacion.templateId}/family?meal=${mealType}&v=${asignacion.versionId}&assignment=${asignacion.id}`}
                           className="text-xs text-[var(--accent)] underline"
                         >
                           Ver porciones

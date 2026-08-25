@@ -47,17 +47,19 @@ export default async function ReorderPage() {
   const inicioSemana = weekStart(hoy);
   const { data: sugeridosData, error: sugeridosError } = await supabase
     .from("shopping_list_items")
-    .select("ingredient_id, unit, status, shopping_lists!inner ( plan_id, weekly_plans!inner ( week_start ) )")
+    .select("ingredient_id, unit, purchase_basis, status, shopping_lists!inner ( plan_id, weekly_plans!inner ( week_start ) )")
     .eq("source", "STOCK_INTELLIGENCE")
     .eq("status", "PENDING");
   if (sugeridosError) throw new DataAccessError("sugerencias existentes", sugeridosError);
   const sugeridos = parseRows(
-    z.object({ ingredient_id: uuid.nullable(), unit: z.string() }).passthrough(),
+    z.object({ ingredient_id: uuid.nullable(), unit: z.string(), purchase_basis: z.string() }).passthrough(),
     sugeridosData,
     "sugerencias existentes",
   )
     .filter((f) => f.ingredient_id !== null)
-    .map((f) => `${f.ingredient_id}${f.unit}`);
+    // [S-2]: la clave lleva la base (DRAINED en la lista = la línea DRAINED,
+    // no cualquier bucket del alimento).
+    .map((f) => `${f.ingredient_id}${f.unit}${f.purchase_basis === "DRAINED" ? "DRAINED" : "RAW"}`);
 
   return (
     <main className="mx-auto max-w-3xl px-4 pb-16">
@@ -73,6 +75,17 @@ export default async function ReorderPage() {
             : `${accionables.length} ${accionables.length === 1 ? "alimento necesita" : "alimentos necesitan"} atención`}
         </p>
       </header>
+
+      {input.excludedProductLots > 0 && (
+        <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          {input.excludedProductLots}{" "}
+          {input.excludedProductLots === 1
+            ? "lote con identidad de producto comercial queda"
+            : "lotes con identidad de producto comercial quedan"}{" "}
+          fuera de este análisis: el motor de reposición trabaja por alimento. Revísalos a mano en
+          la despensa.
+        </p>
+      )}
 
       <ReorderBoard items={accionables} weekStart={inicioSemana} yaSugeridos={sugeridos} />
     </main>

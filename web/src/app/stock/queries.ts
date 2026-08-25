@@ -101,7 +101,7 @@ export async function loadStockInput(
   householdId: string,
   today: string,
   timeZone = "America/Santiago",
-): Promise<StockInput> {
+): Promise<StockInput & { excludedProductLots: number }> {
   const hace30 = addDays(today, -30);
 
   // Las proyecciones no llevan household_id: se anclan por integrante. Sin
@@ -116,7 +116,7 @@ export async function loadStockInput(
     (m) => m.id,
   );
 
-  const [lotsRes, futureRes, consumedRes, shortRes, wasteRes, purchRes, yieldsRes, targetsRes] =
+  const [lotsRes, productLotsRes, futureRes, consumedRes, shortRes, wasteRes, purchRes, yieldsRes, targetsRes] =
     await Promise.all([
       db
         .from("inventory_lots")
@@ -127,6 +127,17 @@ export async function loadStockInput(
         .eq("household_id", householdId)
         .eq("status", "AVAILABLE")
         .not("ingredient_id", "is", null),
+      // Gate 0→10 [I-1]: los lotes con identidad de PRODUCTO quedan fuera del
+      // análisis (el motor trabaja por alimento), pero se CUENTAN y se dicen.
+      // Silenciarlos hacía pasar por "análisis completo" uno que no lo era.
+      db
+        .from("inventory_lots")
+        .select("id", { count: "exact", head: true })
+        .eq("household_id", householdId)
+        .eq("status", "AVAILABLE")
+        .gt("quantity", 0)
+        .is("ingredient_id", null)
+        .not("product_id", "is", null),
       db
         .from("member_serving_projections")
         .select(
@@ -186,6 +197,7 @@ export async function loadStockInput(
 
   for (const [contexto, res] of [
     ["lotes", lotsRes],
+    ["lotes por producto", productLotsRes],
     ["demanda futura", futureRes],
     ["consumo declarado", consumedRes],
     ["desajustes", shortRes],
@@ -232,15 +244,11 @@ export async function loadStockInput(
           })),
   );
 
-  // §2/§17: hasta dónde llega la planificación confirmada del hogar.
-  const planningCoveredUntil =
-    futuras.length === 0
-      ? null
-      : futuras
-          .map((p) => p.serving_date)
-          .filter((d): d is string => d !== null)
-          .sort()
-          .at(-1) ?? null;
+  // §2/§17 + Gate 0→10 [S-1]: los DÍAS con comidas planificadas, uno a uno.
+  // El máximo global apagaba el forecast de todos los días intermedios.
+  const planningCoveredDates = [
+    ...new Set(futuras.map((p) => p.serving_date).filter((d): d is string => d !== null)),
+  ].sort();
 
   const consumidas = parseRows(demandRow, consumedRes.data, "stock: consumo declarado");
   const consumption = consumidas.flatMap((p) =>
@@ -368,6 +376,9 @@ export async function loadStockInput(
   }
 
   return {
+    // [I-1]: cuántos lotes con identidad de producto quedaron FUERA del
+    // análisis. La pantalla lo dice; cero = análisis completo de verdad.
+    excludedProductLots: productLotsRes.count ?? 0,
     today,
     lots,
     futureDemand,
@@ -377,7 +388,7 @@ export async function loadStockInput(
     purchases,
     yields,
     targets,
-    planningCoveredUntil,
+    planningCoveredDates,
     ingredients,
   };
 }

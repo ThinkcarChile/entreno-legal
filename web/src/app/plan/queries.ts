@@ -372,10 +372,24 @@ export async function loadConfirmedServings(db: Db, assignmentId: string) {
  * cuyo rango contiene esa fecha — un viaje que empezó el jueves sigue vigente el
  * sábado.
  */
-export async function loadEventsForDate(db: Db, date: string): Promise<DayEvent[]> {
+/**
+ * Eventos vigentes ese día EN ESE HOGAR.
+ *
+ * Gate 0→10 [F-1/H-1]: antes filtraba solo por fecha y se apoyaba en RLS. Pero
+ * RLS deja pasar todos los hogares del usuario, y quien pertenece a dos casas
+ * (hijos entre dos hogares, alguien que cuida a sus padres) veía cómo el
+ * "cumpleaños" de la otra casa cambiaba —y congelaba— las porciones de esta.
+ * El hogar lo manda quien llama, sacado de la comida misma.
+ */
+export async function loadEventsForDate(
+  db: Db,
+  date: string,
+  householdId: string,
+): Promise<DayEvent[]> {
   const { data, error } = await db
     .from("nutrition_events")
     .select("id, event_date, end_date, event_type, meal_type, strategy, title")
+    .eq("household_id", householdId)
     .lte("event_date", date)
     .or(`end_date.is.null,end_date.gte.${date}`);
   if (error) throw new DataAccessError("eventos del día", error);

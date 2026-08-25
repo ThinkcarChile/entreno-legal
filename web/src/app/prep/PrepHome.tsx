@@ -117,6 +117,7 @@ function PlanCard({
     warnings?: string[];
     leave_whole?: { label: string; quantity: number; unit: string; reason: string }[];
     thaw_suggestions?: { label: string; plan: { kind: string; note?: string; reason?: string } }[];
+    unresolved?: { label: string; quantity: number; unit: string; reason: string }[];
   };
   const bloques = [...new Set(plan.batch_prep_tasks.map((t) => t.block_label).filter(Boolean))] as string[];
 
@@ -173,6 +174,11 @@ function PlanCard({
       {(summary.leave_whole ?? []).map((l) => (
         <p key={l.label + l.quantity} className="mt-2 rounded-xl bg-[var(--paper)] px-3 py-2 text-xs text-[var(--ink)]/70">
           Dejar sin preparar: <strong>{l.quantity} {l.unit.toLowerCase()} de {l.label}</strong> — {l.reason}
+        </p>
+      ))}
+      {(summary.unresolved ?? []).map((u, i) => (
+        <p key={`u-${i}`} className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          Sin planificar: <strong>{u.quantity} {u.unit.toLowerCase()} de {u.label}</strong> — {u.reason}
         </p>
       ))}
       {(summary.thaw_suggestions ?? []).map((t, i) => (

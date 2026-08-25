@@ -9,6 +9,8 @@ export interface ActionResult {
   ok: boolean;
   error?: string;
   message?: string;
+  /** true SOLO si la acción escribió una línea (Gate 0→10 [M-3]). */
+  added?: boolean;
 }
 
 async function client() {
@@ -100,6 +102,10 @@ export async function addReorderToShoppingList(input: {
   label: string;
   quantity: number;
   unit: "G" | "ML" | "UNIT";
+  /** Base física del bucket que recomendó (Gate 0→10 [S-2]). Los buckets de
+   * Stock Intelligence son RAW/COOKED/DRAINED; cualquier otra base se compra
+   * como RAW (misma regla que el bucketDeLote del motor). */
+  weightBasis: string;
 }): Promise<ActionResult> {
   if (!Number.isFinite(input.quantity) || input.quantity <= 0) {
     return { ok: false, error: "La cantidad tiene que ser mayor que cero." };
@@ -107,6 +113,32 @@ export async function addReorderToShoppingList(input: {
   const supabase = await client();
   const { householdId } = await loadHouseholdMembers(supabase);
   if (!householdId) return { ok: false, error: "Sin hogar." };
+
+  // Gate 0→10 [S-2]: la base física de la recomendación viaja hasta la línea.
+  // Antes se escribía purchase_basis 'RAW' fijo: la sugerencia de un bucket
+  // DRAINED quedaba como RAW, la clave de neteo de Procurement nunca calzaba
+  // y el hogar pedía la MISMA necesidad al súper Y al proveedor.
+  // Un bucket COCIDO no se compra en gramos cocidos: se convierte a crudo con
+  // el rendimiento ANOTADO, o se rechaza con la razón — nunca 1:1.
+  let cantidadPedida = input.quantity;
+  let basisCompra: "RAW" | "DRAINED" = input.weightBasis === "DRAINED" ? "DRAINED" : "RAW";
+  if (input.weightBasis === "COOKED") {
+    const { data: yieldData, error: yieldError } = await supabase
+      .from("ingredient_yields")
+      .select("yield_factor, cooking_method")
+      .eq("ingredient_id", input.ingredientId);
+    if (yieldError) return { ok: false, error: "No se pudo leer el rendimiento del alimento." };
+    const generico = (yieldData ?? []).find((y) => y.cooking_method === null);
+    const factor = generico ? Number(generico.yield_factor) : null;
+    if (factor === null || !Number.isFinite(factor) || factor <= 0) {
+      return {
+        ok: false,
+        error: `${input.label} está medido en gramos cocidos y no hay rendimiento anotado: no se puede convertir a compra en crudo.`,
+      };
+    }
+    cantidadPedida = Math.round((input.quantity / factor) * 1000) / 1000;
+    basisCompra = "RAW";
+  }
 
   // La lista de la semana (se crea si no existe, igual que en /shopping).
   const { data: planId, error: planError } = await supabase.rpc("ensure_weekly_plan", {
@@ -154,7 +186,9 @@ export async function addReorderToShoppingList(input: {
     .eq("list_id", lista.id)
     .eq("source", "FOOD_PLAN")
     .eq("ingredient_id", input.ingredientId)
-    .eq("unit", input.unit);
+    .eq("unit", input.unit)
+    // [S-2]: una línea DRAINED pendiente NO descuenta la necesidad RAW.
+    .eq("purchase_basis", basisCompra);
   if (planItemError) return { ok: false, error: "No se pudo revisar la lista." };
   const yaPedido = (delPlan ?? [])
     .filter((i) => i.status === "PENDING")
@@ -168,15 +202,18 @@ export async function addReorderToShoppingList(input: {
     .select("suggested_quantity, unit, procurement_orders!inner ( household_id, status )")
     .eq("ingredient_id", input.ingredientId)
     .eq("unit", input.unit)
+    .eq("weight_basis", basisCompra)
     .eq("procurement_orders.household_id", householdId)
     .in("procurement_orders.status", ["PLANNED", "ORDERED", "READY", "DELIVERING"]);
   if (enCaminoError) return { ok: false, error: "No se pudo revisar las órdenes en camino." };
   const enCamino = (enCaminoData ?? []).reduce((acc, i) => acc + Number(i.suggested_quantity ?? 0), 0);
 
-  const cantidad = Math.round(Math.max(0, input.quantity - yaPedido - enCamino) * 1000) / 1000;
+  const cantidad = Math.round(Math.max(0, cantidadPedida - yaPedido - enCamino) * 1000) / 1000;
   if (cantidad <= 0) {
     return {
       ok: true,
+      // [M-3]: no se escribió nada — el botón no debe decir "Agregado".
+      added: false,
       message:
         enCamino > 0
           ? `Lo recomendado de ${input.label} ya viene cubierto (lista pendiente + órdenes en camino).`
@@ -190,6 +227,8 @@ export async function addReorderToShoppingList(input: {
     .eq("list_id", lista.id)
     .eq("source", "STOCK_INTELLIGENCE")
     .eq("ingredient_id", input.ingredientId)
+    .eq("unit", input.unit)
+    .eq("purchase_basis", basisCompra)
     .limit(1);
   if (exError) return { ok: false, error: "No se pudo revisar la lista." };
   const existente = existentes?.[0] ?? null;
@@ -233,7 +272,7 @@ export async function addReorderToShoppingList(input: {
         label: input.label,
         unit: input.unit,
         planned_quantity: cantidad,
-        purchase_basis: "RAW",
+        purchase_basis: basisCompra,
       })
       .select("id");
     if (error?.code === "23505") {
@@ -245,6 +284,8 @@ export async function addReorderToShoppingList(input: {
         .eq("list_id", lista.id)
         .eq("source", "STOCK_INTELLIGENCE")
         .eq("ingredient_id", input.ingredientId)
+        .eq("unit", input.unit)
+        .eq("purchase_basis", basisCompra)
         .maybeSingle();
       if (relecturaError || !fila) {
         return { ok: false, error: "No se pudo agregar la sugerencia a la lista." };
@@ -258,8 +299,12 @@ export async function addReorderToShoppingList(input: {
 
   refrescar();
   const nota =
-    cantidad < input.quantity
-      ? ` (descontando lo que la lista del plan ya pide: ${Math.round((input.quantity - cantidad) * 10) / 10})`
+    cantidad < cantidadPedida
+      ? ` (descontando lo que la lista del plan ya pide: ${Math.round((cantidadPedida - cantidad) * 10) / 10})`
       : "";
-  return { ok: true, message: `${input.label} agregado a la próxima compra como sugerencia${nota}.` };
+  return {
+    ok: true,
+    added: true,
+    message: `${input.label} agregado a la próxima compra como sugerencia${nota}.`,
+  };
 }

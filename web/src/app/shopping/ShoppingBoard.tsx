@@ -355,6 +355,11 @@ function ItemRow({
   const necesario = item.requiredQuantity;
   const comprar = item.plannedQuantity ?? item.requiredQuantity;
   const resuelto = item.status !== "PENDING";
+  // Gate 0→10 [J-2]: sin rendimiento cocido→crudo el motor NO sabe cuánto hace
+  // falta, y dejaba la línea en 0. La pantalla mostraba «0 g», «Necesario: 0 g»
+  // y —lo peor— «alcanzaría sin comprar». Cantidad desconocida se dice, no se
+  // imprime como cero. Si una persona escribió una cantidad a mano, esa manda.
+  const cantidadIncierta = item.unresolved && item.plannedQuantity === null;
 
   return (
     <li className="rounded-xl border border-[var(--ink)]/10">
@@ -384,7 +389,11 @@ function ItemRow({
             )}
           </p>
           <p className="text-xs text-[var(--ink)]/50">
-            {comprar !== null ? formatQuantity(comprar, item.unit) : "sin cantidad"}
+            {cantidadIncierta
+              ? "cantidad por confirmar"
+              : comprar !== null
+                ? formatQuantity(comprar, item.unit)
+                : "sin cantidad"}
             {item.plannedQuantity !== null &&
               item.requiredQuantity !== null &&
               item.plannedQuantity !== item.requiredQuantity && (
@@ -414,11 +423,15 @@ function ItemRow({
           <div className="flex flex-wrap gap-x-6 gap-y-1">
             <p>
               <span className="text-[var(--ink)]/50">Necesario:</span>{" "}
-              {necesario !== null ? formatQuantity(necesario, item.unit) : "—"}
+              {cantidadIncierta || necesario === null
+                ? "por confirmar"
+                : formatQuantity(necesario, item.unit)}
             </p>
             <p>
               <span className="text-[var(--ink)]/50">Comprar:</span>{" "}
-              {comprar !== null ? formatQuantity(comprar, item.unit) : "—"}
+              {cantidadIncierta || comprar === null
+                ? "por confirmar"
+                : formatQuantity(comprar, item.unit)}
             </p>
             {item.cookedQuantity !== null && (
               <p>
@@ -431,7 +444,14 @@ function ItemRow({
             )}
           </div>
 
-          {enDespensa && enDespensa.quantity > 0 && item.requiredQuantity !== null && (
+          {enDespensa && enDespensa.quantity > 0 && cantidadIncierta && (
+            <p className="rounded-lg bg-emerald-50 px-2 py-1.5 text-emerald-900">
+              Tienes {formatQuantity(enDespensa.quantity, item.unit)} en la despensa. No se puede
+              decir si alcanza hasta saber cuánto rinde cocido.
+            </p>
+          )}
+
+          {enDespensa && enDespensa.quantity > 0 && !cantidadIncierta && item.requiredQuantity !== null && (
             <p className="rounded-lg bg-emerald-50 px-2 py-1.5 text-emerald-900">
               Tienes {formatQuantity(enDespensa.quantity, item.unit)} en la despensa
               {enDespensa.quantity >= item.requiredQuantity

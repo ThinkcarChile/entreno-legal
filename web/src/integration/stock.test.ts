@@ -217,9 +217,10 @@ async function stockInputDesdeBase(): Promise<StockInput> {
       source: t.source as "USER_DEFINED",
     }));
 
-    const cobertura = await h.fila<{ hasta: string | null }>(
-      `select max(serving_date)::text as hasta from public.member_serving_projections
-       where status = 'PLANNED' and assignment_id is not null and serving_date >= $1`,
+    const cobertura = await h.filas<{ dia: string }>(
+      `select distinct serving_date::text as dia from public.member_serving_projections
+       where status = 'PLANNED' and assignment_id is not null and serving_date >= $1
+       order by 1`,
       [HOY],
     );
 
@@ -233,7 +234,7 @@ async function stockInputDesdeBase(): Promise<StockInput> {
       purchases,
       yields: [],
       targets,
-      planningCoveredUntil: cobertura?.hasta ?? null,
+      planningCoveredDates: cobertura.map((c) => c.dia),
       ingredients: [
         { id: polloId, label: "Pechuga de pollo (sin piel)", categoryCode: "POULTRY" },
         { id: merluzaId, label: "Merluza", categoryCode: "FISH" },

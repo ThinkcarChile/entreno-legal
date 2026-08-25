@@ -34,7 +34,7 @@ function base(parcial: Partial<StockInput> = {}): StockInput {
     purchases: [],
     yields: [],
     targets: [],
-    planningCoveredUntil: null,
+    planningCoveredDates: [],
     ingredients: [{ id: "ing-pollo", label: "Pechuga de pollo", categoryCode: "POULTRY" }],
     ...parcial,
   };
@@ -332,7 +332,8 @@ describe("§2/§17 no doble conteo: confirmado GANA sobre forecast", () => {
       futureDemand: [
         { ingredientId: "ing-pollo", label: "Pollo", quantity: 3200, unit: "G", weightBasis: "RAW", cookingMethod: null, servingDate: "2026-10-23", projectionId: "p1" },
       ],
-      planningCoveredUntil: "2026-10-25", // domingo: días 1-7 cubiertos
+      // Semana planificada de verdad: cada día con comida, uno a uno (S-1).
+      planningCoveredDates: ["2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24", "2026-10-25"],
     });
 
   it("el ejemplo del director: 3,2 confirmado + forecast SOLO días 8-14", () => {
@@ -353,7 +354,7 @@ describe("§2/§17 no doble conteo: confirmado GANA sobre forecast", () => {
 
   it("sin planificación que cubra, el forecast toma el horizonte completo", () => {
     const input = conHistoria();
-    const items = analyzeStock({ ...input, planningCoveredUntil: null, futureDemand: [] });
+    const items = analyzeStock({ ...input, planningCoveredDates: [], futureDemand: [] });
     const h7 = items[0]!.horizons.find((h) => h.days === 7)!;
     // El forecast parte MAÑANA (hoy ya se comió o está confirmado): 6 días.
     expect(h7.forecastUncovered).toBeCloseTo(271.4 * 6, 0);
@@ -547,7 +548,7 @@ describe("§35 determinismo e idempotencia", () => {
       futureDemand: [
         { ingredientId: "ing-pollo", label: "Pollo", quantity: 1100, unit: "G", weightBasis: "RAW", cookingMethod: null, servingDate: "2026-10-21", projectionId: "p1" },
       ],
-      planningCoveredUntil: "2026-10-25",
+      planningCoveredDates: ["2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24", "2026-10-25"],
       targets: [{ ingredientId: "ing-pollo", unit: "G", minimumQuantity: null, targetQuantity: null, targetDaysOfSupply: 14, safetyStock: null, reviewCycle: null, reorderEnabled: true, source: "USER_DEFINED" }],
     });
     const a = analyzeStock(input);
@@ -672,5 +673,58 @@ describe("correcciones de la revisión adversarial (lote 2)", () => {
     });
     expect(rate.untrackedTotal30).toBe(0); // no se mezclaron bases
     expect(rate.unresolvedDeclared).toBe(150); // pero tampoco desapareció
+  });
+});
+
+describe("Gate 0→9 [S-1] — la cobertura del plan cuenta dÍas, no un máximo", () => {
+  it("una comida suelta el sábado NO apaga el forecast de lunes a viernes", () => {
+    const items = analyzeStock(
+      base({
+        lots: [lot({ quantity: 10000 })],
+        consumption: consumoDiario(271.4, 30),
+        futureDemand: [
+          { ingredientId: "ing-pollo", label: "Pollo", quantity: 900, unit: "G", weightBasis: "RAW", cookingMethod: null, servingDate: "2026-10-24", projectionId: "p1" },
+        ],
+        // SOLO el sábado está planificado. Antes (máximo global) esto
+        // marcaba cubiertos los offsets 1..5 y el forecast quedaba en cero.
+        planningCoveredDates: ["2026-10-24"],
+      }),
+    );
+    const h7 = items[0]!.horizons.find((h) => h.days === 7)!;
+    expect(h7.confirmed).toBe(900);
+    // 6 días de forecast − 1 día planificado (el sábado) = 5 días.
+    expect(h7.forecastUncovered).toBeCloseTo(271.4 * 5, 0);
+  });
+
+  it("la semana completa planificada sí apaga el forecast, como siempre", () => {
+    const items = analyzeStock(
+      base({
+        lots: [lot({ quantity: 10000 })],
+        consumption: consumoDiario(271.4, 30),
+        futureDemand: [
+          { ingredientId: "ing-pollo", label: "Pollo", quantity: 3200, unit: "G", weightBasis: "RAW", cookingMethod: null, servingDate: "2026-10-23", projectionId: "p1" },
+        ],
+        planningCoveredDates: ["2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24", "2026-10-25"],
+      }),
+    );
+    const h7 = items[0]!.horizons.find((h) => h.days === 7)!;
+    expect(h7.forecastUncovered).toBe(0);
+  });
+
+  it("un día planificado FUERA del horizonte no cuenta dentro de él", () => {
+    const items = analyzeStock(
+      base({
+        lots: [lot({ quantity: 10000 })],
+        consumption: consumoDiario(100, 30),
+        futureDemand: [
+          { ingredientId: "ing-pollo", label: "Pollo", quantity: 500, unit: "G", weightBasis: "RAW", cookingMethod: null, servingDate: "2026-11-10", projectionId: "p1" },
+        ],
+        planningCoveredDates: ["2026-11-10"],
+      }),
+    );
+    const h7 = items[0]!.horizons.find((h) => h.days === 7)!;
+    // El 10-nov cae fuera de los 7 días: forecast completo (6 días).
+    expect(h7.forecastUncovered).toBeCloseTo(100 * 6, 0);
+    expect(h7.confirmed).toBe(0);
   });
 });

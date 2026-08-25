@@ -19,6 +19,7 @@ function lote(partial: Partial<PrepLot> = {}): PrepLot {
     label: "Pechuga de pollo",
     quantity: 4200,
     unit: "G",
+    weightBasis: "RAW",
     processingState: "RAW",
     temperatureState: "CHILLED",
     vacuumSealed: false,
@@ -39,6 +40,8 @@ function demanda(partial: Partial<PrepDemand> = {}): PrepDemand {
     ingredientId: "ing-pollo",
     quantity: 1100,
     unit: "G",
+    weightBasis: "RAW",
+    cookingMethod: null,
     ...partial,
   };
 }
@@ -75,6 +78,7 @@ function entrada(partial: Partial<PrepEngineInput> = {}): PrepEngineInput {
   return {
     today: HOY,
     horizonDays: 7,
+    yields: [],
     lots: [lote()],
     demand: [
       demanda({ assignmentId: "a-mar", date: "2026-08-25", quantity: 1100 }),
@@ -394,5 +398,92 @@ describe("determinismo y resumen", () => {
     expect(plan.summary.labels).toBe(4);
     expect(plan.summary.estimatedMinutes).toBeGreaterThan(0);
     expect(plan.complexity).toBeGreaterThan(0);
+  });
+});
+
+describe("Gate 0→9 [B-2] — la base física separa demanda y stock", () => {
+  it("demanda COCIDA contra lote CRUDO con rendimiento anotado: convierte con el factor, no 1:1", () => {
+    const plan = planPrep(
+      entrada({
+        lots: [lote({ quantity: 2000 })],
+        demand: [
+          demanda({
+            assignmentId: "a-mar",
+            date: "2026-08-25",
+            quantity: 720,
+            weightBasis: "COOKED",
+            cookingMethod: "GRILLED",
+          }),
+        ],
+        yields: [{ ingredientId: "ing-pollo", cookingMethod: "GRILLED", factor: 0.72 }],
+      }),
+    );
+    // 720 g cocidos / 0.72 = 1.000 g crudos: eso es lo que se porciona.
+    const portion = plan.tasks.find((t) => t.taskType === "PORTION" || t.taskType === "PACK");
+    expect(portion).toBeDefined();
+    const paquetes = (portion!.params as { packages?: { quantity: number }[] }).packages ?? [];
+    expect(paquetes.some((p) => Math.abs(p.quantity - 1000) < 1)).toBe(true);
+    expect(plan.unresolved).toHaveLength(0);
+  });
+
+  it("demanda COCIDA sin rendimiento anotado: queda DECLARADA en unresolved, no se planifica 1:1", () => {
+    const plan = planPrep(
+      entrada({
+        lots: [lote({ quantity: 2000 })],
+        demand: [
+          demanda({
+            assignmentId: "a-mar",
+            date: "2026-08-25",
+            quantity: 720,
+            weightBasis: "COOKED",
+            cookingMethod: "GRILLED",
+          }),
+        ],
+        yields: [],
+      }),
+    );
+    expect(plan.tasks).toHaveLength(0);
+    expect(plan.unresolved).toHaveLength(1);
+    expect(plan.unresolved[0]!.reason).toContain("rendimiento");
+    expect(plan.unresolved[0]!.quantity).toBe(720);
+  });
+
+  it("el rendimiento específico del método le gana al genérico", () => {
+    const plan = planPrep(
+      entrada({
+        lots: [lote({ quantity: 2000 })],
+        demand: [
+          demanda({
+            assignmentId: "a-mar",
+            date: "2026-08-25",
+            quantity: 500,
+            weightBasis: "COOKED",
+            cookingMethod: "GRILLED",
+          }),
+        ],
+        yields: [
+          { ingredientId: "ing-pollo", cookingMethod: null, factor: 0.8 },
+          { ingredientId: "ing-pollo", cookingMethod: "GRILLED", factor: 0.5 },
+        ],
+      }),
+    );
+    const portion = plan.tasks.find((t) => t.taskType === "PORTION" || t.taskType === "PACK");
+    const paquetes = (portion!.params as { packages?: { quantity: number }[] }).packages ?? [];
+    // 500 / 0.5 = 1000 (específico), NO 500 / 0.8 = 625 (genérico).
+    expect(paquetes.some((p) => Math.abs(p.quantity - 1000) < 1)).toBe(true);
+  });
+
+  it("un lote AS_PACKAGED no absorbe demanda RAW: bases distintas no se suman", () => {
+    const plan = planPrep(
+      entrada({
+        lots: [lote({ weightBasis: "AS_PACKAGED", quantity: 2000 })],
+        demand: [
+          demanda({ assignmentId: "a-mar", date: "2026-08-25", quantity: 500, weightBasis: "RAW" }),
+        ],
+      }),
+    );
+    expect(plan.tasks).toHaveLength(0);
+    expect(plan.unresolved).toHaveLength(1);
+    expect(plan.unresolved[0]!.lotBasis).toBe("AS_PACKAGED");
   });
 });

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SubstitutionButton } from "./SubstitutionButton";
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { AppNav } from "@/components/AppNav";
@@ -20,7 +21,7 @@ export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ meal?: string; v?: string; sub?: string | string[] }>;
+  searchParams: Promise<{ meal?: string; v?: string; sub?: string | string[]; assignment?: string }>;
 }
 
 const FIT_LABELS: Record<string, string> = {
@@ -43,7 +44,7 @@ const FIT_TONE: Record<string, string> = {
 
 export default async function FamilyServingsPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { meal, v, sub } = await searchParams;
+  const { meal, v, sub, assignment } = await searchParams;
   const mealType: MealType = MEAL_TYPES.includes(meal as MealType) ? (meal as MealType) : "LUNCH";
 
   const supabase = await createSupabaseServer();
@@ -83,9 +84,33 @@ export default async function FamilyServingsPage({ params, searchParams }: Props
     recipe.alternatives,
   );
 
-  // --- Reemplazos aceptados por URL: "memberId~componentId~ingredientId" ---
+  // --- Reemplazos aceptados ---
+  // Con una comida concreta, la decisión vive en la BASE (gate [A-1]): así la
+  // ve quien confirme, sobrevive a la recarga y no depende de la URL. Sin
+  // comida (mirando la receta suelta) sigue siendo una vista previa por URL.
   const subParams = Array.isArray(sub) ? sub : sub ? [sub] : [];
   const acceptedByMember = new Map<string, AcceptedSubstitution[]>();
+
+  if (assignment) {
+    const { data: elegidas, error: elegidasError } = await supabase
+      .from("meal_substitution_choices")
+      .select("member_id, component_id, to_ingredient_id")
+      .eq("assignment_id", assignment);
+    if (elegidasError) throw new DataAccessError("reemplazos aceptados", elegidasError);
+    for (const e of elegidas ?? []) {
+      const alternativa = alternatives.find((a) => a.ingredientId === e.to_ingredient_id);
+      if (!alternativa) continue;
+      const lista = acceptedByMember.get(e.member_id as string) ?? [];
+      lista.push({
+        componentId: e.component_id as string,
+        ingredientId: e.to_ingredient_id as string,
+        label: alternativa.label,
+        nutrition: alternativa.nutrition,
+      });
+      acceptedByMember.set(e.member_id as string, lista);
+    }
+  }
+
   for (const raw of subParams) {
     const [memberId, componentId, ingredientId] = raw.split("~");
     if (!memberId || !componentId || !ingredientId) continue;
@@ -265,16 +290,18 @@ export default async function FamilyServingsPage({ params, searchParams }: Props
                             Sugerencia: cambiar <strong>{s.componentLabel}</strong> por{" "}
                             <strong>{s.alternativeLabel}</strong>.
                           </span>
-                          <Link
-                            href={`/recipes/${id}/family?meal=${mealType}${v ? `&v=${v}` : ""}${subParams
+                          <SubstitutionButton
+                            modo="APLICAR"
+                            assignmentId={assignment ?? null}
+                            memberId={serving.memberId}
+                            componentId={s.componentId}
+                            ingredientId={s.ingredientId}
+                            previewHref={`/recipes/${id}/family?meal=${mealType}${v ? `&v=${v}` : ""}${subParams
                               .map((x) => `&sub=${encodeURIComponent(x)}`)
                               .join("")}&sub=${encodeURIComponent(
                               `${serving.memberId}~${s.componentId}~${s.ingredientId}`,
                             )}`}
-                            className="shrink-0 rounded-full bg-amber-200 px-3 py-1 font-medium"
-                          >
-                            Aplicar
-                          </Link>
+                          />
                         </div>
                       ))}
                     </div>
@@ -282,13 +309,15 @@ export default async function FamilyServingsPage({ params, searchParams }: Props
 
                   {acceptedByMember.get(serving.memberId)?.length ? (
                     <p className="mb-3 text-[11px] text-[var(--ink)]/60">
-                      Reemplazo aplicado.{" "}
-                      <Link
-                        href={`/recipes/${id}/family?meal=${mealType}${v ? `&v=${v}` : ""}`}
-                        className="underline"
-                      >
-                        Deshacer
-                      </Link>
+                      {assignment ? "Reemplazo guardado para esta comida." : "Reemplazo aplicado (vista previa)."}{" "}
+                      <SubstitutionButton
+                        modo="DESHACER"
+                        assignmentId={assignment ?? null}
+                        memberId={serving.memberId}
+                        componentId={acceptedByMember.get(serving.memberId)![0]!.componentId}
+                        ingredientId={acceptedByMember.get(serving.memberId)![0]!.ingredientId}
+                        previewHref={`/recipes/${id}/family?meal=${mealType}${v ? `&v=${v}` : ""}`}
+                      />
                     </p>
                   ) : null}
 

@@ -165,9 +165,9 @@ export function analyzeStock(input: StockInput): StockItem[] {
     // SOLO para alimentos que aparecen en el plan confirmado. El yogur que se
     // come todos los días pero jamás se planifica conserva su forecast — si
     // no, la semana planificada lo dejaría en cero y habría quiebre.
-    const coveredUntil = demandas.length > 0 ? input.planningCoveredUntil : null;
+    const coveredDates = demandas.length > 0 ? input.planningCoveredDates : [];
     const horizons = ([7, 14, 30] as const).map((dias) =>
-      horizonNeed(dias, input.today, demandas, input, ingredientId, basis, rate.dailyRate, coveredUntil),
+      horizonNeed(dias, input.today, demandas, input, ingredientId, basis, rate.dailyRate, coveredDates),
     );
 
     // ---- Cobertura (§11) ----
@@ -298,7 +298,7 @@ function horizonNeed(
   ingredientId: string,
   bucketBasis: string,
   dailyRate: number | null,
-  coveredUntil: string | null,
+  coveredDates: readonly string[],
 ): HorizonNeed {
   let confirmed = 0;
   for (const d of demandas) {
@@ -318,14 +318,17 @@ function horizonNeed(
 
   // El forecast estadístico empieza MAÑANA: lo de hoy o está confirmado o ya
   // se comió y descontó — pronosticarlo de nuevo sería contar el día dos
-  // veces. Además, los días cubiertos por el plan (§2) no reciben forecast:
-  // martes confirmado no gana pollo estadístico encima.
+  // veces. Además, los días CON comidas planificadas (§2) no reciben forecast:
+  // martes confirmado no gana pollo estadístico encima. Gate 0→10 [S-1]: se
+  // cuentan los días planificados UNO A UNO — una comida suelta el sábado ya
+  // no apaga el pronóstico de los días sin plan que tiene por delante.
   const diasForecast = dias - 1; // offsets 1..dias-1
-  let diasCubiertos = 0;
-  if (coveredUntil !== null) {
-    const cobertura = diasEntre(today, coveredUntil); // offsets 1..cobertura
-    diasCubiertos = Math.max(0, Math.min(diasForecast, cobertura));
-  }
+  const diasCubiertos = new Set(
+    coveredDates.filter((d) => {
+      const offset = diasEntre(today, d);
+      return offset >= 1 && offset <= diasForecast;
+    }),
+  ).size;
   const diasSinCubrir = Math.max(0, diasForecast - diasCubiertos);
   const forecastUncovered = dailyRate !== null ? redondear(dailyRate * diasSinCubrir) : 0;
 

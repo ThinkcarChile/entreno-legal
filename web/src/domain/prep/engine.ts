@@ -22,6 +22,7 @@
 import { addDays } from "@/domain/nutrition/calendar";
 import { planThaw, recommendStorage } from "./safety";
 import type {
+  PrepUnresolvedNote,
   DraftTask,
   LeaveWholeNote,
   PrepDemand,
@@ -80,25 +81,83 @@ export function planPrep(input: PrepEngineInput): PrepPlanDraft {
     prefsPorIngrediente.set(p.ingredientId, arr);
   }
 
-  // Demanda confirmada dentro del horizonte, por alimento::unidad.
-  const demandaPor = new Map<string, PrepDemand[]>();
-  for (const d of input.demand) {
-    if (d.date < input.today || d.date > hasta) continue;
-    const key = `${d.ingredientId}::${d.unit}`;
-    const arr = demandaPor.get(key) ?? [];
-    arr.push(d);
-    demandaPor.set(key, arr);
-  }
-
   // Lotes preparables: disponibles, crudos, no congelados (lo congelado no se
   // porciona sin descongelar — para eso están las sugerencias de descongelado).
+  // La clave INCLUYE la base física: 300 g de arroz cocido y 300 g de arroz
+  // crudo no son la misma cosa (Gate 0→10 [B-2]).
   const lotesPor = new Map<string, PrepLot[]>();
+  const basesDeLotes = new Map<string, Set<string>>();
   for (const l of input.lots) {
     if (l.quantity <= 0 || l.processingState === "COOKED") continue;
-    const key = `${l.ingredientId}::${l.unit}`;
+    const key = `${l.ingredientId}::${l.unit}::${l.weightBasis}`;
     const arr = lotesPor.get(key) ?? [];
     arr.push(l);
     lotesPor.set(key, arr);
+    const bases = basesDeLotes.get(`${l.ingredientId}::${l.unit}`) ?? new Set<string>();
+    bases.add(l.weightBasis);
+    basesDeLotes.set(`${l.ingredientId}::${l.unit}`, bases);
+  }
+
+  /** Rendimiento anotado para este alimento (método específico > genérico). */
+  const yieldFor = (ingredientId: string, cookingMethod: string | null): number | null => {
+    const candidatos = input.yields.filter((y) => y.ingredientId === ingredientId);
+    const especifico = cookingMethod
+      ? candidatos.find((y) => y.cookingMethod === cookingMethod)
+      : undefined;
+    const generico = candidatos.find((y) => y.cookingMethod === null);
+    return especifico?.factor ?? generico?.factor ?? null;
+  };
+
+  // Demanda confirmada dentro del horizonte, EXPRESADA EN LA BASE DE LOS
+  // LOTES. Gate 0→10 [B-2]: antes se agrupaba por alimento::unidad a secas y
+  // los gramos COCIDOS de la porción se comparaban 1:1 contra lotes CRUDOS —
+  // la conversión inventada que el proyecto prohíbe, y que acá termina en el
+  // ledger vía split_lot. Ahora: demanda en la MISMA base que el lote pasa
+  // directo; demanda COOKED contra lote RAW se convierte SOLO con un
+  // rendimiento anotado; sin factor, la demanda queda declarada en
+  // `unresolved` y no se planifica.
+  const demandaPor = new Map<string, PrepDemand[]>();
+  const unresolved: PrepUnresolvedNote[] = [];
+  for (const d of input.demand) {
+    if (d.date < input.today || d.date > hasta) continue;
+    const bases = basesDeLotes.get(`${d.ingredientId}::${d.unit}`);
+    if (!bases || bases.size === 0) continue; // sin stock: no es asunto del prep
+    if (bases.has(d.weightBasis)) {
+      const key = `${d.ingredientId}::${d.unit}::${d.weightBasis}`;
+      const arr = demandaPor.get(key) ?? [];
+      arr.push(d);
+      demandaPor.set(key, arr);
+      continue;
+    }
+    if (d.weightBasis === "COOKED" && bases.has("RAW")) {
+      const factor = yieldFor(d.ingredientId, d.cookingMethod);
+      if (factor != null && factor > 0) {
+        const key = `${d.ingredientId}::${d.unit}::RAW`;
+        const arr = demandaPor.get(key) ?? [];
+        // peso cocido = crudo × factor  ⇒  crudo = cocido / factor
+        arr.push({ ...d, quantity: redondear(d.quantity / factor), weightBasis: "RAW" });
+        demandaPor.set(key, arr);
+        continue;
+      }
+    }
+    unresolved.push({
+      ingredientId: d.ingredientId,
+      label: d.ingredientId,
+      quantity: d.quantity,
+      unit: d.unit,
+      demandBasis: d.weightBasis,
+      lotBasis: [...bases].sort().join(", "),
+      reason:
+        d.weightBasis === "COOKED"
+          ? "la porción pide gramos cocidos y el lote está crudo: falta anotar el rendimiento de este alimento"
+          : `la porción está en base ${d.weightBasis} y el stock en ${[...bases].sort().join("/")}: no hay factor anotado entre esas bases`,
+    });
+  }
+
+  // El label legible de cada nota sin resolver, desde el lote del alimento.
+  for (const nota of unresolved) {
+    const lote = input.lots.find((l) => l.ingredientId === nota.ingredientId);
+    if (lote) nota.label = lote.label;
   }
 
   const chains: TaskChain[] = [];
@@ -454,6 +513,7 @@ export function planPrep(input: PrepEngineInput): PrepPlanDraft {
     tasks,
     leaveWhole,
     thawSuggestions,
+    unresolved,
     warnings,
     summary: {
       totalTasks: tasks.length,

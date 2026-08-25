@@ -34,6 +34,7 @@ beforeAll(async () => {
   h = await levantarBase();
   A = await crearHogar(h, USER_A, "Hogar Gate A", "Ana");
   B = await crearHogar(h, USER_B, "Hogar Gate B", "Bruno");
+  void B; // se usa solo para que exista el segundo hogar
 
   polloId = (await h.fila<{ id: string }>(
     "select id from public.ingredients where canonical_name = 'pechuga de pollo sin piel'",

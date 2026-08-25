@@ -80,6 +80,8 @@ export async function approveSuggestion(s: PurchaseSuggestion): Promise<ActionRe
         package_count: s.packageCount,
         provenance,
         known_incoming: s.incoming,
+        // Gate 0→10 [P-1]: el OTRO eje del neteo también se revalida en vivo.
+        known_pending_in_list: s.pendingInList,
       },
     ],
   });

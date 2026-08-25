@@ -288,16 +288,17 @@ export async function setCookingPreference(
     return { ok: false, error: "Una preferencia apunta a un alimento o a una categoría, no a ambos." };
   }
 
-  const { error } = await supabase.from("member_cooking_preferences").upsert(
-    {
-      member_id: memberId,
-      ingredient_id: input.ingredientId ?? null,
-      category_id: input.categoryId ?? null,
-      cooking_method: input.cookingMethod,
-      stance: input.stance,
-    },
-    { onConflict: "member_id,ingredient_id,category_id,cooking_method" },
-  );
+  // Gate 0→10 [M-2]: el upsert por onConflict NUNCA actualizaba — el índice
+  // único siempre lleva un NULL (NULLS DISTINCT), así que jamás chocaba y cada
+  // cambio de opinión ACUMULABA una fila más. El RPC compara los NULL como
+  // iguales y actualiza de verdad.
+  const { error } = await supabase.rpc("set_cooking_preference", {
+    p_member_id: memberId,
+    p_ingredient_id: input.ingredientId ?? null,
+    p_category_id: input.categoryId ?? null,
+    p_cooking_method: input.cookingMethod,
+    p_stance: input.stance,
+  });
   if (error) return { ok: false, error: "No se pudo guardar la preferencia de preparación." };
 
   await republishProfile(supabase, memberId, memberName, "Preferencias de preparación");

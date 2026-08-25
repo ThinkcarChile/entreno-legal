@@ -35,6 +35,9 @@ const MIGRACIONES = [
   "supabase/migrations/0017_random_without_pgcrypto.sql",
   "supabase/migrations/0018_substitution_choices.sql",
   "supabase/migrations/0019_gate_fixes_ledger.sql",
+  "supabase/migrations/0020_gate_scope_and_basis.sql",
+  "supabase/migrations/0021_gate_netting_basis.sql",
+  "supabase/migrations/0022_consume_product_identity.sql",
 ];
 
 const SEEDS = [

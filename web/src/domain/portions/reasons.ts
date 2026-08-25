@@ -19,6 +19,7 @@ export const REASON_CODES = [
   "SUBSTITUTION_SUGGESTED",
   "TARGET_CONFLICT",
   "MISSING_ADJUSTMENT_LIMITS",
+  "LIMIT_UNVERIFIABLE",
 ] as const;
 
 export type ReasonCode = (typeof REASON_CODES)[number];
@@ -60,6 +61,10 @@ const TEMPLATES: Record<ReasonCode, (p: ReasonParams) => string> = {
     `${p.component} no es compatible contigo (${p.reason}). Esta receta necesita un reemplazo.`,
   SUBSTITUTION_SUGGESTED: (p) =>
     `Podrías reemplazar ${p.component} por ${p.alternative}.`,
+  // Gate 0→10 [J-1]: el techo existe, el plato no tiene ficha completa. No se
+  // dice "cumplido" ni "excedido": se dice que no se sabe.
+  LIMIT_UNVERIFIABLE: (p) =>
+    `No se puede verificar el ${p.limit === "ENERGY_MAX" ? "tope de calorías" : "mínimo de proteína"}: falta la ficha de ${n(p.faltan)} ingrediente(s) del plato.`,
   TARGET_CONFLICT: (p) =>
     `No es posible alcanzar ${n(p.protein)} g de proteína manteniendo esta comida bajo ${n(p.calories)} kcal con esta receta.`,
   MISSING_ADJUSTMENT_LIMITS: (p) =>

@@ -36,6 +36,7 @@ const lotRow = z.object({
   label: z.string(),
   quantity: numeric,
   unit: unitSchema,
+  weight_basis: z.string(),
   processing_state: processingSchema,
   temperature_state: temperatureSchema,
   vacuum_sealed: z.boolean(),
@@ -66,6 +67,8 @@ const demandRow = z.object({
           ingredient_id: uuid.nullable(),
           proposed_quantity: numeric,
           unit: z.enum(["G", "ML"]),
+          weight_basis: z.string(),
+          cooking_method: z.string().nullable(),
         }),
       ),
       z.null(),
@@ -221,7 +224,7 @@ export async function loadPrepInput(
     db
       .from("inventory_lots")
       .select(
-        "id, ingredient_id, label, quantity, unit, processing_state, temperature_state, vacuum_sealed, use_by, expiry_date, created_at, intended_use_date, ingredients ( category_id ), storage_locations ( kind )",
+        "id, ingredient_id, label, quantity, unit, weight_basis, processing_state, temperature_state, vacuum_sealed, use_by, expiry_date, created_at, intended_use_date, ingredients ( category_id ), storage_locations ( kind )",
       )
       .eq("household_id", householdId)
       .eq("status", "AVAILABLE")
@@ -229,7 +232,7 @@ export async function loadPrepInput(
     db
       .from("member_serving_projections")
       .select(
-        "assignment_id, serving_date, meal_type, member_serving_components ( ingredient_id, proposed_quantity, unit )",
+        "assignment_id, serving_date, meal_type, member_serving_components ( ingredient_id, proposed_quantity, unit, weight_basis, cooking_method )",
       )
       .eq("status", "PLANNED")
       .gte("serving_date", today)
@@ -256,6 +259,7 @@ export async function loadPrepInput(
       label: l.label,
       quantity: l.quantity,
       unit: l.unit,
+      weightBasis: l.weight_basis,
       processingState: l.processing_state,
       temperatureState: l.temperature_state,
       vacuumSealed: l.vacuum_sealed,
@@ -278,8 +282,31 @@ export async function loadPrepInput(
           ingredientId: c.ingredient_id!,
           quantity: c.proposed_quantity,
           unit: c.unit as "G" | "ML",
+          weightBasis: c.weight_basis,
+          cookingMethod: c.cooking_method,
         })),
     );
+
+  // Gate 0→10 [B-2]: los rendimientos crudo→cocido anotados, para que el motor
+  // convierta demanda COCIDA a lote CRUDO con un factor real (nunca 1:1).
+  const idsDemanda = [...new Set(demand.map((d) => d.ingredientId))];
+  let yields: { ingredientId: string; cookingMethod: string | null; factor: number }[] = [];
+  if (idsDemanda.length > 0) {
+    const { data: yieldsData, error: yieldsError } = await db
+      .from("ingredient_yields")
+      .select("ingredient_id, cooking_method, yield_factor")
+      .in("ingredient_id", idsDemanda);
+    if (yieldsError) throw new DataAccessError("rendimientos crudo-cocido", yieldsError);
+    yields = parseRows(
+      z.object({ ingredient_id: uuid, cooking_method: z.string().nullable(), yield_factor: numeric }),
+      yieldsData,
+      "rendimientos crudo-cocido",
+    ).map((y) => ({
+      ingredientId: y.ingredient_id,
+      cookingMethod: y.cooking_method,
+      factor: y.yield_factor,
+    }));
+  }
 
   // §54: capacidad del congelador SOLO si el hogar la declaró en gramos.
   const freezers = parseRows(
@@ -301,6 +328,7 @@ export async function loadPrepInput(
     preferences: prefs,
     capabilities: equipment.flatMap((e) => e.configs),
     safetyRules: rules,
+    yields,
     freezerCapacityKnown,
   };
 }

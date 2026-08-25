@@ -7,93 +7,127 @@
 
 ## Estado remoto conocido
 
-**Aplicado en Supabase** (proyecto `smwyxfnlxoohenhsdcjx`): `0001 → 0017` **COMPLETO**
-(0016 y 0017 nacieron de la DEMO VIVA del 2026-08-25, aplicadas y verificadas
-el mismo día — ver `docs/qa/sprint-10-demo-viva.md`).
+**Aplicado en Supabase** (proyecto `smwyxfnlxoohenhsdcjx`): `0001 → 0021` **COMPLETO**
++ bloque de reglas USDA del seed. Verificado en vivo el 2026-08-25:
 
+- `0001 → 0015` — Sprints 0-10, aplicadas con checksum verificado.
 - **0016 — reglas de congelado/refrigerado por categoría** · SHA-256
   `a44691d4864a1cdd68139d08db5cef963fd984d0e4c59e5958b7f564db7ef3bd` ·
-  migración de DATOS idempotente (no toca schema).
+  datos idempotentes (demo viva Sprint 10).
 - **0017 — sin pgcrypto** · SHA-256
   `57c04125981ac327084d620d16dfada029a8ba7fa0ffbd444b35c71ecf4ce5d5` ·
-  reemplaza `gen_random_bytes` por `gen_random_uuid` en `ensure_lot_token` y
-  `complete_prep_task` (pgcrypto vive en el schema `extensions` y esas
-  funciones corren con `search_path = public`).
+  `gen_random_uuid` en vez de `gen_random_bytes` (demo viva Sprint 10).
+- **0018 — decisiones de reemplazo persistidas** · SHA-256
+  `f868f5f2c8b7ada73baee1004c736f654ed8351f9823088579b9bd8832f5ec68` ·
+  tabla `meal_substitution_choices` + RPCs `set/clear_substitution_choice`.
+  Corrige el CANARIO §50 del gate (la sustitución vivía en un query param).
+  **Verificada en vivo**: Sebastián quedó con Merluza 360 g y 0 g de pollo.
+- **0019 — arreglos de ledger del gate (tanda 1)** · SHA-256
+  `b4e3025b507af68dbe707f12753ebfedf196822af016b0bbf862a8c2b89ce8e2` ·
+  `move_lot` v3 (temperatura del DESTINO), `add_manual_lot` v3
+  (`processing_state` explícito), `receive_shopping_list` v2,
+  `merge_lots` v2 (debita a los padres, compara `product_id`), trigger que
+  protege asignaciones servidas, RLS de servings solo-SELECT.
 
-Estado anterior: `0001 → 0015`
-+ el bloque de reglas USDA del seed. Todo aplicado por Francisco el 2026-08-25
-con checksums verificados; las 18 tablas/vistas nuevas de los Sprints 8-10
-verificadas por API (200). **No quedan migraciones pendientes.**
+- **0020 — gate tanda 3 (ámbito de UUIDs + base física + preferencia de cocción)**
+  · SHA-256 `489e7f37e21a3e383a8e6fafe766df1dafaf9049a765371dca76734bb741c288` ·
+  **Verificada en vivo** 2026-08-25: `ingredient_basis_conversions` responde 200
+  con RLS, `set_cooking_preference` actualiza en una sola fila (2 opiniones →
+  1 fila, stance final correcto) y un UUID ajeno rebota con `no autorizado`.
+
+- **0021 — gate tanda 4 (neteo lista↔proveedor por base física)** · SHA-256
+  `9451867c2fc48f4c2027fbb557f3e5f7dab2bbada3c07e160afc9b519a3c8fdf` ·
+  **Verificada en vivo** 2026-08-25: la guarda `known_pending_in_list` rechaza
+  con "la lista de compras cambió: recarga" y la transacción revierte entera
+  (cero filas escritas).
 
 ## Pendientes de aplicar (en este orden exacto)
 
-### 0013 — Stock Intelligence
+### 0022 — Gate tanda 5: la identidad por PRODUCTO llega al ledger de consumo
 
-- **Archivo:** `supabase/migrations/0013_stock_intelligence.sql`
-- **Propósito:** `stock_targets` + RPCs (`set_stock_target`, `delete_stock_target`), calidad de stock (`is_approximate` + `adjust_lot` v3), capacidad opcional en `storage_locations`, fuente `STOCK_INTELLIGENCE` en la lista + índice único de sugerencias, vistas `waste_movements`/`purchase_movements` (security_invoker, con `weight_basis` y regla de costo "lote limpio"), `ensure_weekly_plan` v2 sin carrera, `consume_planned_meal` v3 (lotes vencidos NO se consumen — misma regla que el motor, en el día del hogar), trigger de items de compra con validación de ámbito, índices §55.
-- **Dependencias:** 0001→0012 aplicadas (usa `inventory_lots`, `consumption_shortfalls`, `shopping_list_items`, `ingredient_yields`).
-- **Checksum SHA-256:** `75dbe5c1e8e3f6664bd8d8b4dcf33753771e86eef561e24b43296bae5a03d7d3`
-- **Congelada en commit:** `bb4e5ca`
-- **¿Destructiva?:** NO en datos (aditiva + `create or replace` de funciones + un `drop function` de `adjust_lot`/`consume_planned_meal` para cambiar firma/retorno, recreados en la misma transacción). El aviso "destructive operations" del editor es el falso positivo de siempre (DML dentro de cuerpos de función).
-- **Notas de aplicación:** un solo pegado; `alter type … add value` de `shopping_item_source` está al final de su uso (el índice único evita el literal nuevo a propósito). Validada completa en PGlite sobre réplica del estado 0001→0012.
+- **Archivo:** `supabase/migrations/0022_consume_product_identity.sql`
+- **Propósito:** **[I-1]** `consume_planned_meal` v4. Antes iteraba SOLO
+  componentes con `ingredient_id`: la porción de un producto comercial se
+  comía, su lote quedaba intacto y no se registraba ni movimiento ni faltante
+  (física falsificada en silencio). Ahora el match de lotes usa LA identidad
+  del componente (producto contra producto, alimento contra alimento), la
+  conversión cocido→crudo sigue siendo solo para alimentos (los rendimientos
+  se anotan por ingrediente), y `consumption_shortfalls` gana la columna
+  `product_id` para el linaje del faltante.
+- **Dependencias:** 0001→0021 aplicadas.
+- **Checksum SHA-256:** `b25657ea399d79cb4a1fb7fe9a29969adf253d5d2008ae0d1d5dde020f28c513`
+- **¿Destructiva?:** NO (una columna aditiva + `create or replace`).
+- **Notas de aplicación:** un solo pegado, DESPUÉS de 0021. Validada en PGlite
+  (cadena 0001→0022, 598 tests, 2 regresiones propias por el camino REAL
+  `confirm_meal_assignment`→`consume_planned_meal` en
+  `web/src/integration/gate-tanda5.test.ts`).
 
-### 0014 — Procurement (Sprint 9)
+### Referencia: 0021 — Gate tanda 4: neteo lista↔proveedor por base física
 
-- **Archivo:** `supabase/migrations/0014_procurement.sql`
-- **Propósito:** proveedores (`suppliers`, `supplier_products` con presentación/envase/base física/mínimo/múltiplo/lead time/días de entrega), `purchase_policies` (proveedor preferido + días de pedido/recepción; las cantidades siguen en `stock_targets`), órdenes de abastecimiento (`procurement_orders` + items + `procurement_order_events` append-only) y RPCs `create_procurement_order` (dedupe por hogar/estado, guardas anti-pantalla-vieja, validación de supplier_product), `advance_procurement_order` (máquina de estados §13) y `receive_procurement_order` (MISMO ledger del Sprint 7, claves `RECEIVE-PO:{item_id}`, base física del item, reintento = no-op). Incluye `app.household_today`.
-- **Dependencias:** 0001→0013 aplicadas (usa `weight_basis`, `inventory_lots/movements`, `ensure_storage_locations`, `can_manage_shopping`, `ingredient_in_scope`, `assert_finite`, `current_member_id`, `storage_locations`).
-- **Checksum SHA-256:** `000f29a5743fc7fd3b561df4bb9b2733eb7521a97bb016d41e441e618e8ac935`
-- **Congelada en commit:** `6d17bfd`
-- **¿Destructiva?:** NO (100% aditiva: tablas/tipos/índices/funciones nuevos; no toca nada existente). El aviso "destructive operations" del editor, si aparece, es el falso positivo de siempre (DML dentro de cuerpos de función).
-- **Notas de aplicación:** un solo pegado, DESPUÉS de 0013. Validada completa en PGlite sobre la cadena 0001→0013 + QA adversarial de 9 lentes (16 defectos corregidos ANTES de congelar — ver `docs/qa/sprint-9-report.md`).
+- **Archivo:** `supabase/migrations/0021_gate_netting_basis.sql`
+- **Propósito:**
+  - **[S-2]** el índice único de sugerencias pasa de `(list_id, ingredient_id)`
+    a `(list_id, ingredient_id, unit, purchase_basis)`: la sugerencia DRAINED
+    ya no pisa a la RAW del mismo alimento.
+  - **[P-1]** `create_procurement_order` v2: revalida TAMBIÉN
+    `known_pending_in_list` contra la lista viva (antes solo `known_incoming`).
+    Aprobar desde una pestaña vieja recibe "recarga la página", no una orden
+    que duplica lo que la lista ya pide en el súper.
+- **Dependencias:** 0001→0020 aplicadas.
+- **Checksum SHA-256:** `9451867c2fc48f4c2027fbb557f3e5f7dab2bbada3c07e160afc9b519a3c8fdf`
+- **¿Destructiva?:** NO en datos (un `drop index` + recreación ensanchada — la
+  clave vieja era subconjunto, no puede chocar — y un `create or replace`).
+- **Notas de aplicación:** un solo pegado, DESPUÉS de 0020. Validada en PGlite
+  (cadena 0001→0021, 596 tests, 5 regresiones propias en
+  `web/src/integration/gate-tanda4.test.ts`).
 
-### 0015 — Batch prep, conservación y etiquetas (Sprint 10)
+### Referencia: 0020 — Gate tanda 3: ámbito de UUIDs + base física + preferencia de cocción
 
-- **Archivo:** `supabase/migrations/0015_batch_prep.sql`
-- **Propósito:** equipamiento del hogar + configuraciones (`household_equipment`, `household_equipment_configs`), `prep_preferences`, `storage_safety_rules` (fuente obligatoria), `household_observed_yields`, `batch_prep_plans`/`batch_prep_tasks`, `label_templates` (+ plantilla global 40 mm) / `label_print_jobs` (snapshot congelado), columnas nuevas en `inventory_lots` (frozen_at, intended_use_date, intended_assignment_id, package_code, qr_token), enum `PREP_LOSS`, RPCs `merge_lots`, `save_prep_plan`, `cancel_prep_plan`, `complete_prep_task`, `skip_prep_task`, `use_lot`, `set_lot_safety`, `set_intended_use`, `ensure_lot_token`, `resolve_lot_token`, `create_label_job`, `mark_label_job`, `app.emit_event`, y v2 de `split_lot`/`move_lot`/`add_manual_lot`.
-- **Dependencias:** 0001→0014 aplicadas (ledger, storage_locations, meal_assignments, domain_events del 0001, household_today del 0014).
-- **Checksum SHA-256:** `c26f3ae09bdfc50cbc7920eb73c568d394d9fbab1a7b6fd8249589d2f8deecb3`
-- **Congelada en commit:** `7607360`
-- **¿Destructiva?:** NO en datos (aditiva + `create or replace` de funciones existentes: split_lot/move_lot/add_manual_lot cambian cuerpo, misma firma). El aviso "destructive operations" del editor, si aparece, es el falso positivo de siempre.
-- **Notas de aplicación:** un solo pegado, DESPUÉS de 0014. Tras aplicarla, correr el **bloque de reglas USDA** (sección final de `supabase/seed/dev_catalog_seed.sql`, idempotente con `where not exists`) para que el SafetyEngine tenga reglas con fuente. Validada completa en PGlite + QA manual de 12 lentes (8 defectos corregidos ANTES de congelar — `docs/qa/sprint-10-report.md`).
+- **Archivo:** `supabase/migrations/0020_gate_scope_and_basis.sql`
+- **Propósito:** cierra 4 familias de defectos ALTO de la auditoría de 13 lentes:
+  - **[G-1]** `replace_draft_content` v4: valida los CINCO UUID que manda el
+    navegador (alimento, producto, sub-receta, medida casera, ficha
+    nutricional) contra el hogar. Antes entraban sin revisar.
+  - **[G-2]** `publish_meal_template_version` v3: rechaza publicar si un
+    componente apunta a una ficha nutricional de OTRO hogar. Antes publicar la
+    COPIABA dentro de `frozen_nutrition` (exfiltración vía SECURITY DEFINER).
+    Conserva intactos los guardianes de 0004 (receta vacía, unidad/base,
+    congelado, auditoría).
+  - **[B-1]** `receive_shopping_list` v3: la base física de la compra se
+    traduce al lote (`COMMERCIAL_PACKAGE`/`UNIT` → `AS_PACKAGED`) en vez de
+    aplastarse a RAW. Antes un componente en AS_PACKAGED jamás encontraba lote
+    y la comida se servía sin descontar la despensa.
+  - **[B-1b]** tabla nueva `ingredient_basis_conversions` + `app.basis_factor`:
+    factores EXPLÍCITOS entre bases físicas (nace vacía a propósito: sin fila
+    no hay conversión, el faltante se declara).
+  - **[M-2]** `set_cooking_preference` (RPC nuevo) + índices únicos parciales
+    en `member_cooking_preferences`: cambiar de opinión ACTUALIZA. El upsert
+    viejo nunca chocaba (NULLS DISTINCT) y acumulaba filas contradictorias.
+    Incluye limpieza de duplicados heredados (conserva la última opinión).
+- **Dependencias:** 0001→0019 aplicadas.
+- **Checksum SHA-256:** `489e7f37e21a3e383a8e6fafe766df1dafaf9049a765371dca76734bb741c288`
+- **¿Destructiva?:** un `delete` acotado a duplicados EXACTOS de
+  `member_cooking_preferences` (conserva la última fila de cada grupo, que es
+  la opinión vigente de la persona); el resto es aditivo + `create or replace`.
+  El aviso "destructive operations" del editor es el falso positivo de siempre.
+- **Notas de aplicación:** un solo pegado, DESPUÉS de 0019. Validada completa
+  en PGlite (cadena 0001→0020, 584 tests, 14 regresiones propias en
+  `web/src/integration/gate-tanda3.test.ts`).
 
 ## Cómo verificar un checksum antes de aplicar
 
 ```bash
-sha256sum supabase/migrations/0013_stock_intelligence.sql
-sha256sum supabase/migrations/0014_procurement.sql
-sha256sum supabase/migrations/0015_batch_prep.sql
+sha256sum supabase/migrations/0022_consume_product_identity.sql
 ```
 
 Debe coincidir EXACTAMENTE con el registrado acá. Si no coincide, NO aplicar:
 revisar `git log` del archivo y regenerar este manifiesto.
 
-## Checklist para la vuelta al PC (orden estricto, sin omitir pasos)
-
-1. ~~Verificar checksums~~ ✔ (0013/0014 verificados y aplicados 2026-08-25).
-2. ~~Aplicar 0013~~ ✔ (`stock_targets`, vistas → 200).
-3. ~~Aplicar 0014~~ ✔ (`suppliers`, `procurement_orders`, `…_events` → 200).
-3b. ~~Aplicar 0015 + bloque USDA~~ ✔ (9 tablas nuevas → 200; reglas corridas
-   con Success, idempotentes).
-4. **Smoke tests contra Supabase real**: `/pantry`, `/pantry/reorder`,
-   `/shopping` cargan sin error; `set_stock_target` guarda; consumir una comida
-   con lote vencido presente lo deja intacto y registra shortfall.
-5. **Demo §59 del Sprint 8** (BLOCKED_BY_REMOTE_MIGRATION_0013): pollo 4.500 g
-   → reservas 3.200 → libre 1.300 → cobertura/forecast/confianza → consumir →
-   merma → recibir compra → agregar comida confirmada → sustitución a merluza.
-6. **Mobile review** 320/375/430 contra la app viva (pantry, item, reorder).
-7. **Demo viva del Sprint 9**: crear proveedor con presentación (mínimo 5 kg,
-   lead 2, entrega viernes) → sugerencia con "pedir miércoles para recepción
-   viernes" → aprobar (doble clic = una orden) → "Ya lo pedí" → "Llegó: recibir"
-   → el lote aparece en /pantry con su base física → la sugerencia no reaparece.
-7b. **Demo viva del Sprint 10** (§91): recibir compra → generar plan → modo
-   cocina → porcionar/congelar → etiquetas PDF → QR desde el celular.
-8. **Entregar resultados al director** para los gates de Sprint 8, 9 y 10.
-
-## Estados de sprint mientras tanto
+## Estados de sprint
 
 | Sprint | Estado |
 |---|---|
-| 8 — Stock Intelligence | `IMPLEMENTED_LOCAL_PENDING_LIVE_VERIFICATION` — demo §59 `BLOCKED_BY_REMOTE_MIGRATION_0013` |
-| 9 — Procurement | `IMPLEMENTED_LOCAL_PENDING_LIVE_VERIFICATION` — 0014 APLICADA en remoto; falta demo viva |
-| 10 — Batch prep | `IMPLEMENTED_LOCAL_PENDING_LIVE_VERIFICATION` — 518 tests, QA 12 lentes manual, 0015 congelada |
+| 8 — Stock Intelligence | verificado en vivo dentro del Integration Gate 0→10 (reorder, netting, forecast) |
+| 9 — Procurement | demo viva ejecutada (orden creada/avanzada/recibida contra Supabase real) |
+| 10 — Batch prep | demo viva ejecutada (`docs/qa/sprint-10-demo-viva.md`); 0016/0017 nacieron de ella |
+| Gate 0→10 | EN CURSO — canario §50 PASS en vivo; tandas 1-3 de fixes aplicadas; tanda 4 de motores lista (weight_basis en prep + planningCoveredDates + reorder por base); quedan product_id extremo a extremo y el informe §54 |
