@@ -168,11 +168,21 @@ begin
   where user_id = auth.uid() and is_active order by created_at limit 1;
   if v_hogar is null then raise exception 'no autorizado'; end if;
 
+  -- QA §100 lente M [M-1]: el `for update` sobre el conjunto serializa la
+  -- numeración. Sin él, dos creaciones simultáneas calculaban el MISMO
+  -- max+1 y la segunda moría con un error crudo de índice único.
   select id into v_set from public.clinical_rule_sets
-  where household_id = v_hogar and code = p_code;
+  where household_id = v_hogar and code = p_code
+  for update;
   if v_set is null then
     insert into public.clinical_rule_sets (household_id, code, name)
-    values (v_hogar, p_code, p_name) returning id into v_set;
+    values (v_hogar, p_code, p_name)
+    on conflict (household_id, code) where household_id is not null do nothing
+    returning id into v_set;
+    if v_set is null then
+      select id into v_set from public.clinical_rule_sets
+      where household_id = v_hogar and code = p_code for update;
+    end if;
   end if;
 
   select coalesce(max(version), 0) + 1 into v_next

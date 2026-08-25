@@ -569,6 +569,12 @@ begin
     if v_bio is null then
       raise exception 'una observación necesita su biomarcador: edita la fila "%" y elígelo', coalesce(v_cand.raw_label, '?');
     end if;
+    -- QA §100 lente O [O-1]: sin valor no hay observación. Antes reventaba
+    -- con un NOT NULL crudo de Postgres; ahora dice qué falta y dónde.
+    if (case when v_d->>'action' = 'EDIT' and v_d ? 'value'
+             then (v_d->>'value')::numeric else v_cand.value end) is null then
+      raise exception 'la fila "%" no tiene valor: edítala o descártala', coalesce(v_cand.raw_label, '?');
+    end if;
     if not exists (
       select 1 from public.biomarker_definitions b
       where b.id = v_bio and (b.household_id is null or b.household_id = v_doc.household_id)
@@ -598,10 +604,6 @@ begin
        v_cand.extraction_confidence,
        'CONFIRMED', v_actor, now(), v_cand.original_snippet)
     returning id into v_obs;
-
-    if (select value from public.lab_observations where id = v_obs) is null then
-      raise exception 'una observación confirmada necesita un valor';
-    end if;
 
     update public.lab_extraction_candidates
     set status = case when v_d->>'action' = 'EDIT' then 'EDITED' else 'CONFIRMED' end::public.extraction_candidate_status

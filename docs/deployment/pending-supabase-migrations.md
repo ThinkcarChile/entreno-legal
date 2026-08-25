@@ -7,7 +7,7 @@
 
 ## Estado remoto conocido
 
-**Aplicado en Supabase** (proyecto `smwyxfnlxoohenhsdcjx`): `0001 → 0025` **COMPLETO**
+**Aplicado en Supabase** (proyecto `smwyxfnlxoohenhsdcjx`): `0001 → 0025` **COMPLETO** (0026/0027 del Sprint 11 pendientes, abajo)
 + bloque de reglas USDA del seed. Verificado en vivo el 2026-08-25:
 
 - `0001 → 0015` — Sprints 0-10, aplicadas con checksum verificado.
@@ -54,9 +54,41 @@
   columna 200, `unverifiable_constraints: ["ENERGY_MAX"]` congelada por el
   RPC, dedupe obligatorio rechaza con su mensaje, `/plan/comida` volvió a 200.
 
-## Pendientes de aplicar
+## Pendientes de aplicar (en este orden exacto)
 
-**Ninguna. Remoto = cadena local completa (0001→0025).**
+### 0026 — Sprint 11: documentos médicos, biomarcadores y grants
+
+- **Archivo:** `supabase/migrations/0026_health_documents.sql`
+- **Propósito:** catálogo de biomarcadores (17 globales, solo ESTRUCTURA),
+  `lab_documents` con consentimiento IA, `lab_extraction_candidates` (la capa
+  IA propone), `lab_observations` (unidad NULL = desconocida; rango del
+  laboratorio propio; corrección encadenada), `medical_data_grants` +
+  `app.medical_access` (self / grant / tutor — los roles del hogar NO dan
+  acceso), `member_lab_schedules`, y los RPC del pipeline. Bucket privado
+  `medical-documents` en un bloque condicional (solo si existe el schema
+  `storage`).
+- **Dependencias:** 0001→0025 aplicadas.
+- **Checksum SHA-256:** `bcaeba23f2988dc4ce6adad0ca1edde06a9863a05cbc948f7381d36b6666432a`
+- **¿Destructiva?:** NO (100% aditiva).
+- **Notas:** un solo pegado. Tras aplicarla, `/health` deja de dar el error
+  honesto "Algo falló de nuestro lado" (hoy falla porque
+  `medical_data_grants` no existe — verificado en vivo).
+
+### 0027 — Sprint 11: reglas clínicas, restricciones e impacto
+
+- **Archivo:** `supabase/migrations/0027_clinical_rules.sql`
+- **Propósito:** `member_conditions` (registro, jamás generador de reglas),
+  `clinical_rule_sets/versions` (inmutables tras publicar, doble capa
+  RLS+trigger), `member_clinical_restrictions` (con fuente y confirmación),
+  `meal_clinical_assessments` (snapshot explicable por referencia),
+  `clinical_impact_reviews` (idempotentes), y
+  `member_serving_projections.clinical_status` (divulgación mínima; historia
+  SERVED/CONSUMED intocable).
+- **Dependencias:** 0026 aplicada.
+- **Checksum SHA-256:** `31e7d6a4ef48cb3817a0b326aa0a8fe54f7fc792cf5d5748cf001b16039d02ca`
+- **¿Destructiva?:** NO (aditiva + dos columnas nuevas con default).
+- **Notas:** un solo pegado, DESPUÉS de 0026. Validadas en PGlite (cadena
+  0001→0027, 672 tests).
 
 ### Referencia: 0021### Referencia: 0021 — Gate tanda 4: neteo lista↔proveedor por base física
 

@@ -349,13 +349,80 @@ export async function assessMeal(input: {
     loadScheduleInputs(supabase, input.memberId),
   ]);
 
-  // La nutrición agregada de la receta, con su completeness REAL.
-  const { data: nutricion, error: nutricionError } = await supabase
-    .from("recipe_nutrition")
-    .select("*")
-    .eq("version_id", input.versionId)
+  // QA §100 lente A [A-1]: una restricción clínica es POR PORCIÓN. Comparar
+  // contra `recipe_nutrition` —que es el TOTAL de la receta para
+  // `base_servings` personas— invalidaba comidas seguras (en un máximo) y,
+  // peor, declaraba cumplido un MÍNIMO que la porción individual no alcanza.
+  //
+  // Orden de preferencia, del dato más real al más estimado:
+  //  1. la porción CONFIRMADA de esta persona en esta comida (la verdad);
+  //  2. el total de la receta dividido por sus porciones base (estimación de
+  //     porción estándar, declarada como tal en las razones).
+  const valores: Record<string, number | null> = {};
+  const completeness: Record<string, "COMPLETE" | "PARTIAL" | "UNKNOWN"> = {};
+  let fuenteNutricion: "SERVING" | "RECIPE_PER_SERVING" | "NONE" = "NONE";
+
+  const { data: versionBase, error: versionBaseError } = await supabase
+    .from("meal_template_versions")
+    .select("base_servings")
+    .eq("id", input.versionId)
     .maybeSingle();
-  if (nutricionError) throw new DataAccessError("nutrición de la receta", nutricionError);
+  if (versionBaseError) throw new DataAccessError("porciones base de la receta", versionBaseError);
+  const porcionesBase =
+    z.object({ base_servings: z.number().int().positive() }).nullable().parse(versionBase)
+      ?.base_servings ?? null;
+
+  if (input.assignmentId) {
+    const { data: proy, error: proyError } = await supabase
+      .from("member_serving_projections")
+      .select("nutrition, completeness")
+      .eq("assignment_id", input.assignmentId)
+      .eq("member_id", input.memberId)
+      .maybeSingle();
+    if (proyError) throw new DataAccessError("porción de la comida", proyError);
+    if (proy) {
+      const fila = z
+        .object({
+          nutrition: z.record(z.string(), z.unknown()).catch({}),
+          completeness: z.record(z.string(), z.string()).catch({}),
+        })
+        .parse(proy);
+      // El optimizador guarda la nutrición YA por porción.
+      const dentro = (fila.nutrition.values ?? fila.nutrition) as Record<string, unknown>;
+      for (const [k, v] of Object.entries(dentro)) {
+        if (typeof v === "number") valores[k] = v;
+      }
+      const compDentro = (fila.nutrition.completeness ?? fila.completeness) as Record<string, unknown>;
+      for (const [k, v] of Object.entries(compDentro ?? {})) {
+        if (typeof v === "string") completeness[k] = v as "COMPLETE" | "PARTIAL" | "UNKNOWN";
+      }
+      if (Object.keys(valores).length > 0) fuenteNutricion = "SERVING";
+    }
+  }
+
+  if (fuenteNutricion === "NONE") {
+    const { data: nutricion, error: nutricionError } = await supabase
+      .from("recipe_nutrition")
+      .select("*")
+      .eq("version_id", input.versionId)
+      .maybeSingle();
+    if (nutricionError) throw new DataAccessError("nutrición de la receta", nutricionError);
+
+    if (nutricion && porcionesBase) {
+      const filaNutricion = z
+        .object({ completeness: z.record(z.string(), z.string()).catch({}) })
+        .passthrough()
+        .parse(nutricion);
+      for (const [k, v] of Object.entries(filaNutricion)) {
+        // El total de la receta ÷ sus porciones base = porción estándar.
+        if (typeof v === "number") valores[k] = v / porcionesBase;
+      }
+      for (const [k, v] of Object.entries(filaNutricion.completeness)) {
+        completeness[k] = v as "COMPLETE" | "PARTIAL" | "UNKNOWN";
+      }
+      fuenteNutricion = "RECIPE_PER_SERVING";
+    }
+  }
 
   const { data: comps, error: compsError } = await supabase
     .from("meal_slot_components")
@@ -387,21 +454,6 @@ export async function assessMeal(input: {
     .parse(hogar);
   const hoy = effectiveDate(new Date(), tzFila?.households?.timezone ?? "America/Santiago");
 
-  const valores: Record<string, number | null> = {};
-  const completeness: Record<string, "COMPLETE" | "PARTIAL" | "UNKNOWN"> = {};
-  if (nutricion) {
-    const filaNutricion = z
-      .object({ completeness: z.record(z.string(), z.string()).catch({}) })
-      .passthrough()
-      .parse(nutricion);
-    for (const [k, v] of Object.entries(filaNutricion)) {
-      if (typeof v === "number") valores[k] = v;
-    }
-    for (const [k, v] of Object.entries(filaNutricion.completeness)) {
-      completeness[k] = v as "COMPLETE" | "PARTIAL" | "UNKNOWN";
-    }
-  }
-
   const evaluacion = assessClinical({
     date: hoy,
     restrictions: restricciones,
@@ -412,9 +464,16 @@ export async function assessMeal(input: {
     categoryIds: componentes
       .map((c) => c.ingredients?.category_id ?? null)
       .filter((x): x is string => x !== null),
-    quantitiesByIngredient: Object.fromEntries(
-      componentes.filter((c) => c.ingredient_id !== null).map((c) => [c.ingredient_id!, c.quantity]),
-    ),
+    // [A-1]: las cantidades de la receta también son totales. PORTION_MAX/MIN
+    // se evalúa por porción, así que se divide por las porciones base; si no
+    // se conocen, NO se manda nada y el motor pide revisión en vez de adivinar.
+    quantitiesByIngredient: porcionesBase
+      ? Object.fromEntries(
+          componentes
+            .filter((c) => c.ingredient_id !== null)
+            .map((c) => [c.ingredient_id!, c.quantity / porcionesBase]),
+        )
+      : {},
   });
 
   const { data: guardada, error: guardadaError } = await supabase.rpc("save_meal_clinical_assessment", {
@@ -429,6 +488,9 @@ export async function assessMeal(input: {
       missing_data: evaluacion.missingData,
       rule_refs: evaluacion.ruleRefs,
       restriction_snapshot: restricciones.map((r) => ({ id: r.id, ruleVersionId: r.ruleVersionId })),
+      // §96: de dónde salió la nutrición evaluada — la porción real o una
+      // estimación de porción estándar. Quien lea la evaluación lo sabe.
+      nutrition_source: fuenteNutricion,
       observation_refs: evaluacion.observationRefs,
       proposed_adjustments: evaluacion.proposedAdjustments,
     },
