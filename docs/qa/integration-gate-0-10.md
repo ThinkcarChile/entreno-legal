@@ -1,8 +1,8 @@
 # Integration Gate 0→10 — Informe (§54)
 
-**Fecha:** 2026-08-25 · **Estado del gate:** EN CURSO — canario §50 PASS en vivo;
-5 tandas de corrección aplicadas (0018→0022); quedan secciones de verificación
-en vivo y una cola de MEDIO/BAJO declarada abajo.
+**Fecha:** 2026-08-25 · **Estado del gate:** EN CURSO — Final Closure ejecutado
+salvo los pasos que dependen de aplicar 0022→0025 en el remoto (en el
+portapapeles de Francisco). El detalle está en la sección **Final Closure**.
 
 **Pregunta del gate:** ¿puede una familia planificar, comprar, recibir,
 preparar, cocinar, consumir y volver a planificar sin que ninguna costura
@@ -152,3 +152,68 @@ datos demo.
 ámbito) quedó íntegro y probado en vivo. Sprint 11 puede abrirse cuando el
 director lo decida, con la cola del §4 como backlog priorizado y los 2 ALTO
 residuales (concurrencia del confirm + seed del arnés) como primeras tareas.
+
+
+---
+
+# Final Closure (orden del director, 2026-08-25)
+
+## Tabla de cierre
+
+| Ítem | Estado | Evidencia |
+|---|---|---|
+| 0022 en remoto | **PENDIENTE de pegado** (0022→0025 juntas en el portapapeles, en orden, checksums en el manifiesto) | sonda: `consumption_shortfalls.product_id` → 404 |
+| Confirm concurrency (ALTO 1) | **CERRADO en código** — 0023: `for update` sobre la asignación en confirm v5 Y consume v5 + `for update of l` en los FEFO; contrato de candado + doble recepción en `gate-concurrency` (12 tests); doble disparo vivo pendiente de 0023 en remoto | `0023` (`a13a60e3…`) |
+| Paridad schema test/producción (ALTO 2) | **PASS** — `seed_demo_family_profiles` movida a 0024 (la app la llama en `loadDemoFamily`); seed = puntero; `gate-schema-parity` levanta la base SOLO con migraciones y exige todo `.rpc()`/`.from()` (probado por mutación); los seeds ya no pueden definir schema | `0024` (`d591e64b…`) + 3 tests |
+| Timezone de nutrition goals | **PASS** — `saveMealGoals` usa el día CIVIL del hogar; probado 23:30 dom / 00:30 lun Santiago Y el salto de hora del 06-sep; contrato: ningún `toISOString().slice(0,10)` decide vigencias | `gate-fechas.test.ts` (4 tests) |
+| saveMealGoals no traga errores | **PASS** — las 7 escrituras chequean su error; regla generalizada: `gate-error-contract` recorre TODAS las server actions y exige 0 escrituras con resultado descartado (3 infractores más corregidos de paso) | contrato con 0 ofensas |
+| ERROR ≠ VACÍO (§41) | **PASS en vivo** — UUID inválido/inexistente → 404 honesto en 4 rutas; loader/RPC/shape error → boundary propio ("Algo falló de nuestro lado" + digest + Reintentar), probado con `DataShapeError` forzado; `uuidParam` en las 8 páginas dinámicas | texto renderizado en vivo |
+| Refresh (§46) | **PASS en vivo** — A sustitución (canario), B comida confirmada, C shopping (item manual + comprado sobreviven F5, contador 1/11), D orden aprobada ("En camino · planificada" tras F5, sugerencia neteada), E tarea de prep | evidencia por caso |
+| Interrupción de sesión (§47) | **PASS en vivo** — plan de 17 tareas; completar paso 1 → salir → volver: retoma en PASO 2 DE 17 desde la base; el lote del tomate conserva exactamente SPLIT+TRANSFORM (cero duplicados) | ids en transcript |
+| Auditabilidad (§48) | **PASS en vivo** — A: porción con optimizer_version + perfil congelado + códigos de razón; B: línea de merluza con procedencia por comida (incluye los 360 g del sábado de Sebastián); C: orden con motor + pasos necesidad→proveedor→envase→fechas; D: tarea con razones + alternativa manual | 4 consultas sin recalcular |
+| Linaje (§49) | **PASS en vivo** — RecipeVersion (`Pollo con arroz… v1`) → porción → RECEIVE-PO +4200 g → lote raíz (SPLIT, saldo 0) → 4 hijos congelados → consumo −8,9 g anclado a log; canario: identidad original (pollo) + decisión (SOFT_PREFERENCE, chosen_by) + identidad final (merluza) coexisten | cadena completa |
+| Móvil (§43) | **PASS en vivo** — 320 px: 11 rutas con overflow 0; 430 px spot-check overflow 0 (misma banda de breakpoints) | medición scrollWidth |
+| Escritorio (§44) | **PASS con nota** — columna centrada de 416 px en 1280: diseño móvil-primero deliberado, centrado y funcional (no un layout roto); aprovechar el ancho = POST-SPRINT-11 | medición main |
+| Performance (§45) | **PASS** — 500 lotes + 90 días de historia + 60 demandas: `analyzeStock` y `planPrep` < 2 s; consultas críticas del ledger con Index Scan (EXPLAIN); sin N+1 dependiente del tamaño de datos (el único fan-out es por integrante, acotado a 5) | `gate-performance.test.ts` |
+| Concurrencia crítica (§15) | **PASS (matriz)** — doble confirm/consume/receive×2/approve/prep/regeneración TODOS protegidos con mecanismo verificado por auditoría adversarial; el hueco real (dedupe NULL en órdenes) cerrado en 0025; doble disparo vivo pendiente de remoto | auditoría 27 agentes + 12 tests |
+| UNKNOWN clínicamente relevante (§6) | **PASS** — 5 áreas auditadas (19 confirmados, 4 refutados); los 8 accionables corregidos; regla documentada | `docs/architecture/unknown-nunca-es-normal.md` |
+| Tests / lint / typecheck / build | **PASS** — 615+ tests en verde (cadena 0001→0025), `tsc --noEmit` limpio, ESLint 0 errores, `next build` compila | corrida completa |
+
+## Bugs encontrados EN ESTA tanda (Final Closure)
+
+1. **[ALTO]** INSUFFICIENT_DATA en el grupo verde "Bien abastecido" → corregido.
+2. **[MEDIO]** "El stock libre cubre el horizonte" afirmado sin datos → corregido.
+3. **[MEDIO]** /pantry/reorder y Procurement omitían UNRESOLVED → corregidos.
+4. **[MEDIO]** `unverifiable_constraints` no se persistía → corregido (0025 + chip).
+5. **[MEDIO]** `create_procurement_order` sin idempotencia con dedupe NULL → corregido (0025).
+6. **[MEDIO]** UUID inválido en URL → 500 crudo "Application error" → corregido (`uuidParam` + boundaries).
+7. **[BAJO ×4]** delta "+0 g (nuevo)"; "alcanzaría sin comprar" sobre línea unresolved; fit sin aviso de tope no verificable; abastecimiento saltando UNRESOLVED → corregidos.
+8. 4 hallazgos de auditoría REFUTADOS con evidencia (3 eran fixes presentes sin commitear; 1 ya cerrado por 0023).
+9. `/plan/comida/[id]` → 500 contra el remoto actual: es la columna de 0025 aún no aplicada (se re-verifica tras el pegado).
+
+## Deuda restante reclasificada (§16)
+
+**PRE-SPRINT-11**: *(vacío — lo clasificado acá se cerró en esta tanda)*.
+
+**POST-SPRINT-11** (backlog, no bloquea):
+- D: `setItemStatus` borra el comprador al reprocesar; trigger de inmutabilidad sin `computed_inputs`.
+- L: reimprimir bota el job id; PDF del plan en `useState`; formulario de política sin hidratar; "Planificada ✓" muerta tras cancelar; hidratación de "Agregado" sin filtrar semana.
+- E: `loadPendingListItems` sin cota de semana; planes de prep de días anteriores conviven.
+- J: capacidad del congelador (unidades mixtas + tope total); detalle de alimento mezcla bases.
+- Concurrencia MEDIO restantes (guards `known_*` sin serialización total, `setMealParticipants` no atómico) — demostrado que NO falsifican cantidad/identidad/valor/historia: acotan a rechazos espurios.
+- Escritorio: aprovechar el ancho.
+
+**BEFORE-PRODUCTION**:
+- Confirm email ON + rotación de secretos.
+- Oráculos de existencia en 3 RPC; actor no estampado en `storage_safety_rules`/`suppliers`/`purchase_policies`.
+- PREP_LOSS cierra como CONSUMED; shortfall con regla de conversión propia (antes de reportes de merma reales).
+- `receive_procurement_order` sin temperatura de la ubicación.
+- Poblar `ingredient_basis_conversions` y rendimientos con datos curados.
+
+## Estado formal
+
+**INTEGRATION_GATE_0_10 = PENDING_REMOTE_APPLY** — todo el criterio de §18
+está PASS salvo los tres pasos que exigen el remoto al día: (1) 0022→0025
+aplicadas, (2) verificación viva §1 de identidad de producto, (3) doble
+disparo vivo del confirm serializado. Con el "listo" de Francisco esos tres se
+ejecutan y el estado final se declara con evidencia, no por decreto.
