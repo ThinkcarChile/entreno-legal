@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { addDays, weekStart } from "@/domain/nutrition/calendar";
+import { addDays, effectiveDate, weekStart } from "@/domain/nutrition/calendar";
 import { analyzeStock } from "@/domain/stock/engine";
 import type { StockInput } from "@/domain/stock/types";
 import { crearHogar, levantarBase, type Harness } from "./harness";
@@ -27,7 +27,10 @@ let merluzaId: string;
 
 // Fechas relativas al hoy REAL: los movimientos del ledger llevan now(), y las
 // ventanas de 30 días se miden contra la misma referencia.
-const HOY = new Date().toISOString().slice(0, 10);
+// Día del HOGAR (Santiago), no el día UTC: cerca de medianoche UTC difieren,
+// y el RPC mide los vencimientos en el día del hogar. Usar UTC acá hacía que
+// "vencido ayer" fuera HOY para el RPC y el lote se consumiera igual.
+const HOY = effectiveDate(new Date(), "America/Santiago");
 const SEMANA = weekStart(addDays(HOY, 7)); // la semana que viene
 const MARTES = addDays(SEMANA, 1);
 const VIERNES = addDays(SEMANA, 4);
