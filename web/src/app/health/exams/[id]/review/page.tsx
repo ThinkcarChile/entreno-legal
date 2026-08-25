@@ -1,11 +1,22 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell } from "@/components/AppShell";
+import { Card, Chip, DataRow, Notice, Section } from "@/components/ui";
 import { uuidParam } from "@/lib/route-params";
 import { loadBiomarkers, loadCandidates, loadDocument, loadObservations } from "../../../queries";
 import { ReviewTable } from "./ReviewTable";
 
 export const dynamic = "force-dynamic";
+
+const ESTADO: Record<string, { texto: string; tono: "neutro" | "atencion" | "primario" | "peligro" }> = {
+  UPLOADED: { texto: "subido", tono: "neutro" },
+  PROCESSING: { texto: "procesando", tono: "neutro" },
+  EXTRACTED: { texto: "extraído", tono: "atencion" },
+  NEEDS_REVIEW: { texto: "por revisar", tono: "atencion" },
+  CONFIRMED: { texto: "confirmado", tono: "primario" },
+  FAILED: { texto: "no se pudo leer", tono: "peligro" },
+  ARCHIVED: { texto: "archivado", tono: "neutro" },
+};
 
 /**
  * /health/exams/[id]/review (§10): la revisión humana. Nada de lo que se ve
@@ -37,64 +48,71 @@ export default async function ReviewExamPage({
     loadObservations(supabase, doc.member_id),
   ]);
   const delDocumento = observaciones.filter((o) => o.document_id === id);
+  const e = ESTADO[doc.processing_status] ?? { texto: doc.processing_status, tono: "neutro" as const };
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-16">
-      <AppNav active="health" />
-      <h1 className="mb-1 text-xl font-semibold">Revisión del examen</h1>
-      <p className="mb-1 text-xs text-[var(--ink)]/60">
-        {doc.source_lab_name ?? "Examen"} · {doc.document_date ?? "sin fecha"} · estado:{" "}
-        {doc.processing_status}
-        {doc.extraction_version && ` · extractor ${doc.extraction_version}`}
-      </p>
-      <p className="mb-4 rounded-xl bg-[var(--paper)] px-3 py-2 text-xs text-[var(--ink)]/70">
-        Lo extraído es una PROPUESTA: no afecta reglas, comidas ni compras hasta que lo
-        confirmes fila por fila.
-      </p>
+    <AppShell
+      active="health"
+      title="Revisión del examen"
+      subtitle={`${doc.source_lab_name ?? "Examen"} · ${doc.document_date ?? "sin fecha"}`}
+      action={<Chip tono={e.tono}>{e.texto}</Chip>}
+    >
+      <div className="mt-md space-y-md">
+        <Notice icon="rule" tono="info">
+          Lo extraído es una <strong>propuesta</strong>: no afecta reglas, comidas ni compras
+          hasta que lo confirmes fila por fila.
+          {doc.extraction_version && (
+            <span className="mt-0.5 block opacity-80">Extractor: {doc.extraction_version}</span>
+          )}
+        </Notice>
 
-      {extraccion === "fallida" && (
-        <p className="mb-4 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900" role="alert">
-          La extracción automática no pudo leer este documento. Puedes registrar los valores a
-          mano cuando la edición manual esté disponible, o subir el examen en formato texto.
-        </p>
-      )}
+        {extraccion === "fallida" && (
+          <Notice icon="error">
+            La extracción automática no pudo leer este documento. Puedes registrar los valores a
+            mano, o subir el examen en formato texto.
+          </Notice>
+        )}
 
-      <ReviewTable
-        documentId={id}
-        candidatos={candidatos.map((c) => ({
-          id: c.id,
-          biomarkerId: c.biomarker_id,
-          rawLabel: c.raw_label,
-          value: c.value,
-          unit: c.unit,
-          referenceLow: c.reference_low,
-          referenceHigh: c.reference_high,
-          referenceText: c.reference_text,
-          collectedDate: c.collected_date,
-          confidence: c.extraction_confidence,
-          snippet: c.original_snippet,
-          status: c.status,
-        }))}
-        biomarcadores={biomarcadores.map((b) => ({ id: b.id, nombre: b.display_name }))}
-      />
+        <ReviewTable
+          documentId={id}
+          candidatos={candidatos.map((c) => ({
+            id: c.id,
+            biomarkerId: c.biomarker_id,
+            rawLabel: c.raw_label,
+            value: c.value,
+            unit: c.unit,
+            referenceLow: c.reference_low,
+            referenceHigh: c.reference_high,
+            referenceText: c.reference_text,
+            collectedDate: c.collected_date,
+            confidence: c.extraction_confidence,
+            snippet: c.original_snippet,
+            status: c.status,
+          }))}
+          biomarcadores={biomarcadores.map((b) => ({ id: b.id, nombre: b.display_name }))}
+        />
 
-      {delDocumento.length > 0 && (
-        <section className="mt-6">
-          <h2 className="mb-2 text-sm font-semibold">Observaciones confirmadas de este examen</h2>
-          <ul className="space-y-1 text-sm">
-            {delDocumento.map((o) => (
-              <li key={o.id} className="rounded-xl border border-[var(--ink)]/10 bg-white px-3 py-2">
-                {o.value} {o.unit ?? "(unidad desconocida)"} ·{" "}
-                {o.reference_text ??
-                  (o.reference_low !== null && o.reference_high !== null
-                    ? `rango del laboratorio ${o.reference_low}–${o.reference_high}`
-                    : "sin rango impreso")}{" "}
-                · {o.verification_status}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-    </main>
+        {delDocumento.length > 0 && (
+          <Section title="Confirmadas de este examen">
+            <Card className="px-md py-sm">
+              {delDocumento.map((o) => (
+                <DataRow
+                  key={o.id}
+                  label={
+                    o.reference_text ??
+                    (o.reference_low !== null && o.reference_high !== null
+                      ? `rango del laboratorio ${o.reference_low}–${o.reference_high}`
+                      : "sin rango impreso")
+                  }
+                >
+                  <strong>{o.value}</strong>{" "}
+                  {o.unit ?? <span className="text-on-surface-variant">(unidad desconocida)</span>}
+                </DataRow>
+              ))}
+            </Card>
+          </Section>
+        )}
+      </div>
+    </AppShell>
   );
 }

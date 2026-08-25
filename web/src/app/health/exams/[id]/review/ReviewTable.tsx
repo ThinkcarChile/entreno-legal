@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { confirmReview, type ReviewDecision } from "../../../actions";
+import { Button, ButtonOutline, Card, Chip, EmptyState, ErrorNote, Icon } from "@/components/ui";
 
 interface Fila {
   id: string;
@@ -19,11 +20,14 @@ interface Fila {
   status: string;
 }
 
+const CAMPO =
+  "w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-sm py-2 font-body-sm text-body-sm min-h-[44px]";
+
 /**
  * §10: cada fila se CONFIRMA, EDITA o DESCARTA. Las dudosas (sin biomarcador,
- * sin unidad o sin valor) van destacadas y "Confirmar todo" solo se habilita
- * cuando cada fila pendiente tiene forma válida. Estados no solo por color
- * (§94): siempre texto.
+ * sin unidad, sin valor o con confianza desconocida) van destacadas, y
+ * "Confirmar todo" solo se habilita cuando cada fila pendiente tiene forma
+ * válida. El estado nunca depende solo del color (§94): siempre lleva texto.
  */
 export function ReviewTable({
   documentId,
@@ -38,7 +42,6 @@ export function ReviewTable({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
-  // Ediciones locales por fila (solo se envían al confirmar).
   const [ediciones, setEdiciones] = useState<Record<string, Partial<ReviewDecision>>>({});
   const [descartadas, setDescartadas] = useState<Set<string>>(new Set());
 
@@ -53,16 +56,18 @@ export function ReviewTable({
     };
   };
 
-  const esDudosa = (fila: Fila) => {
+  /** Qué le falta a la fila. Vacío = está lista. */
+  const faltantes = (fila: Fila): string[] => {
     const v = efectiva(fila);
-    // Confianza DESCONOCIDA = dudosa (dirección conservadora, explícita).
-    return (
-      v.biomarkerId === null ||
-      v.value === null ||
-      v.unit === null ||
-      fila.confidence === null ||
-      fila.confidence < 0.7
-    );
+    const f: string[] = [];
+    if (v.biomarkerId === null) f.push("biomarcador");
+    if (v.value === null) f.push("valor");
+    if (v.unit === null) f.push("unidad");
+    // Confianza DESCONOCIDA cuenta como dudosa (dirección conservadora).
+    if (f.length === 0 && (fila.confidence === null || fila.confidence < 0.7)) {
+      f.push("confianza baja");
+    }
+    return f;
   };
 
   const todasValidas = useMemo(
@@ -111,56 +116,56 @@ export function ReviewTable({
 
   if (pendientes.length === 0) {
     return (
-      <p className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4 text-sm text-[var(--ink)]/60">
-        No quedan filas pendientes de revisión en este examen.
-      </p>
+      <EmptyState icon="task_alt">No quedan filas pendientes de revisión en este examen.</EmptyState>
     );
   }
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-md">
       {pendientes.map((fila) => {
         const v = efectiva(fila);
-        const dudosa = esDudosa(fila);
+        const falta = faltantes(fila);
         const descartada = descartadas.has(fila.id);
+        const editada = Object.keys(ediciones[fila.id] ?? {}).length > 0;
         return (
-          <article
+          <Card
             key={fila.id}
-            className={`rounded-2xl border p-3 text-sm ${
-              descartada
-                ? "border-[var(--ink)]/10 bg-[var(--ink)]/5 opacity-60"
-                : dudosa
-                  ? "border-amber-300 bg-amber-50"
-                  : "border-[var(--ink)]/10 bg-white"
-            }`}
+            as="article"
+            className={`p-md ${descartada ? "opacity-50" : falta.length > 0 ? "ring-1 ring-secondary-fixed-dim" : ""}`}
           >
-            <div className="mb-2 flex items-start justify-between gap-2">
-              <p className="font-medium">
+            <div className="mb-sm flex flex-wrap items-start justify-between gap-sm">
+              <p className="min-w-0 font-body-md text-body-md font-semibold">
                 {fila.rawLabel ?? "(sin etiqueta)"}
-                {dudosa && !descartada && (
-                  <span className="ml-2 rounded-full bg-amber-200 px-2 py-0.5 text-[10px] text-amber-900">
-                    revisar: {v.biomarkerId === null ? "sin biomarcador " : ""}
-                    {v.unit === null ? "sin unidad " : ""}
-                    {v.value === null ? "sin valor" : ""}
-                    {v.biomarkerId !== null && v.unit !== null && v.value !== null
-                      ? "confianza baja"
-                      : ""}
-                  </span>
-                )}
               </p>
-              <span className="shrink-0 text-[10px] text-[var(--ink)]/50">
-                confianza {fila.confidence !== null ? Math.round(fila.confidence * 100) + "%" : "—"}
-              </span>
+              <div className="flex shrink-0 items-center gap-sm">
+                <span className="font-label-md text-label-md text-on-surface-variant">
+                  confianza{" "}
+                  {fila.confidence !== null ? `${Math.round(fila.confidence * 100)}%` : "—"}
+                </span>
+                {descartada ? (
+                  <Chip>descartada</Chip>
+                ) : falta.length > 0 ? (
+                  <Chip tono="atencion" icon="priority_high">
+                    revisar: {falta.join(", ")}
+                  </Chip>
+                ) : (
+                  <Chip tono="primario" icon="check">
+                    lista
+                  </Chip>
+                )}
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <label className="text-xs">
-                <span className="mb-0.5 block text-[var(--ink)]/50">Biomarcador</span>
+            <div className="grid grid-cols-1 gap-sm sm:grid-cols-2 lg:grid-cols-4">
+              <label className="block">
+                <span className="mb-1 block font-label-md text-label-md text-on-surface-variant">
+                  Biomarcador
+                </span>
                 <select
                   value={v.biomarkerId ?? ""}
-                  onChange={(e) => editar(fila.id, "biomarkerId", e.target.value || null)}
+                  onChange={(ev) => editar(fila.id, "biomarkerId", ev.target.value || null)}
                   disabled={descartada}
-                  className="w-full rounded-lg border border-[var(--ink)]/20 bg-white px-2 py-1.5"
+                  className={CAMPO}
                 >
                   <option value="">Elige…</option>
                   {biomarcadores.map((b) => (
@@ -170,31 +175,40 @@ export function ReviewTable({
                   ))}
                 </select>
               </label>
-              <label className="text-xs">
-                <span className="mb-0.5 block text-[var(--ink)]/50">Valor</span>
+              <label className="block">
+                <span className="mb-1 block font-label-md text-label-md text-on-surface-variant">
+                  Valor
+                </span>
                 <input
                   type="number"
                   step="any"
+                  inputMode="decimal"
                   value={v.value ?? ""}
-                  onChange={(e) => editar(fila.id, "value", e.target.value === "" ? null : Number(e.target.value))}
+                  onChange={(ev) =>
+                    editar(fila.id, "value", ev.target.value === "" ? null : Number(ev.target.value))
+                  }
                   disabled={descartada}
-                  className="w-full rounded-lg border border-[var(--ink)]/20 bg-white px-2 py-1.5"
+                  className={CAMPO}
                 />
               </label>
-              <label className="text-xs">
-                <span className="mb-0.5 block text-[var(--ink)]/50">Unidad</span>
+              <label className="block">
+                <span className="mb-1 block font-label-md text-label-md text-on-surface-variant">
+                  Unidad
+                </span>
                 <input
                   type="text"
                   value={v.unit ?? ""}
                   placeholder="desconocida"
-                  onChange={(e) => editar(fila.id, "unit", e.target.value || null)}
+                  onChange={(ev) => editar(fila.id, "unit", ev.target.value || null)}
                   disabled={descartada}
-                  className="w-full rounded-lg border border-[var(--ink)]/20 bg-white px-2 py-1.5"
+                  className={CAMPO}
                 />
               </label>
-              <div className="text-xs">
-                <span className="mb-0.5 block text-[var(--ink)]/50">Rango del laboratorio</span>
-                <p className="rounded-lg bg-[var(--paper)] px-2 py-1.5">
+              <div>
+                <span className="mb-1 block font-label-md text-label-md text-on-surface-variant">
+                  Rango del laboratorio
+                </span>
+                <p className="rounded-lg bg-surface-container px-sm py-2 font-body-sm text-body-sm">
                   {fila.referenceText ??
                     (fila.referenceLow !== null && fila.referenceHigh !== null
                       ? `${fila.referenceLow}–${fila.referenceHigh}`
@@ -204,22 +218,17 @@ export function ReviewTable({
             </div>
 
             {fila.snippet && (
-              <p className="mt-2 rounded-lg bg-[var(--paper)] px-2 py-1.5 text-[11px] text-[var(--ink)]/60">
-                Texto original: “{fila.snippet}”
+              <p className="mt-sm rounded-lg bg-surface-container px-sm py-2 font-body-sm text-body-sm text-on-surface-variant">
+                <Icon name="format_quote" className="mr-1 align-middle text-[16px]" />
+                {fila.snippet}
               </p>
             )}
 
-            <div className="mt-2 flex gap-2">
-              <button
-                type="button"
-                disabled={pending || descartada}
-                onClick={() => enviar([decisionDe(fila)])}
-                className="rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-              >
-                {Object.keys(ediciones[fila.id] ?? {}).length > 0 ? "Guardar edición" : "Confirmar"}
-              </button>
-              <button
-                type="button"
+            <div className="mt-md flex flex-wrap gap-sm">
+              <Button disabled={pending || descartada} onClick={() => enviar([decisionDe(fila)])}>
+                {editada ? "Guardar edición" : "Confirmar"}
+              </Button>
+              <ButtonOutline
                 disabled={pending}
                 onClick={() =>
                   setDescartadas((prev) => {
@@ -229,32 +238,24 @@ export function ReviewTable({
                     return s;
                   })
                 }
-                className="rounded-full border border-[var(--ink)]/20 px-3 py-1.5 text-xs"
               >
                 {descartada ? "Recuperar" : "Descartar"}
-              </button>
+              </ButtonOutline>
             </div>
-          </article>
+          </Card>
         );
       })}
 
-      {error && (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
-          {error}
+      {error && <ErrorNote>{error}</ErrorNote>}
+      {mensaje && (
+        <p className="rounded-xl bg-primary-fixed px-md py-sm font-body-sm text-body-sm text-on-primary-fixed">
+          {mensaje}
         </p>
       )}
-      {mensaje && <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{mensaje}</p>}
 
-      <button
-        type="button"
-        disabled={pending || !todasValidas}
-        onClick={() => enviar(pendientes.map((f) => decisionDe(f)))}
-        className="w-full rounded-full bg-[var(--accent)] px-4 py-3 text-sm font-medium text-white disabled:opacity-40"
-      >
-        {todasValidas
-          ? "Confirmar todo"
-          : "Confirmar todo (hay filas sin biomarcador, valor o unidad)"}
-      </button>
+      <Button disabled={pending || !todasValidas} onClick={() => enviar(pendientes.map(decisionDe))} full>
+        {todasValidas ? "Confirmar todo" : "Faltan datos en alguna fila para confirmar todo"}
+      </Button>
     </section>
   );
 }
