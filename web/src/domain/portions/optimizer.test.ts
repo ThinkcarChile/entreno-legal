@@ -459,3 +459,75 @@ describe("determinismo (§47)", () => {
     expect(a.reasons.map((r) => r.code)).toEqual(b.reasons.map((r) => r.code));
   });
 });
+
+// ---------------------------------------------------------------------------
+// Sprint 11 §31/§32/§74 — techos clínicos confirmados en el optimizador
+// ---------------------------------------------------------------------------
+
+describe("Sprint 11 — techos clínicos", () => {
+  const base = () => ({
+    versionId: "v-1",
+    components: receta(),
+    baseServings: 5,
+    profile: francisco(),
+    mealType: "LUNCH" as const,
+  });
+
+  it("§31: un techo de fósforo reduce componentes AJUSTABLES y lo explica", () => {
+    // La receta completa por porción (1/5): pollo 180g×210 + arroz 75g×?(null)...
+    // el arroz no declara fósforo → completeness PARCIAL → el techo queda SIN
+    // VERIFICAR (no verde). Con ficha completa en los demás y limite bajo, la
+    // reducción corre sobre lo que SÍ se conoce.
+    const r = optimizePortion({
+      ...base(),
+      clinicalCeilings: [{ nutrient: "phosphorus_mg", max: 200, restrictionId: "rest-p" }],
+    });
+    // El arroz sin ficha de fósforo hace el techo no verificable: se declara.
+    expect(
+      r.unverifiableConstraints.includes("CLINICAL:phosphorus_mg") ||
+        r.unmetConstraints.includes("CLINICAL:phosphorus_mg"),
+    ).toBe(true);
+    expect(r.fit === "COMPATIBLE" && r.unverifiableConstraints.length === 0).toBe(false);
+  });
+
+  it("§74: el objetivo deportivo pide 50g+ de proteína y el límite clínico es 40 → TARGET_CONFLICT con razón clínica", () => {
+    const r = optimizePortion({
+      ...base(),
+      clinicalCeilings: [{ nutrient: "protein_g", max: 40, restrictionId: "rest-prot" }],
+    });
+    expect(r.fit).toBe("TARGET_CONFLICT");
+    expect(r.reasons.some((x) => x.code === "CLINICAL_CONFLICT")).toBe(true);
+  });
+
+  it("§74: límite clínico por ENCIMA del objetivo deportivo → compatible, el techo capa el máximo", () => {
+    const r = optimizePortion({
+      ...base(),
+      clinicalCeilings: [{ nutrient: "protein_g", max: 90, restrictionId: "rest-prot" }],
+    });
+    expect(r.fit).not.toBe("TARGET_CONFLICT");
+    expect(r.targets.PROTEIN_G?.maximum).toBe(80); // min(80 deportivo, 90 clínico)
+  });
+
+  it("§32: si el techo es imposible sin bajar de los mínimos → TARGET_CONFLICT, jamás migajas", () => {
+    // Fósforo máx 50 mg: ni reduciendo todo a mínimos se logra (pollo mín
+    // 500g/5=100g × 210 = 210mg/porción sólo del pollo).
+    const componentes = receta().map((c) =>
+      c.id === "c-arroz" ? { ...c, nutrition: { ...ARROZ, values: { ...ARROZ.values, phosphorus_mg: 100 } } } : c,
+    );
+    const r = optimizePortion({
+      ...base(),
+      components: componentes,
+      clinicalCeilings: [{ nutrient: "phosphorus_mg", max: 50, restrictionId: "rest-p" }],
+    });
+    expect(r.fit).toBe("TARGET_CONFLICT");
+    expect(r.reasons.some((x) => x.code === "CLINICAL_CONFLICT")).toBe(true);
+    // Ningún componente quedó bajo su mínimo declarado (nada de porciones ridículas).
+    const pollo = r.components.find((c) => c.id === "c-pollo")!;
+    expect(pollo.proposedQuantity).toBeGreaterThanOrEqual(100 - 1e-6); // 500/5
+  });
+
+  it("determinismo con techos clínicos", () => {
+    const input = { ...base(), clinicalCeilings: [{ nutrient: "phosphorus_mg" as const, max: 300, restrictionId: "r" }] };
+    expect(JSON.stringify(optimizePortion(input))).toBe(JSON.stringify(optimizePortion(input)));
+  });
+});

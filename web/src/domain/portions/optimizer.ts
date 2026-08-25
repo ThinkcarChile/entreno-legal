@@ -1,5 +1,5 @@
 import { calculateNutritionForQuantity, divideAggregated, sumAbsoluteNutrients } from "../catalog/nutrition";
-import { NUTRIENT_KEYS, type AggregatedNutrition, type BasisUnit, type NutritionFact, type WeightBasis } from "../catalog/types";
+import { NUTRIENT_KEYS, type NutrientKey, type AggregatedNutrition, type BasisUnit, type NutritionFact, type WeightBasis } from "../catalog/types";
 import { effectiveMealTargets, hasAnyTarget, mealIsEnabled } from "../nutrition/profile";
 import type { MemberNutritionProfile, TargetSet } from "../nutrition/types";
 import { isHardPreference } from "../nutrition/types";
@@ -145,6 +145,19 @@ export interface OptimizeInput {
    * nada" y "hoy no hay objetivos" no se puede escribir con un solo campo.
    */
   resolvedTargets?: TargetSet | null;
+  /**
+   * Sprint 11 §31: techos CONFIRMADOS que el ClinicalRulesEngine entrega
+   * (`proposedAdjustments`, kind NUTRIENT_CEILING). Solo llegan acá límites
+   * válidos, confirmados y en la unidad del catálogo — el motor clínico ya
+   * filtró todo lo demás. AI NEVER OVERRIDES CLINICAL RULES: estos techos no
+   * se negocian; si no se pueden cumplir el resultado es TARGET_CONFLICT con
+   * razón clínica, jamás una porción diminuta presentada como correcta (§32).
+   */
+  clinicalCeilings?: readonly {
+    nutrient: NutrientKey;
+    max: number;
+    restrictionId: string;
+  }[];
 }
 
 /** Márgenes conservadores cuando la receta no define límites (§29). */
@@ -225,7 +238,7 @@ function nutritionOf(components: readonly ServingComponent[]): AggregatedNutriti
   return sumAbsoluteNutrients(vectors);
 }
 
-function value(nutrition: AggregatedNutrition, key: "energy_kcal" | "protein_g"): number {
+function value(nutrition: AggregatedNutrition, key: NutrientKey): number {
   const v = nutrition.values[key];
   return v === null || v === undefined ? 0 : v;
 }
@@ -388,10 +401,41 @@ export function optimizePortion(input: OptimizeInput): MemberServingProjection {
     return finish("COMPATIBLE", 0, {});
   }
 
-  const targets =
+  const targetsBase =
     input.resolvedTargets !== undefined && input.resolvedTargets !== null
       ? input.resolvedTargets
       : effectiveMealTargets(profile, mealType, input.override);
+
+  // §31/§74: un techo clínico confirmado CAPA los objetivos de energía y
+  // proteína — el objetivo deportivo puede pedir más proteína, pero jamás por
+  // encima del límite médico. La prioridad es estructural, no una opinión.
+  const ceilings = input.clinicalCeilings ?? [];
+  const clinicalProteinMax = ceilings.find((c) => c.nutrient === "protein_g")?.max ?? null;
+  const clinicalEnergyMax = ceilings.find((c) => c.nutrient === "energy_kcal")?.max ?? null;
+  let clinicalConflict: { nutrient: string; restrictionId: string } | null = null;
+
+  const targets: TargetSet = { ...targetsBase };
+  if (clinicalProteinMax !== null) {
+    const p = targets.PROTEIN_G ?? { minimum: null, preferred: null, maximum: null };
+    if (p.minimum != null && p.minimum > clinicalProteinMax) {
+      // El mínimo deportivo pide MÁS de lo que el límite médico permite:
+      // conflicto declarado con razón clínica (§74), nunca un término medio.
+      clinicalConflict = { nutrient: "protein_g", restrictionId: ceilings.find((c) => c.nutrient === "protein_g")!.restrictionId };
+    }
+    targets.PROTEIN_G = {
+      ...p,
+      minimum: p.minimum != null ? Math.min(p.minimum, clinicalProteinMax) : p.minimum,
+      preferred: p.preferred != null ? Math.min(p.preferred, clinicalProteinMax) : p.preferred,
+      maximum: p.maximum != null ? Math.min(p.maximum, clinicalProteinMax) : clinicalProteinMax,
+    };
+  }
+  if (clinicalEnergyMax !== null) {
+    const e = targets.ENERGY_KCAL ?? { minimum: null, preferred: null, maximum: null };
+    targets.ENERGY_KCAL = {
+      ...e,
+      maximum: e.maximum != null ? Math.min(e.maximum, clinicalEnergyMax) : clinicalEnergyMax,
+    };
+  }
 
   // --- Preferencias SOFT: anotan, no prohíben (§12) ---
   for (const component of components) {
@@ -581,6 +625,42 @@ export function optimizePortion(input: OptimizeInput): MemberServingProjection {
     }
   }
 
+  // --- Techos clínicos de otros nutrientes (§31): reducción proporcional ---
+  // Mismo orden y mismos pisos que el techo de calorías: FIXED no se toca y
+  // ningún componente baja de su mínimo — una porción diminuta "que cumple"
+  // sería maquillaje (§32).
+  for (const ceiling of ceilings) {
+    if (ceiling.nutrient === "energy_kcal" || ceiling.nutrient === "protein_g") continue;
+    for (const slotType of REDUCTION_ORDER) {
+      let actual = value(nutritionOf(components), ceiling.nutrient);
+      if (actual <= ceiling.max + 1e-6) break;
+      for (const component of components.filter((c) => c.slotType === slotType)) {
+        if (component.adjustability === "FIXED") continue;
+        actual = value(nutritionOf(components), ceiling.nutrient);
+        if (actual <= ceiling.max + 1e-6) break;
+        const per100 = component.nutrition?.values[ceiling.nutrient] ?? null;
+        if (!per100) continue;
+        const { min } = bounds(component);
+        const excess = actual - ceiling.max;
+        const reducible = ((component.proposedQuantity - min) * per100) / 100;
+        const cut = Math.min(excess, Math.max(0, reducible));
+        if (cut <= 1e-6) continue;
+        const before = component.proposedQuantity;
+        component.proposedQuantity = before - (cut * 100) / per100;
+        quantitiesChanged = true;
+        reasons.push(
+          reason("CLINICAL_LIMIT", {
+            component: component.label,
+            nutrient: ceiling.nutrient,
+            from: before,
+            to: component.proposedQuantity,
+            limit: ceiling.max,
+          }),
+        );
+      }
+    }
+  }
+
   // --- Validación final: si no se puede, se dice (§27) ---
   const finalNutrition = nutritionOf(components);
   const finalProtein = value(finalNutrition, "protein_g");
@@ -630,7 +710,40 @@ export function optimizePortion(input: OptimizeInput): MemberServingProjection {
     );
   }
 
-  if (!proteinOk || !energyOk) {
+  // Techos clínicos de otros nutrientes: mismo trato honesto que ENERGY_MAX.
+  let clinicalOk = true;
+  for (const ceiling of ceilings) {
+    if (ceiling.nutrient === "energy_kcal" || ceiling.nutrient === "protein_g") continue;
+    const etiqueta = `CLINICAL:${ceiling.nutrient}`;
+    const completa = finalNutrition.completeness[ceiling.nutrient] === "COMPLETE";
+    const total = value(finalNutrition, ceiling.nutrient);
+    if (!completa) {
+      if (total > ceiling.max + 0.5) {
+        // Lo conocido ya excede: excedido, no "sin verificar".
+        unmetConstraints.push(etiqueta);
+        clinicalOk = false;
+        clinicalConflict = clinicalConflict ?? { nutrient: ceiling.nutrient, restrictionId: ceiling.restrictionId };
+      } else {
+        unverifiableConstraints.push(etiqueta);
+      }
+    } else if (total > ceiling.max + 0.5) {
+      unmetConstraints.push(etiqueta);
+      clinicalOk = false;
+      clinicalConflict = clinicalConflict ?? { nutrient: ceiling.nutrient, restrictionId: ceiling.restrictionId };
+    } else {
+      metConstraints.push(etiqueta);
+    }
+  }
+
+  if (!proteinOk || !energyOk || !clinicalOk || clinicalConflict !== null) {
+    if (clinicalConflict !== null) {
+      reasons.push(
+        reason("CLINICAL_CONFLICT", {
+          nutrient: clinicalConflict.nutrient,
+          restriction: clinicalConflict.restrictionId,
+        }),
+      );
+    }
     reasons.push(
       reason("TARGET_CONFLICT", { protein: proteinMin ?? 0, calories: calorieMax ?? 0 }),
     );

@@ -153,6 +153,17 @@ export default async function ComidaConfirmadaPage({ params }: Props) {
                   </span>
                 </div>
 
+                {s.clinicalStatus === "CLINICALLY_INVALIDATED" && (
+                  <p className="mb-2 rounded-xl border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-900" role="alert">
+                    ⛔ NO SERVIR SIN REVISIÓN — esta porción quedó clínicamente invalidada.
+                    El detalle vive en Salud, con quien tiene permiso.
+                  </p>
+                )}
+                {s.clinicalStatus === "REVIEW_REQUIRED" && (
+                  <p className="mb-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                    Adaptación/revisión requerida para esta persona antes de servir.
+                  </p>
+                )}
                 {s.unverifiableConstraints.length > 0 && (
                   <p className="mb-2 inline-block rounded-full bg-amber-100 px-2.5 py-1 text-[11px] text-amber-900">
                     {s.unverifiableConstraints.includes("ENERGY_MAX")

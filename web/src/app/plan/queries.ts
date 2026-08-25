@@ -26,6 +26,8 @@ export interface Assignment {
   recipeName: string | null;
   versionNumber: number | null;
   notes: string | null;
+  /** Sprint 11 §58: porciones con estado clínico que exige revisión (solo el conteo). */
+  clinicalReviewCount: number;
   /** Cuántas porciones quedaron guardadas al confirmar. */
   servingCount: number;
   /**
@@ -170,15 +172,25 @@ export async function loadWeek(
 
   // Cuántas porciones quedaron guardadas en cada comida confirmada.
   const conteos = new Map<string, number>();
+  // Sprint 11 §58: el planner ve CUÁNTAS porciones requieren revisión clínica
+  // — jamás por qué. El estado categórico es toda la divulgación.
+  const revisionClinica = new Map<string, number>();
   const confirmadas = assignments.filter((a) => a.status !== "PLANNED").map((a) => a.id);
   if (confirmadas.length > 0) {
     const { data, error } = await db
       .from("member_serving_projections")
-      .select("assignment_id")
+      .select("assignment_id, clinical_status")
       .in("assignment_id", confirmadas);
     if (error) throw new DataAccessError("porciones confirmadas", error);
-    for (const fila of parseRows(z.object({ assignment_id: uuid }), data, "porciones confirmadas")) {
+    for (const fila of parseRows(
+      z.object({ assignment_id: uuid, clinical_status: z.string().nullable() }),
+      data,
+      "porciones confirmadas",
+    )) {
       conteos.set(fila.assignment_id, (conteos.get(fila.assignment_id) ?? 0) + 1);
+      if (fila.clinical_status === "CLINICALLY_INVALIDATED" || fila.clinical_status === "REVIEW_REQUIRED") {
+        revisionClinica.set(fila.assignment_id, (revisionClinica.get(fila.assignment_id) ?? 0) + 1);
+      }
     }
   }
 
@@ -233,6 +245,7 @@ export async function loadWeek(
           versionNumber: a.version_id ? (versiones.get(a.version_id)?.versionNumber ?? null) : null,
           notes: a.notes,
           servingCount: conteos.get(a.id) ?? 0,
+          clinicalReviewCount: revisionClinica.get(a.id) ?? 0,
           participantIds: participantes.get(a.id) ?? [],
           needsReview: a.needs_review,
           reviewReason: a.review_reason,
@@ -300,7 +313,7 @@ export async function loadConfirmedServings(db: Db, assignmentId: string) {
     .from("member_serving_projections")
     .select(
       `id, member_id, fit, adaptation_level, nutrition, completeness, reasons, status,
-       unverifiable_constraints,
+       unverifiable_constraints, clinical_status,
        optimizer_version, version_id, profile_id,
        household_members ( display_name ),
        member_serving_components (
@@ -336,6 +349,7 @@ export async function loadConfirmedServings(db: Db, assignmentId: string) {
     completeness: z.record(z.unknown()),
     reasons: z.array(z.unknown()),
     unverifiable_constraints: z.array(z.string()).catch([]),
+    clinical_status: z.string().nullable().catch(null),
     status: z.string(),
     optimizer_version: z.string(),
     version_id: uuid,
@@ -365,6 +379,8 @@ export async function loadConfirmedServings(db: Db, assignmentId: string) {
     completeness: row.completeness,
     reasons: row.reasons as { code: string; text: string }[],
     unverifiableConstraints: row.unverifiable_constraints,
+    // §43: SOLO el estado categórico — la cocina jamás ve el porqué clínico.
+    clinicalStatus: row.clinical_status,
     components: [...row.member_serving_components].sort((a, b) => a.sort_order - b.sort_order),
     substitutions: row.member_serving_substitutions,
   }));

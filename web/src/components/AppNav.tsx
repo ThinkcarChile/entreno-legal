@@ -3,7 +3,7 @@ import Link from "next/link";
 export function AppNav({
   active,
 }: {
-  active: "family" | "catalog" | "recipes" | "plan" | "shopping" | "pantry" | "procurement" | "prep";
+  active: "family" | "catalog" | "recipes" | "plan" | "shopping" | "pantry" | "procurement" | "prep" | "health";
 }) {
   // py-2.5: 42 px de alto — cómodo para el dedo en 320 px (§58).
   const base = "rounded-full px-4 py-2.5 text-sm font-medium";
@@ -36,6 +36,9 @@ export function AppNav({
       </Link>
       <Link href="/prep" className={`${base} ${active === "prep" ? on : off}`}>
         Prep
+      </Link>
+      <Link href="/health" className={`${base} ${active === "health" ? on : off}`}>
+        Salud
       </Link>
     </nav>
   );

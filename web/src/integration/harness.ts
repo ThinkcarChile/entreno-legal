@@ -41,6 +41,8 @@ const MIGRACIONES = [
   "supabase/migrations/0023_confirm_consume_serialization.sql",
   "supabase/migrations/0024_demo_family_function.sql",
   "supabase/migrations/0025_unknown_never_normal.sql",
+  "supabase/migrations/0026_health_documents.sql",
+  "supabase/migrations/0027_clinical_rules.sql",
 ];
 
 // Fixtures de DEMO: datos, jamás schema. Todo objeto que la app referencia

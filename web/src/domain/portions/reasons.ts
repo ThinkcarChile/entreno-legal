@@ -20,6 +20,8 @@ export const REASON_CODES = [
   "TARGET_CONFLICT",
   "MISSING_ADJUSTMENT_LIMITS",
   "LIMIT_UNVERIFIABLE",
+  "CLINICAL_LIMIT",
+  "CLINICAL_CONFLICT",
 ] as const;
 
 export type ReasonCode = (typeof REASON_CODES)[number];
@@ -61,6 +63,12 @@ const TEMPLATES: Record<ReasonCode, (p: ReasonParams) => string> = {
     `${p.component} no es compatible contigo (${p.reason}). Esta receta necesita un reemplazo.`,
   SUBSTITUTION_SUGGESTED: (p) =>
     `Podrías reemplazar ${p.component} por ${p.alternative}.`,
+  // Sprint 11 §31: un techo clínico CONFIRMADO ajustó la porción.
+  CLINICAL_LIMIT: (p) =>
+    `${p.component}: de ${n(p.from)} g a ${n(p.to)} g por el límite clínico confirmado de ${p.nutrient} (máx ${n(p.limit)}).`,
+  // §74: el conflicto se declara con su causa clínica; no se negocia.
+  CLINICAL_CONFLICT: (p) =>
+    `No se puede cumplir el límite clínico confirmado de ${p.nutrient} sin romper otro objetivo: requiere revisión (restricción ${p.restriction}).`,
   // Gate 0→10 [J-1]: el techo existe, el plato no tiene ficha completa. No se
   // dice "cumplido" ni "excedido": se dice que no se sabe.
   LIMIT_UNVERIFIABLE: (p) =>
