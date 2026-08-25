@@ -156,7 +156,7 @@ residuales (concurrencia del confirm + seed del arnés) como primeras tareas.
 
 | Ítem | Estado | Evidencia |
 |---|---|---|
-| 0022 en remoto | **PENDIENTE de pegado** (0022→0025 juntas en el portapapeles, en orden, checksums en el manifiesto) | sonda: `consumption_shortfalls.product_id` → 404 |
+| 0022 en remoto | **PASS en vivo** (aplicada 2026-08-25) — prueba §1 por el camino REAL: producto → lista → recepción (lote AS_PACKAGED, ingredient NULL) → comida confirmada → `consume_planned_meal`: el lote del atún bajó 320→160→0, el jurel (otro producto) quedó en 425, el pollo genérico intacto en 4.200, y el faltante de 140 g conserva `product_id` | movimientos `CONSUMED:-160/-160` anclados a log; shortfall con linaje ATÚN |
 | Confirm concurrency (ALTO 1) | **CERRADO en código** — 0023: `for update` sobre la asignación en confirm v5 Y consume v5 + `for update of l` en los FEFO; contrato de candado + doble recepción en `gate-concurrency` (12 tests); doble disparo vivo pendiente de 0023 en remoto | `0023` (`a13a60e3…`) |
 | Paridad schema test/producción (ALTO 2) | **PASS** — `seed_demo_family_profiles` movida a 0024 (la app la llama en `loadDemoFamily`); seed = puntero; `gate-schema-parity` levanta la base SOLO con migraciones y exige todo `.rpc()`/`.from()` (probado por mutación); los seeds ya no pueden definir schema | `0024` (`d591e64b…`) + 3 tests |
 | Timezone de nutrition goals | **PASS** — `saveMealGoals` usa el día CIVIL del hogar; probado 23:30 dom / 00:30 lun Santiago Y el salto de hora del 06-sep; contrato: ningún `toISOString().slice(0,10)` decide vigencias | `gate-fechas.test.ts` (4 tests) |
@@ -207,7 +207,7 @@ residuales (concurrencia del confirm + seed del arnés) como primeras tareas.
 ## Estado formal
 
 **INTEGRATION_GATE_0_10 = PENDING_REMOTE_APPLY** — todo el criterio de §18
-está PASS salvo los tres pasos que exigen el remoto al día: (1) 0022→0025
-aplicadas, (2) verificación viva §1 de identidad de producto, (3) doble
-disparo vivo del confirm serializado. Con el "listo" de Francisco esos tres se
+está PASS salvo dos pasos que exigen el remoto al día: (1) 0023→0025
+aplicadas (0022 YA verificada en vivo), (2) doble disparo vivo del confirm
+serializado + re-check de `/plan/comida` (columna de 0025). Con el "listo" de Francisco esos tres se
 ejecutan y el estado final se declara con evidencia, no por decreto.
