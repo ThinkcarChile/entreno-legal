@@ -7,7 +7,7 @@
 
 ## Estado remoto conocido
 
-**Aplicado en Supabase** (proyecto `smwyxfnlxoohenhsdcjx`): `0001 → 0021` **COMPLETO**
+**Aplicado en Supabase** (proyecto `smwyxfnlxoohenhsdcjx`): `0001 → 0025` **COMPLETO**
 + bloque de reglas USDA del seed. Verificado en vivo el 2026-08-25:
 
 - `0001 → 0015` — Sprints 0-10, aplicadas con checksum verificado.
@@ -41,78 +41,24 @@
   con "la lista de compras cambió: recarga" y la transacción revierte entera
   (cero filas escritas).
 
-## Pendientes de aplicar (en este orden exacto)
+- **0022 — identidad de producto en el consumo** · `b25657ea…` · **verificada
+  en vivo** (§1 del Final Closure): atún 320→160→0 de SU lote, jurel y pollo
+  intactos, faltante de 140 g con `product_id`.
+- **0023 — confirm/consume serializados** · `a13a60e3…` · **verificada en
+  vivo**: doble confirm simultáneo → ambos corren EN ORDEN (confirm_count 2,
+  UNA proyección); consume∥confirm simultáneos → estado final único
+  (CONSUMED, un solo −140).
+- **0024 — función demo con dueño migración** · `d591e64b…` · aplicada
+  (idéntica a la del seed; la paridad la vigila `gate-schema-parity`).
+- **0025 — UNKNOWN nunca es normal** · `e47ee86c…` · **verificada en vivo**:
+  columna 200, `unverifiable_constraints: ["ENERGY_MAX"]` congelada por el
+  RPC, dedupe obligatorio rechaza con su mensaje, `/plan/comida` volvió a 200.
 
-### 0022 — Gate tanda 5: la identidad por PRODUCTO llega al ledger de consumo
+## Pendientes de aplicar
 
-- **Archivo:** `supabase/migrations/0022_consume_product_identity.sql`
-- **Propósito:** **[I-1]** `consume_planned_meal` v4. Antes iteraba SOLO
-  componentes con `ingredient_id`: la porción de un producto comercial se
-  comía, su lote quedaba intacto y no se registraba ni movimiento ni faltante
-  (física falsificada en silencio). Ahora el match de lotes usa LA identidad
-  del componente (producto contra producto, alimento contra alimento), la
-  conversión cocido→crudo sigue siendo solo para alimentos (los rendimientos
-  se anotan por ingrediente), y `consumption_shortfalls` gana la columna
-  `product_id` para el linaje del faltante.
-- **Dependencias:** 0001→0021 aplicadas.
-- **Checksum SHA-256:** `b25657ea399d79cb4a1fb7fe9a29969adf253d5d2008ae0d1d5dde020f28c513`
-- **¿Destructiva?:** NO (una columna aditiva + `create or replace`).
-- **Notas de aplicación:** un solo pegado, DESPUÉS de 0021. Validada en PGlite
-  (cadena 0001→0022, 598 tests, 2 regresiones propias por el camino REAL
-  `confirm_meal_assignment`→`consume_planned_meal` en
-  `web/src/integration/gate-tanda5.test.ts`).
+**Ninguna. Remoto = cadena local completa (0001→0025).**
 
-### 0023 — Gate FINAL §2: confirm/consume serializados
-
-- **Archivo:** `supabase/migrations/0023_confirm_consume_serialization.sql`
-- **Propósito:** cierra el ALTO residual 1. `confirm_meal_assignment` v5 y
-  `consume_planned_meal` v5 toman `for update` sobre LA MISMA fila de
-  `meal_assignments` antes de leer o tocar estado físico: dos confirmaciones
-  simultáneas (o confirmar mientras se consume) ya no pueden ambas ver "0
-  servidas" — la segunda espera y decide con la verdad. Además los recorridos
-  FEFO del consumo toman `for update of l` (dos consumos de comidas distintas
-  no sobregiran el mismo lote). Cuerpos idénticos a 0010/0022 salvo los locks.
-- **Dependencias:** 0001→0022 aplicadas (¡después de 0022!).
-- **Checksum SHA-256:** `a13a60e34532a4024d303e55a44abedaf462708cbc92d9831fefd8c089bf384f`
-- **¿Destructiva?:** NO (`create or replace` ×2).
-- **Regresiones:** contrato de candado + doble recepción + consumir→confirmar
-  en `gate-concurrency.test.ts`; la carrera real se prueba en vivo con doble
-  disparo tras aplicar.
-
-### 0024 — Gate FINAL §3: la función demo es schema real
-
-- **Archivo:** `supabase/migrations/0024_demo_family_function.sql`
-- **Propósito:** cierra el ALTO residual 2. `seed_demo_family_profiles` (que
-  la APP llama en `loadDemoFamily`) pasa del seed a migración: schema de test
-  == schema producible mediante migraciones. El seed queda como puntero y el
-  arnés ya no lo carga. En el remoto la función YA existe (el seed se corrió
-  a mano): aplicar esta migración la deja idéntica y con dueño correcto.
-- **Dependencias:** ninguna nueva (función autónoma). Aplicar tras 0023 por
-  orden del manifiesto.
-- **Checksum SHA-256:** `d591e64b593d53973c2a1d422348f10b87548c86c51885c411fa8dd9cbf831ca`
-- **¿Destructiva?:** NO (`create or replace` idéntica a la del seed).
-- **Regresiones:** `gate-schema-parity.test.ts` — levanta la base SOLO con
-  migraciones y exige que todo `.rpc()`/`.from()` de la app exista (probado
-  por mutación: sin 0024 delata `seed_demo_family_profiles`); además prohíbe
-  que un seed defina objetos permanentes de schema.
-
-### 0025 — Gate FINAL §6: UNKNOWN nunca significa normal
-
-- **Archivo:** `supabase/migrations/0025_unknown_never_normal.sql`
-- **Propósito:** columna `unverifiable_constraints` en
-  `member_serving_projections` (los límites SIN verificar se congelan como
-  desconocidos, no desaparecen) + `confirm_meal_assignment` v6 (= v5 con la
-  columna) + `create_procurement_order` v3 (dedupe_key OBLIGATORIO: con NULL
-  no había idempotencia alguna y dos aprobaciones paralelas creaban dos
-  órdenes).
-- **Dependencias:** 0001→0024 aplicadas.
-- **Checksum SHA-256:** `e47ee86c28966c7055b3f87b80bc7235fbe8b44ec65cbb14a1cdc386cba4b62d`
-- **¿Destructiva?:** NO (columna aditiva con default + `create or replace` ×2).
-- **Regresiones:** dedupe obligatorio en `gate-tanda4.test.ts`; veredicto
-  verde ganado en `stock/engine.test.ts`; persistencia del desconocido cubierta
-  por la cadena 0001→0025 (612 tests).
-
-### Referencia: 0021 — Gate tanda 4: neteo lista↔proveedor por base física
+### Referencia: 0021### Referencia: 0021 — Gate tanda 4: neteo lista↔proveedor por base física
 
 - **Archivo:** `supabase/migrations/0021_gate_netting_basis.sql`
 - **Propósito:**
@@ -183,4 +129,4 @@ revisar `git log` del archivo y regenerar este manifiesto.
 | 8 — Stock Intelligence | verificado en vivo dentro del Integration Gate 0→10 (reorder, netting, forecast) |
 | 9 — Procurement | demo viva ejecutada (orden creada/avanzada/recibida contra Supabase real) |
 | 10 — Batch prep | demo viva ejecutada (`docs/qa/sprint-10-demo-viva.md`); 0016/0017 nacieron de ella |
-| Gate 0→10 | EN CURSO — canario §50 PASS en vivo; tandas 1-3 de fixes aplicadas; tanda 4 de motores lista (weight_basis en prep + planningCoveredDates + reorder por base); quedan product_id extremo a extremo y el informe §54 |
+| Gate 0→10 | **PASS** (Final Closure 2026-08-25; informe §54 + sección Final Closure) — canario §50 PASS en vivo; tandas 1-3 de fixes aplicadas; tanda 4 de motores lista (weight_basis en prep + planningCoveredDates + reorder por base); quedan product_id extremo a extremo y el informe §54 |

@@ -1,8 +1,8 @@
 # Integration Gate 0→10 — Informe (§54)
 
-**Fecha:** 2026-08-25 · **Estado del gate:** EN CURSO — Final Closure ejecutado
-salvo los pasos que dependen de aplicar 0022→0025 en el remoto (en el
-portapapeles de Francisco). El detalle está en la sección **Final Closure**.
+**Fecha:** 2026-08-25 · **Estado del gate:** **INTEGRATION_GATE_0_10 = PASS**
+— Final Closure completo, remoto al día (0001→0025), todas las condiciones de
+§18 verificadas con evidencia. Detalle en la sección **Final Closure**.
 
 **Pregunta del gate:** ¿puede una familia planificar, comprar, recibir,
 preparar, cocinar, consumir y volver a planificar sin que ninguna costura
@@ -157,7 +157,7 @@ residuales (concurrencia del confirm + seed del arnés) como primeras tareas.
 | Ítem | Estado | Evidencia |
 |---|---|---|
 | 0022 en remoto | **PASS en vivo** (aplicada 2026-08-25) — prueba §1 por el camino REAL: producto → lista → recepción (lote AS_PACKAGED, ingredient NULL) → comida confirmada → `consume_planned_meal`: el lote del atún bajó 320→160→0, el jurel (otro producto) quedó en 425, el pollo genérico intacto en 4.200, y el faltante de 140 g conserva `product_id` | movimientos `CONSUMED:-160/-160` anclados a log; shortfall con linaje ATÚN |
-| Confirm concurrency (ALTO 1) | **CERRADO en código** — 0023: `for update` sobre la asignación en confirm v5 Y consume v5 + `for update of l` en los FEFO; contrato de candado + doble recepción en `gate-concurrency` (12 tests); doble disparo vivo pendiente de 0023 en remoto | `0023` (`a13a60e3…`) |
+| Confirm concurrency (ALTO 1) | **PASS en vivo** — 0023 aplicada; doble confirm simultáneo: ambos 200 EN ORDEN (confirm_count 2), UNA proyección, sin duplicados; consume∥confirm simultáneos: estado final único CONSUMED, UN movimiento −140 (jurel 425→285), historia intacta | doble disparo real + 12 tests |
 | Paridad schema test/producción (ALTO 2) | **PASS** — `seed_demo_family_profiles` movida a 0024 (la app la llama en `loadDemoFamily`); seed = puntero; `gate-schema-parity` levanta la base SOLO con migraciones y exige todo `.rpc()`/`.from()` (probado por mutación); los seeds ya no pueden definir schema | `0024` (`d591e64b…`) + 3 tests |
 | Timezone de nutrition goals | **PASS** — `saveMealGoals` usa el día CIVIL del hogar; probado 23:30 dom / 00:30 lun Santiago Y el salto de hora del 06-sep; contrato: ningún `toISOString().slice(0,10)` decide vigencias | `gate-fechas.test.ts` (4 tests) |
 | saveMealGoals no traga errores | **PASS** — las 7 escrituras chequean su error; regla generalizada: `gate-error-contract` recorre TODAS las server actions y exige 0 escrituras con resultado descartado (3 infractores más corregidos de paso) | contrato con 0 ofensas |
@@ -169,7 +169,7 @@ residuales (concurrencia del confirm + seed del arnés) como primeras tareas.
 | Móvil (§43) | **PASS en vivo** — 320 px: 11 rutas con overflow 0; 430 px spot-check overflow 0 (misma banda de breakpoints) | medición scrollWidth |
 | Escritorio (§44) | **PASS con nota** — columna centrada de 416 px en 1280: diseño móvil-primero deliberado, centrado y funcional (no un layout roto); aprovechar el ancho = POST-SPRINT-11 | medición main |
 | Performance (§45) | **PASS** — 500 lotes + 90 días de historia + 60 demandas: `analyzeStock` y `planPrep` < 2 s; consultas críticas del ledger con Index Scan (EXPLAIN); sin N+1 dependiente del tamaño de datos (el único fan-out es por integrante, acotado a 5) | `gate-performance.test.ts` |
-| Concurrencia crítica (§15) | **PASS (matriz)** — doble confirm/consume/receive×2/approve/prep/regeneración TODOS protegidos con mecanismo verificado por auditoría adversarial; el hueco real (dedupe NULL en órdenes) cerrado en 0025; doble disparo vivo pendiente de remoto | auditoría 27 agentes + 12 tests |
+| Concurrencia crítica (§15) | **PASS** — matriz completa protegida (auditoría adversarial) + doble disparo REAL en vivo del confirm y de consume∥confirm; dedupe obligatorio verificado en vivo (rechaza con su mensaje) | doble disparo real + auditoría + 12 tests |
 | UNKNOWN clínicamente relevante (§6) | **PASS** — 5 áreas auditadas (19 confirmados, 4 refutados); los 8 accionables corregidos; regla documentada | `docs/architecture/unknown-nunca-es-normal.md` |
 | Tests / lint / typecheck / build | **PASS** — 615+ tests en verde (cadena 0001→0025), `tsc --noEmit` limpio, ESLint 0 errores, `next build` compila | corrida completa |
 
