@@ -206,8 +206,21 @@ residuales (concurrencia del confirm + seed del arnés) como primeras tareas.
 
 ## Estado formal
 
-**INTEGRATION_GATE_0_10 = PENDING_REMOTE_APPLY** — todo el criterio de §18
-está PASS salvo dos pasos que exigen el remoto al día: (1) 0023→0025
-aplicadas (0022 YA verificada en vivo), (2) doble disparo vivo del confirm
-serializado + re-check de `/plan/comida` (columna de 0025). Con el "listo" de Francisco esos tres se
-ejecutan y el estado final se declara con evidencia, no por decreto.
+**INTEGRATION_GATE_0_10 = PASS** (declarado 2026-08-25, tras aplicar y
+verificar 0022→0025 en el remoto).
+
+Criterio §18 completo con evidencia: 0022 verificada en vivo (§1 producto:
+atún 320→160→0 de SU lote, jurel/pollo intactos, shortfall con product_id) ·
+doble confirm simultáneo serializado (ambos 200 EN ORDEN, confirm_count 2,
+UNA proyección) · consume∥confirm simultáneos con estado final único
+(CONSUMED, un solo −140) · `unverifiable_constraints: ["ENERGY_MAX"]`
+congelada por el RPC v6 · dedupe NULL rechazado con su mensaje ·
+`/plan/comida/[id]` → 200 con la merluza del canario · 615/615 tests + tsc +
+lint + build verdes.
+
+*(Nota de historia: una versión intermedia de este informe declaró
+`PENDING_REMOTE_APPLY` mientras las migraciones esperaban el pegado; ese
+estado quedó superado el mismo día y se corrige aquí sin reescribir la
+evidencia que lo rodeaba.)*
+
+**Sprint 11 en curso** (prompt del director recibido 2026-08-25).
