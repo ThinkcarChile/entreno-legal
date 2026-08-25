@@ -30,6 +30,7 @@ const MIGRACIONES = [
   "supabase/migrations/0012_consumption_shortfall.sql",
   "supabase/migrations/0013_stock_intelligence.sql",
   "supabase/migrations/0014_procurement.sql",
+  "supabase/migrations/0015_batch_prep.sql",
 ];
 
 const SEEDS = [

@@ -3,7 +3,7 @@ import Link from "next/link";
 export function AppNav({
   active,
 }: {
-  active: "family" | "catalog" | "recipes" | "plan" | "shopping" | "pantry" | "procurement";
+  active: "family" | "catalog" | "recipes" | "plan" | "shopping" | "pantry" | "procurement" | "prep";
 }) {
   const base = "rounded-full px-4 py-1.5 text-sm font-medium";
   const on = "bg-[var(--accent)] text-white";
@@ -32,6 +32,9 @@ export function AppNav({
       </Link>
       <Link href="/procurement" className={`${base} ${active === "procurement" ? on : off}`}>
         Pedidos
+      </Link>
+      <Link href="/prep" className={`${base} ${active === "prep" ? on : off}`}>
+        Prep
       </Link>
     </nav>
   );

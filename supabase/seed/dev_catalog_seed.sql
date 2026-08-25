@@ -261,3 +261,63 @@ join (values
 ) as m(nombre, metodo, factor, nota) on i.canonical_name = m.nombre
 where i.household_id is null
 on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Sprint 10: reglas de conservación VALIDADAS (fuente obligatoria, §20-§21).
+-- Mínimas a propósito: lo que no tiene regla debe salir SAFETY_REVIEW_REQUIRED
+-- — jamás un "7 días" inventado. UNKNOWN ≠ SAFE.
+-- ---------------------------------------------------------------------------
+
+-- Congelado a -18°C: seguro sin fecha (la calidad es otro tema). Genérica.
+insert into public.storage_safety_rules
+  (household_id, ingredient_id, category_id, processing_state, temperature_state,
+   rule_kind, max_days, use_soon_within_days, source)
+select null, null, null, null, 'FROZEN', 'STORAGE_DAYS', null, 0,
+       'USDA FSIS — Los alimentos congelados a -18°C se mantienen seguros indefinidamente'
+where not exists (select 1 from public.storage_safety_rules where source like 'USDA FSIS — Los alimentos congelados%');
+
+-- Sobras cocinadas refrigeradas: 3-4 días. Genérica para COOKED + CHILLED.
+insert into public.storage_safety_rules
+  (household_id, ingredient_id, category_id, processing_state, temperature_state,
+   rule_kind, max_days, use_soon_within_days, source)
+select null, null, null, 'COOKED', 'CHILLED', 'STORAGE_DAYS', 4, 1,
+       'USDA FSIS — Sobras cocinadas: 3 a 4 días refrigeradas'
+where not exists (select 1 from public.storage_safety_rules where source like 'USDA FSIS — Sobras cocinadas%');
+
+-- Pollo crudo refrigerado: 1-2 días (específica del alimento).
+insert into public.storage_safety_rules
+  (household_id, ingredient_id, category_id, processing_state, temperature_state,
+   rule_kind, max_days, use_soon_within_days, source)
+select null, i.id, null, 'RAW', 'CHILLED', 'STORAGE_DAYS', 2, 1,
+       'USDA FSIS — Pollo crudo: 1 a 2 días refrigerado'
+from public.ingredients i
+where i.canonical_name = 'pechuga de pollo sin piel' and i.household_id is null
+  and not exists (select 1 from public.storage_safety_rules where source like 'USDA FSIS — Pollo crudo%');
+
+-- Pollo PREPARADO (porcionado, aún crudo) hereda la ventana del crudo.
+insert into public.storage_safety_rules
+  (household_id, ingredient_id, category_id, processing_state, temperature_state,
+   rule_kind, max_days, use_soon_within_days, source)
+select null, i.id, null, 'PREPPED', 'CHILLED', 'STORAGE_DAYS', 2, 1,
+       'USDA FSIS — Pollo crudo porcionado: 1 a 2 días refrigerado'
+from public.ingredients i
+where i.canonical_name = 'pechuga de pollo sin piel' and i.household_id is null
+  and not exists (select 1 from public.storage_safety_rules where source like 'USDA FSIS — Pollo crudo porcionado%');
+
+-- Descongelado de pollo en refrigerador: ~24 h de anticipación.
+insert into public.storage_safety_rules
+  (household_id, ingredient_id, category_id, processing_state, temperature_state,
+   rule_kind, thaw_fridge_hours, source)
+select null, i.id, null, null, 'FROZEN', 'THAW', 24,
+       'USDA FSIS — Descongelar pollo en refrigerador: ~24 horas'
+from public.ingredients i
+where i.canonical_name = 'pechuga de pollo sin piel' and i.household_id is null
+  and not exists (select 1 from public.storage_safety_rules where source like 'USDA FSIS — Descongelar pollo%');
+
+-- Recongelar: SOLO lo descongelado EN REFRIGERADOR puede volver al congelador.
+insert into public.storage_safety_rules
+  (household_id, ingredient_id, category_id, processing_state, temperature_state,
+   rule_kind, refreeze_allowed, source)
+select null, null, null, null, 'CHILLED', 'REFREEZE', true,
+       'USDA FSIS — Lo descongelado en el refrigerador puede recongelarse'
+where not exists (select 1 from public.storage_safety_rules where source like 'USDA FSIS — Lo descongelado%');

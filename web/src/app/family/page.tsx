@@ -7,6 +7,7 @@ import { parseRow, parseRows, uuid } from "@/lib/supabase/rows";
 import { z } from "zod";
 import { signOut } from "@/app/login/actions";
 import { AppNav } from "@/components/AppNav";
+import { KitchenShortcuts } from "@/components/KitchenShortcuts";
 import { createHousehold, createInvitation } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -123,7 +124,8 @@ export default async function FamilyPage({ searchParams }: Props) {
     <main className="pt-2">
       <AppNav active="family" />
       <h1 className="text-3xl font-bold">{householdName}</h1>
-      <p className="mt-1 text-sm opacity-70">Integrantes del hogar</p>
+      <KitchenShortcuts />
+      <p className="mt-4 text-sm opacity-70">Integrantes del hogar</p>
       {error ? <Alert text={error} /> : null}
       {invite ? <InviteLink token={invite} /> : null}
 
