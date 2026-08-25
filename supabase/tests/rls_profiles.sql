@@ -239,10 +239,15 @@ begin
   select id into v_version from public.meal_template_versions
   where status = 'PUBLISHED' limit 1;
 
+  -- Gate 0→10 [D-2]: las porciones ya no se escriben desde el cliente (la
+  -- policy es solo-lectura; los RPC las crean). Para preparar el escenario de
+  -- RLS se inserta como dueño de la base, igual que haría confirm_meal.
+  set local role postgres;
   insert into public.member_serving_projections
     (member_id, version_id, profile_id, optimizer_version, meal_type, fit, adaptation_level)
   values (v_member, v_version, v_profile, 'portion-optimizer/1.0.0', 'LUNCH',
           'COMPATIBLE_WITH_PORTION_CHANGE', 1);
+  set local role authenticated;
 end $$;
 
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000020b', false);

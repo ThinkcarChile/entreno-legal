@@ -259,7 +259,10 @@ describe("§13 una porción servida es historia", () => {
   });
 
   it("una vez servida, reconfirmar falla en vez de pisar el registro", async () => {
-    await h.como(USER_A, async () => {
+    // Gate 0→10 [D-2]: el cliente ya NO puede tocar el estado de una porción
+    // (la policy es solo-lectura). Se prepara el escenario como lo hace el
+    // sistema — desde la base, igual que consume_planned_meal.
+    await h.comoAdmin(async () => {
       await h.db.query(
         "update public.member_serving_projections set status = 'SERVED' where assignment_id = $1",
         [almuerzoSabado],
