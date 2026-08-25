@@ -7,12 +7,10 @@
 
 ## Estado remoto conocido
 
-**Aplicado en Supabase** (proyecto `smwyxfnlxoohenhsdcjx`): `0001 → 0014`
-(0013 y 0014 aplicadas por Francisco el 2026-08-25 y verificadas por API:
-`stock_targets`, `waste_movements`, `purchase_movements`, `suppliers`,
-`procurement_orders`, `procurement_order_events` → 200).
-**Pendiente: 0015** (esperando el cierre de la revisión adversarial del Sprint 10
-para congelarla) + el bloque de reglas USDA del seed.
+**Aplicado en Supabase** (proyecto `smwyxfnlxoohenhsdcjx`): `0001 → 0015` **COMPLETO**
++ el bloque de reglas USDA del seed. Todo aplicado por Francisco el 2026-08-25
+con checksums verificados; las 18 tablas/vistas nuevas de los Sprints 8-10
+verificadas por API (200). **No quedan migraciones pendientes.**
 
 ## Pendientes de aplicar (en este orden exacto)
 
@@ -62,8 +60,8 @@ revisar `git log` del archivo y regenerar este manifiesto.
 1. ~~Verificar checksums~~ ✔ (0013/0014 verificados y aplicados 2026-08-25).
 2. ~~Aplicar 0013~~ ✔ (`stock_targets`, vistas → 200).
 3. ~~Aplicar 0014~~ ✔ (`suppliers`, `procurement_orders`, `…_events` → 200).
-3b. **Aplicar 0015** (checksum arriba) y verificar por API: `batch_prep_plans`,
-   `storage_safety_rules`, `label_print_jobs` → 200. Luego el bloque USDA del seed.
+3b. ~~Aplicar 0015 + bloque USDA~~ ✔ (9 tablas nuevas → 200; reglas corridas
+   con Success, idempotentes).
 4. **Smoke tests contra Supabase real**: `/pantry`, `/pantry/reorder`,
    `/shopping` cargan sin error; `set_stock_target` guarda; consumir una comida
    con lote vencido presente lo deja intacto y registra shortfall.
