@@ -107,7 +107,18 @@ export function planPrep(input: PrepEngineInput): PrepPlanDraft {
 
   const claves = [...new Set([...demandaPor.keys()])].sort();
   for (const clave of claves) {
-    const demandas = (demandaPor.get(clave) ?? []).sort(
+    // Una comida = UN paquete. La demanda llega por porción individual (una
+    // fila por integrante), pero la familia no guarda un paquete por persona:
+    // guarda uno por comida. Sin este agrupado, 5 integrantes × 3 días daban
+    // 15 paquetes de pollo en vez de 3 (defecto encontrado en la demo viva).
+    const porComida = new Map<string, PrepDemand>();
+    for (const d of demandaPor.get(clave) ?? []) {
+      const k = `${d.date}::${d.assignmentId}`;
+      const prev = porComida.get(k);
+      if (prev) prev.quantity = redondear(prev.quantity + d.quantity);
+      else porComida.set(k, { ...d });
+    }
+    const demandas = [...porComida.values()].sort(
       (a, b) => a.date.localeCompare(b.date) || a.assignmentId.localeCompare(b.assignmentId),
     );
     if (demandas.length === 0) continue;
@@ -206,7 +217,13 @@ export function planPrep(input: PrepEngineInput): PrepPlanDraft {
       if (corte) {
         const cap = corte.capabilityId ? capById.get(corte.capabilityId) : undefined;
         const capActiva = cap && cap.isActive && cap.equipmentActive ? cap : undefined;
-        const sizeMm = (corte.params as { size_mm?: number }).size_mm;
+        // El tamaño vive en la CUCHILLA elegida (una fuente por dato); la
+        // preferencia solo lo repite cuando el corte es a mano. Sin esto, el
+        // hogar configuraba "4 mm", lo elegía, y el modo cocina mostraba un
+        // "SHRED" pelado (defecto encontrado en la demo viva).
+        const sizeMm =
+          (corte.params as { size_mm?: number }).size_mm ??
+          (capActiva?.params as { size_mm?: number } | undefined)?.size_mm;
         const cutLabel = `${corte.taskType}${sizeMm ? ` ${sizeMm} mm` : ""}`;
         // §53: capacidad por tanda del equipo.
         const batches =

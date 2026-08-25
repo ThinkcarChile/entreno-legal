@@ -132,7 +132,7 @@ export function ProcurementBoard({
                         </p>
                       ))}
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <div className="flex shrink-0 flex-col items-end gap-2">
                       <button
                         type="button"
                         disabled={pending || aprobada}
@@ -142,7 +142,7 @@ export function ProcurementBoard({
                             () => setAprobadas((prev) => new Set([...prev, clave])),
                           )
                         }
-                        className="rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                        className="rounded-full bg-[var(--accent)] px-4 py-2.5 text-xs font-medium text-white disabled:opacity-50"
                       >
                         {aprobada ? "Planificada ✓" : "Aprobar pedido"}
                       </button>
@@ -257,13 +257,13 @@ export function ProcurementBoard({
                       )}
                     </p>
                   </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  <div className="flex shrink-0 flex-col items-end gap-2">
                     {o.status === "PLANNED" && (
                       <button
                         type="button"
                         disabled={pending}
                         onClick={() => run(() => advanceOrder(o.id, "ORDERED"))}
-                        className="rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                        className="rounded-full bg-[var(--accent)] px-4 py-2.5 text-xs font-medium text-white disabled:opacity-50"
                       >
                         Ya lo pedí
                       </button>
@@ -273,7 +273,7 @@ export function ProcurementBoard({
                         type="button"
                         disabled={pending}
                         onClick={() => run(() => receiveOrder(o.id))}
-                        className="rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                        className="rounded-full bg-[var(--accent)] px-4 py-2.5 text-xs font-medium text-white disabled:opacity-50"
                       >
                         Llegó: recibir
                       </button>

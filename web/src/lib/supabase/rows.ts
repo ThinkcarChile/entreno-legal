@@ -33,6 +33,24 @@ export class DataShapeError extends Error {
  * calzaba con nada.
  */
 
+/**
+ * Lista de columnas para un `.select()` DERIVADA del propio schema.
+ *
+ * El bug de la demo viva del Sprint 10 (25-ago) nació de escribir la lista a
+ * mano: el schema de `purchase_movements` exigía `weight_basis` y el `.select()`
+ * no lo pedía, así que /pantry y /pantry/reorder reventaban contra el Supabase
+ * real. Ningún test lo vio porque los tests de integración arman el input a
+ * mano en vez de usar el cargador.
+ *
+ * Regla: un solo dueño por dato. El schema declara qué columnas necesita el
+ * dominio y el select se deriva de ahí — no se pueden desincronizar.
+ * Los embeds (relaciones) se agregan aparte con `extra`.
+ */
+export function columnsOf(schema: z.ZodObject<z.ZodRawShape>, extra?: string): string {
+  const cols = Object.keys(schema.shape);
+  return extra ? `${cols.join(", ")}, ${extra}` : cols.join(", ");
+}
+
 /** Valida una lista de filas. `null`/`undefined` se tratan como lista vacía. */
 export function parseRows<S extends z.ZodTypeAny>(
   schema: S,

@@ -5,7 +5,8 @@ export function AppNav({
 }: {
   active: "family" | "catalog" | "recipes" | "plan" | "shopping" | "pantry" | "procurement" | "prep";
 }) {
-  const base = "rounded-full px-4 py-1.5 text-sm font-medium";
+  // py-2.5: 42 px de alto — cómodo para el dedo en 320 px (§58).
+  const base = "rounded-full px-4 py-2.5 text-sm font-medium";
   const on = "bg-[var(--accent)] text-white";
   const off = "text-[var(--accent)] border border-[var(--accent)]";
   return (

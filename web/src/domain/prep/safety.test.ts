@@ -119,8 +119,8 @@ describe("§22/§74 — el vacío es EMPAQUE, no un permiso", () => {
 
 describe("§23 — refrigerar vs congelar SOLO con respaldo", () => {
   const chilled2 = regla({ id: "r-ch", processingState: "PREPPED", temperatureState: "CHILLED", maxDays: 2 });
-  const frozenOk = regla({ id: "r-fr", temperatureState: "FROZEN", maxDays: null });
-  const base = { ingredientId: "ing-pollo", categoryId: null, processingState: "PREPPED" as const, vacuumSealed: false, storedSince: HOY };
+  const frozenOk = regla({ id: "r-fr", categoryId: "cat-carnes", temperatureState: "FROZEN", maxDays: null });
+  const base = { ingredientId: "ing-pollo", categoryId: "cat-carnes", processingState: "PREPPED" as const, vacuumSealed: false, storedSince: HOY };
 
   it("uso dentro de la ventana refrigerada → REFRIGERATE con fuente", () => {
     const r = recommendStorage(base, "2026-08-25", [chilled2, frozenOk], HOY);
@@ -131,6 +131,40 @@ describe("§23 — refrigerar vs congelar SOLO con respaldo", () => {
   it("uso fuera de la ventana → FREEZE (hay regla de congelado)", () => {
     const r = recommendStorage(base, "2026-08-30", [chilled2, frozenOk], HOY);
     expect(r.storage).toBe("FREEZE");
+  });
+
+  it("una regla GENÉRICA de congelado no basta para RECOMENDAR congelar (defecto de la demo viva)", () => {
+    // Solo existe "congelado a -18°C = seguro sin fecha", sin alimento ni
+    // categoría: responde si lo YA congelado es seguro, no si conviene
+    // congelar una lechuga. Sin regla de refrigerado que cubra la fecha → revisar.
+    const genericaFrozen = regla({ id: "r-gen-fr", temperatureState: "FROZEN", maxDays: null });
+    const r = recommendStorage(base, "2026-09-30", [genericaFrozen], HOY);
+    expect(r.storage).toBe("REVIEW_REQUIRED");
+    expect(r.reason).toContain("congelar");
+  });
+
+  it("con regla de congelado por CATEGORÍA sí se recomienda congelar", () => {
+    const porCategoria = regla({
+      id: "r-cat-fr",
+      categoryId: "cat-carnes",
+      temperatureState: "FROZEN",
+      maxDays: null,
+    });
+    const r = recommendStorage({ ...base, categoryId: "cat-carnes" }, "2026-09-30", [porCategoria], HOY);
+    expect(r.storage).toBe("FREEZE");
+    expect(r.source).toContain("USDA");
+  });
+
+  it("una regla del HOGAR también respalda congelar (decisión explícita de la familia)", () => {
+    const delHogar = regla({ id: "r-hog-fr", isHousehold: true, temperatureState: "FROZEN", maxDays: null });
+    const r = recommendStorage(base, "2026-09-30", [delHogar], HOY);
+    expect(r.storage).toBe("FREEZE");
+  });
+
+  it("evaluar lo YA congelado sigue funcionando con la regla genérica", () => {
+    const genericaFrozen = regla({ id: "r-gen-fr", temperatureState: "FROZEN", maxDays: null });
+    const v = assessStorage(hechos({ temperatureState: "FROZEN" }), [genericaFrozen], HOY);
+    expect(v.verdict).toBe("SAFE"); // la pregunta microbiológica no cambió
   });
 
   it("sin reglas → REVIEW_REQUIRED, sin microbiología improvisada", () => {

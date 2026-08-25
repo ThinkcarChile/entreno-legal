@@ -51,6 +51,32 @@ export default async function QrPage({ params }: { params: Promise<{ token: stri
   }
   const lot = lotSchema.parse(data);
 
+  // §84: el paquete físico sobrevive a los cambios de plan, pero si la comida
+  // prevista cambió de receta (o ya no existe), el vínculo miente. Se avisa —
+  // el paquete NO se toca: sigue siendo stock disponible, reasignable.
+  let vinculoRoto = false;
+  if (lot.intended_use_date) {
+    const { data: lotRow } = await supabase
+      .from("inventory_lots")
+      .select("ingredient_id, intended_assignment_id")
+      .eq("id", lot.lot_id)
+      .maybeSingle();
+    const asignacion = lotRow?.intended_assignment_id as string | null | undefined;
+    const ingrediente = lotRow?.ingredient_id as string | null | undefined;
+    if (asignacion && ingrediente) {
+      const { data: comp } = await supabase
+        .from("member_serving_components")
+        .select("ingredient_id, member_serving_projections!inner ( assignment_id, status )")
+        .eq("ingredient_id", ingrediente)
+        .eq("member_serving_projections.assignment_id", asignacion)
+        .eq("member_serving_projections.status", "PLANNED")
+        .limit(1);
+      vinculoRoto = (comp ?? []).length === 0;
+    } else if (!asignacion) {
+      vinculoRoto = true;
+    }
+  }
+
   const { data: locData, error: locError } = await supabase
     .from("storage_locations")
     .select("id, name, kind")
@@ -63,5 +89,5 @@ export default async function QrPage({ params }: { params: Promise<{ token: stri
     "ubicaciones",
   );
 
-  return <QrActions lot={lot} locations={locations} />;
+  return <QrActions lot={lot} locations={locations} vinculoRoto={vinculoRoto} />;
 }

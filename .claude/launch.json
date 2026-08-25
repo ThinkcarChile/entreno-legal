@@ -4,7 +4,15 @@
     {
       "name": "mesa-familiar",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "web", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "web",
+        "run",
+        "dev",
+        "--",
+        "-H",
+        "0.0.0.0"
+      ],
       "port": 3000
     }
   ]

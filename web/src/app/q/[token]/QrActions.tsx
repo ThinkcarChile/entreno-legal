@@ -22,9 +22,12 @@ interface LotView {
 export function QrActions({
   lot,
   locations,
+  vinculoRoto = false,
 }: {
   lot: LotView;
   locations: { id: string; name: string; kind: "PANTRY" | "FRIDGE" | "FREEZER" | "OTHER" }[];
+  /** §84: la comida prevista cambió o desapareció — el paquete sigue existiendo. */
+  vinculoRoto?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -62,7 +65,15 @@ export function QrActions({
           {lot.quantity} {unidad} ·{" "}
           {lot.temperature_state === "FROZEN" ? "congelado" : lot.temperature_state === "CHILLED" ? "refrigerado" : "ambiente"}
         </p>
-        {lot.intended_use_date && <p className="text-sm text-[var(--ink)]/60">Para el {lot.intended_use_date}</p>}
+        {lot.intended_use_date && !vinculoRoto && (
+          <p className="text-sm text-[var(--ink)]/60">Para el {lot.intended_use_date}</p>
+        )}
+        {vinculoRoto && (
+          <p className="mt-1 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Este paquete ya no está asignado a una comida (el plan cambió). Sigue disponible
+            como stock: úsalo cuando quieras o vuelve a asignarlo.
+          </p>
+        )}
         {lot.use_by && <p className="text-sm font-medium text-amber-800">Usar antes de {lot.use_by}</p>}
         {cerrado && <p className="mt-1 text-sm text-red-700">Este lote ya está {lot.status.toLowerCase()}.</p>}
       </header>

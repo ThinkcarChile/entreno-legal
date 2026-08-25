@@ -735,3 +735,51 @@ describe("§63/§64 — RLS y SECURITY DEFINER entre hogares", () => {
     ).rejects.toThrow(/no autorizado/);
   });
 });
+
+describe("§84 (hallazgo de la demo viva): el plan cambia, el paquete físico queda", () => {
+  it("al desaparecer la comida, el paquete sobrevive y el vínculo se anula sin tocar la fecha de seguridad", async () => {
+    const plan = await h.como(USER_A, async () =>
+      (await h.fila<{ ensure_weekly_plan: string }>(
+        "select public.ensure_weekly_plan($1, (date_trunc('week', current_date + 7))::date)",
+        [hogarA.householdId],
+      ))!.ensure_weekly_plan,
+    );
+    const dia = (await h.como(USER_A, () =>
+      h.fila<{ id: string }>(
+        "select id from public.weekly_plan_days where plan_id = $1 order by plan_date limit 1",
+        [plan],
+      ),
+    ))!.id;
+    const asignacion = (await h.como(USER_A, () =>
+      h.fila<{ id: string }>(
+        `insert into public.meal_assignments (day_id, meal_type, kind, template_id, version_id)
+         select $1, 'LUNCH', 'RECIPE', v.template_id, v.id
+         from public.meal_template_versions v
+         join public.meal_templates t on t.id = v.template_id
+         where t.name = 'Pollo con arroz y ensalada chilena' and v.status = 'PUBLISHED'
+         limit 1
+         returning id`,
+        [dia],
+      ),
+    ))!.id;
+
+    const id = await crearLote("Paquete asignado", polloId, 900, null);
+    await h.como(USER_A, () =>
+      h.db.query("select public.set_intended_use($1, (current_date + 8)::date, $2)", [id, asignacion]),
+    );
+    await h.como(USER_A, () =>
+      h.db.query("select public.set_lot_safety($1, (current_date + 90)::date, 'USDA FSIS (test)')", [id]),
+    );
+
+    // La familia borra la comida DESPUÉS de haber preparado el paquete.
+    await h.como(USER_A, () =>
+      h.db.query("delete from public.meal_assignments where id = $1", [asignacion]),
+    );
+
+    const l = await lote(id);
+    expect(l.status).toBe("AVAILABLE");           // el paquete físico NO desaparece
+    expect(Number(l.quantity)).toBe(900);          // el ledger no se revierte
+    expect(l.intended_assignment_id).toBeNull();   // el vínculo se anula solo
+    expect(l.use_by).not.toBeNull();               // la seguridad no cambia con el plan
+  });
+});

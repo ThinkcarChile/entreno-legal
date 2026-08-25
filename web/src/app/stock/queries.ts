@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { DataAccessError } from "@/lib/supabase/unwrap";
 import {
+  columnsOf,
   dateString,
   nullableNumeric,
   numeric,
@@ -73,6 +74,28 @@ const targetRow = z.object({
   source: z.enum(["USER_DEFINED", "SYSTEM_SUGGESTED"]),
 });
 
+/**
+ * Vistas de merma y compra (0013). Los schemas viven ACÁ, una sola vez, y el
+ * `.select()` se deriva de ellos con `columnsOf`: el desajuste que rompió
+ * /pantry contra el Supabase real no puede repetirse por construcción.
+ */
+const wasteRow = z.object({
+  ingredient_id: uuid.nullable(),
+  unit: unitSchema,
+  weight_basis: weightBasisSchema,
+  quantity: numeric,
+  estimated_cost: nullableNumeric,
+  created_at: z.string(),
+});
+
+const purchaseRow = z.object({
+  ingredient_id: uuid,
+  unit: unitSchema,
+  weight_basis: weightBasisSchema,
+  quantity: numeric,
+  created_at: z.string(),
+});
+
 export async function loadStockInput(
   db: Db,
   householdId: string,
@@ -134,12 +157,16 @@ export async function loadStockInput(
         .gte("serving_date", hace30),
       db
         .from("waste_movements")
-        .select("ingredient_id, unit, quantity, estimated_cost, created_at")
-        .eq("household_id", householdId),
+        // Columnas DERIVADAS del schema (columnsOf): no se pueden desincronizar.
+        // La cota de 30 días evita traer toda la historia para una ventana de 30.
+        .select(columnsOf(wasteRow))
+        .eq("household_id", householdId)
+        .gte("created_at", hace30),
       db
         .from("purchase_movements")
-        .select("ingredient_id, unit, quantity, created_at")
-        .eq("household_id", householdId),
+        .select(columnsOf(purchaseRow))
+        .eq("household_id", householdId)
+        .gte("created_at", hace30),
       db
         .from("ingredient_yields")
         .select("ingredient_id, cooking_method, yield_factor, household_id")
@@ -252,14 +279,7 @@ export async function loadStockInput(
     }));
 
   const waste = parseRows(
-    z.object({
-      ingredient_id: uuid.nullable(),
-      unit: unitSchema,
-      weight_basis: weightBasisSchema,
-      quantity: numeric,
-      estimated_cost: nullableNumeric,
-      created_at: z.string(),
-    }),
+    wasteRow,
     wasteRes.data,
     "stock: mermas",
   )
@@ -274,13 +294,7 @@ export async function loadStockInput(
     }));
 
   const purchases = parseRows(
-    z.object({
-      ingredient_id: uuid,
-      unit: unitSchema,
-      weight_basis: weightBasisSchema,
-      quantity: numeric,
-      created_at: z.string(),
-    }),
+    purchaseRow,
     purchRes.data,
     "stock: compras",
   ).map((p) => ({

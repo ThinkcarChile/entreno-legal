@@ -68,24 +68,24 @@ export function EquipmentBoard({
       <section className="space-y-2">
         {equipment.map((e) => (
           <div key={e.id} className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-medium">
                 {e.name}
                 {!e.isActive && <span className="ml-2 text-xs text-[var(--ink)]/40">(inactivo)</span>}
               </p>
-              <div className="flex shrink-0 gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   disabled={pending}
                   onClick={() => run(() => saveEquipment({ id: e.id, name: e.name, notes: e.notes, isActive: !e.isActive }))}
-                  className="rounded-full border border-[var(--ink)]/20 px-3 py-1.5 text-xs disabled:opacity-50"
+                  className="rounded-full border border-[var(--ink)]/20 px-4 py-2.5 text-xs disabled:opacity-50"
                 >
                   {e.isActive ? "Desactivar" : "Activar"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setAbierto(abierto === e.id ? null : e.id)}
-                  className="rounded-full border border-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent)]"
+                  className="rounded-full border border-[var(--accent)] px-4 py-2.5 text-xs font-medium text-[var(--accent)]"
                 >
                   {abierto === e.id ? "Cerrar" : "Agregar configuración"}
                 </button>

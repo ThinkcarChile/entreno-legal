@@ -43,7 +43,7 @@ export default async function EquipmentPage() {
         </div>
         <Link
           href="/prep"
-          className="shrink-0 rounded-full border border-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent)]"
+          className="shrink-0 rounded-full border border-[var(--accent)] px-4 py-2.5 text-xs font-medium text-[var(--accent)]"
         >
           ← Preparación
         </Link>

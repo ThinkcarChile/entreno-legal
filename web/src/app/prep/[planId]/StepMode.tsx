@@ -26,6 +26,7 @@ export function StepMode({
   const [cantidadReal, setCantidadReal] = useState("");
   const [paquetesReales, setPaquetesReales] = useState<Record<number, string>>({});
   const [paqueteUbicacion, setPaqueteUbicacion] = useState<Record<number, string>>({});
+  const [paqueteVacio, setPaqueteVacio] = useState<Record<number, boolean>>({});
 
   const tareas = plan.batch_prep_tasks;
   const pendientes = tareas.filter((t) => t.status === "PENDING");
@@ -90,6 +91,8 @@ export function StepMode({
           quantity: q,
           // §19: la ubicación CONCRETA la elige la persona; la sugerida es el default.
           location_id: paqueteUbicacion[i] || ubicacionPara(p.storage),
+          // §74: el sellado es EMPAQUE — el RPC no toca temperatura ni fechas.
+          vacuum: paqueteVacio[i] ?? false,
           intended_use_date: p.intendedUseDate,
           intended_assignment_id: p.intendedAssignmentId,
         };
@@ -191,6 +194,15 @@ export function StepMode({
                   <p className="text-xs text-[var(--ink)]/60">
                     {p.storage === "FREEZE" ? "Congelar" : p.storage === "REFRIGERATE" ? "Refrigerar" : "Guardado: revisar"}
                   </p>
+                  <label className="mt-1 flex items-center gap-1.5 text-xs text-[var(--ink)]/60">
+                    <input
+                      type="checkbox"
+                      className="size-4"
+                      checked={paqueteVacio[i] ?? false}
+                      onChange={(e) => setPaqueteVacio((prev) => ({ ...prev, [i]: e.target.checked }))}
+                    />
+                    Sellado al vacío
+                  </label>
                   <select
                     value={paqueteUbicacion[i] ?? ubicacionPara(p.storage) ?? ""}
                     onChange={(e) => setPaqueteUbicacion((prev) => ({ ...prev, [i]: e.target.value }))}

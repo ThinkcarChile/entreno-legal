@@ -42,7 +42,7 @@ export default async function SuppliersPage() {
         </div>
         <Link
           href="/procurement"
-          className="shrink-0 rounded-full border border-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent)]"
+          className="shrink-0 rounded-full border border-[var(--accent)] px-4 py-2.5 text-xs font-medium text-[var(--accent)]"
         >
           ← Pedidos
         </Link>

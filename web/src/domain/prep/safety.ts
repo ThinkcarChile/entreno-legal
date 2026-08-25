@@ -100,7 +100,21 @@ export function recommendStorage(
   today: string,
 ): { storage: "REFRIGERATE" | "FREEZE" | "REVIEW_REQUIRED"; source: string | null; reason: string } {
   const chilled = assessStorage({ ...facts, temperatureState: "CHILLED" }, rules, today);
-  const frozen = assessStorage({ ...facts, temperatureState: "FROZEN" }, rules, today);
+
+  // Evaluar "¿es seguro lo que YA está congelado?" y "¿le recomiendo a la
+  // familia congelar ESTO?" son preguntas distintas (defecto de la demo viva:
+  // el motor mandaba a congelar la lechuga y el aceite de oliva). Una regla
+  // GENÉRICA de congelado responde la primera — habla de microbiología, no de
+  // si el alimento sirve congelado. Para RECOMENDAR congelar hace falta
+  // respaldo específico: del alimento, de su categoría, o del propio hogar.
+  const reglasFreezeAplicables = rules.filter(
+    (r) => r.ingredientId != null || r.categoryId != null || r.isHousehold,
+  );
+  const frozen = assessStorage(
+    { ...facts, temperatureState: "FROZEN" },
+    reglasFreezeAplicables,
+    today,
+  );
 
   // Sin uso previsto (reserva): congelar con respaldo gana sobre una ventana
   // refrigerada CORTA — la reserva no tiene fecha y la ventana sí.
@@ -142,7 +156,8 @@ export function recommendStorage(
   return {
     storage: "REVIEW_REQUIRED",
     source: null,
-    reason: "sin regla validada que respalde refrigerar ni congelar: decide tú (no inventamos seguridad)",
+    reason:
+      "sin regla validada que respalde refrigerar ni congelar ESTE alimento: decide tú (no inventamos seguridad ni damos por hecho que se puede congelar)",
   };
 }
 

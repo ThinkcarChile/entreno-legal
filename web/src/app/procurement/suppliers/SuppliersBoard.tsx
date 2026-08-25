@@ -128,7 +128,7 @@ export function SuppliersBoard({
           const abiertoAca = abierto === s.id;
           return (
             <div key={s.id} className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="font-medium">
                     {s.name}
@@ -136,21 +136,21 @@ export function SuppliersBoard({
                   </p>
                   {s.contact && <p className="text-xs text-[var(--ink)]/60">{s.contact}</p>}
                 </div>
-                <div className="flex shrink-0 gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     disabled={pending}
                     onClick={() =>
                       run(() => saveSupplier({ id: s.id, name: s.name, contact: s.contact, isActive: !s.isActive }))
                     }
-                    className="rounded-full border border-[var(--ink)]/20 px-3 py-1.5 text-xs disabled:opacity-50"
+                    className="rounded-full border border-[var(--ink)]/20 px-4 py-2.5 text-xs disabled:opacity-50"
                   >
                     {s.isActive ? "Desactivar" : "Activar"}
                   </button>
                   <button
                     type="button"
                     onClick={() => setAbierto(abiertoAca ? null : s.id)}
-                    className="rounded-full border border-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent)]"
+                    className="rounded-full border border-[var(--accent)] px-4 py-2.5 text-xs font-medium text-[var(--accent)]"
                   >
                     {abiertoAca ? "Cerrar" : "Agregar presentación"}
                   </button>

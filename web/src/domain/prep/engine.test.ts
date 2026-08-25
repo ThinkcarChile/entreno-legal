@@ -66,7 +66,8 @@ const REGLAS: SafetyRule[] = [
   // Como el seed real (USDA): crudo Y porcionado-crudo comparten la ventana.
   regla({ id: "r-raw", ingredientId: "ing-pollo", processingState: "RAW", temperatureState: "CHILLED", maxDays: 2 }),
   regla({ id: "r-prepped", ingredientId: "ing-pollo", processingState: "PREPPED", temperatureState: "CHILLED", maxDays: 2 }),
-  regla({ id: "r-frozen", temperatureState: "FROZEN", maxDays: null }),
+  // Como en 0016: el congelado que RESPALDA una recomendación es por categoría.
+  regla({ id: "r-frozen", categoryId: "cat-carnes", temperatureState: "FROZEN", maxDays: null }),
   regla({ id: "r-thaw", ingredientId: "ing-pollo", ruleKind: "THAW", temperatureState: "FROZEN", thawFridgeHours: 24 }),
 ];
 
@@ -111,6 +112,32 @@ describe("§8/§42 — el ejemplo del director: pollo por días + reserva", () =
   });
 });
 
+describe("una comida = UN paquete (defecto de la demo viva: 85 paquetes)", () => {
+  it("5 integrantes en la MISMA comida producen un solo paquete, con la suma", () => {
+    const cinco = ["m1", "m2", "m3", "m4", "m5"].map(() =>
+      demanda({ assignmentId: "a-mar", date: "2026-08-25", quantity: 223.3 }),
+    );
+    const plan = planPrep(entrada({ demand: cinco }));
+    const paquetes = plan.tasks.find((t) => t.taskType === "PORTION")!.params.packages!;
+    const delMartes = paquetes.filter((p) => p.intendedUseDate === "2026-08-25");
+    expect(delMartes).toHaveLength(1);
+    expect(delMartes[0]!.quantity).toBe(1116.5); // 5 × 223,3 sumados
+  });
+
+  it("comidas distintas del MISMO día siguen siendo paquetes distintos", () => {
+    const plan = planPrep(
+      entrada({
+        demand: [
+          demanda({ assignmentId: "a-almuerzo", date: "2026-08-25", quantity: 800 }),
+          demanda({ assignmentId: "a-cena", date: "2026-08-25", quantity: 700 }),
+        ],
+      }),
+    );
+    const paquetes = plan.tasks.find((t) => t.taskType === "PORTION")!.params.packages!;
+    expect(paquetes.filter((p) => p.intendedUseDate === "2026-08-25")).toHaveLength(2);
+  });
+});
+
 describe("§2/§9 — no sobrepreparar: preparar X, dejar Y, con razón", () => {
   it("tomates: 2 kg comprados, 700 g demandados → preparar 700, dejar 1.300 enteros", () => {
     const plan = planPrep(
@@ -148,7 +175,8 @@ describe("el estado del paquete es el REAL: porcionar sin cortar sigue crudo", (
   it("con SOLO una regla RAW/CHILLED, el paquete del martes se refrigera igual", () => {
     const soloRaw = [
       regla({ id: "r-raw", ingredientId: "ing-pollo", processingState: "RAW", temperatureState: "CHILLED", maxDays: 2 }),
-      regla({ id: "r-frozen", temperatureState: "FROZEN", maxDays: null }),
+      // Como en 0016: el congelado que RESPALDA una recomendación es por categoría.
+  regla({ id: "r-frozen", categoryId: "cat-carnes", temperatureState: "FROZEN", maxDays: null }),
     ];
     const plan = planPrep(entrada({ safetyRules: soloRaw }));
     const paquetes = plan.tasks.find((t) => t.taskType === "PORTION")!.params.packages!;
@@ -208,6 +236,21 @@ describe("§11/§12/§86 — cortes desde preferencias del hogar, manual siempre
     expect(corte.params.cutLabel).toBe("SHRED 4 mm");
     expect(corte.params.manualAlternative).toBe("rallador manual"); // §12: siempre viaja
     expect(corte.plannedQuantity).toBe(600);
+  });
+
+  it("§11: el tamaño sale de la CUCHILLA elegida aunque la preferencia no lo repita", () => {
+    const sinTamano: PrepPreference = { ...pref, params: {} };
+    const plan = planPrep(
+      entrada({
+        lots: [lote({ id: "lot-zana", ingredientId: "ing-zanahoria", label: "Zanahoria", quantity: 2000 })],
+        demand: [demanda({ ingredientId: "ing-zanahoria", quantity: 600 })],
+        preferences: [sinTamano],
+        capabilities: [cap], // la cortadora declara size_mm 4
+        safetyRules: [],
+      }),
+    );
+    const corte = plan.tasks.find((t) => t.taskType === "SHRED")!;
+    expect(corte.params.cutLabel).toBe("SHRED 4 mm");
   });
 
   it("equipo desactivado → alternativa manual, jamás bloqueo (§86)", () => {

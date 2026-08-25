@@ -31,6 +31,8 @@ const MIGRACIONES = [
   "supabase/migrations/0013_stock_intelligence.sql",
   "supabase/migrations/0014_procurement.sql",
   "supabase/migrations/0015_batch_prep.sql",
+  "supabase/migrations/0016_freezing_rules.sql",
+  "supabase/migrations/0017_random_without_pgcrypto.sql",
 ];
 
 const SEEDS = [
