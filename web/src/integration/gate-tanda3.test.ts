@@ -17,7 +17,6 @@ let A: { householdId: string; memberId: string };
 let B: { householdId: string; memberId: string };
 let polloId: string;
 let versionA: string;
-let slotA: string;
 
 beforeAll(async () => {
   h = await levantarBase();
@@ -39,11 +38,11 @@ beforeAll(async () => {
        values ($1, 'Receta de A', 4, 'DRAFT', 1) returning id`,
       [plantilla],
     ))!.id;
-    slotA = (await h.fila<{ id: string }>(
+    await h.db.query(
       `insert into public.meal_slots (version_id, slot_type, label, sort_order)
-       values ($1, 'PROTEIN', 'Proteína', 1) returning id`,
+       values ($1, 'PROTEIN', 'Proteína', 1)`,
       [versionA],
-    ))!.id;
+    );
   });
 });
 
