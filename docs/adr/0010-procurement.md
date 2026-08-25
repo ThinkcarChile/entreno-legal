@@ -29,9 +29,19 @@ solo; la necesidad calculada no se pierde al redondearla a lo comprable.
 
 4. **En camino jamás es stock físico.** El motor NETEA la recomendación contra
    órdenes vivas (PLANNED/ORDERED/READY/DELIVERING; SUGGESTED no cuenta porque
-   nadie la aceptó; RECEIVED/STORED ya son lotes). La UI muestra "en casa X ·
-   en camino Y", nunca X+Y. Si lo en camino cubre todo, se informa
-   (`coveredByIncoming`) y NO se sugiere de nuevo.
+   nadie la aceptó; RECEIVED/STORED ya son lotes). El neteo respeta la BASE
+   FÍSICA (`ingredientId::unit::weight_basis`): una orden de crudo no cubre la
+   necesidad de escurrido. La UI muestra "en casa X · en camino Y", nunca X+Y.
+   Si lo en camino cubre todo, se informa (`coveredByIncoming`) y NO se sugiere
+   de nuevo. Una orden que netea pero viene ATRASADA (entrega vencida, o
+   PLANNED con fecha de pedido pasada) genera advertencia fuerte: se netea
+   igual (no compramos doble solos) pero jamás en silencio.
+
+4b. **La lista de compras semanal también netea, en AMBAS direcciones**: las
+   líneas PENDIENTES (listas DRAFT/ACTIVE) descuentan la sugerencia de
+   procurement, y "agregar a próxima compra" (Sprint 8) descuenta las órdenes
+   de procurement vivas — la misma necesidad no se compra en el supermercado Y
+   se pide al proveedor.
 
 5. **Ciclo de vida con transiciones explícitas** en un RPC
    (`advance_procurement_order`): SUGGESTED→PLANNED exige humano (las
@@ -46,8 +56,24 @@ solo; la necesidad calculada no se pierde al redondearla a lo comprable.
    duplica). No existe un segundo sistema de recepción.
 
 7. **Aceptación idempotente por `dedupe_key`** determinista
-   (hogar+alimento+fecha+cantidad+presentación): el doble clic y las dos
-   pestañas crean UNA orden (índice único parcial + relectura en el RPC).
+   (hogar+alimento+base+fecha+cantidad+presentación): el doble clic y las dos
+   pestañas crean UNA orden (índice único parcial + relectura en el RPC, con
+   la carrera insert-insert absorbida por `unique_violation`). La búsqueda
+   filtra por HOGAR y por estado ≠ CANCELLED: la clave de otro hogar responde
+   'no autorizado' (sin oráculo) y cancelar LIBERA la clave — re-aprobar crea
+   una orden nueva, jamás revive la muerta con mensaje de éxito. Dos guardas
+   anti-pantalla-vieja: `order_date` en el pasado del hogar se rechaza, y
+   `known_incoming` (lo que la pantalla creía en camino) se compara contra lo
+   VIVO — si difiere, "recarga la página" en vez de una segunda orden.
+
+7b. **Historia que no se reescribe**: `supplier_name` y `presentation` se
+   CONGELAN en la orden al crearla (como la etiqueta del lote); cada
+   transición queda en `procurement_order_events` (append-only: quién, desde
+   qué estado, hacia cuál, cuándo); las advertencias aceptadas (confianza
+   baja, riesgo de quiebre) se persisten en la provenance del item; y la
+   provenance corrupta se lee salvando los pasos legibles y declarando los
+   omitidos, jamás vaciándose en silencio. Los permisos usan
+   `app.can_manage_shopping` — el MISMO guard del receiving del Sprint 7.
 
 8. **Fechas**: entrega válida más temprana que cumpla días del proveedor Y
    días de recepción del hogar; el pedido se ubica en el día permitido MÁS
@@ -67,10 +93,9 @@ solo; la necesidad calculada no se pierde al redondearla a lo comprable.
 
 ## Limitaciones aceptadas (documentadas, no silenciosas)
 
-- El neteo de en-camino usa la identidad `ingredientId::unit` sin base física:
-  si un mismo alimento tuviera necesidad RAW y DRAINED simultáneas, una orden
-  en camino de una base netearía la otra. Caso raro (se compra en UNA base por
-  alimento); anotado para cuando `supplier_products` gane `weight_basis`.
+- La cantidad RECIBIDA se acredita según lo sugerido; si llegó otra cantidad,
+  el ajuste es el del Sprint 8 (`adjust_lot`, con `is_approximate`) sobre el
+  lote recién creado. Cantidades reales por boleta → sprint de recepción.
 - `price` existe pero no decide: la comparación por precio llega con el sprint
   de recepción con boleta (`cost_allocations`).
 - Las sugerencias no se persisten: se recalculan en vivo (coherente con 0009);

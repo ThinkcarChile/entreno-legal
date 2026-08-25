@@ -159,11 +159,28 @@ export async function addReorderToShoppingList(input: {
   const yaPedido = (delPlan ?? [])
     .filter((i) => i.status === "PENDING")
     .reduce((acc, i) => acc + Number(i.planned_quantity ?? i.required_quantity ?? 0), 0);
-  const cantidad = Math.round(Math.max(0, input.quantity - yaPedido) * 1000) / 1000;
+
+  // Sprint 9: lo que ya viene EN CAMINO en órdenes de abastecimiento vivas
+  // también cubre esta recomendación — la lista y el proveedor no deben
+  // comprar la misma necesidad dos veces (neteo en AMBAS direcciones).
+  const { data: enCaminoData, error: enCaminoError } = await supabase
+    .from("procurement_order_items")
+    .select("suggested_quantity, unit, procurement_orders!inner ( household_id, status )")
+    .eq("ingredient_id", input.ingredientId)
+    .eq("unit", input.unit)
+    .eq("procurement_orders.household_id", householdId)
+    .in("procurement_orders.status", ["PLANNED", "ORDERED", "READY", "DELIVERING"]);
+  if (enCaminoError) return { ok: false, error: "No se pudo revisar las órdenes en camino." };
+  const enCamino = (enCaminoData ?? []).reduce((acc, i) => acc + Number(i.suggested_quantity ?? 0), 0);
+
+  const cantidad = Math.round(Math.max(0, input.quantity - yaPedido - enCamino) * 1000) / 1000;
   if (cantidad <= 0) {
     return {
       ok: true,
-      message: `La línea del plan en la lista ya cubre lo recomendado de ${input.label}.`,
+      message:
+        enCamino > 0
+          ? `Lo recomendado de ${input.label} ya viene cubierto (lista pendiente + órdenes en camino).`
+          : `La línea del plan en la lista ya cubre lo recomendado de ${input.label}.`,
     };
   }
 

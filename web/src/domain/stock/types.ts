@@ -1,5 +1,7 @@
 import type { WeightBasis } from "../catalog/types";
 
+export type { WeightBasis };
+
 /**
  * Stock Intelligence (Sprint 8) — tipos compartidos de los tres motores.
  *

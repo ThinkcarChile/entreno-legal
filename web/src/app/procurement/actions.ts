@@ -48,9 +48,18 @@ export async function approveSuggestion(s: PurchaseSuggestion): Promise<ActionRe
   const ctx = await contexto();
   if (!ctx.ok) return ctx;
 
-  // Clave determinista: misma sugerencia (alimento, día, cantidad, proveedor)
-  // = misma orden, aunque se apriete dos veces o en dos pestañas.
-  const dedupe = `PO:${ctx.householdId}:${s.ingredientId}:${s.orderDate ?? "sin-fecha"}:${s.suggestedOrderQuantity}:${s.supplierProductId ?? "sin-proveedor"}`;
+  // Clave determinista: misma sugerencia (alimento+base, día, cantidad,
+  // proveedor) = misma orden, aunque se apriete dos veces o en dos pestañas.
+  // El RPC además compara `known_incoming` contra lo VIVO: una pestaña vieja
+  // con otra cantidad no crea una segunda orden — recibe "recarga la página".
+  const dedupe = `PO:${ctx.householdId}:${s.ingredientId}:${s.weightBasis}:${s.orderDate ?? "sin-fecha"}:${s.suggestedOrderQuantity}:${s.supplierProductId ?? "sin-proveedor"}`;
+
+  // El contexto de la decisión (confianza baja, riesgo de quiebre…) queda en
+  // la orden: la advertencia que alguien aceptó es parte de la historia.
+  const provenance = [
+    ...s.provenance,
+    ...s.warnings.map((w) => ({ step: "advertencia", detail: w })),
+  ];
 
   const { error } = await ctx.supabase.rpc("create_procurement_order", {
     p_household_id: ctx.householdId,
@@ -67,8 +76,10 @@ export async function approveSuggestion(s: PurchaseSuggestion): Promise<ActionRe
         required_quantity: s.requiredQuantity,
         suggested_quantity: s.suggestedOrderQuantity,
         unit: s.unit,
+        weight_basis: s.weightBasis,
         package_count: s.packageCount,
-        provenance: s.provenance,
+        provenance,
+        known_incoming: s.incoming,
       },
     ],
   });
@@ -135,12 +146,15 @@ export async function saveSupplier(input: {
     is_active: input.isActive,
     updated_at: new Date().toISOString(),
   };
-  const { error } = input.id
-    ? await ctx.supabase.from("suppliers").update(fila).eq("id", input.id).eq("household_id", ctx.householdId)
-    : await ctx.supabase.from("suppliers").insert(fila);
+  const { data, error } = input.id
+    ? await ctx.supabase.from("suppliers").update(fila).eq("id", input.id).eq("household_id", ctx.householdId).select("id")
+    : await ctx.supabase.from("suppliers").insert(fila).select("id");
   if (error) {
     if (error.code === "23505") return { ok: false, error: "Ya existe un proveedor con ese nombre." };
     return { ok: false, error: error.message };
+  }
+  if (!data || data.length === 0) {
+    return { ok: false, error: "no autorizado" };
   }
   refrescar();
   return { ok: true, message: `Proveedor ${nombre} guardado.` };
@@ -153,6 +167,7 @@ export async function saveSupplierProduct(input: {
   presentation: string;
   packageQuantity: number;
   unit: "G" | "ML" | "UNIT";
+  weightBasis: "RAW" | "DRAINED";
   price: number | null;
   minimumOrderQuantity: number | null;
   purchaseMultiple: number | null;
@@ -187,6 +202,7 @@ export async function saveSupplierProduct(input: {
     presentation: input.presentation.trim(),
     package_quantity: input.packageQuantity,
     unit: input.unit,
+    weight_basis: input.weightBasis,
     price: input.price,
     minimum_order_quantity: input.minimumOrderQuantity,
     purchase_multiple: input.purchaseMultiple,
@@ -196,14 +212,19 @@ export async function saveSupplierProduct(input: {
     is_active: input.isActive,
     updated_at: new Date().toISOString(),
   };
-  const { error } = input.id
-    ? await ctx.supabase.from("supplier_products").update(fila).eq("id", input.id)
-    : await ctx.supabase.from("supplier_products").insert(fila);
+  // El update devuelve lo tocado: 0 filas (RLS de otro hogar, id inexistente)
+  // NO es un éxito silencioso.
+  const { data, error } = input.id
+    ? await ctx.supabase.from("supplier_products").update(fila).eq("id", input.id).select("id")
+    : await ctx.supabase.from("supplier_products").insert(fila).select("id");
   if (error) {
     if (error.code === "23505") {
       return { ok: false, error: "Ese proveedor ya tiene una presentación para este alimento: edítala." };
     }
     return { ok: false, error: error.message };
+  }
+  if (!data || data.length === 0) {
+    return { ok: false, error: "no autorizado" };
   }
   refrescar();
   return { ok: true, message: "Presentación guardada." };

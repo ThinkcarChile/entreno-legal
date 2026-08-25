@@ -49,6 +49,8 @@ create table public.supplier_products (
   -- Cantidad de UNA presentación, en unidad base (g / ml / unidades).
   package_quantity       numeric(12, 3) not null check (package_quantity > 0),
   unit                   text not null check (unit in ('G', 'ML', 'UNIT')),
+  -- Base física de lo que se compra: el atún ESCURRIDO no es el pollo crudo.
+  weight_basis           public.weight_basis not null default 'RAW',
   -- Precio por presentación. Opcional por ahora: sin comparador de precios.
   price                  numeric(12, 2) check (price >= 0),
   -- Pedido mínimo y múltiplo, en unidad base. NULL = sin restricción.
@@ -155,6 +157,9 @@ create table public.procurement_orders (
   id                     uuid primary key default gen_random_uuid(),
   household_id           uuid not null references public.households (id) on delete cascade,
   supplier_id            uuid references public.suppliers (id) on delete set null,
+  -- El nombre se CONGELA al crear: un pedido histórico no cambia si el
+  -- proveedor se renombra o se borra (misma regla que la etiqueta del lote).
+  supplier_name          text,
   status                 public.procurement_status not null default 'PLANNED',
   -- Fecha recomendada de pedido y de llegada (DATE-only, día del hogar).
   order_date             date,
@@ -170,8 +175,11 @@ create table public.procurement_orders (
   cancelled_at           timestamptz
 );
 
+-- La clave vive mientras la orden viva: cancelar la LIBERA para que la misma
+-- sugerencia pueda re-aprobarse como una orden nueva (jamás revivir la muerta).
 create unique index procurement_orders_dedupe_uniq
-  on public.procurement_orders (dedupe_key) where dedupe_key is not null;
+  on public.procurement_orders (dedupe_key)
+  where dedupe_key is not null and status <> 'CANCELLED';
 create index procurement_orders_active_idx
   on public.procurement_orders (household_id, status);
 
@@ -181,11 +189,16 @@ create table public.procurement_order_items (
   ingredient_id       uuid not null references public.ingredients (id) on delete restrict,
   supplier_product_id uuid references public.supplier_products (id) on delete set null,
   label               text not null,
+  -- Presentación CONGELADA al crear (la de supplier_products puede cambiar).
+  presentation        text,
   -- La NECESIDAD calculada nunca se pierde (neta de pedidos en camino)…
   required_quantity   numeric(12, 3) not null check (required_quantity >= 0),
   -- …y lo SUGERIDO tras mínimo/múltiplo/envase va aparte (§17).
   suggested_quantity  numeric(12, 3) not null check (suggested_quantity > 0),
   unit                text not null check (unit in ('G', 'ML', 'UNIT')),
+  -- Base física de lo pedido: al recibir, el lote nace en ESTA base, no en
+  -- 'RAW' a ciegas (el atún escurrido llena el balde escurrido).
+  weight_basis        public.weight_basis not null default 'RAW',
   package_count       int check (package_count > 0),
   -- Por qué esta cantidad, este proveedor, estas fechas (§23).
   provenance          jsonb not null default '[]'::jsonb,
@@ -193,8 +206,21 @@ create table public.procurement_order_items (
   constraint procurement_items_uniq unique (order_id, ingredient_id)
 );
 
-alter table public.procurement_orders      enable row level security;
-alter table public.procurement_order_items enable row level security;
+-- Auditoría de transiciones: QUIÉN movió la orden, DESDE dónde y CUÁNDO.
+-- Append-only: se escribe solo desde los RPC.
+create table public.procurement_order_events (
+  id              uuid primary key default gen_random_uuid(),
+  order_id        uuid not null references public.procurement_orders (id) on delete cascade,
+  from_status     public.procurement_status,
+  to_status       public.procurement_status not null,
+  actor_member_id uuid references public.household_members (id) on delete set null,
+  created_at      timestamptz not null default now()
+);
+create index procurement_order_events_order_idx on public.procurement_order_events (order_id, created_at);
+
+alter table public.procurement_orders       enable row level security;
+alter table public.procurement_order_items  enable row level security;
+alter table public.procurement_order_events enable row level security;
 
 create or replace function app.procurement_household(p_order uuid)
 returns uuid language sql stable security definer set search_path = public as $$
@@ -206,15 +232,31 @@ create policy procurement_orders_select on public.procurement_orders
 create policy procurement_items_select on public.procurement_order_items
   for select to authenticated
   using (app.is_household_member(app.procurement_household(order_id)));
+create policy procurement_events_select on public.procurement_order_events
+  for select to authenticated
+  using (app.is_household_member(app.procurement_household(order_id)));
 -- Escritura solo vía RPC: transiciones de estado validadas y auditables.
 
 -- ---------------------------------------------------------------------------
 -- Ciclo de vida: transiciones explícitas, jamás saltos silenciosos (§13, §20)
 -- ---------------------------------------------------------------------------
 
+/** El día de HOY medido en la zona horaria del hogar (jamás la del servidor). */
+create or replace function app.household_today(p_household uuid)
+returns date language sql stable security definer set search_path = public as $$
+  select (now() at time zone coalesce(h.timezone, 'America/Santiago'))::date
+  from public.households h where h.id = p_household;
+$$;
+
 /**
  * Crea una orden PLANNED desde una sugerencia aceptada. Idempotente por
  * dedupe_key: el segundo clic devuelve la orden existente, no crea otra.
+ * Una orden CANCELADA no revive: su clave queda libre y se crea una nueva.
+ *
+ * Guardas anti-desactualización: la fecha de pedido no puede estar en el
+ * pasado del hogar, y si el item declara `known_incoming` (lo que la pantalla
+ * creía en camino), se compara contra lo VIVO — una pestaña vieja no aprueba
+ * una necesidad ya cubierta por otra orden.
  */
 create or replace function public.create_procurement_order(
   p_household_id           uuid,
@@ -227,32 +269,58 @@ create or replace function public.create_procurement_order(
 ) returns uuid language plpgsql security definer set search_path = public as $$
 declare
   v_order uuid;
+  v_member uuid;
   v_item jsonb;
+  v_sp public.supplier_products;
+  v_sp_id uuid;
+  v_supplier_name text;
+  v_live_incoming numeric;
+  v_known numeric;
 begin
-  if not app.is_household_member(p_household_id) then raise exception 'no autorizado'; end if;
-  if p_supplier_id is not null and not exists (
-    select 1 from public.suppliers s
-    where s.id = p_supplier_id and s.household_id = p_household_id
-  ) then
-    raise exception 'el proveedor no pertenece a este hogar';
+  if not app.can_manage_shopping(p_household_id) then raise exception 'no autorizado'; end if;
+  if p_supplier_id is not null then
+    select name into v_supplier_name from public.suppliers s
+    where s.id = p_supplier_id and s.household_id = p_household_id;
+    if v_supplier_name is null then
+      raise exception 'el proveedor no pertenece a este hogar';
+    end if;
   end if;
   if p_items is null or jsonb_array_length(p_items) = 0 then
     raise exception 'una orden necesita al menos un producto';
   end if;
+  if p_order_date is not null and p_order_date < app.household_today(p_household_id) then
+    raise exception 'La sugerencia quedó desactualizada (fecha de pedido pasada): recarga la página.';
+  end if;
 
-  -- Idempotencia (§22): mismo dedupe_key = misma orden.
+  -- Idempotencia (§22): mismo dedupe_key = misma orden VIVA de ESTE hogar.
+  -- Sin filtro de hogar sería un oráculo entre hogares; sin filtro de estado,
+  -- re-aprobar tras cancelar devolvería la orden muerta como si fuera un éxito.
   if p_dedupe_key is not null then
-    select id into v_order from public.procurement_orders where dedupe_key = p_dedupe_key;
+    select id into v_order from public.procurement_orders
+    where dedupe_key = p_dedupe_key and household_id = p_household_id
+      and status <> 'CANCELLED';
     if v_order is not null then return v_order; end if;
   end if;
 
-  insert into public.procurement_orders
-    (household_id, supplier_id, status, order_date, expected_delivery_date,
-     dedupe_key, engine_version, created_by)
-  values
-    (p_household_id, p_supplier_id, 'PLANNED', p_order_date, p_expected_delivery_date,
-     p_dedupe_key, p_engine_version, app.current_member_id(p_household_id))
-  returning id into v_order;
+  v_member := app.current_member_id(p_household_id);
+
+  begin
+    insert into public.procurement_orders
+      (household_id, supplier_id, supplier_name, status, order_date,
+       expected_delivery_date, dedupe_key, engine_version, created_by)
+    values
+      (p_household_id, p_supplier_id, v_supplier_name, 'PLANNED', p_order_date,
+       p_expected_delivery_date, p_dedupe_key, p_engine_version, v_member)
+    returning id into v_order;
+  exception when unique_violation then
+    -- Carrera entre dos aprobaciones simultáneas: la que perdió relee.
+    select id into v_order from public.procurement_orders
+    where dedupe_key = p_dedupe_key and household_id = p_household_id
+      and status <> 'CANCELLED';
+    if v_order is not null then return v_order; end if;
+    -- La clave existe pero en OTRO hogar: mensaje unificado, sin oráculo.
+    raise exception 'no autorizado';
+  end;
 
   for v_item in select * from jsonb_array_elements(p_items) loop
     if not app.ingredient_in_scope((v_item->>'ingredient_id')::uuid, p_household_id) then
@@ -261,20 +329,64 @@ begin
     perform app.assert_finite((v_item->>'required_quantity')::numeric, 'la necesidad');
     perform app.assert_finite((v_item->>'suggested_quantity')::numeric, 'lo sugerido');
 
+    -- La presentación citada debe ser coherente: de un proveedor de ESTE
+    -- hogar, del proveedor de la orden, del mismo alimento y la misma unidad.
+    v_sp := null;
+    v_sp_id := nullif(v_item->>'supplier_product_id', '')::uuid;
+    if v_sp_id is not null then
+      select sp.* into v_sp
+      from public.supplier_products sp
+      join public.suppliers s on s.id = sp.supplier_id
+      where sp.id = v_sp_id and s.household_id = p_household_id;
+      if v_sp.id is null then
+        raise exception 'no autorizado';
+      end if;
+      if p_supplier_id is not null and v_sp.supplier_id <> p_supplier_id then
+        raise exception 'la presentación no es del proveedor de la orden';
+      end if;
+      if v_sp.ingredient_id <> (v_item->>'ingredient_id')::uuid
+         or v_sp.unit <> (v_item->>'unit') then
+        raise exception 'la presentación no corresponde al producto "%"', v_item->>'label';
+      end if;
+    end if;
+
+    -- Anti-doble-aprobación desde una pantalla desactualizada: lo VIVO en
+    -- camino para este alimento(+base) debe calzar con lo que vio quien aprueba.
+    if v_item ? 'known_incoming' then
+      v_known := (v_item->>'known_incoming')::numeric;
+      select coalesce(sum(i.suggested_quantity), 0) into v_live_incoming
+      from public.procurement_order_items i
+      join public.procurement_orders o on o.id = i.order_id
+      where o.household_id = p_household_id
+        and o.id <> v_order
+        and o.status in ('PLANNED', 'ORDERED', 'READY', 'DELIVERING')
+        and i.ingredient_id = (v_item->>'ingredient_id')::uuid
+        and i.unit = (v_item->>'unit')
+        and i.weight_basis = coalesce(v_item->>'weight_basis', 'RAW')::public.weight_basis;
+      if abs(v_live_incoming - coalesce(v_known, 0)) > 0.001 then
+        raise exception 'La página quedó desactualizada (hay otra orden en camino): recarga antes de aprobar.';
+      end if;
+    end if;
+
     insert into public.procurement_order_items
-      (order_id, ingredient_id, supplier_product_id, label,
-       required_quantity, suggested_quantity, unit, package_count, provenance)
+      (order_id, ingredient_id, supplier_product_id, label, presentation,
+       required_quantity, suggested_quantity, unit, weight_basis, package_count, provenance)
     values
       (v_order,
        (v_item->>'ingredient_id')::uuid,
-       nullif(v_item->>'supplier_product_id', '')::uuid,
+       v_sp_id,
        v_item->>'label',
+       v_sp.presentation,
        (v_item->>'required_quantity')::numeric,
        (v_item->>'suggested_quantity')::numeric,
        v_item->>'unit',
+       coalesce(v_item->>'weight_basis', 'RAW')::public.weight_basis,
        nullif(v_item->>'package_count', '')::int,
        coalesce(v_item->'provenance', '[]'::jsonb));
   end loop;
+
+  insert into public.procurement_order_events (order_id, from_status, to_status, actor_member_id)
+  values (v_order, null, 'PLANNED', v_member);
 
   return v_order;
 end;
@@ -293,7 +405,7 @@ begin
   select household_id, status into v_household, v_actual
   from public.procurement_orders where id = p_order_id for update;
 
-  if v_household is null or not app.is_household_member(v_household) then
+  if v_household is null or not app.can_manage_shopping(v_household) then
     raise exception 'no autorizado';
   end if;
 
@@ -320,13 +432,18 @@ begin
       cancelled_at = case when p_new_status = 'CANCELLED' then now() else cancelled_at end,
       updated_at = now()
   where id = p_order_id;
+
+  insert into public.procurement_order_events (order_id, from_status, to_status, actor_member_id)
+  values (p_order_id, v_actual, p_new_status, app.current_member_id(v_household));
 end;
 $$;
 
 /**
  * Recibir una orden: los items se vuelven LOTES con el MISMO mecanismo del
  * Sprint 7 (lote + movimiento PURCHASE con clave de idempotencia). No existe
- * un segundo sistema de recepción: es el mismo libro mayor.
+ * un segundo sistema de recepción: es el mismo libro mayor. El lote nace en
+ * la BASE FÍSICA pedida (RAW/DRAINED/…), jamás en 'RAW' a ciegas.
+ * Reintento idempotente: recibir una orden ya recibida devuelve 0, sin error.
  */
 create or replace function public.receive_procurement_order(
   p_order_id    uuid,
@@ -340,9 +457,11 @@ declare
   v_count int := 0;
 begin
   select * into v_order from public.procurement_orders where id = p_order_id for update;
-  if v_order.id is null or not app.is_household_member(v_order.household_id) then
+  if v_order.id is null or not app.can_manage_shopping(v_order.household_id) then
     raise exception 'no autorizado';
   end if;
+  -- El reintento de un "recibir" que YA pasó no es un error: es un no-op.
+  if v_order.status in ('RECEIVED', 'STORED') then return 0; end if;
   if v_order.status not in ('ORDERED', 'READY', 'DELIVERING') then
     raise exception 'solo se recibe una orden pedida (está %)', v_order.status;
   end if;
@@ -370,7 +489,7 @@ begin
       location_id, created_by
     ) values (
       v_order.household_id, v_item.ingredient_id, v_item.label,
-      0, v_item.unit, 'RAW',
+      0, v_item.unit, v_item.weight_basis,
       coalesce(p_location_id,
                (select id from public.storage_locations
                 where household_id = v_order.household_id and kind = 'PANTRY'
@@ -390,6 +509,9 @@ begin
   update public.procurement_orders
   set status = 'RECEIVED', received_at = now(), updated_at = now()
   where id = p_order_id;
+
+  insert into public.procurement_order_events (order_id, from_status, to_status, actor_member_id)
+  values (p_order_id, v_order.status, 'RECEIVED', v_member);
 
   return v_count;
 end;

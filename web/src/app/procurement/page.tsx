@@ -8,7 +8,7 @@ import { planPurchases } from "@/domain/procurement/engine";
 import type { ProcurementNeed } from "@/domain/procurement/types";
 import { loadHouseholdMembers } from "@/app/family/nutrition-queries";
 import { loadStockInput } from "@/app/stock/queries";
-import { loadOrders, loadProcurementConfig, toExistingItems } from "./queries";
+import { loadOrders, loadPendingListItems, loadProcurementConfig, toExistingItems } from "./queries";
 import { DataAccessError } from "@/lib/supabase/unwrap";
 import { ProcurementBoard } from "./ProcurementBoard";
 
@@ -38,10 +38,11 @@ export default async function ProcurementPage() {
   const tz = hogar?.timezone ?? "America/Santiago";
   const hoy = effectiveDate(new Date(), tz);
 
-  const [stockInput, config, orders] = await Promise.all([
+  const [stockInput, config, orders, pendientesLista] = await Promise.all([
     loadStockInput(supabase, householdId, hoy, tz),
     loadProcurementConfig(supabase, householdId),
     loadOrders(supabase, householdId),
+    loadPendingListItems(supabase, householdId),
   ]);
 
   const items = analyzeStock(stockInput);
@@ -53,6 +54,7 @@ export default async function ProcurementPage() {
       ingredientId: i.ingredientId,
       label: i.label,
       unit: i.unit,
+      weightBasis: i.weightBasis,
       onHand: i.onHand,
       available: i.available,
       coverageDays: i.coverage.kind === "DAYS" ? i.coverage.days : null,
@@ -66,6 +68,7 @@ export default async function ProcurementPage() {
     supplierProducts: config.supplierProducts,
     policies: config.policies,
     existingItems: toExistingItems(orders),
+    pendingListItems: pendientesLista,
     // Capacidad por alimento: sin fuente de datos todavía (la capacidad del
     // Sprint 8 es por UBICACIÓN y no se reparte por alimento sin inventar).
     capacity: {},
@@ -100,7 +103,7 @@ export default async function ProcurementPage() {
         </p>
       )}
 
-      <ProcurementBoard plan={plan} orders={orders} today={hoy} />
+      <ProcurementBoard plan={plan} orders={orders} today={hoy} timeZone={tz} />
     </main>
   );
 }

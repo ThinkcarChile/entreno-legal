@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ProcurementStatus, PurchaseScheduleResult, PurchaseSuggestion } from "@/domain/procurement/types";
 import { advanceOrder, approveSuggestion, receiveOrder } from "./actions";
 import type { OrderView } from "./queries";
+import { effectiveDate } from "@/domain/nutrition/calendar";
 
 const ESTADO_TEXTO: Record<ProcurementStatus, string> = {
   SUGGESTED: "sugerida",
@@ -32,10 +33,12 @@ export function ProcurementBoard({
   plan,
   orders,
   today,
+  timeZone,
 }: {
   plan: PurchaseScheduleResult;
   orders: OrderView[];
   today: string;
+  timeZone: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -65,7 +68,8 @@ export function ProcurementBoard({
   const recibidas = orders.filter((o) => ["RECEIVED", "STORED"].includes(o.status)).slice(0, 8);
 
   const claveSug = (s: PurchaseSuggestion) =>
-    `${s.ingredientId}:${s.orderDate ?? ""}:${s.suggestedOrderQuantity}:${s.supplierProductId ?? ""}`;
+    `${s.ingredientId}:${s.weightBasis}:${s.orderDate ?? ""}:${s.suggestedOrderQuantity}:${s.supplierProductId ?? ""}`;
+  const baseTexto = (b: string) => (b === "DRAINED" ? " (escurrido)" : "");
 
   return (
     <div className="space-y-5">
@@ -100,7 +104,10 @@ export function ProcurementBoard({
                 <li key={clave} className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-medium">{s.label}</p>
+                      <p className="font-medium">
+                        {s.label}
+                        {baseTexto(s.weightBasis)}
+                      </p>
                       <p className="text-xs text-[var(--ink)]/60">
                         necesitas {cantidad(s.requiredQuantity, s.unit)} · sugerido{" "}
                         <strong className="text-[var(--ink)]">{cantidad(s.suggestedOrderQuantity, s.unit)}</strong>
@@ -115,6 +122,7 @@ export function ProcurementBoard({
                       <p className="text-xs text-[var(--ink)]/60">
                         en casa {cantidad(s.onHand, s.unit)}
                         {s.incoming > 0 && <> · en camino {cantidad(s.incoming, s.unit)}</>}
+                        {s.pendingInList > 0 && <> · en la lista {cantidad(s.pendingInList, s.unit)}</>}
                         {s.coverageAfterDays != null && <> · cobertura al recibir ~{s.coverageAfterDays} días</>}
                         {s.confidence && <> · confianza {CONFIDENCE_LABELS[s.confidence]}</>}
                       </p>
@@ -170,8 +178,11 @@ export function ProcurementBoard({
           <h2 className="mb-2 text-sm font-semibold">Necesita acción</h2>
           <ul className="space-y-2">
             {necesitanAccion.map((s) => (
-              <li key={s.ingredientId + s.unit} className="rounded-2xl border border-amber-300 bg-amber-50 p-4">
-                <p className="font-medium">{s.label}</p>
+              <li key={`${s.ingredientId}:${s.unit}:${s.weightBasis}`} className="rounded-2xl border border-amber-300 bg-amber-50 p-4">
+                <p className="font-medium">
+                  {s.label}
+                  {baseTexto(s.weightBasis)}
+                </p>
                 <p className="text-xs text-[var(--ink)]/70">
                   necesitas {cantidad(s.requiredQuantity, s.unit)} · en casa {cantidad(s.onHand, s.unit)}
                   {s.incoming > 0 && <> · en camino {cantidad(s.incoming, s.unit)}</>}
@@ -185,11 +196,22 @@ export function ProcurementBoard({
             ))}
             {plan.coveredByIncoming.map((c) => (
               <li
-                key={c.ingredientId + c.unit}
+                key={`${c.ingredientId}:${c.unit}:${c.weightBasis}`}
                 className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4 text-xs text-[var(--ink)]/60"
               >
-                <strong className="text-[var(--ink)]">{c.label}</strong>: la necesidad ya viene cubierta
-                con {cantidad(c.incoming, c.unit)} en camino — no se sugiere de nuevo.
+                <strong className="text-[var(--ink)]">
+                  {c.label}
+                  {baseTexto(c.weightBasis)}
+                </strong>
+                : la necesidad ya viene cubierta
+                {c.incoming > 0 && <> con {cantidad(c.incoming, c.unit)} en camino</>}
+                {c.pendingInList > 0 && <>{c.incoming > 0 ? " y" : " con"} {cantidad(c.pendingInList, c.unit)} pendientes en la lista</>}
+                {" "}— no se sugiere de nuevo.
+                {c.warnings.map((w) => (
+                  <span key={w} className="mt-1 block text-amber-700">
+                    ⚠ {w}
+                  </span>
+                ))}
               </li>
             ))}
           </ul>
@@ -215,7 +237,15 @@ export function ProcurementBoard({
                     <p className="text-xs text-[var(--ink)]/60">
                       {o.supplierName && <>{o.supplierName} · </>}
                       <span className="rounded-full bg-[var(--paper)] px-2 py-0.5">{ESTADO_TEXTO[o.status]}</span>
-                      {o.orderDate && <> · pedir el {o.orderDate}</>}
+                      {o.orderDate && (
+                        <>
+                          {" "}
+                          · pedir el {o.orderDate}
+                          {o.status === "PLANNED" && o.orderDate < today && (
+                            <span className="text-amber-700"> (la fecha de pedido ya pasó)</span>
+                          )}
+                        </>
+                      )}
                       {o.expectedDeliveryDate && (
                         <>
                           {" "}
@@ -276,7 +306,7 @@ export function ProcurementBoard({
               >
                 {o.items.map((i) => `${cantidad(i.suggestedQuantity, i.unit)} de ${i.label}`).join(" · ")}
                 {o.supplierName && <> — {o.supplierName}</>}
-                {o.receivedAt && <> · {o.receivedAt.slice(0, 10)}</>}
+                {o.receivedAt && <> · {effectiveDate(new Date(o.receivedAt), timeZone)}</>}
               </li>
             ))}
           </ul>

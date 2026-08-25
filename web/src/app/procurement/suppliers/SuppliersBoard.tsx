@@ -74,6 +74,7 @@ export function SuppliersBoard({
   const [pPresentacion, setPPresentacion] = useState("");
   const [pCantidad, setPCantidad] = useState("");
   const [pUnidad, setPUnidad] = useState<"G" | "ML" | "UNIT">("G");
+  const [pBase, setPBase] = useState<"RAW" | "DRAINED">("RAW");
   const [pMinimo, setPMinimo] = useState("");
   const [pMultiplo, setPMultiplo] = useState("");
   const [pEspera, setPEspera] = useState("0");
@@ -163,7 +164,8 @@ export function SuppliersBoard({
                       <strong className="text-[var(--ink)]">
                         {ingredientes.find((i) => i.id === p.ingredientId)?.name ?? "(alimento)"}
                       </strong>{" "}
-                      — {p.presentation} ({p.packageQuantity} {p.unit === "G" ? "g" : p.unit === "ML" ? "ml" : "u"})
+                      — {p.presentation} ({p.packageQuantity} {p.unit === "G" ? "g" : p.unit === "ML" ? "ml" : "u"}
+                      {p.weightBasis === "DRAINED" ? " escurridos" : ""})
                       {p.minimumOrderQuantity != null && <> · mínimo {p.minimumOrderQuantity}</>}
                       {p.purchaseMultiple != null && <> · múltiplos de {p.purchaseMultiple}</>}
                       {p.leadTimeDays > 0 && <> · espera {p.leadTimeDays} día(s)</>}
@@ -222,6 +224,17 @@ export function SuppliersBoard({
                       </div>
                     </label>
                     <label className="text-xs text-[var(--ink)]/60">
+                      Base de la cantidad
+                      <select
+                        value={pBase}
+                        onChange={(e) => setPBase(e.target.value as "RAW" | "DRAINED")}
+                        className={`${field} mt-1`}
+                      >
+                        <option value="RAW">Tal como se compra (crudo)</option>
+                        <option value="DRAINED">Peso escurrido (conservas)</option>
+                      </select>
+                    </label>
+                    <label className="text-xs text-[var(--ink)]/60">
                       Pedido mínimo (opcional)
                       <input type="number" min="0" step="any" value={pMinimo} onChange={(e) => setPMinimo(e.target.value)} className={`${field} mt-1`} />
                     </label>
@@ -255,6 +268,7 @@ export function SuppliersBoard({
                             presentation: pPresentacion.trim() || `${pCantidad} ${pUnidad}`,
                             packageQuantity: Number(pCantidad),
                             unit: pUnidad,
+                            weightBasis: pBase,
                             price: null,
                             minimumOrderQuantity: num(pMinimo),
                             purchaseMultiple: num(pMultiplo),
@@ -270,6 +284,7 @@ export function SuppliersBoard({
                           setPMinimo("");
                           setPMultiplo("");
                           setPEspera("0");
+                          setPBase("RAW");
                           setPDias([]);
                         },
                       );
