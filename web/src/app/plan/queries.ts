@@ -314,6 +314,7 @@ export async function loadConfirmedServings(db: Db, assignmentId: string) {
     .select(
       `id, member_id, fit, adaptation_level, nutrition, completeness, reasons, status,
        unverifiable_constraints, clinical_status,
+       meal_clinical_assessments!clinical_assessment_id ( nutrition_source, status ),
        optimizer_version, version_id, profile_id,
        household_members ( display_name ),
        member_serving_components (
@@ -350,6 +351,14 @@ export async function loadConfirmedServings(db: Db, assignmentId: string) {
     reasons: z.array(z.unknown()),
     unverifiable_constraints: z.array(z.string()).catch([]),
     clinical_status: z.string().nullable().catch(null),
+    meal_clinical_assessments: z
+      .union([
+        z.object({ nutrition_source: z.string(), status: z.string() }),
+        z.array(z.object({ nutrition_source: z.string(), status: z.string() })),
+        z.null(),
+      ])
+      .transform((v) => (Array.isArray(v) ? (v[0] ?? null) : v))
+      .catch(null),
     status: z.string(),
     optimizer_version: z.string(),
     version_id: uuid,
@@ -381,6 +390,8 @@ export async function loadConfirmedServings(db: Db, assignmentId: string) {
     unverifiableConstraints: row.unverifiable_constraints,
     // §43: SOLO el estado categórico — la cocina jamás ve el porqué clínico.
     clinicalStatus: row.clinical_status,
+    // §1: con qué se evaluó. No es dato médico: es la CALIDAD del veredicto.
+    clinicalSource: row.meal_clinical_assessments?.nutrition_source ?? null,
     components: [...row.member_serving_components].sort((a, b) => a.sort_order - b.sort_order),
     substitutions: row.member_serving_substitutions,
   }));

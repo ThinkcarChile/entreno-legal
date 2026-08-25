@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell } from "@/components/AppShell";
+import { Notice } from "@/components/ui";
 import { loadAccessibleMembers } from "../../queries";
 import { UploadForm } from "./UploadForm";
 
@@ -18,18 +19,18 @@ export default async function UploadExamPage() {
   if (!user) redirect("/login?next=/health/exams/upload");
 
   const miembros = await loadAccessibleMembers(supabase);
-  // Subir exige poder ADMINISTRAR: self o dependiente a cargo (o grant UPLOAD).
+  // Subir exige poder ADMINISTRAR: self o dependiente a cargo.
   const candidatos = miembros.filter((m) => m.relation !== "GRANTED");
 
   return (
-    <main className="mx-auto max-w-md px-4 pb-16">
-      <AppNav active="health" />
-      <h1 className="mb-1 text-xl font-semibold">Subir examen</h1>
-      <p className="mb-4 text-xs text-[var(--ink)]/60">
-        El archivo queda en almacenamiento PRIVADO. La extracción por IA solo corre si la
-        persona consiente; si no, el examen se revisa a mano — ambas rutas valen.
-      </p>
-      <UploadForm miembros={candidatos} />
-    </main>
+    <AppShell active="health" title="Subir examen" subtitle="El archivo queda en almacenamiento privado.">
+      <div className="mt-md space-y-md">
+        <Notice icon="shield_lock" tono="info">
+          La extracción automática solo corre si la persona consiente. Sin consentimiento el
+          examen se guarda igual y se revisa a mano: las dos rutas valen.
+        </Notice>
+        <UploadForm miembros={candidatos} />
+      </div>
+    </AppShell>
   );
 }

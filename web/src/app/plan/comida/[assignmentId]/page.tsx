@@ -164,6 +164,15 @@ export default async function ComidaConfirmadaPage({ params }: Props) {
                     Adaptación/revisión requerida para esta persona antes de servir.
                   </p>
                 )}
+                {s.clinicalSource && (
+                  <p className="mb-2 text-[11px] text-[var(--ink)]/50">
+                    {s.clinicalSource === "RECIPE_BASE_ESTIMATE"
+                      ? "Evaluación preliminar basada en la porción base de la receta."
+                      : s.clinicalSource === "NONE"
+                        ? "Sin nutrición evaluable para esta comida."
+                        : "Evaluado con tu porción individual."}
+                  </p>
+                )}
                 {s.unverifiableConstraints.length > 0 && (
                   <p className="mb-2 inline-block rounded-full bg-amber-100 px-2.5 py-1 text-[11px] text-amber-900">
                     {s.unverifiableConstraints.includes("ENERGY_MAX")

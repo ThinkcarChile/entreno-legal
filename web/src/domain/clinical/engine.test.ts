@@ -31,6 +31,8 @@ function restriccion(partial: Partial<ClinicalRestriction> = {}): ClinicalRestri
 function entrada(partial: Partial<ClinicalAssessmentInput> = {}): ClinicalAssessmentInput {
   return {
     date: HOY,
+    // Por defecto: la porción de la persona. Los casos de screening lo dicen.
+    nutritionSource: "PROJECTED_MEMBER_SERVING",
     restrictions: [restriccion()],
     observations: [],
     schedules: [],
@@ -297,5 +299,113 @@ describe("NutritionDataConfidence (§17) — sobre los DATOS, no la salud", () =
     expect(c.level).toBe("LOW");
     expect(c.reasons.map((r) => r.code)).toContain("LAB_MISSING");
     expect(c.reasons.map((r) => r.code)).toContain("UNVERIFIED_DATA");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cierre v2 §1 — nutrition_source: un estimado JAMÁS declara segura una
+// porción individual. Los cuatro casos A-D que exige el director.
+// ---------------------------------------------------------------------------
+
+describe("§1 — RECIPE_BASE_ESTIMATE es screening, no veredicto", () => {
+  it("A. estimado APARENTEMENTE dentro de un máximo HARD → NO hay falso COMPATIBLE", () => {
+    const a = assessClinical(
+      entrada({
+        nutritionSource: "RECIPE_BASE_ESTIMATE",
+        nutrition: { values: { phosphorus_mg: 400 }, completeness: { phosphorus_mg: "COMPLETE" } },
+      }),
+    );
+    expect(a.status).toBe("REVIEW_REQUIRED");
+    expect(a.status).not.toBe("COMPATIBLE");
+    const razon = a.reasons.find((r) => r.code === "SCREENING_ONLY")!;
+    expect(razon.text).toContain("PRELIMINAR");
+    expect(a.nutritionSource).toBe("RECIPE_BASE_ESTIMATE");
+  });
+
+  it("B. PROJECTED_MEMBER_SERVING dentro del límite → COMPATIBLE (es SU porción)", () => {
+    const a = assessClinical(
+      entrada({
+        nutritionSource: "PROJECTED_MEMBER_SERVING",
+        nutrition: { values: { phosphorus_mg: 400 }, completeness: { phosphorus_mg: "COMPLETE" } },
+      }),
+    );
+    expect(a.status).toBe("COMPATIBLE");
+    expect(a.nutritionSource).toBe("PROJECTED_MEMBER_SERVING");
+  });
+
+  it("C. CONFIRMED_MEMBER_SERVING que EXCEDE → CLINICALLY_INVALIDATED", () => {
+    const a = assessClinical(
+      entrada({
+        nutritionSource: "CONFIRMED_MEMBER_SERVING",
+        nutrition: { values: { phosphorus_mg: 650 }, completeness: { phosphorus_mg: "COMPLETE" } },
+      }),
+    );
+    expect(a.status).toBe("CLINICALLY_INVALIDATED");
+    expect(a.violations).toHaveLength(1);
+  });
+
+  it("D. porción individual con nutrición PARTIAL → REVIEW_REQUIRED", () => {
+    const a = assessClinical(
+      entrada({
+        nutritionSource: "CONFIRMED_MEMBER_SERVING",
+        nutrition: { values: { phosphorus_mg: 300 }, completeness: { phosphorus_mg: "PARTIAL" } },
+      }),
+    );
+    expect(a.status).toBe("REVIEW_REQUIRED");
+  });
+
+  it("el estimado que YA excede sigue invalidando: eso no es falsa seguridad", () => {
+    const a = assessClinical(
+      entrada({
+        nutritionSource: "RECIPE_BASE_ESTIMATE",
+        nutrition: { values: { phosphorus_mg: 900 }, completeness: { phosphorus_mg: "COMPLETE" } },
+      }),
+    );
+    expect(a.status).toBe("CLINICALLY_INVALIDATED");
+  });
+
+  it("severidad CAUTION sobre estimado → con precaución, no revisión completa", () => {
+    const a = assessClinical(
+      entrada({
+        nutritionSource: "RECIPE_BASE_ESTIMATE",
+        restrictions: [restriccion({ severity: "CAUTION" })],
+        nutrition: { values: { phosphorus_mg: 400 }, completeness: { phosphorus_mg: "COMPLETE" } },
+      }),
+    );
+    expect(a.status).toBe("COMPATIBLE_WITH_CAUTION");
+  });
+
+  it("una EXCLUSIÓN no depende de la cantidad: el estimado basta para invalidar", () => {
+    const a = assessClinical(
+      entrada({
+        nutritionSource: "RECIPE_BASE_ESTIMATE",
+        restrictions: [restriccion({ type: "INGREDIENT_EXCLUDE", target: "ing-x", value: null, unit: null })],
+        ingredientIds: ["ing-x"],
+      }),
+    );
+    expect(a.status).toBe("CLINICALLY_INVALIDATED");
+  });
+
+  it("una exclusión AUSENTE con estimado sigue siendo COMPATIBLE (no aplica screening)", () => {
+    const a = assessClinical(
+      entrada({
+        nutritionSource: "RECIPE_BASE_ESTIMATE",
+        restrictions: [restriccion({ type: "INGREDIENT_EXCLUDE", target: "ing-x", value: null, unit: null })],
+        ingredientIds: ["ing-otro"],
+      }),
+    );
+    expect(a.status).toBe("COMPATIBLE");
+  });
+
+  it("PORTION_MAX HARD sobre estimado → revisión, no compatible", () => {
+    const a = assessClinical(
+      entrada({
+        nutritionSource: "RECIPE_BASE_ESTIMATE",
+        restrictions: [restriccion({ type: "PORTION_MAX", target: "ing-z", value: 200, unit: "g" })],
+        ingredientIds: ["ing-z"],
+        quantitiesByIngredient: { "ing-z": 150 },
+      }),
+    );
+    expect(a.status).toBe("REVIEW_REQUIRED");
   });
 });

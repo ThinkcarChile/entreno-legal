@@ -4,12 +4,18 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setConsent, uploadExam, runExtraction } from "../../actions";
 import type { AccessibleMember } from "../../queries";
+import { Button, Card, ErrorNote, Icon } from "@/components/ui";
 
 /**
  * Flujo §53: miembro → consentimiento explícito → archivo → subir →
  * (si consintió) extraer → derechito a la revisión. Cada error se muestra;
  * jamás un éxito falso (§89).
+ *
+ * Campos de 48 px de alto: en 320 px el pulgar necesita blanco, no elegancia.
  */
+const CAMPO =
+  "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-md py-3 font-body-md text-body-md text-on-surface min-h-[48px]";
+
 export function UploadForm({ miembros }: { miembros: AccessibleMember[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -20,8 +26,7 @@ export function UploadForm({ miembros }: { miembros: AccessibleMember[] }) {
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    const form = e.currentTarget;
-    const data = new FormData(form);
+    const data = new FormData(e.currentTarget);
     startTransition(async () => {
       setPaso("Subiendo el archivo…");
       const subida = await uploadExam(data);
@@ -42,7 +47,7 @@ export function UploadForm({ miembros }: { miembros: AccessibleMember[] }) {
       }
 
       if (consintio) {
-        setPaso("Extrayendo filas del examen…");
+        setPaso("Leyendo las filas del examen…");
         const extraccion = await runExtraction(documentId);
         if (!extraccion.ok) {
           // La extracción falló pero el documento EXISTE: se dice y se va a
@@ -56,82 +61,82 @@ export function UploadForm({ miembros }: { miembros: AccessibleMember[] }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <label className="block text-sm">
-        <span className="mb-1 block font-medium">¿De quién es el examen?</span>
-        <select
-          name="memberId"
-          required
-          className="w-full rounded-xl border border-[var(--ink)]/20 bg-white px-3 py-2.5"
-        >
-          {miembros.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.displayName}
-              {m.relation === "DEPENDENT" ? " (a tu cargo)" : ""}
-            </option>
-          ))}
-        </select>
-      </label>
+    <form onSubmit={onSubmit} className="space-y-md">
+      <Card className="space-y-md p-md">
+        <label className="block">
+          <span className="mb-1 block font-body-sm text-body-sm font-semibold text-on-surface">
+            ¿De quién es el examen?
+          </span>
+          <select name="memberId" required className={CAMPO}>
+            {miembros.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.displayName}
+                {m.relation === "DEPENDENT" ? " (a tu cargo)" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
 
-      <label className="block text-sm">
-        <span className="mb-1 block font-medium">Fecha del examen</span>
-        <input
-          type="date"
-          name="documentDate"
-          className="w-full rounded-xl border border-[var(--ink)]/20 bg-white px-3 py-2.5"
-        />
-      </label>
+        <label className="block">
+          <span className="mb-1 block font-body-sm text-body-sm font-semibold text-on-surface">
+            Fecha del examen
+          </span>
+          <input type="date" name="documentDate" className={CAMPO} />
+        </label>
 
-      <label className="block text-sm">
-        <span className="mb-1 block font-medium">Laboratorio (opcional)</span>
-        <input
-          type="text"
-          name="sourceLab"
-          placeholder="Laboratorio Central"
-          className="w-full rounded-xl border border-[var(--ink)]/20 bg-white px-3 py-2.5"
-        />
-      </label>
+        <label className="block">
+          <span className="mb-1 block font-body-sm text-body-sm font-semibold text-on-surface">
+            Laboratorio <span className="font-normal text-on-surface-variant">(opcional)</span>
+          </span>
+          <input type="text" name="sourceLab" placeholder="Laboratorio Central" className={CAMPO} />
+        </label>
 
-      <label className="block text-sm">
-        <span className="mb-1 block font-medium">Archivo (PDF, JPG, PNG o texto · máx 5 MB)</span>
-        <input
-          type="file"
-          name="file"
-          required
-          accept=".pdf,.jpg,.jpeg,.png,.txt,text/plain,application/pdf,image/jpeg,image/png"
-          className="w-full rounded-xl border border-[var(--ink)]/20 bg-white px-3 py-2.5 text-xs"
-        />
-      </label>
+        <label className="block">
+          <span className="mb-1 block font-body-sm text-body-sm font-semibold text-on-surface">
+            Archivo
+          </span>
+          <span className="mb-2 block font-body-sm text-body-sm text-on-surface-variant">
+            PDF, JPG, PNG o texto · máximo 5 MB
+          </span>
+          <input
+            type="file"
+            name="file"
+            required
+            accept=".pdf,.jpg,.jpeg,.png,.txt,text/plain,application/pdf,image/jpeg,image/png"
+            className={`${CAMPO} py-3 file:mr-md file:rounded-full file:border-0 file:bg-primary-fixed file:px-md file:py-2 file:font-body-sm file:text-body-sm file:font-semibold file:text-on-primary-fixed`}
+          />
+        </label>
+      </Card>
 
-      <label className="flex items-start gap-2 rounded-xl border border-[var(--ink)]/15 bg-white p-3 text-xs">
-        <input
-          type="checkbox"
-          name="consent"
-          checked={consiente}
-          onChange={(e) => setConsiente(e.target.checked)}
-          className="mt-0.5"
-        />
-        <span>
-          <strong>Consiento</strong> que este documento se procese con extracción automática para
-          proponer sus biomarcadores. Sin este consentimiento el examen igual se guarda y se puede
-          revisar a mano — nada se envía al modelo.
-        </span>
-      </label>
+      <Card className="p-md">
+        <label className="flex items-start gap-md">
+          <input
+            type="checkbox"
+            name="consent"
+            checked={consiente}
+            onChange={(ev) => setConsiente(ev.target.checked)}
+            className="mt-1 h-6 w-6 shrink-0 accent-[var(--color-primary)]"
+          />
+          <span className="font-body-sm text-body-sm text-on-surface-variant">
+            <strong className="text-on-surface">Consiento</strong> que este documento se procese
+            con extracción automática para <em>proponer</em> sus biomarcadores. Sin este
+            consentimiento el examen igual se guarda y se puede revisar a mano — nada se envía al
+            modelo.
+          </span>
+        </label>
+      </Card>
 
-      {paso && <p className="text-xs text-[var(--ink)]/60">{paso}</p>}
-      {error && (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
-          {error}
+      {paso && (
+        <p className="flex items-center gap-sm font-body-sm text-body-sm text-on-surface-variant">
+          <Icon name="progress_activity" className="animate-spin text-[18px]" />
+          {paso}
         </p>
       )}
+      {error && <ErrorNote>{error}</ErrorNote>}
 
-      <button
-        type="submit"
-        disabled={pending || miembros.length === 0}
-        className="w-full rounded-full bg-[var(--accent)] px-4 py-3 text-sm font-medium text-white disabled:opacity-50"
-      >
+      <Button type="submit" disabled={pending || miembros.length === 0} full>
         {pending ? "Procesando…" : "Subir examen"}
-      </button>
+      </Button>
     </form>
   );
 }

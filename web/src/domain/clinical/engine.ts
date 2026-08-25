@@ -1,6 +1,7 @@
 import { NUTRIENT_KEYS, type NutrientKey } from "@/domain/catalog/types";
 import {
   CLINICAL_ENGINE_VERSION,
+  FUENTES_INDIVIDUALES,
   type ClinicalAssessment,
   type ClinicalAssessmentInput,
   type ClinicalAssessmentStatus,
@@ -35,6 +36,13 @@ function unidadDeNutriente(key: NutrientKey): string {
 
 const esNutrientKey = (t: string): t is NutrientKey =>
   (NUTRIENT_KEYS as readonly string[]).includes(t);
+
+/**
+ * Restricciones cuya seguridad depende de CUÁNTO come esta persona. Una
+ * exclusión de alimento no: si el plato lo trae, lo trae para todos.
+ */
+const dependeDeCantidadIndividual = (t: ClinicalRestriction["type"]): boolean =>
+  t === "NUTRIENT_MAX" || t === "NUTRIENT_MIN" || t === "PORTION_MAX" || t === "PORTION_MIN";
 
 function diasEntre(a: string, b: string): number {
   return Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 86400000);
@@ -86,6 +94,9 @@ export function assessClinical(input: ClinicalAssessmentInput): ClinicalAssessme
     nivel = Math.max(nivel, n);
   };
 
+  const fuente = input.nutritionSource;
+  const esIndividual = FUENTES_INDIVIDUALES.includes(fuente);
+
   const activas = input.restrictions.filter((r) => dentroDeVigencia(r, input.date));
 
   for (const r of activas) {
@@ -126,6 +137,13 @@ export function assessClinical(input: ClinicalAssessmentInput): ClinicalAssessme
       subir(2); // REVIEW_REQUIRED: jamás se reusa un dato viejo/faltante como actual.
       continue;
     }
+
+    // --- §1: SCREENING no es veredicto individual -------------------------
+    // Una restricción cuantitativa evaluada contra el promedio de la olla NO
+    // puede declarar segura la porción de NADIE: no sabe cuánto le van a
+    // servir. Se evalúa igual (sirve para detectar un exceso evidente), pero
+    // el "dentro del límite" nunca se convierte en COMPATIBLE fuerte.
+    const soloScreening = dependeDeCantidadIndividual(r.type) && !esIndividual;
 
     // --- Por tipo ---
     if (r.type === "NUTRIENT_MAX" || r.type === "NUTRIENT_MIN") {
@@ -172,6 +190,19 @@ export function assessClinical(input: ClinicalAssessmentInput): ClinicalAssessme
           } else if (r.severity === "CAUTION") {
             subir(1);
           }
+        } else if (soloScreening) {
+          // Dentro del límite… PERO sobre la porción base de la receta.
+          razon(
+            "SCREENING_ONLY",
+            `La porción base de la receta queda dentro del máximo de ${key} (${valor} ≤ ${r.value} ${r.unit}), pero esto es una evaluación PRELIMINAR: todavía no existe la porción de esta persona.`,
+            { nutrient: key, value: valor, max: r.value, source: fuente },
+          );
+          // HARD/CRITICAL: la seguridad depende de la cantidad individual →
+          // revisión hasta que exista esa porción. CAUTION/INFO: se anota.
+          subir(r.severity === "HARD" || r.severity === "CRITICAL_REVIEW" ? 2 : 1);
+          if (r.severity === "HARD" && r.value !== null) {
+            proposedAdjustments.push({ kind: "NUTRIENT_CEILING", nutrient: key, max: r.value, restrictionId: r.id });
+          }
         } else {
           razon("RESTRICTION_OK", `Dentro del máximo confirmado de ${key} (${valor} ≤ ${r.value} ${r.unit}).`, { nutrient: key, value: valor, max: r.value });
           if (r.severity === "HARD" && r.value !== null) {
@@ -182,7 +213,14 @@ export function assessClinical(input: ClinicalAssessmentInput): ClinicalAssessme
         }
       } else {
         // NUTRIENT_MIN: asimétrico — lo que falta por conocer solo puede SUMAR.
-        if (valor !== null && r.value !== null && valor >= r.value) {
+        if (valor !== null && r.value !== null && valor >= r.value && soloScreening) {
+          razon(
+            "SCREENING_ONLY",
+            `La porción base cumple el mínimo de ${key} (${valor} ≥ ${r.value} ${r.unit}), pero es PRELIMINAR: la porción de esta persona puede ser menor.`,
+            { nutrient: key, value: valor, min: r.value, source: fuente },
+          );
+          subir(r.severity === "HARD" || r.severity === "CRITICAL_REVIEW" ? 2 : 1);
+        } else if (valor !== null && r.value !== null && valor >= r.value) {
           razon("RESTRICTION_OK", `Cumple el mínimo confirmado de ${key} (${valor} ≥ ${r.value} ${r.unit}).`, { nutrient: key, value: valor, min: r.value });
         } else if (completeness !== "COMPLETE") {
           missingData.push({ kind: "NUTRIENT", target: key, detail: `completeness ${completeness}` });
@@ -233,6 +271,13 @@ export function assessClinical(input: ClinicalAssessmentInput): ClinicalAssessme
         violations.push({ restrictionId: r.id, severity: r.severity, detail: `porción ${cantidad} < mín ${r.value}` });
         razon("PORTION_UNDER_MIN", `La porción (${cantidad} g) queda bajo el mínimo confirmado de ${r.value} g.`, { value: cantidad, min: r.value });
         subir(r.severity === "HARD" || r.severity === "CRITICAL_REVIEW" ? 3 : 1);
+      } else if (soloScreening) {
+        razon(
+          "SCREENING_ONLY",
+          `La porción base queda dentro del límite (${cantidad} g), pero es PRELIMINAR: todavía no existe la porción de esta persona.`,
+          { value: cantidad, source: fuente },
+        );
+        subir(r.severity === "HARD" || r.severity === "CRITICAL_REVIEW" ? 2 : 1);
       } else {
         razon("RESTRICTION_OK", "Porción dentro del límite confirmado.", { value: cantidad });
       }
@@ -267,6 +312,7 @@ export function assessClinical(input: ClinicalAssessmentInput): ClinicalAssessme
   return {
     engineVersion: CLINICAL_ENGINE_VERSION,
     status,
+    nutritionSource: fuente,
     reasons,
     missingData,
     violations,

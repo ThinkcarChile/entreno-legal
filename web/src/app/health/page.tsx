@@ -1,29 +1,39 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell, ShellAction } from "@/components/AppShell";
 import {
-  loadAccessibleMembers,
-  loadDocuments,
-  loadImpactReviews,
-} from "./queries";
+  Card,
+  CardLink,
+  Chip,
+  EmptyState,
+  Icon,
+  Notice,
+  Section,
+} from "@/components/ui";
+import { loadAccessibleMembers, loadDocuments, loadImpactReviews } from "./queries";
 
 export const dynamic = "force-dynamic";
 
-const ESTADOS: Record<string, string> = {
-  UPLOADED: "subido",
-  PROCESSING: "procesando",
-  EXTRACTED: "extraído",
-  NEEDS_REVIEW: "por revisar",
-  CONFIRMED: "confirmado",
-  FAILED: "falló",
-  ARCHIVED: "archivado",
+const ESTADOS: Record<string, { texto: string; tono: "neutro" | "atencion" | "primario" | "peligro" }> = {
+  UPLOADED: { texto: "subido", tono: "neutro" },
+  PROCESSING: { texto: "procesando", tono: "neutro" },
+  EXTRACTED: { texto: "por revisar", tono: "atencion" },
+  NEEDS_REVIEW: { texto: "por revisar", tono: "atencion" },
+  CONFIRMED: { texto: "confirmado", tono: "primario" },
+  FAILED: { texto: "no se pudo leer", tono: "peligro" },
+  ARCHIVED: { texto: "archivado", tono: "neutro" },
+};
+
+const RELACION: Record<string, string> = {
+  SELF: "tus datos",
+  GRANTED: "acceso concedido",
+  DEPENDENT: "a tu cargo",
 };
 
 /**
  * /health (§51): dashboard según permisos. Sin alarmismo: estados y tareas,
- * nunca veredictos de salud. Quien no tiene acceso a nadie ve SU espacio vacío
- * — jamás una pista de los datos ajenos.
+ * nunca veredictos de salud. Quien no tiene acceso a nadie ve SU espacio
+ * vacío — jamás una pista de los datos ajenos.
  */
 export default async function HealthPage() {
   const supabase = await createSupabaseServer();
@@ -43,119 +53,142 @@ export default async function HealthPage() {
   );
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-16">
-      <AppNav active="health" />
-      <header className="mb-4 flex items-end justify-between gap-2">
-        <div>
-          <h1 className="text-xl font-semibold">Salud</h1>
-          <p className="text-xs text-[var(--ink)]/60">
-            Exámenes, datos confirmados y restricciones verificadas. Privado por persona.
-          </p>
-        </div>
-        <Link
-          href="/health/exams/upload"
-          className="shrink-0 rounded-full bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white"
-        >
+    <AppShell
+      active="health"
+      title="Salud"
+      subtitle="Exámenes, datos confirmados y restricciones verificadas. Privado por persona."
+      action={
+        <ShellAction href="/health/exams/upload">
+          <Icon name="upload_file" className="text-[18px]" />
           Subir examen
-        </Link>
-      </header>
-
+        </ShellAction>
+      }
+    >
       {impactos.length > 0 && (
-        <section className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 p-4">
-          <h2 className="text-sm font-semibold text-amber-900">
-            {impactos.length}{" "}
-            {impactos.length === 1 ? "revisión de impacto pendiente" : "revisiones de impacto pendientes"}
-          </h2>
-          <p className="mt-1 text-xs text-amber-900/80">
-            Cambió información clínica: nada se aplica solo — revisa qué comidas y compras tocaría.
-          </p>
-          <ul className="mt-2 space-y-1 text-xs text-amber-900">
-            {impactos.map((i) => (
-              <li key={i.id}>
-                <Link href={`/health/member/${i.member_id}`} className="underline">
-                  {i.trigger_kind === "LAB_RESULTS_CONFIRMED"
-                    ? "Nuevo examen confirmado"
-                    : "Cambio de restricción"}{" "}
-                  · revisar impacto
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <Section className="mt-md">
+          <Notice icon="pending_actions">
+            <p className="font-semibold">
+              {impactos.length}{" "}
+              {impactos.length === 1
+                ? "revisión de impacto pendiente"
+                : "revisiones de impacto pendientes"}
+            </p>
+            <p className="mt-0.5">
+              Cambió información clínica: nada se aplica solo — revisa qué comidas y compras
+              tocaría.
+            </p>
+            <ul className="mt-sm space-y-1">
+              {impactos.map((i) => (
+                <li key={i.id}>
+                  <a href={`/health/member/${i.member_id}`} className="font-semibold underline">
+                    {i.trigger_kind === "LAB_RESULTS_CONFIRMED"
+                      ? "Nuevo examen confirmado"
+                      : "Cambio de restricción"}{" "}
+                    · revisar impacto
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </Notice>
+        </Section>
       )}
 
       {porRevisar.length > 0 && (
-        <section className="mb-4 rounded-2xl border border-[var(--accent)]/40 bg-white p-4">
-          <h2 className="text-sm font-semibold">Datos por revisar</h2>
-          <p className="mt-1 text-xs text-[var(--ink)]/60">
-            Lo extraído por IA no afecta ninguna decisión hasta que una persona lo confirme.
-          </p>
-          <ul className="mt-2 space-y-1 text-sm">
+        <Section
+          title="Datos por revisar"
+          hint="Lo extraído por IA no afecta ninguna decisión hasta que una persona lo confirme."
+          className={impactos.length > 0 ? "" : "mt-md"}
+        >
+          <ul className="space-y-sm">
             {porRevisar.map((d) => (
               <li key={d.id}>
-                <Link href={`/health/exams/${d.id}/review`} className="text-[var(--accent)] underline">
-                  {d.source_lab_name ?? "Examen"} · {d.document_date ?? "sin fecha"} ·{" "}
-                  {ESTADOS[d.processing_status] ?? d.processing_status}
-                </Link>
+                <CardLink href={`/health/exams/${d.id}/review`} className="flex items-center gap-md p-md">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-secondary-fixed text-on-secondary-fixed-variant">
+                    <Icon name="fact_check" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-body-md text-body-md font-semibold">
+                      {d.source_lab_name ?? "Examen"}
+                    </span>
+                    <span className="block font-body-sm text-body-sm text-on-surface-variant">
+                      {d.document_date ?? "sin fecha"}
+                    </span>
+                  </span>
+                  <Chip tono="atencion">revisar</Chip>
+                </CardLink>
               </li>
             ))}
           </ul>
-        </section>
+        </Section>
       )}
 
-      <section className="mb-4">
-        <h2 className="mb-2 text-sm font-semibold">Personas</h2>
+      <Section title="Personas" className={impactos.length || porRevisar.length ? "" : "mt-md"}>
         {miembros.length === 0 ? (
-          <p className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4 text-sm text-[var(--ink)]/60">
+          <EmptyState icon="lock">
             No tienes acceso al módulo de salud de nadie todavía. Cada persona ve lo suyo; el
             acceso a datos de otra persona requiere un permiso explícito de ella.
-          </p>
+          </EmptyState>
         ) : (
-          <ul className="space-y-2">
+          <ul className="grid grid-cols-1 gap-sm sm:grid-cols-2">
             {miembros.map((m) => (
               <li key={m.id}>
-                <Link
-                  href={`/health/member/${m.id}`}
-                  className="flex items-center justify-between rounded-2xl border border-[var(--ink)]/10 bg-white p-4"
-                >
-                  <span className="font-medium">{m.displayName}</span>
-                  <span className="rounded-full bg-[var(--paper)] px-2.5 py-1 text-[10px] text-[var(--ink)]/60">
-                    {m.relation === "SELF"
-                      ? "tus datos"
-                      : m.relation === "GRANTED"
-                        ? "acceso concedido"
-                        : "a tu cargo"}
+                <CardLink href={`/health/member/${m.id}`} className="flex items-center gap-md p-md">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-fixed font-headline-sm text-headline-sm text-on-primary-fixed">
+                    {m.displayName.slice(0, 1)}
                   </span>
-                </Link>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-body-md text-body-md font-semibold">
+                      {m.displayName}
+                    </span>
+                    <span className="block font-body-sm text-body-sm text-on-surface-variant">
+                      {RELACION[m.relation]}
+                    </span>
+                  </span>
+                  <Icon name="chevron_right" className="text-outline" />
+                </CardLink>
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </Section>
 
-      <section>
-        <h2 className="mb-2 text-sm font-semibold">Exámenes recientes</h2>
+      <Section title="Exámenes recientes">
         {documentos.length === 0 ? (
-          <p className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4 text-sm text-[var(--ink)]/60">
-            Sin exámenes visibles para ti.
-          </p>
+          <EmptyState icon="description">Sin exámenes visibles para ti.</EmptyState>
         ) : (
-          <ul className="space-y-2">
-            {documentos.slice(0, 8).map((d) => (
-              <li key={d.id} className="rounded-2xl border border-[var(--ink)]/10 bg-white p-3 text-sm">
-                <Link href={`/health/exams/${d.id}/review`} className="flex items-center justify-between">
-                  <span>
-                    {d.source_lab_name ?? "Examen"} · {d.document_date ?? "sin fecha"}
-                  </span>
-                  <span className="rounded-full bg-[var(--paper)] px-2.5 py-1 text-[10px]">
-                    {ESTADOS[d.processing_status] ?? d.processing_status}
-                  </span>
-                </Link>
-              </li>
-            ))}
+          <ul className="space-y-sm">
+            {documentos.slice(0, 8).map((d) => {
+              const e = ESTADOS[d.processing_status] ?? { texto: d.processing_status, tono: "neutro" as const };
+              return (
+                <li key={d.id}>
+                  <CardLink
+                    href={`/health/exams/${d.id}/review`}
+                    className="flex items-center justify-between gap-md p-md"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate font-body-md text-body-md">
+                        {d.source_lab_name ?? "Examen"}
+                      </span>
+                      <span className="block font-body-sm text-body-sm text-on-surface-variant">
+                        {d.document_date ?? "sin fecha"}
+                      </span>
+                    </span>
+                    <Chip tono={e.tono}>{e.texto}</Chip>
+                  </CardLink>
+                </li>
+              );
+            })}
           </ul>
         )}
-      </section>
-    </main>
+      </Section>
+
+      <Card className="mt-lg flex items-start gap-sm p-md">
+        <Icon name="shield_lock" className="mt-0.5 shrink-0 text-primary" />
+        <p className="font-body-sm text-body-sm text-on-surface-variant">
+          Los roles del hogar (administrar, planificar, cocinar, comprar) <strong>no</strong> dan
+          acceso a datos médicos. Cada permiso se concede y se revoca uno por uno.
+        </p>
+      </Card>
+    </AppShell>
   );
 }

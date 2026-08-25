@@ -7,7 +7,7 @@ import { DataAccessError } from "@/lib/supabase/unwrap";
 import { numeric, parseRows, uuid } from "@/lib/supabase/rows";
 import { extractFromText } from "@/domain/clinical/extraction";
 import { assessClinical } from "@/domain/clinical/engine";
-import { CLINICAL_ENGINE_VERSION } from "@/domain/clinical/types";
+import { CLINICAL_ENGINE_VERSION, type NutritionSource } from "@/domain/clinical/types";
 import { effectiveDate } from "@/domain/nutrition/calendar";
 import {
   loadConfirmedObservations,
@@ -360,7 +360,7 @@ export async function assessMeal(input: {
   //     porción estándar, declarada como tal en las razones).
   const valores: Record<string, number | null> = {};
   const completeness: Record<string, "COMPLETE" | "PARTIAL" | "UNKNOWN"> = {};
-  let fuenteNutricion: "SERVING" | "RECIPE_PER_SERVING" | "NONE" = "NONE";
+  let fuenteNutricion: NutritionSource = "NONE";
 
   const { data: versionBase, error: versionBaseError } = await supabase
     .from("meal_template_versions")
@@ -375,7 +375,7 @@ export async function assessMeal(input: {
   if (input.assignmentId) {
     const { data: proy, error: proyError } = await supabase
       .from("member_serving_projections")
-      .select("nutrition, completeness")
+      .select("nutrition, completeness, status")
       .eq("assignment_id", input.assignmentId)
       .eq("member_id", input.memberId)
       .maybeSingle();
@@ -385,6 +385,7 @@ export async function assessMeal(input: {
         .object({
           nutrition: z.record(z.string(), z.unknown()).catch({}),
           completeness: z.record(z.string(), z.string()).catch({}),
+          status: z.string(),
         })
         .parse(proy);
       // El optimizador guarda la nutrición YA por porción.
@@ -396,7 +397,13 @@ export async function assessMeal(input: {
       for (const [k, v] of Object.entries(compDentro ?? {})) {
         if (typeof v === "string") completeness[k] = v as "COMPLETE" | "PARTIAL" | "UNKNOWN";
       }
-      if (Object.keys(valores).length > 0) fuenteNutricion = "SERVING";
+      if (Object.keys(valores).length > 0) {
+        // §1: servida/comida = hecho consumado; planificada = proyección.
+        fuenteNutricion =
+          fila.status === "SERVED" || fila.status === "CONSUMED"
+            ? "CONFIRMED_MEMBER_SERVING"
+            : "PROJECTED_MEMBER_SERVING";
+      }
     }
   }
 
@@ -420,7 +427,7 @@ export async function assessMeal(input: {
       for (const [k, v] of Object.entries(filaNutricion.completeness)) {
         completeness[k] = v as "COMPLETE" | "PARTIAL" | "UNKNOWN";
       }
-      fuenteNutricion = "RECIPE_PER_SERVING";
+      fuenteNutricion = "RECIPE_BASE_ESTIMATE";
     }
   }
 
@@ -456,6 +463,7 @@ export async function assessMeal(input: {
 
   const evaluacion = assessClinical({
     date: hoy,
+    nutritionSource: fuenteNutricion,
     restrictions: restricciones,
     observations: observaciones,
     schedules: frecuencias,
@@ -488,9 +496,9 @@ export async function assessMeal(input: {
       missing_data: evaluacion.missingData,
       rule_refs: evaluacion.ruleRefs,
       restriction_snapshot: restricciones.map((r) => ({ id: r.id, ruleVersionId: r.ruleVersionId })),
-      // §96: de dónde salió la nutrición evaluada — la porción real o una
-      // estimación de porción estándar. Quien lea la evaluación lo sabe.
-      nutrition_source: fuenteNutricion,
+      // §1 del cierre v2: la fuente es columna propia (0029), no un detalle
+      // enterrado. De ella depende la FUERZA del veredicto.
+      nutrition_source: evaluacion.nutritionSource,
       observation_refs: evaluacion.observationRefs,
       proposed_adjustments: evaluacion.proposedAdjustments,
     },

@@ -74,9 +74,36 @@ export type NutrientCompletenessInput = Partial<
   Record<NutrientKey, "COMPLETE" | "PARTIAL" | "UNKNOWN">
 >;
 
+/**
+ * De dónde salió la nutrición que se está evaluando (§1 del cierre v2).
+ * NO se colapsan: la fuerza del veredicto depende de esto.
+ *
+ *  · CONFIRMED_MEMBER_SERVING — la porción que esta persona SIRVIÓ/COMIÓ.
+ *  · PROJECTED_MEMBER_SERVING — la porción calculada para ella en esa comida.
+ *  · RECIPE_BASE_ESTIMATE     — total de la receta ÷ porciones base. Es un
+ *    SCREENING: no sabe cuánto le van a servir a esta persona.
+ *  · NONE — no hay nutrición que evaluar.
+ */
+export type NutritionSource =
+  | "CONFIRMED_MEMBER_SERVING"
+  | "PROJECTED_MEMBER_SERVING"
+  | "RECIPE_BASE_ESTIMATE"
+  | "NONE";
+
+/** Fuentes que hablan de la porción DE ESTA PERSONA. */
+export const FUENTES_INDIVIDUALES: readonly NutritionSource[] = [
+  "CONFIRMED_MEMBER_SERVING",
+  "PROJECTED_MEMBER_SERVING",
+];
+
 export interface ClinicalAssessmentInput {
   /** Día civil del hogar. */
   date: string;
+  /**
+   * §1: sin esto el motor no puede saber si un "dentro del límite" habla de
+   * la persona o de un promedio de la olla. Obligatorio.
+   */
+  nutritionSource: NutritionSource;
   restrictions: readonly ClinicalRestriction[];
   observations: readonly ConfirmedObservation[];
   schedules: readonly LabScheduleInput[];
@@ -104,6 +131,7 @@ export interface ClinicalReason {
     | "PORTION_OVER_MAX"
     | "PORTION_UNDER_MIN"
     | "REVIEW_RULE"
+    | "SCREENING_ONLY"
     | "LAB_MISSING"
     | "LAB_UNIT_UNKNOWN"
     | "LAB_OUTDATED"
@@ -118,6 +146,8 @@ export interface ClinicalReason {
 export interface ClinicalAssessment {
   engineVersion: string;
   status: ClinicalAssessmentStatus;
+  /** §1: se persiste y se explica en pantalla. */
+  nutritionSource: NutritionSource;
   reasons: ClinicalReason[];
   /** Qué faltó para poder verificar (§27-§29): explícito, jamás silencioso. */
   missingData: { kind: "NUTRIENT" | "BIOMARKER" | "UNIT"; target: string; detail: string }[];
