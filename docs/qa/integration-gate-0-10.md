@@ -67,33 +67,27 @@ migración congelada + regresiones que fallan contra el código anterior:
 | 4 — motores | 0021 (`9451867c…`) | BatchPrepEngine con base física (cocido→crudo SOLO con rendimiento anotado; sin factor → nota "Sin planificar" visible); `planningCoveredDates` día a día (una comida el sábado ya no apaga el forecast de la semana); reorder conserva la base (DRAINED ya netea con Procurement); índice de sugerencias por `unidad+base`; `create_procurement_order` revalida AMBOS ejes del neteo; botón "Agregado" solo si se escribió | 4+3+5 (`engine.test.ts` B-2/S-1, `gate-tanda4.test.ts`) |
 | 5 — identidad producto | 0022 (`b25657ea…`) | `consume_planned_meal` v4: componentes con `product_id` descuentan SU lote (producto contra producto, jamás uno a cuenta de otro), faltante con linaje `product_id`; lotes de producto EXCLUIDOS del análisis de stock ahora se CUENTAN y la pantalla lo dice; guardián §35 ya no se apaga por archivo (probado por mutación) | 2 (`gate-tanda5.test.ts`) |
 
-**ALTO restantes (2), declarados:**
+**ALTO restantes (2) — CERRADOS en el Final Closure** (ver sección al final):
 
-1. **Carrera en `confirm_meal_assignment`** (lente I): la guarda "ya se sirvió"
-   es una lectura no serializada; dos confirmaciones simultáneas podrían pisar
-   una porción CONSUMED. *Mitigado* (el trigger de 0019 bloquea el borrado de
-   asignaciones servidas y la RLS ya no deja al cliente borrar porciones), pero
-   la ventana dentro del RPC existe. Cierre propuesto: `for update` sobre las
-   proyecciones al inicio del RPC (migración futura, no bloquea el circuito).
-2. **`seed_demo_family_profiles` vive en un seed, no en una migración**
-   (lente M): el arnés lo carga como si fuera parte del schema. En Supabase
-   existe solo porque el seed se corrió a mano. Cierre propuesto: moverlo a
-   una migración o eliminar su uso del arnés.
+1. **Carrera en `confirm_meal_assignment`** → cerrada por 0023 (candado
+   `for update` compartido entre confirm v5 y consume v5 + `for update of l`
+   en los FEFO). Regresiones en `gate-concurrency.test.ts`.
+2. **`seed_demo_family_profiles` vivía en un seed** → cerrada por 0024 (la
+   función es schema real y la app la llama); paridad vigilada por
+   `gate-schema-parity.test.ts` (probado por mutación).
 
 ## 4. Cola abierta (27 MEDIO + 5 BAJO) — no falsifican la física
 
 Agrupada por tema, en orden de riesgo:
 
-- **Concurrencia fina (I):** `consume_planned_meal` sin `FOR UPDATE` sobre
-  lotes; guarda `known_incoming` sin serialización; `setMealParticipants` no
-  atómico. El ledger append-only + claves de idempotencia acotan el daño a
-  dobles descuentos improbables, no a datos inventados.
-- **Fechas UTC vs hogar (F):** `nutrition_goals.start_date`/`end_date` usan el
-  día del servidor. Riesgo: una meta cerrada "un día antes" cerca de
-  medianoche.
-- **UNKNOWN restantes (J):** capacidad del congelador suma unidades mixtas y
-  se compara contra el tope total; forecast 0 sin historia se rotula "bien
-  abastecido"; detalle de alimento mezcla bases en una unidad.
+- ~~Concurrencia fina: FOR UPDATE de lotes~~ → cerrado en 0023; quedan los
+  guards `known_*` sin serialización total y `setMealParticipants` no atómico
+  (demostrado que no falsifican física — POST-SPRINT-11).
+- ~~Fechas UTC de nutrition_goals~~ → cerrado (día civil del hogar +
+  `gate-fechas.test.ts`).
+- **UNKNOWN restantes (J):** capacidad del congelador (unidades mixtas + tope
+  total); detalle de alimento mezcla bases en una unidad. ~~forecast sin
+  historia rotulado "bien abastecido"~~ → cerrado en el Final Closure.
 - **Historia (D):** trigger de inmutabilidad del perfil no cubre
   `computed_inputs`; `setItemStatus` borra el comprador al reprocesar; cascada
   de revisiones sin RLS; factor congelado puede venir de otro hogar (BAJO).
