@@ -1,10 +1,29 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { cancelPlan, generatePrepPlan } from "./actions";
 import type { PrepPlanView } from "./queries";
+import {
+  Button,
+  ButtonOutline,
+  Card,
+  CardLink,
+  Chip,
+  EmptyState,
+  Flotante,
+  Icon,
+  LinkButton,
+  Notice,
+  Section,
+  type Tono,
+} from "@/components/ui";
+
+/**
+ * Portada de preparación: el botón que genera la sugerencia, los planes vivos
+ * con su resumen en bloques y los anteriores. Nada de lo que se ve acá tocó
+ * todavía la despensa (§17).
+ */
 
 const ESTADO: Record<string, string> = {
   DRAFT: "borrador",
@@ -14,13 +33,57 @@ const ESTADO: Record<string, string> = {
   CANCELLED: "cancelado",
 };
 
+/** El color acompaña al texto del estado, nunca comunica solo (§94). */
+const ESTADO_TONO: Record<string, Tono> = {
+  DRAFT: "neutro",
+  READY: "primario",
+  IN_PROGRESS: "info",
+  COMPLETED: "primario",
+  CANCELLED: "neutro",
+};
+
+
+/** Casilla del resumen del plan: un número grande con su etiqueta. */
+function Dato({
+  icon,
+  color,
+  valor,
+  etiqueta,
+}: {
+  icon: string;
+  color: string;
+  valor: string;
+  etiqueta: string;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-1 rounded-xl bg-surface-container-low p-sm text-center">
+      <Icon name={icon} className={`text-[20px] ${color}`} />
+      <span className="font-headline-sm text-headline-sm text-on-surface">{valor}</span>
+      <span className="font-label-md text-label-md uppercase text-on-surface-variant">
+        {etiqueta}
+      </span>
+    </div>
+  );
+}
+
+/** Nota informativa dentro de una tarjeta de plan (dato, no alerta). */
+function Nota({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="rounded-2xl bg-surface-container px-md py-sm font-body-sm text-body-sm text-on-surface-variant">
+      {children}
+    </p>
+  );
+}
+
 export function PrepHome({ plans }: { plans: PrepPlanView[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function run(action: () => Promise<{ ok: boolean; error?: string; message?: string; planId?: string }>) {
+  function run(
+    action: () => Promise<{ ok: boolean; error?: string; message?: string; planId?: string }>,
+  ) {
     setError(null);
     setMessage(null);
     startTransition(async () => {
@@ -39,61 +102,63 @@ export function PrepHome({ plans }: { plans: PrepPlanView[] }) {
   const pasados = plans.filter((p) => ["COMPLETED", "CANCELLED"].includes(p.status)).slice(0, 6);
 
   return (
-    <div className="space-y-5">
-      {message && (
-        <p className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-3xl rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm text-white shadow-lg">
-          {message}
-        </p>
-      )}
-      {error && (
-        <p
-          className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-3xl rounded-xl bg-red-600 px-4 py-2.5 text-sm text-white shadow-lg"
-          role="alert"
-        >
-          {error}
-        </p>
-      )}
+    <div>
+      {message && <Flotante tono="ok">{message}</Flotante>}
+      {error && <Flotante tono="error">{error}</Flotante>}
 
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => run(generatePrepPlan)}
-        className="w-full rounded-2xl bg-[var(--accent)] px-6 py-4 text-base font-semibold text-white disabled:opacity-50"
-      >
+      <Button full disabled={pending} onClick={() => run(generatePrepPlan)}>
+        <Icon name="auto_awesome" className="text-[18px]" />
         {pending ? "Calculando…" : "Preparar compra / stock"}
-      </button>
-      <p className="-mt-3 text-center text-[10px] text-[var(--ink)]/40">
+      </Button>
+      <p className="mt-sm mb-lg text-center font-body-sm text-body-sm text-on-surface-variant">
         Genera la sugerencia. Nada cambia en la despensa hasta que confirmes cada paso.
       </p>
 
       {vivos.length === 0 && pasados.length === 0 && (
-        <p className="rounded-2xl border border-dashed border-[var(--ink)]/20 bg-white p-6 text-center text-sm text-[var(--ink)]/60">
+        <EmptyState icon="skillet">
           Sin planes todavía. Cuando recibas una compra o tengas stock sin preparar y comidas
           confirmadas, genera el plan acá.
-        </p>
+        </EmptyState>
       )}
 
-      {vivos.map((p) => (
-        <PlanCard key={p.id} plan={p} onCancel={() => run(() => cancelPlan(p.id))} pending={pending} />
-      ))}
+      {vivos.length > 0 && (
+        <div className="space-y-md">
+          {vivos.map((p) => (
+            <PlanCard
+              key={p.id}
+              plan={p}
+              onCancel={() => run(() => cancelPlan(p.id))}
+              pending={pending}
+            />
+          ))}
+        </div>
+      )}
 
       {pasados.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-semibold">Anteriores</h2>
-          <ul className="space-y-1.5">
+        <Section title="Anteriores" className="mt-lg">
+          <ul className="space-y-sm">
             {pasados.map((p) => (
               <li key={p.id}>
-                <Link
-                  href={`/prep/${p.id}`}
-                  className="block rounded-xl border border-[var(--ink)]/10 bg-white px-4 py-2.5 text-xs text-[var(--ink)]/70"
-                >
-                  {p.plan_date} · {ESTADO[p.status]} ·{" "}
-                  {p.batch_prep_tasks.filter((t) => t.status === "DONE").length}/{p.batch_prep_tasks.length} tareas
-                </Link>
+                <CardLink href={`/prep/${p.id}`} className="flex items-center gap-md p-md">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-container text-on-surface-variant">
+                    <Icon name="history" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-body-md text-body-md text-on-surface">
+                      Plan del {p.plan_date}
+                    </span>
+                    <span className="mt-0.5 block font-body-sm text-body-sm text-on-surface-variant">
+                      {ESTADO[p.status]} ·{" "}
+                      {p.batch_prep_tasks.filter((t) => t.status === "DONE").length}/
+                      {p.batch_prep_tasks.length} tareas
+                    </span>
+                  </span>
+                  <Icon name="chevron_right" className="shrink-0 text-outline" />
+                </CardLink>
               </li>
             ))}
           </ul>
-        </section>
+        </Section>
       )}
     </div>
   );
@@ -119,74 +184,114 @@ function PlanCard({
     thaw_suggestions?: { label: string; plan: { kind: string; note?: string; reason?: string } }[];
     unresolved?: { label: string; quantity: number; unit: string; reason: string }[];
   };
-  const bloques = [...new Set(plan.batch_prep_tasks.map((t) => t.block_label).filter(Boolean))] as string[];
+  const bloques = [
+    ...new Set(plan.batch_prep_tasks.map((t) => t.block_label).filter(Boolean)),
+  ] as string[];
+
+  const avisos =
+    (summary.warnings ?? []).length +
+    (summary.leave_whole ?? []).length +
+    (summary.unresolved ?? []).length +
+    (summary.thaw_suggestions ?? []).length;
 
   return (
-    <section className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="font-medium">Plan del {plan.plan_date}</p>
-          <p className="text-xs text-[var(--ink)]/60">
-            ~{summary.estimatedMinutes ?? "?"} min · {plan.batch_prep_tasks.length} tareas ·{" "}
-            {summary.foods ?? 0} alimentos · {summary.packages ?? 0} paquetes · {summary.labels ?? 0} etiquetas
-          </p>
-          <p className="text-xs text-[var(--ink)]/60">
-            {hechas}/{plan.batch_prep_tasks.length} completadas · {ESTADO[plan.status]}
+    <Card as="section" className="p-md">
+      <div className="flex flex-wrap items-start justify-between gap-sm">
+        <div className="min-w-0">
+          <h3 className="font-headline-sm text-headline-sm text-on-surface">
+            Plan del {plan.plan_date}
+          </h3>
+          <p className="mt-0.5 font-body-sm text-body-sm text-on-surface-variant">
+            {hechas}/{plan.batch_prep_tasks.length} completadas
           </p>
         </div>
-        <div className="flex shrink-0 flex-col gap-1.5">
-          <Link
-            href={`/prep/${plan.id}`}
-            className="rounded-full bg-[var(--accent)] px-4 py-2 text-center text-sm font-medium text-white"
-          >
-            Modo cocina
-          </Link>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={onCancel}
-            className="text-xs text-red-700 underline disabled:opacity-50"
-          >
-            Cancelar plan
-          </button>
-        </div>
+        <Chip tono={ESTADO_TONO[plan.status] ?? "neutro"}>{ESTADO[plan.status]}</Chip>
       </div>
 
+      <div className="mt-md grid grid-cols-3 gap-sm">
+        <Dato
+          icon="timer"
+          color="text-tertiary"
+          valor={`${summary.estimatedMinutes ?? "?"} min`}
+          etiqueta="Tiempo"
+        />
+        <Dato
+          icon="checklist"
+          color="text-primary"
+          valor={String(plan.batch_prep_tasks.length)}
+          etiqueta="Tareas"
+        />
+        <Dato
+          icon="nutrition"
+          color="text-secondary"
+          valor={String(summary.foods ?? 0)}
+          etiqueta="Alimentos"
+        />
+      </div>
+
+      <p className="mt-sm font-body-sm text-body-sm text-on-surface-variant">
+        {summary.packages ?? 0} paquetes · {summary.labels ?? 0} etiquetas
+      </p>
+
       {bloques.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-sm flex flex-wrap gap-xs">
           {bloques.map((b) => {
             const del = plan.batch_prep_tasks.filter((t) => t.block_label === b);
             const listas = del.filter((t) => t.status !== "PENDING").length;
             return (
-              <span key={b} className="rounded-full bg-[var(--paper)] px-2.5 py-1 text-[10px] text-[var(--ink)]/70">
+              <Chip key={b}>
                 {b} {listas}/{del.length}
-              </span>
+              </Chip>
             );
           })}
         </div>
       )}
 
-      {(summary.warnings ?? []).map((w) => (
-        <p key={w} className="mt-2 text-xs text-amber-700">
-          ⚠ {w}
-        </p>
-      ))}
-      {(summary.leave_whole ?? []).map((l) => (
-        <p key={l.label + l.quantity} className="mt-2 rounded-xl bg-[var(--paper)] px-3 py-2 text-xs text-[var(--ink)]/70">
-          Dejar sin preparar: <strong>{l.quantity} {l.unit.toLowerCase()} de {l.label}</strong> — {l.reason}
-        </p>
-      ))}
-      {(summary.unresolved ?? []).map((u, i) => (
-        <p key={`u-${i}`} className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          Sin planificar: <strong>{u.quantity} {u.unit.toLowerCase()} de {u.label}</strong> — {u.reason}
-        </p>
-      ))}
-      {(summary.thaw_suggestions ?? []).map((t, i) => (
-        <p key={i} className="mt-2 rounded-xl bg-[var(--paper)] px-3 py-2 text-xs text-[var(--ink)]/70">
-          Descongelar: <strong>{t.label}</strong> —{" "}
-          {t.plan.kind === "SCHEDULED" ? t.plan.note : `revisar descongelado (${t.plan.reason ?? "sin regla"})`}
-        </p>
-      ))}
-    </section>
+      {avisos > 0 && (
+        <div className="mt-md space-y-sm">
+          {(summary.warnings ?? []).map((w) => (
+            <Notice key={w} icon="warning">
+              {w}
+            </Notice>
+          ))}
+          {(summary.unresolved ?? []).map((u, i) => (
+            <Notice key={`u-${i}`} icon="help">
+              Sin planificar:{" "}
+              <strong className="font-semibold">
+                {u.quantity} {u.unit.toLowerCase()} de {u.label}
+              </strong>{" "}
+              — {u.reason}
+            </Notice>
+          ))}
+          {(summary.leave_whole ?? []).map((l) => (
+            <Nota key={l.label + l.quantity}>
+              Dejar sin preparar:{" "}
+              <strong className="font-semibold text-on-surface">
+                {l.quantity} {l.unit.toLowerCase()} de {l.label}
+              </strong>{" "}
+              — {l.reason}
+            </Nota>
+          ))}
+          {(summary.thaw_suggestions ?? []).map((t, i) => (
+            <Nota key={`t-${i}`}>
+              Descongelar: <strong className="font-semibold text-on-surface">{t.label}</strong> —{" "}
+              {t.plan.kind === "SCHEDULED"
+                ? t.plan.note
+                : `revisar descongelado (${t.plan.reason ?? "sin regla"})`}
+            </Nota>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-md flex flex-wrap items-center gap-sm">
+        <LinkButton href={`/prep/${plan.id}`}>
+          <Icon name="play_arrow" filled className="text-[18px]" />
+          Modo cocina
+        </LinkButton>
+        <ButtonOutline disabled={pending} onClick={onCancel}>
+          Cancelar plan
+        </ButtonOutline>
+      </div>
+    </Card>
   );
 }

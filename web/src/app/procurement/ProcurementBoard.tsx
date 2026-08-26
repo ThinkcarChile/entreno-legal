@@ -6,6 +6,24 @@ import type { ProcurementStatus, PurchaseScheduleResult, PurchaseSuggestion } fr
 import { advanceOrder, approveSuggestion, receiveOrder } from "./actions";
 import type { OrderView } from "./queries";
 import { effectiveDate } from "@/domain/nutrition/calendar";
+import {
+  Button,
+  ButtonOutline,
+  Card,
+  Chip,
+  EmptyState,
+  Flotante,
+  Icon,
+  Notice,
+  Section,
+  type Tono,
+} from "@/components/ui";
+
+/**
+ * Tablero de abastecimiento (§19): próximos pedidos · necesita acción ·
+ * en camino · recibidos. El motor propone; aprobar, pedir y recibir siempre
+ * lo toca una persona.
+ */
 
 const ESTADO_TEXTO: Record<ProcurementStatus, string> = {
   SUGGESTED: "sugerida",
@@ -18,6 +36,18 @@ const ESTADO_TEXTO: Record<ProcurementStatus, string> = {
   CANCELLED: "cancelada",
 };
 
+/** El color acompaña al texto del chip, nunca lo reemplaza (accesibilidad §94). */
+const ESTADO_TONO: Record<ProcurementStatus, Tono> = {
+  SUGGESTED: "neutro",
+  PLANNED: "neutro",
+  ORDERED: "info",
+  READY: "primario",
+  DELIVERING: "info",
+  RECEIVED: "primario",
+  STORED: "primario",
+  CANCELLED: "peligro",
+};
+
 const CONFIDENCE_LABELS = { LOW: "baja", MEDIUM: "media", HIGH: "alta" } as const;
 
 function unidad(u: "G" | "ML" | "UNIT"): string {
@@ -27,6 +57,27 @@ function unidad(u: "G" | "ML" | "UNIT"): string {
 function cantidad(n: number, u: "G" | "ML" | "UNIT"): string {
   const texto = Number.isInteger(n) ? n.toLocaleString("es-CL") : n.toLocaleString("es-CL", { maximumFractionDigits: 1 });
   return `${texto} ${unidad(u)}`;
+}
+
+
+/** Advertencia del motor: se mira, no bloquea. */
+function Advertencia({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mt-xs flex items-start gap-xs font-body-sm text-body-sm text-on-secondary-fixed-variant">
+      <Icon name="warning" className="mt-0.5 shrink-0 text-[16px]" />
+      <span className="min-w-0">{children}</span>
+    </p>
+  );
+}
+
+/** Etiqueta de logística: una fecha con su icono, en píldora. */
+function Logistica({ icon, children }: { icon: string; children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-container-high px-3 py-1.5 font-label-md text-label-md text-on-surface">
+      <Icon name={icon} className="text-[16px] text-on-surface-variant" />
+      {children}
+    </span>
+  );
 }
 
 export function ProcurementBoard({
@@ -72,263 +123,276 @@ export function ProcurementBoard({
   const baseTexto = (b: string) => (b === "DRAINED" ? " (escurrido)" : "");
 
   return (
-    <div className="space-y-5">
-      {message && (
-        <p className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-3xl rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm text-white shadow-lg">
-          {message}
-        </p>
-      )}
-      {error && (
-        <p
-          className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-3xl rounded-xl bg-red-600 px-4 py-2.5 text-sm text-white shadow-lg"
-          role="alert"
-        >
-          {error}
-        </p>
-      )}
+    <div>
+      {message && <Flotante tono="ok">{message}</Flotante>}
+      {error && <Flotante tono="error">{error}</Flotante>}
 
       {/* ---- Próximos pedidos ---- */}
-      <section>
-        <h2 className="mb-2 text-sm font-semibold">Próximos pedidos sugeridos</h2>
+      <Section title="Próximos pedidos sugeridos">
         {proximos.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-[var(--ink)]/20 bg-white p-5 text-center text-sm text-[var(--ink)]/60">
+          <EmptyState icon="shopping_cart_checkout">
             Nada que pedir por ahora. Cuando el stock no alcance, la sugerencia aparece acá con
             fechas y proveedor.
-          </p>
+          </EmptyState>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-md">
             {proximos.map((s) => {
               const clave = claveSug(s);
               const aprobada = aprobadas.has(clave);
               return (
-                <li key={clave} className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-medium">
-                        {s.label}
-                        {baseTexto(s.weightBasis)}
-                      </p>
-                      <p className="text-xs text-[var(--ink)]/60">
-                        necesitas {cantidad(s.requiredQuantity, s.unit)} · sugerido{" "}
-                        <strong className="text-[var(--ink)]">{cantidad(s.suggestedOrderQuantity, s.unit)}</strong>
-                        {s.packageCount != null && s.presentation && (
-                          <> ({s.packageCount} × {s.presentation})</>
-                        )}
-                      </p>
-                      <p className="text-xs text-[var(--ink)]/60">
-                        {s.supplierName && <>a {s.supplierName} · </>}
-                        pedir el {s.orderDate} · llega el {s.expectedDeliveryDate}
-                      </p>
-                      <p className="text-xs text-[var(--ink)]/60">
-                        en casa {cantidad(s.onHand, s.unit)}
-                        {s.incoming > 0 && <> · en camino {cantidad(s.incoming, s.unit)}</>}
-                        {s.pendingInList > 0 && <> · en la lista {cantidad(s.pendingInList, s.unit)}</>}
-                        {s.coverageAfterDays != null && <> · cobertura al recibir ~{s.coverageAfterDays} días</>}
-                        {s.confidence && <> · confianza {CONFIDENCE_LABELS[s.confidence]}</>}
-                      </p>
-                      {s.warnings.map((w) => (
-                        <p key={w} className="mt-1 text-xs text-amber-700">
-                          ⚠ {w}
-                        </p>
-                      ))}
-                    </div>
-                    <div className="flex shrink-0 flex-col items-end gap-2">
-                      <button
-                        type="button"
-                        disabled={pending || aprobada}
-                        onClick={() =>
-                          run(
-                            () => approveSuggestion(s),
-                            () => setAprobadas((prev) => new Set([...prev, clave])),
-                          )
-                        }
-                        className="rounded-full bg-[var(--accent)] px-4 py-2.5 text-xs font-medium text-white disabled:opacity-50"
-                      >
-                        {aprobada ? "Planificada ✓" : "Aprobar pedido"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAbierta(abierta === clave ? null : clave)}
-                        className="text-xs text-[var(--accent)] underline"
-                      >
-                        ¿Por qué?
-                      </button>
-                    </div>
+                <Card as="li" key={clave} className="p-md">
+                  <div className="flex flex-wrap items-start justify-between gap-sm">
+                    <p className="min-w-0 font-body-lg text-body-lg font-semibold text-on-surface">
+                      {s.label}
+                      {baseTexto(s.weightBasis)}
+                    </p>
+                    {s.supplierName && <Chip icon="storefront">{s.supplierName}</Chip>}
                   </div>
+
+                  {/* Cuánto pide el motor y por qué esa cifra */}
+                  <div className="mt-sm rounded-lg bg-surface-container p-md">
+                    <div className="flex items-start justify-between gap-sm">
+                      <div className="min-w-0">
+                        <p className="font-label-md text-label-md uppercase text-on-surface-variant">
+                          Necesitas
+                        </p>
+                        <p className="font-headline-sm text-headline-sm text-on-surface">
+                          {cantidad(s.requiredQuantity, s.unit)}
+                        </p>
+                      </div>
+                      <Icon name="arrow_forward" className="mt-md shrink-0 text-outline" />
+                      <div className="min-w-0 text-right">
+                        <p className="font-label-md text-label-md uppercase text-primary">
+                          Sugerido
+                        </p>
+                        <p className="font-headline-sm text-headline-sm text-primary">
+                          {cantidad(s.suggestedOrderQuantity, s.unit)}
+                        </p>
+                      </div>
+                    </div>
+                    {s.packageCount != null && s.presentation && (
+                      <div className="mt-sm flex items-center gap-sm border-t border-outline-variant/30 pt-sm">
+                        <Icon name="info" className="shrink-0 text-[18px] text-outline" />
+                        <p className="font-body-sm text-body-sm text-on-surface-variant">
+                          {s.packageCount} × {s.presentation}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-sm flex flex-wrap gap-sm">
+                    <Logistica icon="shopping_cart_checkout">pedir el {s.orderDate}</Logistica>
+                    <Logistica icon="local_shipping">llega el {s.expectedDeliveryDate}</Logistica>
+                  </div>
+
+                  <p className="mt-sm font-body-sm text-body-sm text-on-surface-variant">
+                    en casa {cantidad(s.onHand, s.unit)}
+                    {s.incoming > 0 && <> · en camino {cantidad(s.incoming, s.unit)}</>}
+                    {s.pendingInList > 0 && <> · en la lista {cantidad(s.pendingInList, s.unit)}</>}
+                    {s.coverageAfterDays != null && <> · cobertura al recibir ~{s.coverageAfterDays} días</>}
+                    {s.confidence && <> · confianza {CONFIDENCE_LABELS[s.confidence]}</>}
+                  </p>
+
+                  {s.warnings.map((w) => (
+                    <Advertencia key={w}>{w}</Advertencia>
+                  ))}
+
+                  <div className="mt-md flex flex-wrap gap-sm">
+                    <Button
+                      className="flex-1"
+                      disabled={pending || aprobada}
+                      onClick={() =>
+                        run(
+                          () => approveSuggestion(s),
+                          () => setAprobadas((prev) => new Set([...prev, clave])),
+                        )
+                      }
+                    >
+                      <Icon name={aprobada ? "check_circle" : "check"} filled={aprobada} className="text-[18px]" />
+                      {aprobada ? "Planificada" : "Aprobar pedido"}
+                    </Button>
+                    <ButtonOutline
+                      onClick={() => setAbierta(abierta === clave ? null : clave)}
+                    >
+                      <Icon name="help" className="text-[18px]" />
+                      ¿Por qué?
+                    </ButtonOutline>
+                  </div>
+
                   {abierta === clave && (
-                    <ol className="mt-2 space-y-1 rounded-xl bg-[var(--paper)] p-3 text-xs text-[var(--ink)]/70">
+                    <ol className="mt-sm space-y-1 rounded-xl bg-surface-container-low p-md font-body-sm text-body-sm text-on-surface-variant">
                       {s.provenance.map((p, i) => (
                         <li key={i}>
-                          <strong>{p.step}:</strong> {p.detail}
+                          <strong className="font-semibold text-on-surface">{p.step}:</strong>{" "}
+                          {p.detail}
                         </li>
                       ))}
-                      <li className="pt-1 text-[10px] text-[var(--ink)]/40">{s.engineVersion}</li>
+                      <li className="pt-1 font-label-md text-label-md text-outline">
+                        {s.engineVersion}
+                      </li>
                     </ol>
                   )}
-                </li>
+                </Card>
               );
             })}
           </ul>
         )}
-      </section>
+      </Section>
 
       {/* ---- Necesita acción ---- */}
       {plan.unresolved.length > 0 && (
-        <section className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900">
-          <p className="font-medium">
-            {plan.unresolved.length}{" "}
-            {plan.unresolved.length === 1
-              ? "necesidad no se pudo evaluar"
-              : "necesidades no se pudieron evaluar"}
-          </p>
-          <ul className="mt-1 space-y-0.5">
-            {plan.unresolved.map((u) => (
-              <li key={`${u.ingredientId}:${u.unit}:${u.weightBasis}`}>
-                {u.label}: {u.reason}.
-              </li>
-            ))}
-          </ul>
-        </section>
+        <Section>
+          <Notice icon="warning">
+            <p className="font-semibold">
+              {plan.unresolved.length}{" "}
+              {plan.unresolved.length === 1
+                ? "necesidad no se pudo evaluar"
+                : "necesidades no se pudieron evaluar"}
+            </p>
+            <ul className="mt-xs space-y-0.5">
+              {plan.unresolved.map((u) => (
+                <li key={`${u.ingredientId}:${u.unit}:${u.weightBasis}`}>
+                  {u.label}: {u.reason}.
+                </li>
+              ))}
+            </ul>
+          </Notice>
+        </Section>
       )}
 
       {(necesitanAccion.length > 0 || plan.coveredByIncoming.length > 0) && (
-        <section>
-          <h2 className="mb-2 text-sm font-semibold">Necesita acción</h2>
-          <ul className="space-y-2">
+        <Section title="Necesita acción">
+          <ul className="space-y-sm">
             {necesitanAccion.map((s) => (
-              <li key={`${s.ingredientId}:${s.unit}:${s.weightBasis}`} className="rounded-2xl border border-amber-300 bg-amber-50 p-4">
-                <p className="font-medium">
+              <li
+                key={`${s.ingredientId}:${s.unit}:${s.weightBasis}`}
+                className="rounded-2xl bg-secondary-fixed px-md py-sm text-on-secondary-fixed-variant"
+              >
+                <p className="font-body-md text-body-md font-semibold">
                   {s.label}
                   {baseTexto(s.weightBasis)}
                 </p>
-                <p className="text-xs text-[var(--ink)]/70">
+                <p className="font-body-sm text-body-sm">
                   necesitas {cantidad(s.requiredQuantity, s.unit)} · en casa {cantidad(s.onHand, s.unit)}
                   {s.incoming > 0 && <> · en camino {cantidad(s.incoming, s.unit)}</>}
                 </p>
                 {s.warnings.map((w) => (
-                  <p key={w} className="mt-1 text-xs text-amber-800">
-                    ⚠ {w}
+                  <p key={w} className="mt-xs flex items-start gap-xs font-body-sm text-body-sm">
+                    <Icon name="warning" className="mt-0.5 shrink-0 text-[16px]" />
+                    <span className="min-w-0">{w}</span>
                   </p>
                 ))}
               </li>
             ))}
             {plan.coveredByIncoming.map((c) => (
-              <li
-                key={`${c.ingredientId}:${c.unit}:${c.weightBasis}`}
-                className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4 text-xs text-[var(--ink)]/60"
-              >
-                <strong className="text-[var(--ink)]">
-                  {c.label}
-                  {baseTexto(c.weightBasis)}
-                </strong>
-                : la necesidad ya viene cubierta
-                {c.incoming > 0 && <> con {cantidad(c.incoming, c.unit)} en camino</>}
-                {c.pendingInList > 0 && <>{c.incoming > 0 ? " y" : " con"} {cantidad(c.pendingInList, c.unit)} pendientes en la lista</>}
-                {" "}— no se sugiere de nuevo.
+              <Card as="li" key={`${c.ingredientId}:${c.unit}:${c.weightBasis}`} className="p-md">
+                <p className="font-body-sm text-body-sm text-on-surface-variant">
+                  <strong className="font-semibold text-on-surface">
+                    {c.label}
+                    {baseTexto(c.weightBasis)}
+                  </strong>
+                  : la necesidad ya viene cubierta
+                  {c.incoming > 0 && <> con {cantidad(c.incoming, c.unit)} en camino</>}
+                  {c.pendingInList > 0 && (
+                    <>
+                      {c.incoming > 0 ? " y" : " con"} {cantidad(c.pendingInList, c.unit)} pendientes
+                      en la lista
+                    </>
+                  )}{" "}
+                  — no se sugiere de nuevo.
+                </p>
                 {c.warnings.map((w) => (
-                  <span key={w} className="mt-1 block text-amber-700">
-                    ⚠ {w}
-                  </span>
+                  <Advertencia key={w}>{w}</Advertencia>
                 ))}
-              </li>
+              </Card>
             ))}
           </ul>
-        </section>
+        </Section>
       )}
 
       {/* ---- En camino ---- */}
-      <section>
-        <h2 className="mb-2 text-sm font-semibold">En camino</h2>
+      <Section title="En camino">
         {enCamino.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-[var(--ink)]/20 bg-white p-4 text-center text-xs text-[var(--ink)]/60">
-            Sin órdenes vivas.
-          </p>
+          <EmptyState icon="local_shipping">Sin órdenes vivas.</EmptyState>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-sm">
             {enCamino.map((o) => (
-              <li key={o.id} className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">
-                      {o.items.map((i) => `${cantidad(i.suggestedQuantity, i.unit)} de ${i.label}`).join(" · ")}
-                    </p>
-                    <p className="text-xs text-[var(--ink)]/60">
-                      {o.supplierName && <>{o.supplierName} · </>}
-                      <span className="rounded-full bg-[var(--paper)] px-2 py-0.5">{ESTADO_TEXTO[o.status]}</span>
-                      {o.orderDate && (
-                        <>
-                          {" "}
-                          · pedir el {o.orderDate}
-                          {o.status === "PLANNED" && o.orderDate < today && (
-                            <span className="text-amber-700"> (la fecha de pedido ya pasó)</span>
-                          )}
-                        </>
-                      )}
-                      {o.expectedDeliveryDate && (
-                        <>
-                          {" "}
-                          · llega el {o.expectedDeliveryDate}
-                          {o.expectedDeliveryDate < today && o.status !== "PLANNED" && (
-                            <span className="text-amber-700"> (atrasada)</span>
-                          )}
-                        </>
-                      )}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-2">
-                    {o.status === "PLANNED" && (
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={() => run(() => advanceOrder(o.id, "ORDERED"))}
-                        className="rounded-full bg-[var(--accent)] px-4 py-2.5 text-xs font-medium text-white disabled:opacity-50"
-                      >
-                        Ya lo pedí
-                      </button>
-                    )}
-                    {["ORDERED", "READY", "DELIVERING"].includes(o.status) && (
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={() => run(() => receiveOrder(o.id))}
-                        className="rounded-full bg-[var(--accent)] px-4 py-2.5 text-xs font-medium text-white disabled:opacity-50"
-                      >
-                        Llegó: recibir
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={() => run(() => advanceOrder(o.id, "CANCELLED"))}
-                      className="text-xs text-red-700 underline disabled:opacity-50"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
+              <Card as="li" key={o.id} className="p-md">
+                <div className="flex flex-wrap items-start justify-between gap-sm">
+                  <p className="min-w-0 font-body-md text-body-md font-semibold text-on-surface">
+                    {o.items.map((i) => `${cantidad(i.suggestedQuantity, i.unit)} de ${i.label}`).join(" · ")}
+                  </p>
+                  <Chip tono={ESTADO_TONO[o.status]}>{ESTADO_TEXTO[o.status]}</Chip>
                 </div>
-              </li>
+                <p className="mt-xs font-body-sm text-body-sm text-on-surface-variant">
+                  {o.supplierName && <>{o.supplierName}</>}
+                  {o.orderDate && (
+                    <>
+                      {o.supplierName && " · "}
+                      pedir el {o.orderDate}
+                      {o.status === "PLANNED" && o.orderDate < today && (
+                        <span className="text-on-secondary-fixed-variant">
+                          {" "}
+                          (la fecha de pedido ya pasó)
+                        </span>
+                      )}
+                    </>
+                  )}
+                  {o.expectedDeliveryDate && (
+                    <>
+                      {" · "}
+                      llega el {o.expectedDeliveryDate}
+                      {o.expectedDeliveryDate < today && o.status !== "PLANNED" && (
+                        <span className="text-on-secondary-fixed-variant"> (atrasada)</span>
+                      )}
+                    </>
+                  )}
+                </p>
+                <div className="mt-md flex flex-wrap items-center gap-sm">
+                  {o.status === "PLANNED" && (
+                    <Button disabled={pending} onClick={() => run(() => advanceOrder(o.id, "ORDERED"))}>
+                      <Icon name="shopping_cart_checkout" className="text-[18px]" />
+                      Ya lo pedí
+                    </Button>
+                  )}
+                  {["ORDERED", "READY", "DELIVERING"].includes(o.status) && (
+                    <Button disabled={pending} onClick={() => run(() => receiveOrder(o.id))}>
+                      <Icon name="inventory_2" className="text-[18px]" />
+                      Llegó: recibir
+                    </Button>
+                  )}
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => run(() => advanceOrder(o.id, "CANCELLED"))}
+                    className="inline-flex items-center gap-xs rounded-full px-md py-sm font-body-sm text-body-sm font-semibold text-error transition-transform active:scale-95 disabled:opacity-40"
+                  >
+                    <Icon name="cancel" className="text-[18px]" />
+                    Cancelar
+                  </button>
+                </div>
+              </Card>
             ))}
           </ul>
         )}
-      </section>
+      </Section>
 
       {/* ---- Recibidos recientemente ---- */}
       {recibidas.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-semibold">Recibidos recientemente</h2>
-          <ul className="space-y-1.5">
+        <Section title="Recibidos recientemente">
+          <ul className="space-y-sm">
             {recibidas.map((o) => (
-              <li
-                key={o.id}
-                className="rounded-xl border border-[var(--ink)]/10 bg-white px-4 py-2.5 text-xs text-[var(--ink)]/70"
-              >
-                {o.items.map((i) => `${cantidad(i.suggestedQuantity, i.unit)} de ${i.label}`).join(" · ")}
-                {o.supplierName && <> — {o.supplierName}</>}
-                {o.receivedAt && <> · {effectiveDate(new Date(o.receivedAt), timeZone)}</>}
-              </li>
+              <Card as="li" key={o.id} className="flex items-start gap-sm px-md py-sm">
+                <Icon name="check_circle" className="mt-0.5 shrink-0 text-[18px] text-primary" />
+                <p className="min-w-0 font-body-sm text-body-sm text-on-surface-variant">
+                  {o.items.map((i) => `${cantidad(i.suggestedQuantity, i.unit)} de ${i.label}`).join(" · ")}
+                  {o.supplierName && <> — {o.supplierName}</>}
+                  {o.receivedAt && <> · {effectiveDate(new Date(o.receivedAt), timeZone)}</>}
+                </p>
+              </Card>
             ))}
           </ul>
-        </section>
+        </Section>
       )}
     </div>
   );

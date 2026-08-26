@@ -23,11 +23,41 @@ export type ClinicalRestrictionType =
   | "REVIEW_REQUIRED"
   | "OTHER";
 
+/**
+ * Veredicto clínico de una comida para una persona.
+ *
+ * `NOT_ASSESSED` (0035) NO es un veredicto: es la ausencia de uno. Existe
+ * porque antes esa ausencia se guardaba como NULL y NULL no pinta nada en
+ * pantalla — o sea, se veía idéntica a una porción evaluada y limpia. El motor
+ * jamás devuelve este valor: lo escribe la base al nacer la porción y lo
+ * reemplaza quien la evalúa. UNKNOWN NUNCA SIGNIFICA NORMAL.
+ */
 export type ClinicalAssessmentStatus =
   | "COMPATIBLE"
   | "COMPATIBLE_WITH_CAUTION"
   | "REVIEW_REQUIRED"
-  | "CLINICALLY_INVALIDATED";
+  | "CLINICALLY_INVALIDATED"
+  | "NOT_ASSESSED";
+
+/** Los únicos dos que significan "alguien la miró Y salió limpia". */
+export const ESTADOS_CLINICOS_LIMPIOS: readonly ClinicalAssessmentStatus[] = [
+  "COMPATIBLE",
+  "COMPATIBLE_WITH_CAUTION",
+];
+
+/**
+ * Los que significan "alguien la miró". Todo lo demás —NOT_ASSESSED, NULL, o
+ * una etiqueta nueva que este código todavía no conozca— es SIN EVALUAR. La
+ * regla se escribe por complemento a propósito: una lista de estados
+ * alarmantes deja pasar por limpio todo lo que no esté en ella, que es el
+ * falso-seguro que costó esta migración.
+ */
+export const ESTADOS_CLINICOS_EVALUADOS: readonly ClinicalAssessmentStatus[] = [
+  "COMPATIBLE",
+  "COMPATIBLE_WITH_CAUTION",
+  "REVIEW_REQUIRED",
+  "CLINICALLY_INVALIDATED",
+];
 
 /** Restricción CONFIRMADA y vigente (el loader filtra; el motor re-verifica fechas). */
 export interface ClinicalRestriction {

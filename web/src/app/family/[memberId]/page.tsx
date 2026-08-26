@@ -2,7 +2,8 @@ import { uuidParam } from "@/lib/route-params";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell } from "@/components/AppShell";
+import { Card, Chip, Icon } from "@/components/ui";
 import { firstMeal } from "@/domain/nutrition/profile";
 import { TRACKING_LABELS } from "@/domain/nutrition/types";
 import { MEAL_TYPE_LABELS } from "@/domain/recipes/types";
@@ -23,6 +24,13 @@ export const dynamic = "force-dynamic";
 interface Props {
   params: Promise<{ memberId: string }>;
 }
+
+/** El seguimiento apagado no es un error: se dice con su propio color y texto. */
+const TONO_TRACKING = {
+  OFF: "neutro",
+  BASIC: "info",
+  FULL: "primario",
+} as const;
 
 export default async function MemberPage({ params }: Props) {
   const { memberId: memberIdCrudo } = await params;
@@ -60,22 +68,38 @@ export default async function MemberPage({ params }: Props) {
   const primera = firstMeal(profile);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-16">
-      <AppNav active="family" />
-      <Link href="/family" className="text-sm text-[var(--accent)]">
-        ← Familia
-      </Link>
+    <AppShell active="family" title={member.display_name} subtitle="Perfil del integrante">
+      <div className="mt-md">
+        <Link
+          href="/family"
+          className="inline-flex items-center gap-xs font-body-sm text-body-sm font-semibold text-primary"
+        >
+          <Icon name="arrow_back" className="text-[18px]" />
+          Familia
+        </Link>
+      </div>
 
-      <header className="mb-4 mt-2">
-        <MemberNameEditor memberId={member.id} displayName={member.display_name} />
-        <p className="mt-1 text-sm text-[var(--ink)]/60">
-          {TRACKING_LABELS[profile.trackingMode]}
-          {primera && <> · primera comida: {MEAL_TYPE_LABELS[primera]}</>}
-          {profile.version > 0 && <> · perfil v{profile.version}</>}
-        </p>
-      </header>
+      <Card className="mt-md flex flex-wrap items-center gap-md p-md">
+        <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-primary-fixed font-headline-lg text-headline-lg text-on-primary-fixed">
+          {member.display_name.slice(0, 1)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap gap-1">
+            <Chip tono={TONO_TRACKING[profile.trackingMode]} icon="monitor_heart">
+              {TRACKING_LABELS[profile.trackingMode]}
+            </Chip>
+            {primera && (
+              <Chip icon="schedule">primera comida: {MEAL_TYPE_LABELS[primera]}</Chip>
+            )}
+            {profile.version > 0 && <Chip icon="history">perfil v{profile.version}</Chip>}
+          </div>
+          <div className="mt-sm">
+            <MemberNameEditor memberId={member.id} displayName={member.display_name} />
+          </div>
+        </div>
+      </Card>
 
-      <div className="space-y-5">
+      <div className="mt-lg space-y-lg">
         <MemberNutritionEditor
           memberId={member.id}
           memberName={member.display_name}
@@ -90,6 +114,6 @@ export default async function MemberPage({ params }: Props) {
           context={preferenceContext}
         />
       </div>
-    </main>
+    </AppShell>
   );
 }

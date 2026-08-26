@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell } from "@/components/AppShell";
+import { Icon, LinkButton, Notice } from "@/components/ui";
 import { effectiveDate, weekStart } from "@/domain/nutrition/calendar";
 import { analyzeStock } from "@/domain/stock/engine";
 import { loadHouseholdMembers } from "@/app/family/nutrition-queries";
@@ -66,49 +66,54 @@ export default async function ReorderPage() {
     .map((f) => `${f.ingredient_id}${f.unit}${f.purchase_basis === "DRAINED" ? "DRAINED" : "RAW"}`);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-16">
-      <AppNav active="pantry" />
-      <Link href="/pantry" className="text-xs text-[var(--accent)] underline">
-        ← Despensa
-      </Link>
-      <header className="mb-4 mt-2">
-        <h1 className="text-2xl font-semibold">Reposición</h1>
-        <p className="mt-1 text-sm text-[var(--ink)]/60">
-          {accionables.length === 0
-            ? "Nada que reponer por ahora."
-            : `${accionables.length} ${accionables.length === 1 ? "alimento necesita" : "alimentos necesitan"} atención`}
-        </p>
-      </header>
+    <AppShell
+      active="pantry"
+      title="Reposición"
+      subtitle={
+        accionables.length === 0
+          ? "Nada que reponer por ahora."
+          : `${accionables.length} ${accionables.length === 1 ? "alimento necesita" : "alimentos necesitan"} atención`
+      }
+      action={
+        <LinkButton href="/pantry" variant="outline">
+          <Icon name="arrow_back" className="text-[18px]" />
+          Despensa
+        </LinkButton>
+      }
+    >
+      <div className="mt-md space-y-md">
+        {sinResolver.length > 0 && (
+          <Notice icon="help">
+            <p className="font-semibold">
+              {sinResolver.length}{" "}
+              {sinResolver.length === 1
+                ? "alimento no se pudo evaluar"
+                : "alimentos no se pudieron evaluar"}
+            </p>
+            <ul className="mt-sm space-y-1">
+              {sinResolver.map((i) => (
+                <li key={i.ingredientId + i.unit + i.weightBasis}>
+                  {i.label}: demanda en una base sin factor de conversión anotado — puede esconder
+                  un faltante real.
+                </li>
+              ))}
+            </ul>
+          </Notice>
+        )}
 
-      {sinResolver.length > 0 && (
-        <div className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          <p className="font-medium">
-            {sinResolver.length}{" "}
-            {sinResolver.length === 1 ? "alimento no se pudo evaluar" : "alimentos no se pudieron evaluar"}
-          </p>
-          <ul className="mt-1 space-y-0.5">
-            {sinResolver.map((i) => (
-              <li key={i.ingredientId + i.unit + i.weightBasis}>
-                {i.label}: demanda en una base sin factor de conversión anotado — puede esconder un
-                faltante real.
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {input.excludedProductLots > 0 && (
-        <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          {input.excludedProductLots}{" "}
-          {input.excludedProductLots === 1
-            ? "lote con identidad de producto comercial queda"
-            : "lotes con identidad de producto comercial quedan"}{" "}
-          fuera de este análisis: el motor de reposición trabaja por alimento. Revísalos a mano en
-          la despensa.
-        </p>
-      )}
+        {input.excludedProductLots > 0 && (
+          <Notice icon="inventory_2">
+            {input.excludedProductLots}{" "}
+            {input.excludedProductLots === 1
+              ? "lote con identidad de producto comercial queda"
+              : "lotes con identidad de producto comercial quedan"}{" "}
+            fuera de este análisis: el motor de reposición trabaja por alimento. Revísalos a mano en
+            la despensa.
+          </Notice>
+        )}
+      </div>
 
       <ReorderBoard items={accionables} weekStart={inicioSemana} yaSugeridos={sugeridos} />
-    </main>
+    </AppShell>
   );
 }

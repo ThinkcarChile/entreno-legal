@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell } from "@/components/AppShell";
+import { Icon, LinkButton, Notice } from "@/components/ui";
 import { ProductForm } from "./ProductForm";
 
 export const dynamic = "force-dynamic";
@@ -18,16 +19,35 @@ export default async function NewProductPage({ searchParams }: Props) {
   if (!user) redirect("/login?next=/catalog/product/new");
 
   return (
-    <main className="pt-2">
-      <AppNav active="catalog" />
-      <h1 className="text-2xl font-bold">Agregar producto</h1>
-      <p className="mt-1 text-sm opacity-70">
-        Producto privado de tu hogar. Copia los datos de la etiqueta; revisarás un resumen antes de
-        guardar.
-      </p>
-      <div className="mt-4">
+    <AppShell
+      active="catalog"
+      title="Agregar producto"
+      subtitle="Producto privado de tu hogar: nadie más lo ve."
+      action={
+        <LinkButton href="/catalog" variant="outline">
+          <Icon name="arrow_back" className="text-[18px]" />
+          Catálogo
+        </LinkButton>
+      }
+    >
+      <div className="mt-md">
+        <Notice icon="edit_note">
+          Copia los datos tal como vienen en la etiqueta. Antes de guardar te mostramos un resumen
+          de cómo los interpretamos, y ahí recién confirmas.
+        </Notice>
+      </div>
+
+      {barcode ? (
+        <div className="mt-sm">
+          <Notice icon="barcode_scanner" tono="info">
+            Partimos del código <strong className="tabular-nums">{barcode}</strong> que escaneaste.
+          </Notice>
+        </div>
+      ) : null}
+
+      <div className="mt-lg">
         <ProductForm initialBarcode={barcode ?? ""} />
       </div>
-    </main>
+    </AppShell>
   );
 }

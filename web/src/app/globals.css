@@ -75,6 +75,22 @@
   --spacing-xl: 32px;
   --spacing-xxl: 48px;
 
+  /* --- TRAMPA: los nombres de arriba le ganan a los anchos ----------------
+   *
+   * La escala de espaciado usa xs/sm/md/lg/xl, que son LOS MISMOS nombres que
+   * Tailwind usa para los anchos. Cuando un nombre existe en la escala de
+   * espaciado, gana: `max-w-sm` no significa 24rem, significa 8 PÍXELES.
+   *
+   * El login quedó en una columna de ocho píxeles, con una palabra por línea.
+   * Y venía de antes de la migración de diseño — `error.tsx` y `not-found.tsx`
+   * lo arrastraban en silencio, porque una página de error angosta no molesta
+   * lo suficiente como para que alguien la reporte.
+   *
+   * Definir `--container-*` NO lo arregla: la escala de espaciado tiene
+   * prioridad. La salida es no usar esas utilidades: `max-w-[24rem]` en vez de
+   * `max-w-sm`. Lo vigila `src/app/anchos-colisionados.test.ts`.
+   */
+
   /* --- Radios ------------------------------------------------------------- */
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
@@ -128,17 +144,6 @@
   --text-label-md--line-height: 16px;
   --text-label-md--letter-spacing: 0.05em;
   --text-label-md--font-weight: 600;
-}
-
-/**
- * Compatibilidad: el código anterior usa `var(--paper)`, `var(--ink)` y
- * `var(--accent)`. Se mapean a los tokens nuevos para que ninguna pantalla
- * quede rota mientras migran una por una.
- */
-:root {
-  --paper: #fff8f3;
-  --ink: #1e1b17;
-  --accent: #3a684d;
 }
 
 body {

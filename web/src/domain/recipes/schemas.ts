@@ -22,7 +22,12 @@ export const componentDraftSchema = z
     cookingMethod: z.enum(COOKING_METHODS).optional().nullable(),
     /** Rol culinario declarado (ADR 0004). Ver `component_role` en la base. */
     role: z.enum(["MAIN", "ADDED_FAT", "SEASONING"]).default("MAIN"),
-    yieldFactor: z.number().positive().max(2).optional().nullable(),
+    /**
+     * Espeja el check de la base (migración 0031). El tope era 2 y era falso:
+     * el arroz rinde 2,5 y las legumbres secas 2,4. NULL sigue siendo
+     * DESCONOCIDO — jamás se rellena con 1.
+     */
+    yieldFactor: z.number().positive().max(5).optional().nullable(),
     isOptional: z.boolean().default(false),
   })
   .refine(
@@ -72,7 +77,8 @@ export const recipeDraftSchema = z.object({
     .positive()
     .max(50),
   baseTimeMinutes: z.number().int().positive().max(600).optional().nullable(),
-  totalYieldFactor: z.number().positive().max(2).optional().nullable(),
+  /** Igual que arriba: tope 5 desde la migración 0031, NULL = desconocido. */
+  totalYieldFactor: z.number().positive().max(5).optional().nullable(),
   slots: z.array(slotDraftSchema).min(1, "Agrega al menos un ingrediente"),
   steps: z.array(stepDraftSchema).default([]),
 });

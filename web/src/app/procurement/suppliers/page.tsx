@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell, ShellAction } from "@/components/AppShell";
+import { Icon } from "@/components/ui";
 import { loadHouseholdMembers } from "@/app/family/nutrition-queries";
 import { loadIngredientOptions } from "@/app/pantry/queries";
 import { loadProcurementConfig } from "../queries";
@@ -31,23 +31,23 @@ export default async function SuppliersPage() {
   ]);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-16">
-      <AppNav active="procurement" />
-      <header className="mb-4 flex items-end justify-between gap-2">
-        <div>
-          <h1 className="text-xl font-semibold">Proveedores</h1>
-          <p className="text-xs text-[var(--ink)]/60">
-            Quién te vende qué, en qué presentación y con qué reglas de entrega.
-          </p>
-        </div>
-        <Link
-          href="/procurement"
-          className="shrink-0 rounded-full border border-[var(--accent)] px-4 py-2.5 text-xs font-medium text-[var(--accent)]"
-        >
-          ← Pedidos
-        </Link>
-      </header>
-      <SuppliersBoard config={config} ingredientes={ingredientes} />
-    </main>
+    <AppShell
+      active="procurement"
+      title="Proveedores"
+      subtitle="Quién te vende qué, en qué presentación y con qué reglas de entrega."
+      action={
+        <ShellAction href="/procurement">
+          <Icon name="arrow_back" className="text-[18px]" />
+          Pedidos
+        </ShellAction>
+      }
+    >
+      <div className="mt-md">
+        <p className="mb-sm font-label-md text-label-md uppercase text-primary">
+          Gestión de abastecimiento
+        </p>
+        <SuppliersBoard config={config} ingredientes={ingredientes} />
+      </div>
+    </AppShell>
   );
 }

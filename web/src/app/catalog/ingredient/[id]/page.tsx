@@ -1,7 +1,8 @@
 import { uuidParam } from "@/lib/route-params";
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell } from "@/components/AppShell";
+import { Card, Chip, Icon, LinkButton, Section } from "@/components/ui";
 import { QuantityCalculator } from "@/components/QuantityCalculator";
 import { DataAccessError } from "@/lib/supabase/unwrap";
 import {
@@ -53,6 +54,18 @@ function factValues(row: FactRow): NutritionValues {
   return values;
 }
 
+/**
+ * Selector de estado (crudo, cocido, escurrido…): un carrusel de píldoras, no
+ * un menú escondido. Cada estado tiene su PROPIA ficha nutricional, así que
+ * cambiarlo cambia todos los números de abajo: tiene que verse.
+ * 44 px de alto mínimo — esto se toca con el pulgar en 320 px.
+ */
+const PILDORA =
+  "inline-flex min-h-[44px] shrink-0 snap-start items-center gap-1 rounded-full px-md py-2.5 font-body-sm text-body-sm font-semibold transition-colors";
+const PILDORA_ACTIVA = "bg-primary text-on-primary";
+const PILDORA_INACTIVA =
+  "border border-outline-variant bg-surface-container-lowest text-on-surface-variant";
+
 export default async function IngredientPage({ params, searchParams }: Props) {
   const { id: idCrudo } = await params;
   const id = uuidParam(idCrudo);
@@ -98,35 +111,50 @@ export default async function IngredientPage({ params, searchParams }: Props) {
     "categoría del ingrediente",
   ).ingredient_categories?.name;
 
+  const unidad = selected.basis_unit === "ML" ? "ml" : "g";
+
   return (
-    <main className="pt-2">
-      <AppNav active="catalog" />
-      <h1 className="text-2xl font-bold">{ingredient.display_name}</h1>
-      {category ? <p className="text-sm opacity-60">{category}</p> : null}
+    <AppShell
+      active="catalog"
+      title={ingredient.display_name}
+      subtitle={category ?? "Ingrediente del catálogo"}
+      action={
+        <LinkButton href="/catalog" variant="outline">
+          <Icon name="arrow_back" className="text-[18px]" />
+          Catálogo
+        </LinkButton>
+      }
+    >
+      <Section
+        className="mt-md"
+        title="Estado del alimento"
+        hint={`Los valores cambian según la preparación. Estás viendo por 100 ${unidad}.`}
+      >
+        {facts.length > 1 ? (
+          <div className="hide-scrollbar -mx-container-margin flex snap-x gap-sm overflow-x-auto px-container-margin md:mx-0 md:px-0">
+            {facts.map((f) => {
+              const activa = f.id === selected.id;
+              return (
+                <a
+                  key={f.id}
+                  href={`?basis=${f.weight_basis}`}
+                  aria-current={activa ? "true" : undefined}
+                  className={`${PILDORA} ${activa ? PILDORA_ACTIVA : PILDORA_INACTIVA}`}
+                >
+                  {activa ? <Icon name="check" className="text-[16px]" /> : null}
+                  {WEIGHT_BASIS_LABELS[f.weight_basis]}
+                </a>
+              );
+            })}
+          </div>
+        ) : (
+          <Chip tono="primario" icon="science">
+            {WEIGHT_BASIS_LABELS[selected.weight_basis]}
+          </Chip>
+        )}
+      </Section>
 
-      {facts.length > 1 ? (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {facts.map((f) => (
-            <a
-              key={f.id}
-              href={`?basis=${f.weight_basis}`}
-              className={`rounded-full px-3 py-1 text-sm ${
-                f.id === selected.id
-                  ? "bg-[var(--accent)] text-white"
-                  : "border border-gray-300 bg-white"
-              }`}
-            >
-              {WEIGHT_BASIS_LABELS[f.weight_basis]}
-            </a>
-          ))}
-        </div>
-      ) : (
-        <p className="mt-2 text-sm">
-          Estado: <strong>{WEIGHT_BASIS_LABELS[selected.weight_basis]}</strong>
-        </p>
-      )}
-
-      <div className="mt-4">
+      <div className="mt-lg">
         <QuantityCalculator
           per100={factValues(selected)}
           basisUnit={selected.basis_unit}
@@ -134,12 +162,25 @@ export default async function IngredientPage({ params, searchParams }: Props) {
         />
       </div>
 
-      <p className="mt-4 text-xs opacity-70">
-        Valores por 100 {selected.basis_unit === "ML" ? "ml" : "g"} (
-        {WEIGHT_BASIS_LABELS[selected.weight_basis].toLowerCase()}). Fuente:{" "}
-        {SOURCE_TYPE_LABELS[selected.source_type]} — {selected.source_name}.{" "}
-        {selected.verified ? "✓ Verificado." : "No verificado."}
-      </p>
-    </main>
+      <Card className="mt-lg flex items-start gap-sm p-md">
+        <Icon name="info" className="mt-0.5 shrink-0 text-primary" />
+        <div className="min-w-0">
+          <p className="font-body-sm text-body-sm text-on-surface-variant">
+            Valores por 100 {unidad} ({WEIGHT_BASIS_LABELS[selected.weight_basis].toLowerCase()}).
+            Fuente: {SOURCE_TYPE_LABELS[selected.source_type]} — {selected.source_name}.
+          </p>
+          <div className="mt-sm">
+            {/* El sello acompaña al texto, nunca lo reemplaza: el color solo no
+                puede ser lo que distingue un dato verificado de uno que no. */}
+            <Chip
+              tono={selected.verified ? "primario" : "neutro"}
+              icon={selected.verified ? "verified" : "help"}
+            >
+              {selected.verified ? "Verificado" : "Sin verificar"}
+            </Chip>
+          </div>
+        </div>
+      </Card>
+    </AppShell>
   );
 }

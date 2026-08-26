@@ -58,9 +58,175 @@
 - **0027 — Sprint 11 salud parte 2** · `31e7d6a4ef48cb3817a0b326aa0a8fe54f7fc792cf5d5748cf001b16039d02ca` · aplicada y verificada en vivo.
 - **0028 — corrección de codificación** · `8d9b868f9138818e9dc0234ac503444b1db22997c8542ae4e484af11cb3de5d1` · aplicada: 5 nombres de biomarcador y 22 funciones tenían los acentos rotos porque las entregué con `clip` en vez de `Set-Clipboard` UTF-8. **Regla: entregar SIEMPRE con `Get-Content -Raw -Encoding UTF8 | Set-Clipboard` y verificar con `Get-Clipboard` antes de avisar.**
 
+- **0029 — fuente de nutrición clínica** · `c52a1c56ebb21162b776efeeb2d141aa54a07722999c3338d0c272cda1f4974b` · aplicada.
+- **0030 — impacto clínico sobre la lista de compras** · `00bcd9a8b6928d5c30d86a63b3a535b4a4895ff4b8227b8279b9d86c190ef2c4` · aplicada.
+
+- **0031 — cota del rendimiento crudo/cocido** · `5d96f3a824ed92ef77832286d86cbc8d9334443856287429d9b3de4f24a083e6` · **aplicada y verificada en vivo 2026-08-25** por la Management API. Verificado contra la base: los dos checks dicen `<= 5`.
+- **0032 — capacidad olla a presión** · `392d23f904c0956a18f077e1ae651f7fe99a8f08fcae31a82115be7b0953575a` · **aplicada y verificada en vivo 2026-08-25**. Verificado: `PRESSURE_COOKER` existe, 11 capacidades en total.
+
+- **0033 — cerrar el salto entre hogares** · `fc37714d1224088736d03bb4889dcfcaa0f1d4ac11d2d9f11b5829e4c3facb1d` · aplicada (auditoría post-11.5, DEFECTO 1).
+- **0034 — storage médico: lectura y borrado** · `d54eb59e40f8e1e9fa0e021d6b19b506df6fa1c81533b4c5b8f8b87ca57541b4` · aplicada (auditoría post-11.5, DEFECTO 2).
+- **0035 — la porción que nadie evaluó lo dice** · `1a6feafd7892ee119a505abd95733038871130d3db6b9068b85d684fef87fcb4` · aplicada (auditoría post-11.5, DEFECTO 3).
+- **0037 — la invitación no cruza hogares** · `6715b3bfcb0b18fd5dab094c43a44c2fc6c4ca744b766da9d475532dbddee85f` · aplicada.
+
 ## Pendientes de aplicar
 
-**Ninguna. Remoto = cadena local completa (0001→0028).**
+### 0036 + 0038 — FoodLog: el plan no es la realidad, y el consumo real tiene eje propio
+
+> ### LAS DOS SE APLICAN JUNTAS, EN ESTE ORDEN Y EN LA MISMA VENTANA
+>
+> No es una preferencia de orden. La **0036 le QUITA** a `consume_planned_meal`
+> la escritura del consumo —porque el servido pasa a ser el ÚNICO dueño del
+> efecto físico— y la **0038 es quien la RECUPERA**, ahora en el eje
+> nutricional. Aplicar la 0036 sola deja al sistema descontando la despensa y
+> sin anotar en ninguna parte lo que la familia comió: el eje ACTUAL queda
+> mudo, y ese hueco después se lee como un cero. **Si la 0038 no puede
+> aplicarse, la 0036 tampoco entra.**
+
+**El principio que aplican las dos:** PLANNED, SERVIDO y ACTUAL_CONSUMED son
+tres hechos distintos, en tres tablas distintas, y ninguno se fabrica del otro.
+Un solo dueño del efecto físico (el servido); el eje ACTUAL es nutricional y no
+toca inventario nunca — garantizado por CHECK, no por confianza.
+
+### 0036 — servido: el dueño único del efecto físico
+
+- **Archivo:** `supabase/migrations/0036_foodlog_plan_vs_reality.sql`
+- **SHA-256:** `8081a08995f3de8f5dbe113339a1699bfc422efd87c245aa122c1e93015ccab2`
+- **Qué hace:** tablas de servido (`meal_serving_records` +
+  `meal_serving_record_items`), `serve_meal_assignment`, la devolución y la
+  merma de lo servido (`return_serving_to_inventory`, `discard_serving`,
+  `undo_discard_serving`), el candado `app.movement_owner_guard` y la vista
+  `waste_movements` reescrita.
+- **Efecto sobre datos:** aditivo en tablas. `consume_planned_meal` deja de
+  escribir el consumo (lo recupera la 0038). Ninguna fila histórica se borra.
+- **Dependencias:** 0001→0035 y 0037 aplicadas.
+
+### 0038 — el eje ACTUAL_CONSUMED
+
+- **Archivo:** `supabase/migrations/0038_foodlog_intake.sql`
+- **SHA-256:** `b54d3cd9eae17f25e30223284ecb7267956b10ecc9afdcc6152f4f760cc05f26`
+- **Qué hace:** `consumption_logs` + `intake_log_items`, los RPC `log_intake`,
+  `assume_intake_from_plan`, `log_off_plan_intake`, `log_away_intake`,
+  `correct_intake_log` y `void_intake_log`. Historia inmutable: nada se borra,
+  se supera o se anula. UNKNOWN != ZERO en cada renglón.
+- **Efecto sobre datos:** 100% aditivo.
+- **Dependencias:** **la 0036, en la misma ventana.**
+
+#### Tres agujeros MÁS, encontrados corriendo los ataques contra estas migraciones
+
+Los ataques del sprint habían quedado como sondas que imprimían a consola y
+afirmaban `expect(true).toBe(true)`: ocho casos que se leían como cobertura y no
+verificaban nada. Al convertirlos en afirmaciones aparecieron tres huecos que
+seguían abiertos, los tres en la misma costura —el eje ACTUAL no gastaba la
+porción física— y los tres cerrados acá antes de aplicar:
+
+- **B1 · comido Y devuelto al refrigerador.** Servir 200 g, declarar que se
+  comieron los 200, devolver 200 g: la devolución pasaba, el lote volvía a su
+  saldo original y la declaración seguía viva. La misma comida en dos lugares.
+- **B2 · comido Y botado.** Lo mismo contra `discard_serving`: el informe de
+  desperdicio sumaba una merma que nunca existió.
+- **B3 · comer 5.000 g de una porción de 200.** Aceptado sin chistar, y ese
+  número entraba al eje ACTUAL y de ahí a la nutrición real de una persona.
+
+La causa era una sola y estaba escrita en el propio comentario de
+`void_serving_record`, que sí traía la guarda: contemplaba que la comida no se
+hubiera comido, no que **alguien ya hubiera dicho que sí**. La guarda estaba en
+una puerta y quedaban dos abiertas. Ahora las tres formas de gastar una porción
+—comerla, devolverla, botarla— comen del mismo saldo:
+`servido − botado − declarado comido`. La devolución parcial legítima (sirvo
+200, declaro 120, vuelven 80) no se toca.
+
+Queda ABIERTO y anotado, porque es decisión de producto y no de migración: dos
+actos idénticos fuera de plan el mismo día, sin token de reintento, se colapsan
+en uno (dos manzanas a las tres y a las cinco quedan como una). Está afirmado en
+`zz-ataque-final.test.ts` para que el día que cambie, el cambio se vea.
+
+#### Los cuatro ALTO que se cerraron antes de aplicar (y su regresión)
+
+Los cuatro salieron del re-ataque final y están cerrados EN estas dos
+migraciones, cada uno con su prueba. Las pruebas no solo verifican el arreglo:
+reproducen además la resolución vieja y afirman que habría fallado, así que si
+alguien revierte el arreglo la prueba se pone roja sola (verificado por
+mutación, no por confianza).
+
+- **A1 — la `dedupe_key` se buscaba SIN filtro de hogar y la mandaba el
+  cliente.** Ahora la clave la ARMA el servidor (`app.intake_dedupe_key`:
+  prefijo + hogar + ancla del acto, y del cliente solo un discriminador
+  acotado a 120 caracteres y sin caracteres de control), y se RESUELVE siempre
+  dentro de la casa (`app.live_intake_by_key`). El índice único pasó a ser
+  `(household_id, dedupe_key)`. Prueba:
+  `web/src/integration/sprint12-clave-intake.test.ts`.
+- **A2 — re-declarar después de anular no escribía nada y no avisaba.** La
+  resolución mira `status = 'ACTIVE'`: un VOIDED o un CORRECTED no es un
+  reintento, es alguien corrigiendo, y tiene que escribir fila nueva. El índice
+  único es PARCIAL sobre lo vivo para que quepan las dos, y el outbox se
+  dedupica por la FILA y no por la clave de reintento. Misma prueba.
+- **A3 — la merma de lo servido era invisible para el informe de merma.**
+  `waste_movements` deja de leer solo `delta`: si el movimiento trae
+  `waste_lot_quantity` la cantidad sale de ahí, y las dos mermas se suman en la
+  misma columna sin que el inventario se descuente dos veces. `waste_kind`
+  separa SERVING de INVENTORY. El CHECK `movements_waste_lot_qty_shape` impide
+  que un escritor futuro vuelva a dejar la merma del plato sin peso. Prueba:
+  `web/src/integration/merma-servida.test.ts`.
+- **A4 — un ADJUSTMENT podía revertir una merma y devolver a la despensa
+  comida que está en la basura.** El bloque (6) del candado ahora exige que lo
+  revertido sea un **CONSUMED**, con lista blanca y el porqué de cada razón
+  excluida escrito al lado. Prueba: `web/src/integration/sprint12-regresiones.test.ts`.
+
+#### Notas de aplicación
+
+- Validadas en PGlite sobre la cadena completa 0001→0038: **852 tests verdes**,
+  `npm run typecheck` y `npm run lint` limpios (2026-08-25).
+- Verificación en vivo sugerida, después de aplicar las dos: servir una comida
+  y comprobar que el lote se descuenta UNA vez; declarar el consumo y comprobar
+  que el lote NO se mueve; anular esa declaración y volver a declararla, y
+  comprobar que la segunda queda `ACTIVE` con sus renglones.
+
+
+El canal ya no es el portapapeles: `node scripts/aplicar-migracion.mjs <archivo.sql>`
+manda los bytes del archivo tal cual por la Management API, con guardián de
+codificación y checksum. El token vive en `web/.env.local` (ignorado por git) y
+el script nunca lo imprime.
+
+### Referencia: las dos del Sprint 11.5
+
+Las dos son ADITIVAS: no borran ni reescriben ninguna fila existente.
+
+### 0031 — el rendimiento crudo→cocido podía llegar hasta 2, y eso es falso
+
+- **Archivo:** `supabase/migrations/0031_yield_factor_bounds.sql`
+- **Propósito:** ensanchar de 2 a 5 el tope de `yield_factor` en
+  `meal_slot_components` y de `total_yield_factor` en
+  `meal_template_versions`.
+- **Por qué:** el tope viejo no era una barrera contra datos absurdos, era una
+  afirmación falsa sobre la cocina. El arroz rinde 2,5 (100 g crudos → ~250 g
+  cocidos); los fideos y las legumbres secas, 2,4. Con el tope en 2 la única
+  forma de cargar arroz era mentir (poner 2) o declarar el rendimiento como
+  desconocido teniéndolo. El `> 0` sigue firme y NULL sigue significando
+  DESCONOCIDO.
+- **Dependencias:** 0001→0030 aplicadas.
+- **Checksum SHA-256:** `5d96f3a824ed92ef77832286d86cbc8d9334443856287429d9b3de4f24a083e6`
+- **¿Destructiva?:** no. Solo ensancha un rango permitido; ninguna fila
+  cargada hasta hoy cambia de validez.
+- **Notas de aplicación:** verificada contra un PostgreSQL real (PGlite):
+  los dos checks pasan de `<= 2` a `<= 5` y el resto del schema queda intacto.
+  Sin esta migración, el seed del LOTE A rebota.
+
+### 0032 — faltaba la olla a presión en el catálogo de equipos
+
+- **Archivo:** `supabase/migrations/0032_pressure_cooker_capability.sql`
+- **Propósito:** agregar el código `PRESSURE_COOKER` a
+  `equipment_capabilities`.
+- **Por qué:** los diez códigos de la 0003 no incluían la olla a presión. En la
+  cocina chilena es la diferencia entre 60 y 25 minutos en cualquier legumbre
+  seca. Sin el código, las recetas de porotos y garbanzos tenían dos salidas y
+  las dos malas: mapearla a `POT` (mentir) o borrar el paso (esconderle a quien
+  sí la tiene que puede usarla). Entra siempre como capacidad OPCIONAL, con
+  alternativa manual obligatoria.
+- **Dependencias:** 0031 aplicada.
+- **Checksum SHA-256:** `392d23f904c0956a18f077e1ae651f7fe99a8f08fcae31a82115be7b0953575a`
+- **¿Destructiva?:** no. Un `insert ... on conflict do nothing`.
+- **Notas de aplicación:** un solo pegado, después de 0031.
 
 ### Referencia: 0026 — Sprint 11: documentos médicos, biomarcadores y grants
 
@@ -151,10 +317,8 @@
 ## Cómo verificar un checksum antes de aplicar
 
 ```bash
-sha256sum supabase/migrations/0022_consume_product_identity.sql
-sha256sum supabase/migrations/0023_confirm_consume_serialization.sql
-sha256sum supabase/migrations/0024_demo_family_function.sql
-sha256sum supabase/migrations/0025_unknown_never_normal.sql
+sha256sum supabase/migrations/0036_foodlog_plan_vs_reality.sql
+sha256sum supabase/migrations/0038_foodlog_intake.sql
 ```
 
 Debe coincidir EXACTAMENTE con el registrado acá. Si no coincide, NO aplicar:

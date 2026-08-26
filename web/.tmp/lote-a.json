@@ -1,0 +1,3206 @@
+[
+  {
+    "slug": "cazuela-de-pollo",
+    "name": "Cazuela de pollo",
+    "description": "Caldo de trutro con papa, zapallo, choclo y un puñado de arroz. Plato de olla única, rinde para el día siguiente.",
+    "category": "POLLO",
+    "kind": "MEAL",
+    "mealTypes": [
+      "LUNCH",
+      "DINNER"
+    ],
+    "baseServings": 4,
+    "prepMinutes": 20,
+    "cookMinutes": 50,
+    "difficulty": "FACIL",
+    "components": [
+      {
+        "ingredient": "pollo trutro entero con piel",
+        "quantity": 900,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 700,
+        "maxQuantity": 1200,
+        "cookingMethod": "STEWED",
+        "notes": "peso con hueso; la porción comestible la aplica el catálogo"
+      },
+      {
+        "ingredient": "papa",
+        "quantity": 600,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "CARBOHYDRATE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 400,
+        "maxQuantity": 800,
+        "cookingMethod": "BOILED",
+        "cut": {
+          "kind": "WHOLE"
+        },
+        "notes": "en la cazuela la papa va entera o en mitades grandes"
+      },
+      {
+        "ingredient": "zapallo camote",
+        "quantity": 400,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "BOILED",
+        "cut": {
+          "kind": "DICE",
+          "sizeMm": 40
+        }
+      },
+      {
+        "ingredient": "choclo en grano",
+        "quantity": 200,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "BOILED"
+      },
+      {
+        "ingredient": "zanahoria",
+        "quantity": 150,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "BOILED",
+        "cut": {
+          "kind": "SLICE",
+          "sizeMm": 10
+        }
+      },
+      {
+        "ingredient": "poroto verde",
+        "quantity": 100,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "OPTIONAL",
+        "optional": true,
+        "cookingMethod": "BOILED"
+      },
+      {
+        "ingredient": "arroz blanco",
+        "quantity": 60,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "CARBOHYDRATE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "BOILED",
+        "yieldFactor": 2.5,
+        "notes": "el puñado de arroz que va dentro del caldo"
+      },
+      {
+        "ingredient": "cebolla",
+        "quantity": 100,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "CHOP"
+        }
+      },
+      {
+        "ingredient": "aceite vegetal",
+        "quantity": 15,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "FAT",
+        "role": "ADDED_FAT",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 5,
+        "maxQuantity": 20
+      },
+      {
+        "ingredient": "aji de color",
+        "quantity": 2,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "sal",
+        "quantity": 5,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 0,
+        "maxQuantity": 6
+      },
+      {
+        "ingredient": "cilantro",
+        "quantity": 10,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "TOPPING",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      }
+    ],
+    "alternatives": [
+      {
+        "slot": "PROTEIN",
+        "ingredient": "vacuno posta negra",
+        "compatibility": "EXCELLENT",
+        "quantityEquivalence": 0.8,
+        "notes": "cazuela de vacuno: menos peso porque no lleva hueso ni piel"
+      },
+      {
+        "slot": "VEGETABLE",
+        "ingredient": "zapallo italiano",
+        "compatibility": "ACCEPTABLE",
+        "notes": "cambia el dulzor del caldo; el zapallo camote es lo tradicional"
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Dorar los trutros en la olla con el aceite, por ambos lados, hasta que tomen color.",
+        "minutes": 8
+      },
+      {
+        "instruction": "Agregar la cebolla picada y el ají de color, revolver hasta que la cebolla esté transparente.",
+        "minutes": 4
+      },
+      {
+        "instruction": "Cubrir con agua caliente (unos 2 litros) y hervir suave con la olla semitapada.",
+        "minutes": 20
+      },
+      {
+        "instruction": "Incorporar papa, zapallo, zanahoria y choclo. Seguir hirviendo hasta que la papa se pase con el tenedor.",
+        "minutes": 18,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "Agregar el arroz y el poroto verde en los últimos minutos.",
+        "minutes": 12,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "Salar al final y espolvorear cilantro al servir.",
+        "minutes": 1
+      }
+    ],
+    "tags": [
+      "ECONOMICA",
+      "FAMILIAR",
+      "TRADICIONAL",
+      "OLLA_UNICA",
+      "LEFTOVER_FRIENDLY"
+    ],
+    "batchPrepNotes": "Rinde bien al doble. Enfriar el caldo destapado antes de guardar y separar el arroz si se va a recalentar más de una vez: sigue absorbiendo líquido."
+  },
+  {
+    "slug": "pollo-arvejado",
+    "name": "Pollo arvejado",
+    "description": "Guiso de pollo con arvejas y zanahoria, servido con arroz. Clásico de almuerzo de semana.",
+    "category": "POLLO",
+    "kind": "MEAL",
+    "mealTypes": [
+      "LUNCH",
+      "DINNER"
+    ],
+    "baseServings": 4,
+    "prepMinutes": 15,
+    "cookMinutes": 35,
+    "difficulty": "FACIL",
+    "components": [
+      {
+        "ingredient": "pollo trutro entero con piel",
+        "quantity": 800,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 600,
+        "maxQuantity": 1000,
+        "cookingMethod": "STEWED"
+      },
+      {
+        "ingredient": "arvejas frescas",
+        "quantity": 400,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 300,
+        "maxQuantity": 500,
+        "cookingMethod": "STEWED"
+      },
+      {
+        "ingredient": "cebolla",
+        "quantity": 200,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "CHOP"
+        }
+      },
+      {
+        "ingredient": "zanahoria",
+        "quantity": 150,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "DICE",
+          "sizeMm": 10
+        }
+      },
+      {
+        "ingredient": "arroz blanco",
+        "quantity": 240,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "CARBOHYDRATE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 160,
+        "maxQuantity": 320,
+        "cookingMethod": "BOILED",
+        "yieldFactor": 2.5
+      },
+      {
+        "ingredient": "ajo",
+        "quantity": 6,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "aceite vegetal",
+        "quantity": 20,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "FAT",
+        "role": "ADDED_FAT",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 10,
+        "maxQuantity": 25
+      },
+      {
+        "ingredient": "aji de color",
+        "quantity": 3,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "comino molido",
+        "quantity": 1,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "sal",
+        "quantity": 5,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 0,
+        "maxQuantity": 6
+      }
+    ],
+    "alternatives": [
+      {
+        "slot": "PROTEIN",
+        "ingredient": "pechuga de pollo sin piel",
+        "compatibility": "GOOD",
+        "quantityEquivalence": 0.75,
+        "notes": "sin hueso: menos peso para la misma carne, pero se seca más rápido"
+      },
+      {
+        "slot": "CARBOHYDRATE",
+        "ingredient": "papa",
+        "compatibility": "GOOD",
+        "notes": "papa cocida en vez de arroz; el sistema recalcula la nutrición desde cero"
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Dorar las presas de pollo en el aceite hasta que tomen color parejo.",
+        "minutes": 8
+      },
+      {
+        "instruction": "Agregar cebolla, zanahoria, ajo, ají de color y comino. Sofreír hasta que la cebolla se ablande.",
+        "minutes": 6
+      },
+      {
+        "instruction": "Cubrir apenas con agua caliente y cocinar tapado a fuego bajo.",
+        "minutes": 20
+      },
+      {
+        "instruction": "Sumar las arvejas y cocinar destapado hasta que el jugo espese.",
+        "minutes": 10
+      },
+      {
+        "instruction": "Cocer el arroz aparte mientras el guiso termina.",
+        "minutes": 18,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "Salar al final y servir el guiso sobre el arroz.",
+        "minutes": 2
+      }
+    ],
+    "tags": [
+      "ECONOMICA",
+      "FAMILIAR",
+      "TRADICIONAL",
+      "LEFTOVER_FRIENDLY"
+    ],
+    "batchPrepNotes": "El guiso mejora al día siguiente. El arroz se cuece siempre fresco: recalentado queda seco."
+  },
+  {
+    "slug": "pollo-al-jugo-con-arroz",
+    "name": "Pollo al jugo con arroz",
+    "description": "Pechuga cocida lento en su propio jugo con cebolla, sobre arroz blanco. Rápida y liviana.",
+    "category": "POLLO",
+    "kind": "MEAL",
+    "mealTypes": [
+      "LUNCH",
+      "DINNER"
+    ],
+    "baseServings": 4,
+    "prepMinutes": 10,
+    "cookMinutes": 30,
+    "difficulty": "FACIL",
+    "components": [
+      {
+        "ingredient": "pechuga de pollo sin piel",
+        "quantity": 600,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 450,
+        "maxQuantity": 800,
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "SLICE",
+          "sizeMm": 20
+        }
+      },
+      {
+        "ingredient": "cebolla",
+        "quantity": 150,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "SLICE"
+        }
+      },
+      {
+        "ingredient": "zanahoria",
+        "quantity": 100,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "SLICE",
+          "sizeMm": 5
+        }
+      },
+      {
+        "ingredient": "arroz blanco",
+        "quantity": 240,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "CARBOHYDRATE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 160,
+        "maxQuantity": 320,
+        "cookingMethod": "BOILED",
+        "yieldFactor": 2.5
+      },
+      {
+        "ingredient": "ajo",
+        "quantity": 6,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "aceite vegetal",
+        "quantity": 15,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "FAT",
+        "role": "ADDED_FAT",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 5,
+        "maxQuantity": 20
+      },
+      {
+        "ingredient": "sal",
+        "quantity": 4,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 0,
+        "maxQuantity": 5
+      },
+      {
+        "ingredient": "perejil fresco",
+        "quantity": 8,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "TOPPING",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      }
+    ],
+    "alternatives": [
+      {
+        "slot": "PROTEIN",
+        "ingredient": "pollo trutro entero con piel",
+        "compatibility": "EXCELLENT",
+        "quantityEquivalence": 1.35,
+        "notes": "con hueso hay que comprar más peso para la misma carne"
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Sellar la pechuga en tiras con el aceite, a fuego fuerte, sin moverla mucho.",
+        "minutes": 5
+      },
+      {
+        "instruction": "Bajar el fuego, agregar cebolla, zanahoria y ajo. Tapar y dejar que suelten su agua.",
+        "minutes": 8
+      },
+      {
+        "instruction": "Sumar medio vaso de agua caliente y cocinar tapado a fuego bajo hasta que el jugo se concentre.",
+        "minutes": 15
+      },
+      {
+        "instruction": "Cocer el arroz aparte.",
+        "minutes": 18,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "Salar, apagar y agregar perejil picado.",
+        "minutes": 1
+      }
+    ],
+    "tags": [
+      "RAPIDA",
+      "FAMILIAR",
+      "ECONOMICA"
+    ]
+  },
+  {
+    "slug": "pollo-al-horno-con-papas",
+    "name": "Pollo al horno con papas",
+    "description": "Trutros y papas en la misma fuente, con ajo, orégano y limón. Se arma en diez minutos y el horno hace el resto.",
+    "category": "POLLO",
+    "kind": "MEAL",
+    "mealTypes": [
+      "LUNCH",
+      "DINNER"
+    ],
+    "baseServings": 4,
+    "prepMinutes": 15,
+    "cookMinutes": 55,
+    "difficulty": "FACIL",
+    "components": [
+      {
+        "ingredient": "pollo trutro entero con piel",
+        "quantity": 900,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 700,
+        "maxQuantity": 1200,
+        "cookingMethod": "BAKED"
+      },
+      {
+        "ingredient": "papa",
+        "quantity": 800,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "CARBOHYDRATE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 500,
+        "maxQuantity": 1000,
+        "cookingMethod": "BAKED",
+        "cut": {
+          "kind": "SLICE",
+          "sizeMm": 15
+        }
+      },
+      {
+        "ingredient": "cebolla",
+        "quantity": 150,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "BAKED",
+        "cut": {
+          "kind": "SLICE"
+        }
+      },
+      {
+        "ingredient": "ajo",
+        "quantity": 8,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "aceite vegetal",
+        "quantity": 25,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "FAT",
+        "role": "ADDED_FAT",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 10,
+        "maxQuantity": 30
+      },
+      {
+        "ingredient": "limon",
+        "quantity": 40,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "oregano seco",
+        "quantity": 2,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "sal",
+        "quantity": 5,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 0,
+        "maxQuantity": 6
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Precalentar el horno.",
+        "minutes": 10,
+        "temperatureC": 200
+      },
+      {
+        "instruction": "Aliñar los trutros con ajo molido, orégano, jugo de limón, sal y la mitad del aceite.",
+        "minutes": 6
+      },
+      {
+        "instruction": "Poner las papas en rodajas y la cebolla en el fondo de la fuente con el resto del aceite; encima el pollo con la piel hacia arriba.",
+        "minutes": 6
+      },
+      {
+        "instruction": "Hornear hasta que la piel esté dorada y el jugo del muslo salga claro al pincharlo.",
+        "minutes": 55,
+        "temperatureC": 200
+      },
+      {
+        "instruction": "Para el dorado final: si el horno tiene calor solo por arriba, usarlo los últimos minutos; si no, subirlo al máximo con la fuente en la rejilla de más arriba.",
+        "minutes": 6
+      }
+    ],
+    "tags": [
+      "FAMILIAR",
+      "ECONOMICA",
+      "OLLA_UNICA"
+    ],
+    "batchPrepNotes": "Se puede aliñar el pollo la noche anterior y dejarlo tapado en frío; al horno rinde igual."
+  },
+  {
+    "slug": "cazuela-de-vacuno",
+    "name": "Cazuela de vacuno",
+    "description": "La cazuela de olla con posta negra: caldo largo, papa entera, zapallo y choclo.",
+    "category": "VACUNO",
+    "kind": "MEAL",
+    "mealTypes": [
+      "LUNCH",
+      "DINNER"
+    ],
+    "baseServings": 4,
+    "prepMinutes": 20,
+    "cookMinutes": 75,
+    "difficulty": "FACIL",
+    "components": [
+      {
+        "ingredient": "vacuno posta negra",
+        "quantity": 700,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 550,
+        "maxQuantity": 900,
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "DICE",
+          "sizeMm": 50
+        }
+      },
+      {
+        "ingredient": "papa",
+        "quantity": 600,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "CARBOHYDRATE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 400,
+        "maxQuantity": 800,
+        "cookingMethod": "BOILED",
+        "cut": {
+          "kind": "WHOLE"
+        }
+      },
+      {
+        "ingredient": "zapallo camote",
+        "quantity": 400,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "BOILED",
+        "cut": {
+          "kind": "DICE",
+          "sizeMm": 40
+        }
+      },
+      {
+        "ingredient": "choclo en grano",
+        "quantity": 200,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "BOILED"
+      },
+      {
+        "ingredient": "zanahoria",
+        "quantity": 150,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "BOILED",
+        "cut": {
+          "kind": "SLICE",
+          "sizeMm": 10
+        }
+      },
+      {
+        "ingredient": "poroto verde",
+        "quantity": 100,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "OPTIONAL",
+        "optional": true,
+        "cookingMethod": "BOILED"
+      },
+      {
+        "ingredient": "arroz blanco",
+        "quantity": 60,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "CARBOHYDRATE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "BOILED",
+        "yieldFactor": 2.5
+      },
+      {
+        "ingredient": "cebolla",
+        "quantity": 100,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "CHOP"
+        }
+      },
+      {
+        "ingredient": "aceite vegetal",
+        "quantity": 15,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "FAT",
+        "role": "ADDED_FAT",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 5,
+        "maxQuantity": 20
+      },
+      {
+        "ingredient": "aji de color",
+        "quantity": 2,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "sal",
+        "quantity": 5,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 0,
+        "maxQuantity": 6
+      },
+      {
+        "ingredient": "cilantro",
+        "quantity": 10,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "TOPPING",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      }
+    ],
+    "alternatives": [
+      {
+        "slot": "PROTEIN",
+        "ingredient": "vacuno posta magra",
+        "compatibility": "EXCELLENT",
+        "quantityEquivalence": 1,
+        "notes": "más magra: el caldo queda menos untuoso"
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Sellar la carne en trozos grandes con el aceite, hasta que tome color por todos lados.",
+        "minutes": 8
+      },
+      {
+        "instruction": "Agregar cebolla y ají de color, revolver un minuto.",
+        "minutes": 3
+      },
+      {
+        "instruction": "Cubrir con agua caliente y hervir suave con la olla semitapada, hasta que la carne ceda al tenedor.",
+        "minutes": 45
+      },
+      {
+        "instruction": "Incorporar papa, zapallo, zanahoria y choclo. Cocer hasta que la papa esté blanda.",
+        "minutes": 20,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "Agregar arroz y poroto verde en los últimos minutos.",
+        "minutes": 12,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "Salar al final y servir con cilantro.",
+        "minutes": 1
+      }
+    ],
+    "tags": [
+      "ECONOMICA",
+      "FAMILIAR",
+      "TRADICIONAL",
+      "OLLA_UNICA",
+      "LEFTOVER_FRIENDLY"
+    ],
+    "batchPrepNotes": "El caldo aguanta bien; conviene guardar la papa aparte porque se deshace al recalentar."
+  },
+  {
+    "slug": "carne-mechada",
+    "name": "Carne mechada",
+    "description": "Posta negra cocida lento con cebolla, pimiento y zanahoria hasta que se deshilacha sola.",
+    "category": "VACUNO",
+    "kind": "MEAL",
+    "mealTypes": [
+      "LUNCH",
+      "DINNER"
+    ],
+    "baseServings": 4,
+    "prepMinutes": 20,
+    "cookMinutes": 90,
+    "difficulty": "MEDIA",
+    "components": [
+      {
+        "ingredient": "vacuno posta negra",
+        "quantity": 800,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 600,
+        "maxQuantity": 1000,
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "WHOLE"
+        }
+      },
+      {
+        "ingredient": "cebolla",
+        "quantity": 250,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "SLICE"
+        }
+      },
+      {
+        "ingredient": "zanahoria",
+        "quantity": 150,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "SLICE",
+          "sizeMm": 8
+        }
+      },
+      {
+        "ingredient": "pimiento rojo",
+        "quantity": 120,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "SLICE"
+        }
+      },
+      {
+        "ingredient": "papa",
+        "quantity": 800,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "CARBOHYDRATE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 500,
+        "maxQuantity": 1000,
+        "cookingMethod": "BOILED",
+        "notes": "para el puré que acompaña"
+      },
+      {
+        "ingredient": "leche liquida entera",
+        "quantity": 120,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "BASE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 60,
+        "maxQuantity": 180,
+        "notes": "liga el puré"
+      },
+      {
+        "ingredient": "ajo",
+        "quantity": 8,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "aceite vegetal",
+        "quantity": 20,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "FAT",
+        "role": "ADDED_FAT",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 10,
+        "maxQuantity": 25
+      },
+      {
+        "ingredient": "aji de color",
+        "quantity": 3,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "comino molido",
+        "quantity": 1,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "oregano seco",
+        "quantity": 1,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "sal",
+        "quantity": 6,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 0,
+        "maxQuantity": 7
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Sellar la posta entera en la olla con el aceite, dorándola por todos sus lados.",
+        "minutes": 10
+      },
+      {
+        "instruction": "Retirar la carne y sofreír cebolla, zanahoria, pimiento y ajo con el ají de color, comino y orégano.",
+        "minutes": 8
+      },
+      {
+        "instruction": "Devolver la carne, cubrir hasta la mitad con agua caliente y cocinar tapado a fuego muy bajo.",
+        "minutes": 80
+      },
+      {
+        "instruction": "Acelerar la cocción de la carne.",
+        "minutes": 35,
+        "optionalCapability": "PRESSURE_COOKER",
+        "manualAlternative": "Sin olla a presión: mantener el fuego muy bajo los 80 minutos de la olla normal, revisando que no se seque."
+      },
+      {
+        "instruction": "Cocer las papas peladas en agua con sal, escurrirlas y molerlas con la leche caliente.",
+        "minutes": 25,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "Sacar la carne, deshilacharla con dos tenedores y devolverla al jugo. Salar al final.",
+        "minutes": 6
+      }
+    ],
+    "tags": [
+      "FAMILIAR",
+      "TRADICIONAL",
+      "LEFTOVER_FRIENDLY",
+      "FREEZER_FRIENDLY"
+    ],
+    "batchPrepNotes": "La carne deshilachada con su jugo congela muy bien. El puré no: se corta al descongelar, conviene hacerlo fresco."
+  },
+  {
+    "slug": "bistec-con-pure",
+    "name": "Bistec con puré",
+    "description": "Asiento a la sartén con cebolla y puré de papas. El plato de la semana que todos reconocen.",
+    "category": "VACUNO",
+    "kind": "MEAL",
+    "mealTypes": [
+      "LUNCH",
+      "DINNER"
+    ],
+    "baseServings": 4,
+    "prepMinutes": 15,
+    "cookMinutes": 30,
+    "difficulty": "FACIL",
+    "components": [
+      {
+        "ingredient": "vacuno asiento picana",
+        "quantity": 600,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 450,
+        "maxQuantity": 800,
+        "cookingMethod": "PAN_SEARED",
+        "cut": {
+          "kind": "SLICE",
+          "sizeMm": 12
+        }
+      },
+      {
+        "ingredient": "papa",
+        "quantity": 900,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "CARBOHYDRATE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 600,
+        "maxQuantity": 1100,
+        "cookingMethod": "BOILED"
+      },
+      {
+        "ingredient": "leche liquida entera",
+        "quantity": 150,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "BASE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 80,
+        "maxQuantity": 200
+      },
+      {
+        "ingredient": "cebolla",
+        "quantity": 150,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "PAN_SEARED",
+        "cut": {
+          "kind": "SLICE"
+        }
+      },
+      {
+        "ingredient": "ajo",
+        "quantity": 5,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "aceite vegetal",
+        "quantity": 20,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "FAT",
+        "role": "ADDED_FAT",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 10,
+        "maxQuantity": 25
+      },
+      {
+        "ingredient": "sal",
+        "quantity": 5,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 0,
+        "maxQuantity": 6
+      },
+      {
+        "ingredient": "oregano seco",
+        "quantity": 1,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      }
+    ],
+    "alternatives": [
+      {
+        "slot": "PROTEIN",
+        "ingredient": "vacuno posta magra",
+        "compatibility": "GOOD",
+        "quantityEquivalence": 1,
+        "notes": "más magra: conviene sacarla antes de la sartén para que no quede dura"
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Pelar y cocer las papas en agua con sal hasta que se pasen con el tenedor.",
+        "minutes": 22,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "Aliñar los bistecs con ajo, orégano y sal.",
+        "minutes": 3
+      },
+      {
+        "instruction": "Sartén bien caliente con la mitad del aceite: sellar los bistecs 2 minutos por lado y reservarlos tapados.",
+        "minutes": 8,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "En la misma sartén, dorar la cebolla en pluma con el resto del aceite.",
+        "minutes": 6
+      },
+      {
+        "instruction": "Escurrir las papas y molerlas con la leche caliente hasta que quede liso.",
+        "minutes": 5
+      },
+      {
+        "instruction": "Servir los bistecs con la cebolla encima y el puré al lado.",
+        "minutes": 2
+      }
+    ],
+    "tags": [
+      "RAPIDA",
+      "FAMILIAR",
+      "TRADICIONAL"
+    ]
+  },
+  {
+    "slug": "reineta-a-la-plancha",
+    "name": "Reineta a la plancha con ensalada",
+    "description": "Filete de reineta a la plancha con ajo y limón, papas cocidas y ensalada chilena.",
+    "category": "PESCADO",
+    "kind": "MEAL",
+    "mealTypes": [
+      "LUNCH",
+      "DINNER"
+    ],
+    "baseServings": 4,
+    "prepMinutes": 12,
+    "cookMinutes": 25,
+    "difficulty": "FACIL",
+    "components": [
+      {
+        "ingredient": "reineta",
+        "quantity": 640,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 480,
+        "maxQuantity": 800,
+        "cookingMethod": "GRILLED"
+      },
+      {
+        "ingredient": "papa",
+        "quantity": 600,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "CARBOHYDRATE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 400,
+        "maxQuantity": 800,
+        "cookingMethod": "BOILED"
+      },
+      {
+        "ingredient": "aceite de oliva",
+        "quantity": 20,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "FAT",
+        "role": "ADDED_FAT",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 10,
+        "maxQuantity": 25
+      },
+      {
+        "ingredient": "limon",
+        "quantity": 60,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE"
+      },
+      {
+        "ingredient": "ajo",
+        "quantity": 5,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "sal",
+        "quantity": 4,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 0,
+        "maxQuantity": 5
+      },
+      {
+        "ingredient": "perejil fresco",
+        "quantity": 8,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "TOPPING",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      }
+    ],
+    "alternatives": [
+      {
+        "slot": "PROTEIN",
+        "ingredient": "merluza",
+        "compatibility": "EXCELLENT",
+        "quantityEquivalence": 1,
+        "notes": "más delgada: aguanta menos tiempo en la plancha"
+      },
+      {
+        "slot": "PROTEIN",
+        "ingredient": "salmon",
+        "compatibility": "GOOD",
+        "quantityEquivalence": 0.9,
+        "notes": "mucho más graso; cambia el perfil nutricional por completo"
+      }
+    ],
+    "nested": [
+      {
+        "slot": "SALAD",
+        "slug": "ensalada-chilena"
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Cocer las papas con cáscara en agua con sal.",
+        "minutes": 22,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "Aliñar los filetes con ajo molido, jugo de limón y sal, dejarlos reposar unos minutos.",
+        "minutes": 8
+      },
+      {
+        "instruction": "Plancha o sartén bien caliente con el aceite: 3 minutos por lado, sin moverlos.",
+        "minutes": 7
+      },
+      {
+        "instruction": "Servir con las papas, la ensalada chilena y perejil picado.",
+        "minutes": 3
+      }
+    ],
+    "tags": [
+      "RAPIDA",
+      "FAMILIAR"
+    ]
+  },
+  {
+    "slug": "merluza-frita-con-arroz",
+    "name": "Merluza frita con arroz",
+    "description": "Merluza apanada en harina y frita, con arroz blanco y ensalada chilena.",
+    "category": "PESCADO",
+    "kind": "MEAL",
+    "mealTypes": [
+      "LUNCH",
+      "DINNER"
+    ],
+    "baseServings": 4,
+    "prepMinutes": 15,
+    "cookMinutes": 25,
+    "difficulty": "FACIL",
+    "components": [
+      {
+        "ingredient": "merluza",
+        "quantity": 640,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 480,
+        "maxQuantity": 800,
+        "cookingMethod": "FRIED"
+      },
+      {
+        "ingredient": "harina de trigo",
+        "quantity": 60,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 40,
+        "maxQuantity": 80,
+        "notes": "para pasar los filetes; parte queda en el plato y parte en la sartén"
+      },
+      {
+        "ingredient": "arroz blanco",
+        "quantity": 240,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "CARBOHYDRATE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 160,
+        "maxQuantity": 320,
+        "cookingMethod": "BOILED",
+        "yieldFactor": 2.5
+      },
+      {
+        "ingredient": "aceite vegetal",
+        "quantity": 60,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "FAT",
+        "role": "ADDED_FAT",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 30,
+        "maxQuantity": 80,
+        "notes": "aceite de la sartén: NO se absorbe todo. Cuánto queda realmente en el pescado es desconocido y el sistema lo trata como tal."
+      },
+      {
+        "ingredient": "limon",
+        "quantity": 50,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE"
+      },
+      {
+        "ingredient": "sal",
+        "quantity": 4,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 0,
+        "maxQuantity": 5
+      }
+    ],
+    "alternatives": [
+      {
+        "slot": "PROTEIN",
+        "ingredient": "reineta",
+        "compatibility": "EXCELLENT",
+        "quantityEquivalence": 1
+      }
+    ],
+    "nested": [
+      {
+        "slot": "SALAD",
+        "slug": "ensalada-chilena"
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Cocer el arroz.",
+        "minutes": 18,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "Secar los filetes, salarlos y pasarlos por harina sacudiendo el exceso.",
+        "minutes": 8
+      },
+      {
+        "instruction": "Freír en aceite caliente, 3 minutos por lado, hasta que la costra esté dorada.",
+        "minutes": 8
+      },
+      {
+        "instruction": "Freír con menos aceite.",
+        "minutes": 14,
+        "optionalCapability": "AIR_FRYER",
+        "manualAlternative": "Sin air fryer: la sartén con aceite es el método base de esta receta.",
+        "temperatureC": 190
+      },
+      {
+        "instruction": "Escurrir sobre papel y servir con limón, arroz y ensalada.",
+        "minutes": 3
+      }
+    ],
+    "tags": [
+      "FAMILIAR",
+      "TRADICIONAL"
+    ]
+  },
+  {
+    "slug": "pescado-al-horno-con-verduras",
+    "name": "Pescado al horno con verduras",
+    "description": "Reineta sobre una cama de papas, zapallo italiano, pimiento y tomate. Todo en una fuente.",
+    "category": "PESCADO",
+    "kind": "MEAL",
+    "mealTypes": [
+      "LUNCH",
+      "DINNER"
+    ],
+    "baseServings": 4,
+    "prepMinutes": 20,
+    "cookMinutes": 40,
+    "difficulty": "FACIL",
+    "components": [
+      {
+        "ingredient": "reineta",
+        "quantity": 640,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 480,
+        "maxQuantity": 800,
+        "cookingMethod": "BAKED"
+      },
+      {
+        "ingredient": "papa",
+        "quantity": 500,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "CARBOHYDRATE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 350,
+        "maxQuantity": 700,
+        "cookingMethod": "BAKED",
+        "cut": {
+          "kind": "SLICE",
+          "sizeMm": 8
+        }
+      },
+      {
+        "ingredient": "zapallo italiano",
+        "quantity": 300,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "BAKED",
+        "cut": {
+          "kind": "SLICE",
+          "sizeMm": 8
+        }
+      },
+      {
+        "ingredient": "pimiento rojo",
+        "quantity": 150,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "BAKED",
+        "cut": {
+          "kind": "SLICE"
+        }
+      },
+      {
+        "ingredient": "cebolla",
+        "quantity": 150,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "BAKED",
+        "cut": {
+          "kind": "SLICE"
+        }
+      },
+      {
+        "ingredient": "tomate",
+        "quantity": 250,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "BAKED",
+        "cut": {
+          "kind": "SLICE"
+        }
+      },
+      {
+        "ingredient": "aceite de oliva",
+        "quantity": 30,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "FAT",
+        "role": "ADDED_FAT",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 15,
+        "maxQuantity": 35
+      },
+      {
+        "ingredient": "ajo",
+        "quantity": 8,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "oregano seco",
+        "quantity": 2,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "limon",
+        "quantity": 40,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "sal",
+        "quantity": 5,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 0,
+        "maxQuantity": 6
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Precalentar el horno.",
+        "minutes": 10,
+        "temperatureC": 200
+      },
+      {
+        "instruction": "Ordenar las papas y la cebolla en la fuente con la mitad del aceite y hornear solas para adelantarlas.",
+        "minutes": 20,
+        "temperatureC": 200
+      },
+      {
+        "instruction": "Agregar zapallo italiano, pimiento y tomate; encima los filetes aliñados con ajo, orégano, limón y el resto del aceite.",
+        "minutes": 8
+      },
+      {
+        "instruction": "Hornear hasta que el pescado se separe en láminas al presionarlo.",
+        "minutes": 20,
+        "temperatureC": 200
+      },
+      {
+        "instruction": "Salar al servir.",
+        "minutes": 1
+      }
+    ],
+    "tags": [
+      "FAMILIAR",
+      "OLLA_UNICA"
+    ]
+  },
+  {
+    "slug": "porotos-con-riendas",
+    "name": "Porotos con riendas",
+    "description": "Porotos guisados con zapallo y fideos. Plato de invierno, barato y contundente.",
+    "category": "LEGUMBRES",
+    "kind": "MEAL",
+    "mealTypes": [
+      "LUNCH",
+      "DINNER"
+    ],
+    "baseServings": 4,
+    "prepMinutes": 15,
+    "cookMinutes": 90,
+    "difficulty": "MEDIA",
+    "components": [
+      {
+        "ingredient": "porotos secos",
+        "quantity": 400,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 300,
+        "maxQuantity": 500,
+        "cookingMethod": "BOILED",
+        "yieldFactor": 2.4,
+        "notes": "en seco, antes de remojar; el remojo de la noche anterior no es opcional"
+      },
+      {
+        "ingredient": "fideos",
+        "quantity": 150,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "CARBOHYDRATE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 100,
+        "maxQuantity": 200,
+        "cookingMethod": "BOILED",
+        "yieldFactor": 2.4,
+        "notes": "las riendas: fideo largo partido"
+      },
+      {
+        "ingredient": "zapallo camote",
+        "quantity": 300,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "DICE",
+          "sizeMm": 30
+        }
+      },
+      {
+        "ingredient": "cebolla",
+        "quantity": 150,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "CHOP"
+        }
+      },
+      {
+        "ingredient": "ajo",
+        "quantity": 8,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "aceite vegetal",
+        "quantity": 20,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "FAT",
+        "role": "ADDED_FAT",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 10,
+        "maxQuantity": 25
+      },
+      {
+        "ingredient": "aji de color",
+        "quantity": 4,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "comino molido",
+        "quantity": 1,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "oregano seco",
+        "quantity": 1,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "sal",
+        "quantity": 6,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 0,
+        "maxQuantity": 7
+      }
+    ],
+    "alternatives": [
+      {
+        "slot": "PROTEIN",
+        "ingredient": "lentejas",
+        "compatibility": "GOOD",
+        "quantityEquivalence": 1,
+        "notes": "las lentejas no necesitan remojo y cuecen en la mitad del tiempo"
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Remojar los porotos en abundante agua fría la noche anterior. Botar el agua del remojo.",
+        "minutes": 5
+      },
+      {
+        "instruction": "Cocer los porotos en agua nueva, sin sal, hasta que estén blandos.",
+        "minutes": 60
+      },
+      {
+        "instruction": "Acortar la cocción de los porotos.",
+        "minutes": 25,
+        "optionalCapability": "PRESSURE_COOKER",
+        "manualAlternative": "Sin olla a presión: los 60 minutos de la olla normal, agregando agua caliente si baja el nivel."
+      },
+      {
+        "instruction": "Aparte, sofreír cebolla y ajo con el aceite, el ají de color, comino y orégano.",
+        "minutes": 8,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "Sumar el sofrito y el zapallo a los porotos y cocinar hasta que el zapallo se deshaga y espese el caldo.",
+        "minutes": 20
+      },
+      {
+        "instruction": "Agregar los fideos y cocer hasta que estén a punto. Salar recién al final.",
+        "minutes": 10
+      }
+    ],
+    "tags": [
+      "ECONOMICA",
+      "FAMILIAR",
+      "TRADICIONAL",
+      "OLLA_UNICA",
+      "MEAL_PREP",
+      "LEFTOVER_FRIENDLY"
+    ],
+    "batchPrepNotes": "Los porotos cocidos se pueden dejar listos con días de anticipación. Los fideos van siempre al último y solo en la porción que se va a comer: en el refrigerador se siguen hinchando."
+  },
+  {
+    "slug": "porotos-granados",
+    "name": "Porotos granados",
+    "description": "Porotos frescos con choclo, zapallo y albahaca. El plato de verano cuando hay granados en la feria.",
+    "category": "LEGUMBRES",
+    "kind": "MEAL",
+    "mealTypes": [
+      "LUNCH",
+      "DINNER"
+    ],
+    "baseServings": 4,
+    "prepMinutes": 20,
+    "cookMinutes": 45,
+    "difficulty": "FACIL",
+    "components": [
+      {
+        "ingredient": "porotos granados frescos",
+        "quantity": 800,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 600,
+        "maxQuantity": 1000,
+        "cookingMethod": "BOILED",
+        "notes": "ya desgranados"
+      },
+      {
+        "ingredient": "choclo en grano",
+        "quantity": 400,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "CARBOHYDRATE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 300,
+        "maxQuantity": 500,
+        "cookingMethod": "BOILED"
+      },
+      {
+        "ingredient": "zapallo camote",
+        "quantity": 500,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "DICE",
+          "sizeMm": 25
+        }
+      },
+      {
+        "ingredient": "cebolla",
+        "quantity": 200,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "CHOP"
+        }
+      },
+      {
+        "ingredient": "albahaca fresca",
+        "quantity": 10,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "notes": "no es adorno: define el plato"
+      },
+      {
+        "ingredient": "ajo",
+        "quantity": 6,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "aceite vegetal",
+        "quantity": 20,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "FAT",
+        "role": "ADDED_FAT",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 10,
+        "maxQuantity": 25
+      },
+      {
+        "ingredient": "aji de color",
+        "quantity": 3,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "sal",
+        "quantity": 5,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 0,
+        "maxQuantity": 6
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Sofreír la cebolla picada fina con el aceite, el ajo y el ají de color.",
+        "minutes": 8
+      },
+      {
+        "instruction": "Agregar los porotos granados y agua caliente justo para cubrirlos. Hervir suave.",
+        "minutes": 20
+      },
+      {
+        "instruction": "Sumar el zapallo en cubos y el choclo; cocer hasta que el zapallo se deshaga y espese.",
+        "minutes": 18
+      },
+      {
+        "instruction": "Apagar, agregar la albahaca picada a mano y salar.",
+        "minutes": 2
+      }
+    ],
+    "tags": [
+      "ECONOMICA",
+      "FAMILIAR",
+      "TRADICIONAL",
+      "OLLA_UNICA"
+    ]
+  },
+  {
+    "slug": "garbanzos-guisados",
+    "name": "Garbanzos guisados",
+    "description": "Garbanzos con sofrito de cebolla, pimiento y tomate. Sin carne y aun así llena el plato.",
+    "category": "LEGUMBRES",
+    "kind": "MEAL",
+    "mealTypes": [
+      "LUNCH",
+      "DINNER"
+    ],
+    "baseServings": 4,
+    "prepMinutes": 15,
+    "cookMinutes": 80,
+    "difficulty": "MEDIA",
+    "components": [
+      {
+        "ingredient": "garbanzos secos",
+        "quantity": 400,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 300,
+        "maxQuantity": 500,
+        "cookingMethod": "BOILED",
+        "yieldFactor": 2.4,
+        "notes": "en seco; remojo obligatorio de la noche anterior"
+      },
+      {
+        "ingredient": "cebolla",
+        "quantity": 200,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "CHOP"
+        }
+      },
+      {
+        "ingredient": "zanahoria",
+        "quantity": 150,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "DICE",
+          "sizeMm": 10
+        }
+      },
+      {
+        "ingredient": "pimiento rojo",
+        "quantity": 120,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "CHOP"
+        }
+      },
+      {
+        "ingredient": "tomate",
+        "quantity": 300,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "CHOP"
+        }
+      },
+      {
+        "ingredient": "ajo",
+        "quantity": 8,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "aceite de oliva",
+        "quantity": 25,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "FAT",
+        "role": "ADDED_FAT",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 12,
+        "maxQuantity": 30
+      },
+      {
+        "ingredient": "comino molido",
+        "quantity": 2,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "aji de color",
+        "quantity": 2,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "sal",
+        "quantity": 5,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 0,
+        "maxQuantity": 6
+      },
+      {
+        "ingredient": "perejil fresco",
+        "quantity": 8,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "TOPPING",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      }
+    ],
+    "alternatives": [
+      {
+        "slot": "PROTEIN",
+        "ingredient": "porotos secos",
+        "compatibility": "EXCELLENT",
+        "quantityEquivalence": 1
+      },
+      {
+        "slot": "PROTEIN",
+        "ingredient": "lentejas",
+        "compatibility": "GOOD",
+        "quantityEquivalence": 1,
+        "notes": "cuecen mucho más rápido y no necesitan remojo"
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Remojar los garbanzos la noche anterior y botar el agua.",
+        "minutes": 5
+      },
+      {
+        "instruction": "Cocerlos en agua nueva sin sal hasta que estén blandos por dentro.",
+        "minutes": 60
+      },
+      {
+        "instruction": "Acortar la cocción de los garbanzos.",
+        "minutes": 25,
+        "optionalCapability": "PRESSURE_COOKER",
+        "manualAlternative": "Sin olla a presión: los 60 minutos de olla normal; el garbanzo duro no se arregla después."
+      },
+      {
+        "instruction": "Sofreír cebolla, zanahoria, pimiento y ajo en el aceite con comino y ají de color.",
+        "minutes": 10,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "Agregar el tomate picado y dejar que se deshaga.",
+        "minutes": 8,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "Juntar el sofrito con los garbanzos y parte de su agua; cocinar destapado hasta espesar. Salar al final y servir con perejil.",
+        "minutes": 15
+      }
+    ],
+    "tags": [
+      "ECONOMICA",
+      "MEAL_PREP",
+      "FREEZER_FRIENDLY",
+      "LEFTOVER_FRIENDLY",
+      "OLLA_UNICA"
+    ],
+    "batchPrepNotes": "Congela bien en porciones. Conviene cocer el doble de garbanzos y guardar la mitad ya cocida para otra receta."
+  },
+  {
+    "slug": "charquican",
+    "name": "Charquicán",
+    "description": "Zapallo y papa molidos con carne, choclo y porotos verdes. Se corona con un huevo frito.",
+    "category": "TRADICIONAL",
+    "kind": "MEAL",
+    "mealTypes": [
+      "LUNCH",
+      "DINNER"
+    ],
+    "baseServings": 4,
+    "prepMinutes": 20,
+    "cookMinutes": 40,
+    "difficulty": "FACIL",
+    "components": [
+      {
+        "ingredient": "carne molida de vacuno",
+        "quantity": 400,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 250,
+        "maxQuantity": 500,
+        "cookingMethod": "STEWED"
+      },
+      {
+        "ingredient": "zapallo camote",
+        "quantity": 500,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "DICE",
+          "sizeMm": 25
+        }
+      },
+      {
+        "ingredient": "papa",
+        "quantity": 600,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "CARBOHYDRATE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 400,
+        "maxQuantity": 800,
+        "cookingMethod": "BOILED",
+        "cut": {
+          "kind": "DICE",
+          "sizeMm": 25
+        }
+      },
+      {
+        "ingredient": "choclo en grano",
+        "quantity": 200,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "BOILED"
+      },
+      {
+        "ingredient": "poroto verde",
+        "quantity": 150,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "BOILED",
+        "cut": {
+          "kind": "CHOP"
+        }
+      },
+      {
+        "ingredient": "cebolla",
+        "quantity": 200,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "CHOP"
+        }
+      },
+      {
+        "ingredient": "huevo de gallina",
+        "quantity": 4,
+        "unit": "UNIT",
+        "basis": "EDIBLE_PORTION",
+        "slot": "TOPPING",
+        "role": "MAIN",
+        "adjustability": "OPTIONAL",
+        "optional": true,
+        "cookingMethod": "FRIED",
+        "notes": "el huevo frito encima: tradicional, no obligatorio"
+      },
+      {
+        "ingredient": "ajo",
+        "quantity": 6,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "aceite vegetal",
+        "quantity": 20,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "FAT",
+        "role": "ADDED_FAT",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 10,
+        "maxQuantity": 25
+      },
+      {
+        "ingredient": "aji de color",
+        "quantity": 4,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "comino molido",
+        "quantity": 1,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "sal",
+        "quantity": 5,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 0,
+        "maxQuantity": 6
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Sofreír la cebolla con el aceite, el ajo, el ají de color y el comino.",
+        "minutes": 7
+      },
+      {
+        "instruction": "Agregar la carne molida y deshacerla con la cuchara hasta que pierda el color rojo.",
+        "minutes": 8
+      },
+      {
+        "instruction": "Sumar papa y zapallo en cubos con agua caliente hasta la mitad; cocinar tapado.",
+        "minutes": 20
+      },
+      {
+        "instruction": "Agregar choclo y poroto verde y cocer unos minutos más.",
+        "minutes": 8
+      },
+      {
+        "instruction": "Moler todo groseramente con la cuchara: el charquicán queda desparejo, no puré liso. Salar.",
+        "minutes": 3
+      },
+      {
+        "instruction": "Freír los huevos aparte y servir uno sobre cada plato.",
+        "minutes": 5,
+        "parallelGroup": 1
+      }
+    ],
+    "tags": [
+      "ECONOMICA",
+      "FAMILIAR",
+      "TRADICIONAL",
+      "OLLA_UNICA",
+      "LEFTOVER_FRIENDLY"
+    ]
+  },
+  {
+    "slug": "pastel-de-choclo",
+    "name": "Pastel de choclo",
+    "description": "Pino de carne y pollo bajo una capa de choclo molido con albahaca, dorado al horno con azúcar encima.",
+    "category": "TRADICIONAL",
+    "kind": "MEAL",
+    "mealTypes": [
+      "LUNCH",
+      "DINNER"
+    ],
+    "baseServings": 4,
+    "prepMinutes": 40,
+    "cookMinutes": 45,
+    "difficulty": "AVANZADA",
+    "components": [
+      {
+        "ingredient": "choclo en grano",
+        "quantity": 1000,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "BASE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 800,
+        "maxQuantity": 1200,
+        "cookingMethod": "BAKED",
+        "notes": "el choclo molido es la tapa: no se puede reducir mucho sin romper el plato"
+      },
+      {
+        "ingredient": "leche liquida entera",
+        "quantity": 200,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "BASE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 120,
+        "maxQuantity": 250
+      },
+      {
+        "ingredient": "albahaca fresca",
+        "quantity": 12,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "notes": "va molida junto al choclo"
+      },
+      {
+        "ingredient": "carne molida de vacuno",
+        "quantity": 400,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 300,
+        "maxQuantity": 500,
+        "cookingMethod": "STEWED"
+      },
+      {
+        "ingredient": "pollo trutro entero con piel",
+        "quantity": 400,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 250,
+        "maxQuantity": 500,
+        "cookingMethod": "BOILED"
+      },
+      {
+        "ingredient": "cebolla",
+        "quantity": 250,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "STEWED",
+        "cut": {
+          "kind": "CHOP",
+          "sizeMm": 5
+        }
+      },
+      {
+        "ingredient": "huevo de gallina",
+        "quantity": 4,
+        "unit": "UNIT",
+        "basis": "EDIBLE_PORTION",
+        "slot": "TOPPING",
+        "role": "MAIN",
+        "adjustability": "OPTIONAL",
+        "optional": true,
+        "cookingMethod": "BOILED",
+        "notes": "huevo duro en gajos sobre el pino"
+      },
+      {
+        "ingredient": "azucar granulada",
+        "quantity": 20,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "SWEETENER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true,
+        "minQuantity": 0,
+        "maxQuantity": 30,
+        "notes": "espolvoreada arriba para el dorado; es lo primero que se saca si alguien tiene restricción de azúcar"
+      },
+      {
+        "ingredient": "aceite vegetal",
+        "quantity": 20,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "FAT",
+        "role": "ADDED_FAT",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 10,
+        "maxQuantity": 25
+      },
+      {
+        "ingredient": "comino molido",
+        "quantity": 1,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "aji de color",
+        "quantity": 2,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "sal",
+        "quantity": 6,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 0,
+        "maxQuantity": 7
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Cocer los trutros en agua con sal, dejarlos enfriar un poco y deshuesarlos.",
+        "minutes": 30,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "Cocer los huevos duros.",
+        "minutes": 10,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "Hacer el pino: sofreír la cebolla picada fina con el aceite, comino y ají de color; agregar la carne molida y cocinar hasta que suelte su jugo.",
+        "minutes": 15
+      },
+      {
+        "instruction": "Moler el choclo con la albahaca hasta obtener una pasta gruesa.",
+        "minutes": 8,
+        "optionalCapability": "FOOD_PROCESSOR",
+        "manualAlternative": "Sin procesadora: moler el choclo en molinillo manual o machacarlo con mortero; queda más rústico y toma unos 20 minutos."
+      },
+      {
+        "instruction": "Cocinar la pasta de choclo con la leche a fuego bajo, revolviendo sin parar hasta que espese.",
+        "minutes": 15
+      },
+      {
+        "instruction": "Armar en la fuente: pino abajo, pollo deshuesado y huevo en gajos encima, y cubrir todo con el choclo.",
+        "minutes": 8
+      },
+      {
+        "instruction": "Espolvorear azúcar y hornear hasta que la superficie esté dorada.",
+        "minutes": 30,
+        "temperatureC": 200
+      }
+    ],
+    "tags": [
+      "FAMILIAR",
+      "TRADICIONAL"
+    ],
+    "batchPrepNotes": "El pino se puede hacer el día anterior y guardar frío. El choclo molido conviene hacerlo el mismo día: al recalentar se corta con la leche."
+  },
+  {
+    "slug": "tortilla-de-verduras",
+    "name": "Tortilla de verduras",
+    "description": "Huevos con zapallo italiano, pimiento y poroto verde a la sartén. Sirve de almuerzo o de once.",
+    "category": "TRADICIONAL",
+    "kind": "MEAL",
+    "mealTypes": [
+      "LUNCH",
+      "DINNER",
+      "TEA"
+    ],
+    "baseServings": 4,
+    "prepMinutes": 15,
+    "cookMinutes": 20,
+    "difficulty": "FACIL",
+    "components": [
+      {
+        "ingredient": "huevo de gallina",
+        "quantity": 8,
+        "unit": "UNIT",
+        "basis": "EDIBLE_PORTION",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 6,
+        "maxQuantity": 10,
+        "cookingMethod": "PAN_SEARED"
+      },
+      {
+        "ingredient": "zapallo italiano",
+        "quantity": 300,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "PAN_SEARED",
+        "cut": {
+          "kind": "DICE",
+          "sizeMm": 10
+        }
+      },
+      {
+        "ingredient": "cebolla",
+        "quantity": 150,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "PAN_SEARED",
+        "cut": {
+          "kind": "CHOP"
+        }
+      },
+      {
+        "ingredient": "pimiento rojo",
+        "quantity": 120,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "PAN_SEARED",
+        "cut": {
+          "kind": "CHOP"
+        }
+      },
+      {
+        "ingredient": "poroto verde",
+        "quantity": 150,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "BOILED",
+        "cut": {
+          "kind": "CHOP"
+        }
+      },
+      {
+        "ingredient": "aceite vegetal",
+        "quantity": 25,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "FAT",
+        "role": "ADDED_FAT",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 12,
+        "maxQuantity": 30
+      },
+      {
+        "ingredient": "sal",
+        "quantity": 4,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 0,
+        "maxQuantity": 5
+      },
+      {
+        "ingredient": "perejil fresco",
+        "quantity": 8,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Blanquear el poroto verde en agua hirviendo y escurrirlo.",
+        "minutes": 6,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "Saltear cebolla, pimiento y zapallo italiano con el aceite hasta que suelten su agua y esta se evapore.",
+        "minutes": 10
+      },
+      {
+        "instruction": "Batir los huevos con sal y perejil; mezclarlos con las verduras tibias.",
+        "minutes": 4
+      },
+      {
+        "instruction": "Volcar todo en la sartén a fuego bajo, tapada, hasta que cuaje. Dar vuelta con la ayuda de un plato y terminar el otro lado.",
+        "minutes": 12
+      }
+    ],
+    "tags": [
+      "RAPIDA",
+      "ECONOMICA",
+      "FAMILIAR",
+      "LEFTOVER_FRIENDLY"
+    ],
+    "batchPrepNotes": "Fría queda firme y se corta en cuadrados: sirve de once o de colación al día siguiente."
+  },
+  {
+    "slug": "avena-con-leche-y-platano",
+    "name": "Avena con leche y plátano",
+    "description": "Avena cocida en leche con plátano y canela. Desayuno de olla, listo en diez minutos.",
+    "category": "DESAYUNO_ONCE",
+    "kind": "MEAL",
+    "mealTypes": [
+      "BREAKFAST",
+      "TEA"
+    ],
+    "baseServings": 2,
+    "prepMinutes": 3,
+    "cookMinutes": 8,
+    "difficulty": "FACIL",
+    "components": [
+      {
+        "ingredient": "avena tradicional",
+        "quantity": 80,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "CARBOHYDRATE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 50,
+        "maxQuantity": 110,
+        "cookingMethod": "BOILED"
+      },
+      {
+        "ingredient": "leche liquida entera",
+        "quantity": 400,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "BASE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 300,
+        "maxQuantity": 500
+      },
+      {
+        "ingredient": "platano",
+        "quantity": 240,
+        "unit": "G",
+        "basis": "EDIBLE_PORTION",
+        "slot": "FRUIT",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 120,
+        "maxQuantity": 300,
+        "cut": {
+          "kind": "SLICE"
+        }
+      },
+      {
+        "ingredient": "canela molida",
+        "quantity": 1,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      },
+      {
+        "ingredient": "azucar granulada",
+        "quantity": 10,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "SWEETENER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true,
+        "minQuantity": 0,
+        "maxQuantity": 20
+      }
+    ],
+    "alternatives": [
+      {
+        "slot": "FRUIT",
+        "ingredient": "manzana",
+        "compatibility": "GOOD",
+        "quantityEquivalence": 1,
+        "notes": "rallada, se agrega al final"
+      },
+      {
+        "slot": "FRUIT",
+        "ingredient": "arandanos",
+        "compatibility": "GOOD",
+        "quantityEquivalence": 0.6
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Calentar la leche con la canela sin dejar que hierva de golpe.",
+        "minutes": 3
+      },
+      {
+        "instruction": "Agregar la avena en lluvia revolviendo, y cocer a fuego bajo hasta que espese.",
+        "minutes": 6
+      },
+      {
+        "instruction": "Servir con el plátano en rodajas encima y endulzar solo si hace falta.",
+        "minutes": 2
+      }
+    ],
+    "tags": [
+      "RAPIDA",
+      "ECONOMICA",
+      "FAMILIAR"
+    ]
+  },
+  {
+    "slug": "once-con-quesillo-y-palta",
+    "name": "Once con quesillo y palta",
+    "description": "Marraqueta con quesillo, palta y tomate. La once de todos los días, sin vueltas.",
+    "category": "DESAYUNO_ONCE",
+    "kind": "MEAL",
+    "mealTypes": [
+      "TEA",
+      "BREAKFAST"
+    ],
+    "baseServings": 2,
+    "prepMinutes": 6,
+    "cookMinutes": 0,
+    "difficulty": "FACIL",
+    "components": [
+      {
+        "ingredient": "pan marraqueta",
+        "quantity": 2,
+        "unit": "UNIT",
+        "basis": "EDIBLE_PORTION",
+        "slot": "CARBOHYDRATE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 1,
+        "maxQuantity": 3
+      },
+      {
+        "ingredient": "quesillo",
+        "quantity": 120,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 80,
+        "maxQuantity": 180,
+        "cookingMethod": "RAW"
+      },
+      {
+        "ingredient": "palta",
+        "quantity": 120,
+        "unit": "G",
+        "basis": "EDIBLE_PORTION",
+        "slot": "FAT",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 60,
+        "maxQuantity": 180,
+        "cookingMethod": "RAW",
+        "notes": "peso de pulpa, sin cuesco ni cáscara"
+      },
+      {
+        "ingredient": "tomate",
+        "quantity": 120,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "RAW",
+        "cut": {
+          "kind": "SLICE"
+        }
+      },
+      {
+        "ingredient": "aceite de oliva",
+        "quantity": 5,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "FAT",
+        "role": "ADDED_FAT",
+        "adjustability": "OPTIONAL",
+        "optional": true,
+        "minQuantity": 0,
+        "maxQuantity": 10
+      },
+      {
+        "ingredient": "sal",
+        "quantity": 1,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 0,
+        "maxQuantity": 2
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Partir las marraquetas por la mitad y tostarlas si se quiere.",
+        "minutes": 3
+      },
+      {
+        "instruction": "Moler la palta con un poco de sal y untarla en el pan.",
+        "minutes": 2
+      },
+      {
+        "instruction": "Poner el quesillo en láminas y el tomate en rodajas encima; un hilo de aceite de oliva al final.",
+        "minutes": 2
+      }
+    ],
+    "tags": [
+      "RAPIDA",
+      "ECONOMICA"
+    ]
+  },
+  {
+    "slug": "ensalada-de-atun-con-papas-y-huevo",
+    "name": "Ensalada de atún con papas y huevo",
+    "description": "Papas cocidas, huevo duro, atún y cebolla en un plato frío que se sostiene solo como almuerzo.",
+    "category": "ENSALADA",
+    "kind": "MEAL",
+    "mealTypes": [
+      "LUNCH",
+      "DINNER"
+    ],
+    "baseServings": 4,
+    "prepMinutes": 15,
+    "cookMinutes": 25,
+    "difficulty": "FACIL",
+    "components": [
+      {
+        "ingredient": "atun en conserva al agua",
+        "quantity": 320,
+        "unit": "G",
+        "basis": "DRAINED",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 240,
+        "maxQuantity": 400,
+        "cookingMethod": "RAW",
+        "notes": "peso escurrido: el líquido de la lata no cuenta"
+      },
+      {
+        "ingredient": "papa",
+        "quantity": 600,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "CARBOHYDRATE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 400,
+        "maxQuantity": 800,
+        "cookingMethod": "BOILED",
+        "cut": {
+          "kind": "DICE",
+          "sizeMm": 20
+        }
+      },
+      {
+        "ingredient": "huevo de gallina",
+        "quantity": 4,
+        "unit": "UNIT",
+        "basis": "EDIBLE_PORTION",
+        "slot": "PROTEIN",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 2,
+        "maxQuantity": 6,
+        "cookingMethod": "BOILED"
+      },
+      {
+        "ingredient": "cebolla",
+        "quantity": 100,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "VEGETABLE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "RAW",
+        "cut": {
+          "kind": "CHOP",
+          "sizeMm": 4
+        }
+      },
+      {
+        "ingredient": "lechuga",
+        "quantity": 150,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "SALAD",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "cookingMethod": "RAW",
+        "cut": {
+          "kind": "SHRED"
+        }
+      },
+      {
+        "ingredient": "aceite de oliva",
+        "quantity": 30,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "FAT",
+        "role": "ADDED_FAT",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 15,
+        "maxQuantity": 35
+      },
+      {
+        "ingredient": "limon",
+        "quantity": 40,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE"
+      },
+      {
+        "ingredient": "sal",
+        "quantity": 3,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 0,
+        "maxQuantity": 4,
+        "notes": "el atún de lata ya trae sodio: conviene salar al final y probando"
+      },
+      {
+        "ingredient": "perejil fresco",
+        "quantity": 8,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "TOPPING",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Cocer las papas con cáscara hasta que se pasen apenas con el tenedor; pelarlas y cortarlas en cubos.",
+        "minutes": 25,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "Cocer los huevos duros, enfriarlos y cortarlos en gajos.",
+        "minutes": 10,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "Dejar la cebolla picada en agua fría con un poco de sal para que pierda el filo, y escurrirla.",
+        "minutes": 10,
+        "parallelGroup": 1
+      },
+      {
+        "instruction": "Mezclar papa tibia, atún escurrido y cebolla con el aceite y el limón.",
+        "minutes": 5
+      },
+      {
+        "instruction": "Servir sobre la lechuga con los gajos de huevo encima y perejil. Salar probando.",
+        "minutes": 3
+      }
+    ],
+    "tags": [
+      "RAPIDA",
+      "ECONOMICA",
+      "LEFTOVER_FRIENDLY"
+    ]
+  },
+  {
+    "slug": "arroz-con-leche",
+    "name": "Arroz con leche",
+    "description": "Arroz cocido lento en leche con canela. Se come tibio o frío.",
+    "category": "POSTRE",
+    "kind": "DESSERT",
+    "mealTypes": [
+      "DESSERT",
+      "TEA"
+    ],
+    "baseServings": 6,
+    "prepMinutes": 5,
+    "cookMinutes": 45,
+    "difficulty": "FACIL",
+    "components": [
+      {
+        "ingredient": "arroz blanco",
+        "quantity": 150,
+        "unit": "G",
+        "basis": "RAW",
+        "slot": "BASE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 120,
+        "maxQuantity": 180,
+        "cookingMethod": "BOILED",
+        "yieldFactor": 2.5
+      },
+      {
+        "ingredient": "leche liquida entera",
+        "quantity": 1000,
+        "unit": "ML",
+        "basis": "AS_PACKAGED",
+        "slot": "BASE",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 800,
+        "maxQuantity": 1200
+      },
+      {
+        "ingredient": "azucar granulada",
+        "quantity": 90,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "SWEETENER",
+        "role": "MAIN",
+        "adjustability": "ADJUSTABLE",
+        "minQuantity": 40,
+        "maxQuantity": 120,
+        "notes": "es un postre: el azúcar es componente, no condimento"
+      },
+      {
+        "ingredient": "canela molida",
+        "quantity": 2,
+        "unit": "G",
+        "basis": "AS_PACKAGED",
+        "slot": "OTHER",
+        "role": "SEASONING",
+        "adjustability": "OPTIONAL",
+        "optional": true
+      }
+    ],
+    "steps": [
+      {
+        "instruction": "Hervir el arroz en agua unos minutos y escurrirlo: así suelta el primer almidón.",
+        "minutes": 8
+      },
+      {
+        "instruction": "Cocerlo en la leche con la canela, a fuego muy bajo, revolviendo seguido para que no se pegue.",
+        "minutes": 30
+      },
+      {
+        "instruction": "Agregar el azúcar cuando el arroz ya esté blando y cocinar unos minutos más.",
+        "minutes": 7
+      },
+      {
+        "instruction": "Retirar: espesa bastante al enfriar, así que conviene dejarlo más líquido de lo que se quiere.",
+        "minutes": 2
+      }
+    ],
+    "tags": [
+      "ECONOMICA",
+      "FAMILIAR",
+      "TRADICIONAL"
+    ]
+  }
+]

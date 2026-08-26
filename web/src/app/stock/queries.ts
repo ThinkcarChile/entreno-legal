@@ -62,6 +62,44 @@ const demandRow = z.object({
     .transform((v) => v ?? []),
 });
 
+/**
+ * Consumo observado, DESPUÉS del Sprint 12.
+ *
+ * Hasta la 0036, el consumo observado se leía de las proyecciones en estado
+ * CONSUMED tomando `proposed_quantity` — o sea, lo PLANIFICADO haciéndose pasar
+ * por lo consumido. Ese estado ya no lo escribe nadie: `consume_planned_meal`
+ * dejó de fabricar realidad y ahora sólo SIRVE. Si este lector se hubiera
+ * quedado donde estaba, el día que la migración entra a producción el histórico
+ * de 30 días queda vacío, el motor lee el vacío como cero, la tasa de consumo
+ * se apaga y la lista de compras dice que no hace falta nada. Un pronóstico
+ * apagado por falta de datos no se puede distinguir de un pronóstico que dice
+ * "no consumes esto" si no se cambia de fuente.
+ *
+ * La fuente correcta es lo SERVIDO (`meal_serving_record_items`): es el hecho
+ * físico, el único que descuenta despensa, y `served_quantity` es el análogo
+ * exacto del consumo DECLARADO del §7 — incluye la parte que la despensa no
+ * tenía, porque `served = deducted + shortfall`.
+ *
+ * NO se lee el eje ACTUAL_CONSUMED (`intake_log_items`, 0038) a propósito: ese
+ * eje es NUTRICIONAL y no mueve un gramo. Para reponer la despensa importa lo
+ * que salió de ella, no lo que la persona alcanzó a comerse.
+ */
+const servedRow = z.object({
+  ingredient_id: uuid.nullable(),
+  label: z.string(),
+  served_quantity: numeric,
+  served_unit: unitSchema,
+  served_weight_basis: weightBasisSchema,
+  planned_cooking_method: z.string().nullable(),
+  meal_serving_records: z
+    .union([
+      z.object({ served_on: dateString }),
+      z.array(z.object({ served_on: dateString })),
+      z.null(),
+    ])
+    .transform((v) => (Array.isArray(v) ? (v[0] ?? null) : v)),
+});
+
 const targetRow = z.object({
   ingredient_id: uuid,
   unit: unitSchema,
@@ -116,8 +154,18 @@ export async function loadStockInput(
     (m) => m.id,
   );
 
-  const [lotsRes, productLotsRes, futureRes, consumedRes, shortRes, wasteRes, purchRes, yieldsRes, targetsRes] =
-    await Promise.all([
+  const [
+    lotsRes,
+    productLotsRes,
+    futureRes,
+    servedRes,
+    consumedRes,
+    shortRes,
+    wasteRes,
+    purchRes,
+    yieldsRes,
+    targetsRes,
+  ] = await Promise.all([
       db
         .from("inventory_lots")
         .select(
@@ -150,6 +198,27 @@ export async function loadStockInput(
         .not("assignment_id", "is", null)
         .in("member_id", memberIds)
         .gte("serving_date", today),
+      // LO SERVIDO (0036): la fuente viva del consumo observado. `!inner` no es
+      // decorativo — sin él, un renglón cuyo registro no pasa el filtro llegaría
+      // con el embed en null y se perdería en silencio.
+      db
+        .from("meal_serving_record_items")
+        .select(
+          `ingredient_id, label, served_quantity, served_unit, served_weight_basis,
+           planned_cooking_method,
+           meal_serving_records!inner ( served_on )`,
+        )
+        .eq("meal_serving_records.household_id", householdId)
+        .eq("meal_serving_records.status", "ACTIVE")
+        .gte("meal_serving_records.served_on", hace30)
+        .not("ingredient_id", "is", null),
+      // HISTORIA del mundo anterior a la 0036: porciones que quedaron en
+      // CONSUMED cuando `consume_planned_meal` servía y consumía en un solo
+      // acto. Nadie escribe más ese estado, pero lo que ya está escrito ocurrió
+      // de verdad y sigue siendo el único registro de esos días. Sin esta
+      // consulta, el histórico se vaciaría de golpe el día del despliegue.
+      // No hay doble conteo posible: una porción servida por el mundo nuevo
+      // queda en SERVED y nunca en CONSUMED.
       db
         .from("member_serving_projections")
         .select(
@@ -199,7 +268,8 @@ export async function loadStockInput(
     ["lotes", lotsRes],
     ["lotes por producto", productLotsRes],
     ["demanda futura", futureRes],
-    ["consumo declarado", consumedRes],
+    ["consumo servido", servedRes],
+    ["consumo declarado (historia)", consumedRes],
     ["desajustes", shortRes],
     ["mermas", wasteRes],
     ["compras", purchRes],
@@ -250,8 +320,29 @@ export async function loadStockInput(
     ...new Set(futuras.map((p) => p.serving_date).filter((d): d is string => d !== null)),
   ].sort();
 
+  // Lo servido: el consumo observado de acá en adelante.
+  const servidos = parseRows(servedRow, servedRes.data, "stock: consumo servido");
+  const consumoServido = servidos.flatMap((s) =>
+    s.ingredient_id === null || s.meal_serving_records === null || s.served_quantity <= 0
+      ? []
+      : [
+          {
+            ingredientId: s.ingredient_id,
+            quantity: s.served_quantity,
+            unit: s.served_unit,
+            weightBasis: s.served_weight_basis,
+            // Fuera de plan no hay método congelado, y no se inventa uno: sin
+            // método, la conversión cocido→crudo usa el rendimiento genérico o
+            // se declara inconvertible. UNKNOWN nunca es 1:1.
+            cookingMethod: s.planned_cooking_method,
+            date: s.meal_serving_records.served_on,
+          },
+        ],
+  );
+
+  // Historia anterior a la 0036, tal como quedó escrita.
   const consumidas = parseRows(demandRow, consumedRes.data, "stock: consumo declarado");
-  const consumption = consumidas.flatMap((p) =>
+  const consumoHistorico = consumidas.flatMap((p) =>
     p.serving_date === null
       ? []
       : p.member_serving_components
@@ -265,6 +356,8 @@ export async function loadStockInput(
             date: p.serving_date!,
           })),
   );
+
+  const consumption = [...consumoServido, ...consumoHistorico];
 
   const shortfalls = parseRows(
     z.object({

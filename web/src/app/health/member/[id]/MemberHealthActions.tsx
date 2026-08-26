@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button, ButtonOutline, ErrorNote, Icon } from "@/components/ui";
 import { resolveImpact } from "../../actions";
 
 /** Resolver impactos (§35/§36): revisar, aplicar a futuros o descartar — decide una persona. */
@@ -27,35 +28,22 @@ export function MemberHealthActions({
   }
 
   return (
-    <div className="mt-2 space-y-2">
+    <div className="mt-sm space-y-sm">
       {impactos.map((i) => (
-        <div key={i.id} className="flex flex-wrap items-center gap-2 text-xs">
-          <span>
+        <div key={i.id} className="flex flex-wrap items-center gap-sm">
+          <span className="min-w-0 flex-1 font-body-sm text-body-sm font-semibold">
             {i.trigger === "LAB_RESULTS_CONFIRMED" ? "Nuevo examen confirmado" : "Cambio clínico"}
           </span>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => resolver(i.id, "REVIEWED")}
-            className="rounded-full bg-amber-200 px-3 py-1 font-medium text-amber-900 disabled:opacity-50"
-          >
+          <Button disabled={pending} onClick={() => resolver(i.id, "REVIEWED")}>
+            <Icon name="task_alt" className="text-[18px]" />
             Marcar revisado
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => resolver(i.id, "DISMISSED")}
-            className="rounded-full border border-amber-300 px-3 py-1 disabled:opacity-50"
-          >
+          </Button>
+          <ButtonOutline disabled={pending} onClick={() => resolver(i.id, "DISMISSED")}>
             Descartar
-          </button>
+          </ButtonOutline>
         </div>
       ))}
-      {error && (
-        <p className="rounded-lg bg-red-50 px-2 py-1.5 text-xs text-red-800" role="alert">
-          {error}
-        </p>
-      )}
+      {error && <ErrorNote>{error}</ErrorNote>}
     </div>
   );
 }

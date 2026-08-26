@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell } from "@/components/AppShell";
+import { Icon, LinkButton } from "@/components/ui";
 import type { WeightBasis } from "@/domain/catalog/types";
 import type { SlotType } from "@/domain/recipes/types";
 import { loadDraftForEdit, loadIngredientOptions } from "../../queries";
@@ -72,17 +72,20 @@ export default async function EditRecipePage({ params, searchParams }: Props) {
   };
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-16">
-      <AppNav active="recipes" />
-      <Link href={`/recipes/${id}`} className="text-sm text-[var(--accent)]">
-        ← {draft.name}
-      </Link>
-      <h1 className="mb-1 mt-2 text-2xl font-semibold">Editar borrador</h1>
-      <p className="mb-4 text-sm text-[var(--ink)]/60">
-        Versión {draft.versionNumber}. Al publicarla queda fija: los cambios posteriores crean una
-        versión nueva.
-      </p>
-      <RecipeForm ingredients={ingredients} initial={initial} />
-    </main>
+    <AppShell
+      active="recipes"
+      title="Editar borrador"
+      subtitle={`Versión ${draft.versionNumber}. Al publicarla queda fija: los cambios posteriores crean una versión nueva.`}
+      action={
+        <LinkButton href={`/recipes/${id}`} variant="outline">
+          <Icon name="arrow_back" className="text-[18px]" />
+          Volver
+        </LinkButton>
+      }
+    >
+      <div className="mt-md">
+        <RecipeForm ingredients={ingredients} initial={initial} />
+      </div>
+    </AppShell>
   );
 }

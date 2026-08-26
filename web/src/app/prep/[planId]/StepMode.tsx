@@ -6,12 +6,18 @@ import { useRouter } from "next/navigation";
 import type { SuggestedPackage } from "@/domain/prep/types";
 import { completeTask, createLabelsForTask, skipTask } from "../actions";
 import type { PrepPlanView, PrepTaskView } from "../queries";
+import { ButtonOutline, Card, Chip, ErrorNote, Icon, LinkButton, Notice } from "@/components/ui";
 
 /**
  * Modo cocina (§16, §58): UN paso por vez, tipografía y botones GRANDES,
  * poco texto, para usar de pie con las manos ocupadas. La cantidad REAL que
  * digita la persona manda sobre la planificada (§18).
  */
+
+/** Campo de formulario del kit: mismo alto de toque en todos lados. */
+const FIELD =
+  "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-md py-sm font-body-md text-body-md text-on-surface";
+
 export function StepMode({
   plan,
   locations,
@@ -132,97 +138,145 @@ export function StepMode({
       (t) => t.status === "DONE" && ((t.result as { child_lot_ids?: string[] })?.child_lot_ids?.length ?? 0) > 0,
     );
     return (
-      <main className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center gap-6 px-6 py-10 text-center">
-        <p className="text-5xl">✅</p>
-        <h1 className="text-2xl font-semibold">Plan terminado</h1>
-        <p className="text-sm text-[var(--ink)]/60">
-          {tareas.filter((t) => t.status === "DONE").length} tareas hechas ·{" "}
-          {tareas.filter((t) => t.status === "SKIPPED").length} saltadas
-        </p>
+      <main className="mx-auto flex min-h-dvh max-w-[36rem] flex-col justify-center gap-lg bg-background px-container-margin py-xl text-center">
+        <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary-fixed text-on-primary-fixed">
+          <Icon name="check_circle" filled className="text-[40px]" />
+        </span>
+        <div>
+          <h1 className="font-headline-lg text-headline-lg text-on-surface">Plan terminado</h1>
+          <p className="mt-sm font-body-md text-body-md text-on-surface-variant">
+            {tareas.filter((t) => t.status === "DONE").length} tareas hechas ·{" "}
+            {tareas.filter((t) => t.status === "SKIPPED").length} saltadas
+          </p>
+        </div>
         {conEtiquetas.map((t) => (
           <LabelButtons key={t.id} task={t} pending={pending} run={run} />
         ))}
-        <Link href="/prep" className="rounded-2xl bg-[var(--accent)] px-6 py-4 text-lg font-semibold text-white">
+        <LinkButton href="/prep" className="w-full">
+          <Icon name="arrow_back" className="text-[18px]" />
           Volver a preparación
-        </Link>
-        {message && <p className="text-sm text-[var(--ink)]/70">{message}</p>}
-        {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
+        </LinkButton>
+        {message && (
+          <p className="font-body-sm text-body-sm text-on-surface-variant">{message}</p>
+        )}
+        {error && <ErrorNote>{error}</ErrorNote>}
       </main>
     );
   }
 
   const esPortion = ["PORTION", "PACK"].includes(actual.task_type);
+  const avance = Math.round(((paso - 1) / tareas.length) * 100);
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-xl flex-col px-5 py-6">
-      <header className="mb-4 flex items-center justify-between text-xs text-[var(--ink)]/50">
-        <Link href="/prep" className="underline">← Salir</Link>
-        <span>
-          PASO {paso} DE {tareas.length}
-        </span>
+    <main className="mx-auto flex min-h-dvh max-w-[36rem] flex-col bg-background">
+      <header className="sticky top-0 z-40 flex items-center justify-between gap-sm bg-background px-container-margin py-md">
+        <Link
+          href="/prep"
+          aria-label="Salir del modo cocina"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container"
+        >
+          <Icon name="close" />
+        </Link>
+        <p className="min-w-0 text-center font-label-md text-label-md uppercase text-on-surface-variant">
+          Paso {paso} de {tareas.length}
+        </p>
+        <span className="h-10 w-10 shrink-0" aria-hidden />
       </header>
 
-      <section className="flex flex-1 flex-col gap-4">
-        {actual.block_label && (
-          <span className="w-fit rounded-full bg-[var(--paper)] px-3 py-1 text-xs font-medium text-[var(--ink)]/70">
-            {actual.block_label}
-          </span>
-        )}
-        <h1 className="text-3xl font-bold leading-tight">{actual.label}</h1>
+      <div className="h-1 w-full bg-surface-container-high">
+        <div className="h-full bg-primary transition-all duration-300" style={{ width: `${avance}%` }} />
+      </div>
 
-        {actual.planned_quantity != null && (
-          <p className="text-xl">
-            Preparar: <strong>{actual.planned_quantity} {(actual.unit ?? "").toLowerCase()}</strong>
-          </p>
+      <section className="flex flex-1 flex-col gap-md px-container-margin py-lg">
+        {actual.block_label && <Chip icon="label">{actual.block_label}</Chip>}
+
+        <div>
+          <h1 className="font-headline-xl text-headline-xl text-on-surface">{actual.label}</h1>
+          {actual.planned_quantity != null && (
+            <p className="mt-sm font-headline-md text-headline-md font-normal text-on-surface-variant">
+              Preparar {actual.planned_quantity} {(actual.unit ?? "").toLowerCase()}
+            </p>
+          )}
+          {params.cutLabel && (
+            <p className="mt-xs font-headline-sm text-headline-sm font-normal text-on-surface-variant">
+              Corte: {params.cutLabel}
+            </p>
+          )}
+        </div>
+
+        {(params.equipmentName || params.manualAlternative) && (
+          <Card className="flex items-center gap-md p-md">
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-surface-container-low text-primary">
+              <Icon name={params.equipmentName ? "blender" : "pan_tool"} filled className="text-[28px]" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-headline-sm text-headline-sm text-on-surface">
+                {params.equipmentName ?? "A mano"}
+              </p>
+              {params.equipmentName && params.batches && params.batches > 1 && (
+                <p className="font-body-sm text-body-sm text-on-surface-variant">
+                  {params.batches} tandas
+                </p>
+              )}
+              {params.manualAlternative && (
+                <p className="font-body-sm text-body-sm text-on-surface-variant">
+                  Alternativa: {params.manualAlternative}
+                </p>
+              )}
+            </div>
+          </Card>
         )}
-        {params.cutLabel && (
-          <p className="text-lg">
-            Corte: <strong>{params.cutLabel}</strong>
-          </p>
+
+        {(params.reasons ?? []).length > 0 && (
+          <ul className="space-y-1">
+            {(params.reasons ?? []).map((r) => (
+              <li
+                key={r}
+                className="flex items-start gap-sm font-body-sm text-body-sm text-on-surface-variant"
+              >
+                <Icon name="info" className="mt-0.5 shrink-0 text-[16px]" />
+                <span className="min-w-0">{r}</span>
+              </li>
+            ))}
+          </ul>
         )}
-        {params.equipmentName && (
-          <p className="text-lg">
-            Equipo: <strong>{params.equipmentName}</strong>
-            {params.batches && params.batches > 1 && <> · {params.batches} tandas</>}
-          </p>
-        )}
-        {params.manualAlternative && (
-          <p className="text-sm text-[var(--ink)]/60">Alternativa: {params.manualAlternative}</p>
-        )}
-        {(params.reasons ?? []).map((r) => (
-          <p key={r} className="text-sm text-[var(--ink)]/60">· {r}</p>
-        ))}
+
         {params.safety?.verdict === "REVIEW_REQUIRED" && (
-          <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            ⚠ Sin regla de seguridad validada para este guardado: decide tú.
-          </p>
+          <Notice icon="warning">
+            Sin regla de seguridad validada para este guardado: decide tú.
+          </Notice>
         )}
 
         {esPortion && (params.packages ?? []).length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-sm">
             {(params.packages ?? []).map((p, i) => (
-              <div key={i} className="flex items-center gap-2 rounded-xl border border-[var(--ink)]/10 bg-white p-3">
-                <div className="min-w-0 flex-1 text-sm">
-                  <p className="font-medium">
+              <Card key={i} className="flex items-start gap-md p-md">
+                <div className="min-w-0 flex-1">
+                  <p className="font-body-md text-body-md font-semibold text-on-surface">
                     {p.intendedUseDate ? `Para el ${p.intendedUseDate}` : "Reserva"}
                     {p.mealType && ` · ${p.mealType.toLowerCase()}`}
                   </p>
-                  <p className="text-xs text-[var(--ink)]/60">
-                    {p.storage === "FREEZE" ? "Congelar" : p.storage === "REFRIGERATE" ? "Refrigerar" : "Guardado: revisar"}
+                  <p className="mt-0.5 font-body-sm text-body-sm text-on-surface-variant">
+                    {p.storage === "FREEZE"
+                      ? "Congelar"
+                      : p.storage === "REFRIGERATE"
+                        ? "Refrigerar"
+                        : "Guardado: revisar"}
                   </p>
-                  <label className="mt-1 flex items-center gap-1.5 text-xs text-[var(--ink)]/60">
+                  <label className="mt-sm flex items-center gap-sm font-body-sm text-body-sm text-on-surface-variant">
                     <input
                       type="checkbox"
-                      className="size-4"
+                      className="size-5 accent-primary"
                       checked={paqueteVacio[i] ?? false}
                       onChange={(e) => setPaqueteVacio((prev) => ({ ...prev, [i]: e.target.checked }))}
                     />
                     Sellado al vacío
                   </label>
                   <select
+                    aria-label="Dónde queda este paquete"
                     value={paqueteUbicacion[i] ?? ubicacionPara(p.storage) ?? ""}
                     onChange={(e) => setPaqueteUbicacion((prev) => ({ ...prev, [i]: e.target.value }))}
-                    className="mt-1 w-full rounded-lg border border-[var(--ink)]/15 bg-white px-2 py-1.5 text-xs"
+                    className={`${FIELD} mt-sm`}
                   >
                     <option value="">Sin mover</option>
                     {locations.map((l) => (
@@ -235,21 +289,23 @@ export function StepMode({
                 <input
                   type="number"
                   inputMode="decimal"
+                  aria-label="Cantidad real del paquete"
                   placeholder={String(p.quantity)}
                   value={paquetesReales[i] ?? ""}
                   onChange={(e) => setPaquetesReales((prev) => ({ ...prev, [i]: e.target.value }))}
-                  className="w-24 rounded-xl border border-[var(--ink)]/20 px-3 py-3 text-right text-lg"
+                  className="w-24 shrink-0 rounded-xl border border-outline-variant bg-surface-container-lowest px-sm py-md text-right font-headline-sm text-headline-sm text-on-surface"
                 />
-              </div>
+              </Card>
             ))}
-            <p className="text-[10px] text-[var(--ink)]/40">
-              Ajusta los gramos si la realidad fue distinta: lo que digites es lo que queda registrado.
+            <p className="font-body-sm text-body-sm text-on-surface-variant">
+              Ajusta los gramos si la realidad fue distinta: lo que digites es lo que queda
+              registrado.
             </p>
           </div>
         )}
 
         {!esPortion && actual.planned_quantity != null && (
-          <label className="text-sm text-[var(--ink)]/60">
+          <label className="block font-body-sm text-body-sm text-on-surface-variant">
             ¿Preparaste otra cantidad? (opcional)
             <input
               type="number"
@@ -257,39 +313,37 @@ export function StepMode({
               placeholder={String(actual.planned_quantity)}
               value={cantidadReal}
               onChange={(e) => setCantidadReal(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-[var(--ink)]/20 bg-white px-4 py-3 text-lg"
+              className={`${FIELD} mt-1 py-md font-headline-sm text-headline-sm`}
             />
           </label>
         )}
       </section>
 
-      {message && <p className="mb-2 text-sm text-[var(--ink)]/70">{message}</p>}
-      {error && (
-        <p className="mb-2 text-sm text-red-700" role="alert">
-          {error}
-        </p>
-      )}
-      {!dependenciaLista && (
-        <p className="mb-2 text-sm text-amber-700">Primero completa el paso del que depende esta tarea.</p>
-      )}
+      <footer className="sticky bottom-0 space-y-sm bg-background/95 px-container-margin pt-md pb-lg backdrop-blur-sm">
+        {message && (
+          <p className="font-body-sm text-body-sm text-on-surface-variant">{message}</p>
+        )}
+        {error && <ErrorNote>{error}</ErrorNote>}
+        {!dependenciaLista && (
+          <Notice icon="lock">Primero completa el paso del que depende esta tarea.</Notice>
+        )}
 
-      <footer className="mt-4 space-y-2">
         <button
           type="button"
           disabled={pending || !dependenciaLista}
           onClick={confirmar}
-          className="w-full rounded-2xl bg-[var(--accent)] px-6 py-5 text-2xl font-bold text-white disabled:opacity-50"
+          className="elevated-shadow flex w-full items-center justify-center gap-sm rounded-xl bg-primary px-lg py-4 font-headline-md text-headline-md text-on-primary transition-transform active:scale-[0.98] disabled:opacity-40"
         >
+          <Icon name="check_circle" filled className="text-[28px]" />
           LISTO
         </button>
-        <button
-          type="button"
+        <ButtonOutline
           disabled={pending}
           onClick={() => run(() => skipTask(actual.id))}
-          className="w-full rounded-2xl border border-[var(--ink)]/20 px-6 py-3 text-sm text-[var(--ink)]/70 disabled:opacity-50"
+          className="w-full"
         >
           Saltar este paso
-        </button>
+        </ButtonOutline>
       </footer>
     </main>
   );
@@ -306,9 +360,8 @@ function LabelButtons({
 }) {
   const [jobs, setJobs] = useState<string[]>([]);
   return (
-    <div className="space-y-2">
-      <button
-        type="button"
+    <div className="space-y-sm">
+      <ButtonOutline
         disabled={pending}
         onClick={() =>
           run(async () => {
@@ -317,17 +370,19 @@ function LabelButtons({
             return r;
           })
         }
-        className="w-full rounded-2xl border border-[var(--accent)] px-6 py-3 text-base font-medium text-[var(--accent)] disabled:opacity-50"
+        className="w-full"
       >
+        <Icon name="label" className="text-[18px]" />
         Generar etiquetas de {task.label}
-      </button>
+      </ButtonOutline>
       {jobs.length > 0 && (
         <a
           href={`/api/labels?jobs=${jobs.join(",")}`}
           target="_blank"
           rel="noreferrer"
-          className="block w-full rounded-2xl bg-[var(--ink)] px-6 py-3 text-base font-medium text-white"
+          className="inline-flex w-full items-center justify-center gap-sm rounded-full bg-inverse-surface px-lg py-sm font-body-md text-body-sm font-semibold text-inverse-on-surface"
         >
+          <Icon name="picture_as_pdf" className="text-[18px]" />
           Abrir PDF ({jobs.length} etiquetas)
         </a>
       )}

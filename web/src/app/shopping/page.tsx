@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell } from "@/components/AppShell";
+import { EmptyState, Icon, LinkButton } from "@/components/ui";
 import { addDays, effectiveDate, weekLabel, weekStart } from "@/domain/nutrition/calendar";
 import { aggregateDemand, demandSignature } from "@/domain/shopping/engine";
 import { loadHouseholdMembers } from "@/app/family/nutrition-queries";
@@ -33,13 +34,13 @@ export default async function ShoppingPage({ searchParams }: Props) {
   const { householdId } = await loadHouseholdMembers(supabase);
   if (!householdId) {
     return (
-      <main className="mx-auto max-w-3xl px-4 pb-16">
-        <AppNav active="shopping" />
-        <h1 className="mb-2 mt-2 text-2xl font-semibold">Compras</h1>
-        <p className="rounded-2xl border border-dashed border-[var(--ink)]/20 p-6 text-center text-sm text-[var(--ink)]/60">
-          Primero crea o únete a un hogar en la pestaña Familia.
-        </p>
-      </main>
+      <AppShell active="shopping" title="Compras">
+        <div className="mt-md">
+          <EmptyState icon="group_add">
+            Primero crea o únete a un hogar en la pestaña Familia.
+          </EmptyState>
+        </div>
+      </AppShell>
     );
   }
 
@@ -77,32 +78,24 @@ export default async function ShoppingPage({ searchParams }: Props) {
   const siguiente = addDays(inicio, 7);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-16">
-      <AppNav active="shopping" />
-
-      <header className="mb-4">
-        <h1 className="text-2xl font-semibold">Compra de la semana</h1>
-        <p className="mt-1 text-sm text-[var(--ink)]/60">{weekLabel(inicio)}</p>
-      </header>
-
-      <nav className="mb-5 flex items-center justify-between gap-2">
-        <Link
-          href={`/shopping?semana=${anterior}`}
-          className="rounded-full border border-[var(--ink)]/20 px-4 py-2 text-xs font-medium"
-        >
-          ← Semana anterior
-        </Link>
+    <AppShell active="shopping" title="Compra de la semana" subtitle={weekLabel(inicio)}>
+      <nav className="mt-md flex items-center justify-between gap-sm">
+        <LinkButton href={`/shopping?semana=${anterior}`} variant="outline">
+          <Icon name="chevron_left" className="text-[18px]" />
+          Anterior
+        </LinkButton>
         {inicio !== weekStart(hoy) && (
-          <Link href="/shopping" className="text-xs text-[var(--accent)] underline">
+          <Link
+            href="/shopping"
+            className="min-w-0 truncate font-body-sm text-body-sm font-semibold text-primary underline underline-offset-2"
+          >
             Volver a esta semana
           </Link>
         )}
-        <Link
-          href={`/shopping?semana=${siguiente}`}
-          className="rounded-full border border-[var(--ink)]/20 px-4 py-2 text-xs font-medium"
-        >
-          Semana siguiente →
-        </Link>
+        <LinkButton href={`/shopping?semana=${siguiente}`} variant="outline">
+          Siguiente
+          <Icon name="chevron_right" className="text-[18px]" />
+        </LinkButton>
       </nav>
 
       <ShoppingBoard
@@ -114,6 +107,6 @@ export default async function ShoppingPage({ searchParams }: Props) {
         demandaDisponible={demandaFresca.length > 0}
         stock={stock}
       />
-    </main>
+    </AppShell>
   );
 }

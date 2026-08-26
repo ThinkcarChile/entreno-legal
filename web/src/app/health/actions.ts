@@ -3,18 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { DataAccessError } from "@/lib/supabase/unwrap";
-import { numeric, parseRows, uuid } from "@/lib/supabase/rows";
 import { extractFromText } from "@/domain/clinical/extraction";
-import { assessClinical } from "@/domain/clinical/engine";
-import { CLINICAL_ENGINE_VERSION, type NutritionSource } from "@/domain/clinical/types";
-import { effectiveDate } from "@/domain/nutrition/calendar";
-import {
-  loadConfirmedObservations,
-  loadConfirmedRestrictions,
-  loadDocument,
-  loadScheduleInputs,
-} from "./queries";
+import { evaluateMeal, persistMealAssessment } from "./assess-service";
+import { loadDocument } from "./queries";
 
 export interface ActionResult {
   ok: boolean;
@@ -75,8 +66,30 @@ export async function uploadExam(formData: FormData): Promise<ActionResult> {
     p_storage_path: path,
   });
   if (error) {
-    // El documento no se registró: el archivo huérfano se retira.
-    await supabase.storage.from(BUCKET).remove([path]);
+    // El documento no se registró: el archivo huérfano se retira. El resultado
+    // del remove() NO se puede descartar — si el borrado falla queda un PDF
+    // médico en el bucket sin ninguna fila que lo referencie, y nadie se entera.
+    // ERROR != VACÍO: se deja rastro en el log del servidor con la ruta exacta
+    // para poder limpiarlo después, y se le dice la verdad a la persona.
+    const retiro = await supabase.storage.from(BUCKET).remove([path]);
+    const quedoHuerfano = Boolean(retiro.error) || (retiro.data ?? []).length === 0;
+    if (quedoHuerfano) {
+      console.error("[health.uploadExam] archivo huérfano en el bucket médico", {
+        bucket: BUCKET,
+        path,
+        memberId,
+        errorRegistro: error.message,
+        errorBorrado: retiro.error?.message ?? "el borrado no retiró ningún objeto",
+      });
+      return {
+        ok: false,
+        error:
+          `No se pudo registrar el examen (${error.message}) y tampoco se pudo ` +
+          "retirar el archivo que ya se había subido. Quedó guardado sin quedar " +
+          "asociado a nadie: avísale a quien administra el hogar para que lo saque. " +
+          "No vuelvas a subirlo hasta entonces.",
+      };
+    }
     return { ok: false, error: `No se pudo registrar el examen: ${error.message}` };
   }
   revalidatePath("/health");
@@ -336,177 +349,40 @@ export async function saveSchedule(input: {
 // Evaluación clínica de una comida (§30) — motor puro + persistencia con snapshot
 // ---------------------------------------------------------------------------
 
+/**
+ * Evalúa una comida para una persona y GUARDA el veredicto.
+ *
+ * El cuerpo vive en `assess-service.ts` porque este archivo es `"use server"`
+ * y ahí todo lo exportado es una server action: `confirmMeal` no podía reusar
+ * nada de acá, y por eso el motor clínico quedó construido pero desconectado
+ * del único camino que crea porciones de verdad.
+ */
 export async function assessMeal(input: {
   memberId: string;
   versionId: string;
   assignmentId: string | null;
+  /** Día de la comida. Sin él se usa el día civil del hogar. */
+  date?: string | null;
 }): Promise<ActionResult & { status?: string }> {
   const supabase = await client();
 
-  const [restricciones, observaciones, frecuencias] = await Promise.all([
-    loadConfirmedRestrictions(supabase, input.memberId),
-    loadConfirmedObservations(supabase, input.memberId),
-    loadScheduleInputs(supabase, input.memberId),
-  ]);
-
-  // QA §100 lente A [A-1]: una restricción clínica es POR PORCIÓN. Comparar
-  // contra `recipe_nutrition` —que es el TOTAL de la receta para
-  // `base_servings` personas— invalidaba comidas seguras (en un máximo) y,
-  // peor, declaraba cumplido un MÍNIMO que la porción individual no alcanza.
-  //
-  // Orden de preferencia, del dato más real al más estimado:
-  //  1. la porción CONFIRMADA de esta persona en esta comida (la verdad);
-  //  2. el total de la receta dividido por sus porciones base (estimación de
-  //     porción estándar, declarada como tal en las razones).
-  const valores: Record<string, number | null> = {};
-  const completeness: Record<string, "COMPLETE" | "PARTIAL" | "UNKNOWN"> = {};
-  let fuenteNutricion: NutritionSource = "NONE";
-
-  const { data: versionBase, error: versionBaseError } = await supabase
-    .from("meal_template_versions")
-    .select("base_servings")
-    .eq("id", input.versionId)
-    .maybeSingle();
-  if (versionBaseError) throw new DataAccessError("porciones base de la receta", versionBaseError);
-  const porcionesBase =
-    z.object({ base_servings: z.number().int().positive() }).nullable().parse(versionBase)
-      ?.base_servings ?? null;
-
-  if (input.assignmentId) {
-    const { data: proy, error: proyError } = await supabase
-      .from("member_serving_projections")
-      .select("nutrition, completeness, status")
-      .eq("assignment_id", input.assignmentId)
-      .eq("member_id", input.memberId)
-      .maybeSingle();
-    if (proyError) throw new DataAccessError("porción de la comida", proyError);
-    if (proy) {
-      const fila = z
-        .object({
-          nutrition: z.record(z.string(), z.unknown()).catch({}),
-          completeness: z.record(z.string(), z.string()).catch({}),
-          status: z.string(),
-        })
-        .parse(proy);
-      // El optimizador guarda la nutrición YA por porción.
-      const dentro = (fila.nutrition.values ?? fila.nutrition) as Record<string, unknown>;
-      for (const [k, v] of Object.entries(dentro)) {
-        if (typeof v === "number") valores[k] = v;
-      }
-      const compDentro = (fila.nutrition.completeness ?? fila.completeness) as Record<string, unknown>;
-      for (const [k, v] of Object.entries(compDentro ?? {})) {
-        if (typeof v === "string") completeness[k] = v as "COMPLETE" | "PARTIAL" | "UNKNOWN";
-      }
-      if (Object.keys(valores).length > 0) {
-        // §1: servida/comida = hecho consumado; planificada = proyección.
-        fuenteNutricion =
-          fila.status === "SERVED" || fila.status === "CONSUMED"
-            ? "CONFIRMED_MEMBER_SERVING"
-            : "PROJECTED_MEMBER_SERVING";
-      }
-    }
-  }
-
-  if (fuenteNutricion === "NONE") {
-    const { data: nutricion, error: nutricionError } = await supabase
-      .from("recipe_nutrition")
-      .select("*")
-      .eq("version_id", input.versionId)
-      .maybeSingle();
-    if (nutricionError) throw new DataAccessError("nutrición de la receta", nutricionError);
-
-    if (nutricion && porcionesBase) {
-      const filaNutricion = z
-        .object({ completeness: z.record(z.string(), z.string()).catch({}) })
-        .passthrough()
-        .parse(nutricion);
-      for (const [k, v] of Object.entries(filaNutricion)) {
-        // El total de la receta ÷ sus porciones base = porción estándar.
-        if (typeof v === "number") valores[k] = v / porcionesBase;
-      }
-      for (const [k, v] of Object.entries(filaNutricion.completeness)) {
-        completeness[k] = v as "COMPLETE" | "PARTIAL" | "UNKNOWN";
-      }
-      fuenteNutricion = "RECIPE_BASE_ESTIMATE";
-    }
-  }
-
-  const { data: comps, error: compsError } = await supabase
-    .from("meal_slot_components")
-    .select("ingredient_id, quantity, meal_slots!inner ( version_id ), ingredients ( category_id )")
-    .eq("meal_slots.version_id", input.versionId);
-  if (compsError) throw new DataAccessError("componentes de la receta", compsError);
-  const compFila = z.object({
-    ingredient_id: uuid.nullable(),
-    quantity: numeric,
-    ingredients: z
-      .union([z.object({ category_id: uuid.nullable() }), z.array(z.object({ category_id: uuid.nullable() })), z.null()])
-      .transform((v) => (Array.isArray(v) ? (v[0] ?? null) : v)),
-  });
-  const componentes = parseRows(compFila, comps, "componentes de la receta");
-
-  const { data: hogar, error: hogarError } = await supabase
-    .from("household_members")
-    .select("households ( timezone )")
-    .eq("id", input.memberId)
-    .maybeSingle();
-  if (hogarError) throw new DataAccessError("zona horaria", hogarError);
-  const tzFila = z
-    .object({
-      households: z
-        .union([z.object({ timezone: z.string().nullable() }), z.array(z.object({ timezone: z.string().nullable() })), z.null()])
-        .transform((v) => (Array.isArray(v) ? (v[0] ?? null) : v)),
-    })
-    .nullable()
-    .parse(hogar);
-  const hoy = effectiveDate(new Date(), tzFila?.households?.timezone ?? "America/Santiago");
-
-  const evaluacion = assessClinical({
-    date: hoy,
-    nutritionSource: fuenteNutricion,
-    restrictions: restricciones,
-    observations: observaciones,
-    schedules: frecuencias,
-    nutrition: { values: valores, completeness },
-    ingredientIds: componentes.map((c) => c.ingredient_id).filter((x): x is string => x !== null),
-    categoryIds: componentes
-      .map((c) => c.ingredients?.category_id ?? null)
-      .filter((x): x is string => x !== null),
-    // [A-1]: las cantidades de la receta también son totales. PORTION_MAX/MIN
-    // se evalúa por porción, así que se divide por las porciones base; si no
-    // se conocen, NO se manda nada y el motor pide revisión en vez de adivinar.
-    quantitiesByIngredient: porcionesBase
-      ? Object.fromEntries(
-          componentes
-            .filter((c) => c.ingredient_id !== null)
-            .map((c) => [c.ingredient_id!, c.quantity / porcionesBase]),
-        )
-      : {},
+  const evaluacion = await evaluateMeal(supabase, {
+    memberId: input.memberId,
+    versionId: input.versionId,
+    assignmentId: input.assignmentId,
+    date: input.date ?? null,
   });
 
-  const { data: guardada, error: guardadaError } = await supabase.rpc("save_meal_clinical_assessment", {
-    p_member_id: input.memberId,
-    p_version_id: input.versionId,
-    p_assignment_id: input.assignmentId,
-    p_assessed_on: hoy,
-    p_engine_version: CLINICAL_ENGINE_VERSION,
-    p_status: evaluacion.status,
-    p_payload: {
-      reasons: evaluacion.reasons,
-      missing_data: evaluacion.missingData,
-      rule_refs: evaluacion.ruleRefs,
-      restriction_snapshot: restricciones.map((r) => ({ id: r.id, ruleVersionId: r.ruleVersionId })),
-      // §1 del cierre v2: la fuente es columna propia (0029), no un detalle
-      // enterrado. De ella depende la FUERZA del veredicto.
-      nutrition_source: evaluacion.nutritionSource,
-      observation_refs: evaluacion.observationRefs,
-      proposed_adjustments: evaluacion.proposedAdjustments,
-    },
+  const guardada = await persistMealAssessment(supabase, {
+    memberId: input.memberId,
+    versionId: input.versionId,
+    assignmentId: input.assignmentId,
+    evaluacion,
   });
-  if (guardadaError) {
-    return { ok: false, error: `La evaluación no se pudo guardar: ${guardadaError.message}` };
+  if (!guardada.ok) {
+    return { ok: false, error: `La evaluación no se pudo guardar: ${guardada.error}` };
   }
-  return { ok: true, id: guardada as string, status: evaluacion.status };
+  return { ok: true, id: guardada.id, status: evaluacion.assessment.status };
 }
 
 // ---------------------------------------------------------------------------

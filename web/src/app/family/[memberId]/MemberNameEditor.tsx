@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { renameMember } from "../nutrition-actions";
+import { Button, ButtonOutline, ErrorNote, Icon } from "@/components/ui";
 
 /**
  * El nombre del hogar ("Casa Vásquez") y el de una persona ("Francisco") son
@@ -24,30 +25,24 @@ export function MemberNameEditor({
 
   if (!editando) {
     return (
-      <div className="flex items-baseline gap-3">
-        <h1 className="text-2xl font-semibold">{displayName}</h1>
-        <button
-          type="button"
-          onClick={() => setEditando(true)}
-          className="text-xs text-[var(--accent)] underline"
-        >
-          Cambiar nombre
-        </button>
-      </div>
+      <ButtonOutline onClick={() => setEditando(true)}>
+        <Icon name="edit" className="text-[18px]" />
+        Cambiar nombre
+      </ButtonOutline>
     );
   }
 
   return (
     <div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-sm">
         <input
           value={valor}
           onChange={(e) => setValor(e.target.value)}
           maxLength={80}
-          className="flex-1 rounded-xl border border-[var(--ink)]/20 bg-white px-3 py-2 text-lg font-semibold"
+          aria-label="Nombre del integrante"
+          className="min-h-[48px] min-w-0 flex-1 rounded-xl border border-outline-variant bg-surface-container-lowest px-md py-3 font-body-md text-body-md font-semibold text-on-surface"
         />
-        <button
-          type="button"
+        <Button
           disabled={pending}
           onClick={() => {
             setError(null);
@@ -61,22 +56,23 @@ export function MemberNameEditor({
               router.refresh();
             });
           }}
-          className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           Guardar
-        </button>
-        <button
-          type="button"
+        </Button>
+        <ButtonOutline
           onClick={() => {
             setValor(displayName);
             setEditando(false);
           }}
-          className="rounded-full border border-[var(--ink)]/20 px-4 py-2 text-sm"
         >
           Cancelar
-        </button>
+        </ButtonOutline>
       </div>
-      {error && <p className="mt-1 text-xs text-red-700">{error}</p>}
+      {error && (
+        <div className="mt-sm">
+          <ErrorNote>{error}</ErrorNote>
+        </div>
+      )}
     </div>
   );
 }

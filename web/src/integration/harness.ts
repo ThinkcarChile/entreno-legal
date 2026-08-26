@@ -1,4 +1,13 @@
-import { readFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
@@ -46,6 +55,46 @@ const MIGRACIONES = [
   "supabase/migrations/0028_fix_encoding.sql",
   "supabase/migrations/0029_nutrition_source.sql",
   "supabase/migrations/0030_clinical_shopping_impact.sql",
+  "supabase/migrations/0031_yield_factor_bounds.sql",
+  "supabase/migrations/0032_pressure_cooker_capability.sql",
+  // -------------------------------------------------------------------------
+  // Auditoría post-Sprint 11.5: las tres fallas que ya corrían en producción.
+  // Cada una tiene su regresión; sin migración aplicada, esas regresiones
+  // fallan, que es exactamente lo que tienen que hacer.
+  // -------------------------------------------------------------------------
+  // DEFECTO 1 — congela las columnas de identidad de household_members:
+  // saltarse de hogar con un PATCH, revivirse un is_active dado de baja, y
+  // desvincular la cuenta ajena (user_id = null) para heredarle la ficha
+  // médica por la rama "tutor de dependiente" de app.medical_access.
+  // Regresión: gate-security.test.ts, describe "DEFECTO 1".
+  "supabase/migrations/0033_cerrar_salto_entre_hogares.sql",
+  // DEFECTO 2 — el bucket médico era de ESCRITURA PURA: la 0026 sólo dejó
+  // política de INSERT sobre storage.objects, así que nadie podía volver a ver
+  // ni borrar el examen recién subido. Acá entran el SELECT y el DELETE,
+  // anclados en app.medical_access sobre el integrante de la ruta (jamás una
+  // política plana por bucket_id). En PGlite el bloque de storage se salta
+  // solo: por eso este defecto vivió meses con los tests en verde.
+  "supabase/migrations/0034_storage_medico_lectura_y_borrado.sql",
+  // DEFECTO 3 — falso-seguro clínico: una porción confirmada nacía con
+  // clinical_status en NULL y se veía idéntica a una evaluada y limpia.
+  // UNKNOWN NUNCA SIGNIFICA NORMAL. Regresión: salud-falso-seguro.test.ts.
+  //
+  // Va con 0035 y no 0034 porque los números 0033 y 0034 ya quedaron tomados
+  // en esta misma ronda (y 0033 además choca con 0033_foodlog_plan_vs_reality,
+  // que es trabajo del Sprint 12 y NO pertenece a esta cadena todavía).
+  "supabase/migrations/0035_porcion_sin_evaluar.sql",
+  // 0037: la invitacion era la ventana abierta del salto entre hogares que la
+  // 0033 cerro por la puerta. accept_invitation es SECURITY DEFINER, asi que
+  // el trigger y el revoke de la 0033 no la alcanzaban.
+  "supabase/migrations/0037_invitacion_no_cruza_hogares.sql",
+  // Sprint 12 - FoodLog: PLAN != REALITY. Conserva su numero 0036 aunque en el
+  // orden real vaya DESPUES de la 0037 (0033-0035 y 0037 ya estan en produccion).
+  "supabase/migrations/0036_foodlog_plan_vs_reality.sql",
+  // Sprint 12 - FoodLog parte 2: el eje ACTUAL_CONSUMED. La 0036 le sacó a
+  // consume_planned_meal el poder de escribir consumo, así que NO PUEDE APLICARSE
+  // SOLA: sin esta, el eje queda sin escritor y sus lectores leen el vacío como
+  // cero. Las dos van juntas o no va ninguna.
+  "supabase/migrations/0038_foodlog_intake.sql",
 ];
 
 // Fixtures de DEMO: datos, jamás schema. Todo objeto que la app referencia
@@ -53,7 +102,47 @@ const MIGRACIONES = [
 const SEEDS = [
   "supabase/seed/dev_catalog_seed.sql",
   "supabase/seed/dev_recipes_seed.sql",
+  // Biblioteca chilena completa, Sprint 11.5. Va DESPUÉS de dev_recipes_seed
+  // porque referencia por nombre las ensaladas que aquel publica.
+  "supabase/seed/dev_recipes_biblioteca.sql",
 ];
+
+/**
+ * Resuelve una migración a un archivo real.
+ *
+ * El nombre exacto manda. Si no está, se busca por el prefijo numérico: las
+ * migraciones nuevas las escriben otros agentes en paralelo y el sufijo
+ * descriptivo lo elige quien las escribe, pero el NÚMERO es el contrato.
+ *
+ * Si no aparece ninguna, revienta con nombre y apellido. ERROR != VACÍO: una
+ * migración de seguridad que no se aplica no puede dar un verde silencioso —
+ * eso es exactamente cómo los tres defectos de la auditoría llegaron a
+ * producción con 748 tests en verde.
+ */
+function resolverMigracion(relativo: string): string {
+  const absoluto = path.join(ROOT, relativo);
+  const carpeta = path.dirname(absoluto);
+  const base = path.basename(relativo);
+  try {
+    return readFileSync(absoluto, "utf8");
+  } catch {
+    const numero = base.slice(0, 4);
+    const candidatos = readdirSync(carpeta).filter(
+      (f) => f.startsWith(`${numero}_`) && f.endsWith(".sql"),
+    );
+    if (candidatos.length === 1) return readFileSync(path.join(carpeta, candidatos[0]!), "utf8");
+    if (candidatos.length > 1) {
+      throw new Error(
+        `Hay ${candidatos.length} migraciones con el prefijo ${numero}: ${candidatos.join(", ")}. ` +
+          `Deja una sola o nómbrala exacto en MIGRACIONES (esperaba "${base}").`,
+      );
+    }
+    throw new Error(
+      `Falta la migración ${base}: no existe ni ninguna otra con el prefijo ${numero}. ` +
+        `Los tests NO se saltan una migración; escríbela antes de correrlos.`,
+    );
+  }
+}
 
 /** Lo que Supabase ya trae de fábrica y las migraciones dan por hecho. */
 const ENTORNO_SUPABASE = `
@@ -79,6 +168,86 @@ export interface Harness {
   cerrar(): Promise<void>;
 }
 
+/**
+ * CACHÉ DEL ARRANQUE. Cada archivo de integración levantaba su propio Postgres
+ * replayando 38 migraciones y tres seeds. Con cien recetas costaba unos segundos
+ * y nadie lo notaba; con doscientas ochenta y dos el `beforeAll` de prep.test.ts
+ * cruzó los diez segundos de tope y el archivo entero —treinta y tres tests— se
+ * saltó con un "1 failed" que en el resumen parecía un test roto y no una suite
+ * completa sin correr.
+ *
+ * Se guarda el directorio de datos ya construido y los archivos siguientes lo
+ * cargan tal cual. La clave es el HASH del contenido de todo lo que se aplica:
+ * si cambia una migración, un seed o el orden, la clave cambia y se reconstruye.
+ * No hay forma de que un test corra contra un schema viejo sin darse cuenta —
+ * que es el único riesgo que una caché así podría introducir.
+ */
+const CACHE_DIR = path.join(ROOT, "web", "node_modules", ".cache", "pglite-harness");
+
+function claveDeCache(conSeeds: boolean): string {
+  const partes = [
+    "v1",
+    ENTORNO_SUPABASE,
+    ...MIGRACIONES.map((m) => `${m}\n${resolverMigracion(m)}`),
+    ...(conSeeds ? SEEDS.map((s) => `${s}\n${readFileSync(path.join(ROOT, s), "utf8")}`) : []),
+  ];
+  return createHash("sha256").update(partes.join(" ")).digest("hex").slice(0, 32);
+}
+
+/** Construye la base desde cero: migraciones en orden y, si toca, los seeds. */
+async function construir(conSeeds: boolean): Promise<PGlite> {
+  const db = await PGlite.create({ extensions: { pg_trgm, pgcrypto } });
+  await db.exec("create extension if not exists pg_trgm; create extension if not exists pgcrypto;");
+  await db.exec(ENTORNO_SUPABASE);
+  for (const archivo of MIGRACIONES) await db.exec(resolverMigracion(archivo));
+  if (conSeeds) {
+    for (const archivo of SEEDS) await db.exec(readFileSync(path.join(ROOT, archivo), "utf8"));
+  }
+  return db;
+}
+
+async function abrirBase(conSeeds: boolean): Promise<PGlite> {
+  let archivo: string;
+  try {
+    archivo = path.join(CACHE_DIR, `${claveDeCache(conSeeds)}.tar.gz`);
+  } catch {
+    // Si no se puede ni calcular la clave (una migración que falta, por
+    // ejemplo), que reviente el camino normal con su mensaje, no la caché.
+    return construir(conSeeds);
+  }
+
+  if (existsSync(archivo)) {
+    try {
+      const bytes = readFileSync(archivo);
+      return await PGlite.create({
+        loadDataDir: new Blob([bytes]),
+        extensions: { pg_trgm, pgcrypto },
+      });
+    } catch {
+      // Una caché corrupta no puede tumbar la suite: se descarta y se construye.
+      try {
+        rmSync(archivo, { force: true });
+      } catch {
+        /* da lo mismo: igual se reconstruye */
+      }
+    }
+  }
+
+  const db = await construir(conSeeds);
+  try {
+    const volcado = await db.dumpDataDir("gzip");
+    mkdirSync(CACHE_DIR, { recursive: true });
+    // Se escribe a un temporal y se renombra: si dos forks construyen a la vez,
+    // nadie llega a leer un archivo a medio escribir.
+    const temporal = `${archivo}.${process.pid}.tmp`;
+    writeFileSync(temporal, Buffer.from(await volcado.arrayBuffer()));
+    renameSync(temporal, archivo);
+  } catch {
+    /* sin caché igual funciona, solo más lento */
+  }
+  return db;
+}
+
 export async function levantarBase(
   opciones: {
     /**
@@ -88,15 +257,7 @@ export async function levantarBase(
     conSeeds?: boolean;
   } = {},
 ): Promise<Harness> {
-  const db = await PGlite.create({ extensions: { pg_trgm, pgcrypto } });
-  await db.exec("create extension if not exists pg_trgm; create extension if not exists pgcrypto;");
-  await db.exec(ENTORNO_SUPABASE);
-
-  const archivos =
-    opciones.conSeeds === false ? MIGRACIONES : [...MIGRACIONES, ...SEEDS];
-  for (const archivo of archivos) {
-    await db.exec(readFileSync(path.join(ROOT, archivo), "utf8"));
-  }
+  const db = await abrirBase(opciones.conSeeds !== false);
 
   const filas = async <T,>(sql: string, params: unknown[] = []) =>
     (await db.query<T>(sql, params)).rows;

@@ -299,3 +299,232 @@ describe("§37 — el actor lo estampa la BASE, no el cliente", () => {
     expect(t!.completed_by).toBe(A.memberId);
   });
 });
+
+// ---------------------------------------------------------------------------
+// AUDITORÍA POST-11.5 · DEFECTO 1 — la fila del integrante no es un formulario
+// ---------------------------------------------------------------------------
+
+/**
+ * `members_update` (0001:268) deja pasar cualquier UPDATE mientras
+ * `user_id = auth.uid()` siga siendo verdadero en la fila VIEJA y en la NUEVA.
+ * No congela ni una columna, y no hay trigger ni revoke que la respalde.
+ *
+ * De ahí salen tres ataques que no necesitan ningún RPC, sólo un PATCH de
+ * PostgREST sobre `household_members`:
+ *
+ *  (a) me cambio el `household_id` al de otro hogar y me abro el hogar entero
+ *      (el uuid no es secreto: viaja en el HTML de /family);
+ *  (b) me revivo el `is_active` después de que me dieron de baja;
+ *  (c) siendo admin, le pongo `user_id = null` a otra persona: la tercera rama
+ *      de `app.medical_access` (0028) me entrega su ficha médica completa
+ *      —exámenes, observaciones, condiciones, restricciones— sin ningún grant,
+ *      y de paso le desconecto la cuenta.
+ *
+ * Estas pruebas son la regresión. Un UPDATE puede morir de dos maneras
+ * legítimas —excepción del trigger, o cero filas por RLS— y las dos se aceptan;
+ * lo que NO se acepta es que la fila guardada quede cambiada.
+ */
+
+const USER_C = "00000000-0000-0000-0000-00000000aa03"; // integrante común de B
+const USER_D = "00000000-0000-0000-0000-00000000aa04"; // integrante de B dado de baja
+const USER_E = "00000000-0000-0000-0000-00000000aa05"; // integrante de A con ficha médica
+
+interface Intento {
+  rechazado: boolean;
+  filas: number;
+  mensaje: string | null;
+}
+
+/** Corre un UPDATE que DEBE morir, sin importar por cuál de las dos vías. */
+async function intentarUpdate(sql: string, params: unknown[] = []): Promise<Intento> {
+  try {
+    const r = await h.db.query(sql, params);
+    return {
+      rechazado: false,
+      filas: (r as { affectedRows?: number }).affectedRows ?? 0,
+      mensaje: null,
+    };
+  } catch (e) {
+    return { rechazado: true, filas: 0, mensaje: (e as Error).message };
+  }
+}
+
+/**
+ * Agrega un integrante CON cuenta a un hogar por el único camino legítimo:
+ * quien administra invita, la persona acepta. Nada de `insert ... user_id`
+ * directo — una ficha se crea sin cuenta y la cuenta llega por invitación.
+ */
+async function agregarIntegrante(
+  userId: string,
+  householdId: string,
+  adminUserId: string,
+  nombre: string,
+): Promise<string> {
+  const token = `gate-token-${nombre.toLowerCase()}`;
+  await h.comoAdmin(async () => {
+    await h.db.query("insert into auth.users (id, email) values ($1, $2)", [
+      userId,
+      `${nombre.toLowerCase()}@test.dev`,
+    ]);
+  });
+  await h.como(adminUserId, () =>
+    h.db.query(
+      `insert into public.invitations (household_id, token_hash, role_code, expires_at)
+       values ($1, $2, 'MEMBER', now() + interval '1 day')`,
+      [householdId, token],
+    ),
+  );
+  // accept_invitation devuelve el household_id, no la ficha: hay que buscarla.
+  await h.como(userId, () =>
+    h.db.query("select public.accept_invitation($1, $2)", [token, nombre]),
+  );
+  return h.comoAdmin(async () =>
+    (await h.fila<{ id: string }>(
+      "select id from public.household_members where household_id = $1 and user_id = $2",
+      [householdId, userId],
+    ))!.id,
+  );
+}
+
+describe("DEFECTO 1 — household_members: ninguna columna de identidad se edita sola", () => {
+  let miembroC: string;
+  let miembroD: string;
+  let miembroE: string;
+  let observacionE: string;
+
+  beforeAll(async () => {
+    miembroC = await agregarIntegrante(USER_C, B.householdId, USER_B, "Carla");
+    miembroD = await agregarIntegrante(USER_D, B.householdId, USER_B, "Diego");
+    miembroE = await agregarIntegrante(USER_E, A.householdId, USER_A, "Elena");
+
+    // Diego queda dado de baja por el admin del hogar: la vía legítima.
+    await h.como(USER_B, () =>
+      h.db.query("update public.household_members set is_active = false where id = $1", [miembroD]),
+    );
+
+    // Elena tiene una observación de laboratorio suya. Se siembra sin RLS a
+    // propósito: lo que se mide es QUIÉN puede leerla, no cómo se creó.
+    await h.comoAdmin(async () => {
+      const biomarcador = (await h.fila<{ id: string }>(
+        "select id from public.biomarker_definitions where code = 'creatinine' and household_id is null",
+      ))!.id;
+      observacionE = (await h.fila<{ id: string }>(
+        `insert into public.lab_observations (member_id, biomarker_id, value, unit, collected_date)
+         values ($1, $2, 1.9, 'mg/dL', current_date) returning id`,
+        [miembroE, biomarcador],
+      ))!.id;
+    });
+  }, 60000);
+
+  it("(a) un integrante de B NO se puede mudar de hogar, y no ve nada de A", async () => {
+    const { intento, planes, lotes, integrantes } = await h.como(USER_C, async () => {
+      const intento = await intentarUpdate(
+        "update public.household_members set household_id = $1 where user_id = auth.uid()",
+        [A.householdId],
+      );
+      // Se mide EN CALIENTE: si el salto hubiese funcionado, acá ya se estaría
+      // leyendo el hogar ajeno completo.
+      const planes = (
+        await h.filas("select id from public.weekly_plans where household_id = $1", [A.householdId])
+      ).length;
+      const lotes = (
+        await h.filas("select id from public.inventory_lots where household_id = $1", [A.householdId])
+      ).length;
+      const integrantes = (
+        await h.filas("select id from public.household_members where household_id = $1", [
+          A.householdId,
+        ])
+      ).length;
+      return { intento, planes, lotes, integrantes };
+    });
+
+    expect(intento.filas, "el UPDATE de household_id no puede tocar ninguna fila").toBe(0);
+
+    // Lo que de verdad importa: la fila guardada sigue en el hogar B.
+    const fila = await h.comoAdmin(() =>
+      h.fila<{ household_id: string }>(
+        "select household_id from public.household_members where id = $1",
+        [miembroC],
+      ),
+    );
+    expect(fila!.household_id, "Carla terminó en otro hogar").toBe(B.householdId);
+
+    expect({ planes, lotes, integrantes }).toEqual({ planes: 0, lotes: 0, integrantes: 0 });
+  });
+
+  it("(b) quien fue dado de baja NO se reactiva solo", async () => {
+    const intento = await h.como(USER_D, () =>
+      intentarUpdate("update public.household_members set is_active = true where user_id = auth.uid()"),
+    );
+    expect(intento.filas, "el UPDATE de is_active no puede tocar ninguna fila").toBe(0);
+
+    const fila = await h.comoAdmin(() =>
+      h.fila<{ is_active: boolean }>(
+        "select is_active from public.household_members where id = $1",
+        [miembroD],
+      ),
+    );
+    expect(fila!.is_active, "Diego se revivió solo").toBe(false);
+  });
+
+  it("(c) el admin NO desvincula la cuenta ajena para heredarle la ficha médica", async () => {
+    const { intento, observaciones, documentos, condiciones, restricciones } = await h.como(
+      USER_A,
+      async () => {
+        const intento = await intentarUpdate(
+          "update public.household_members set user_id = null where id = $1",
+          [miembroE],
+        );
+        // Ana es ADMIN del hogar de Elena. Si el `user_id = null` hubiese
+        // pegado, la rama "tutor de dependiente" de app.medical_access le
+        // abriría todo esto sin un solo grant.
+        const observaciones = (
+          await h.filas("select id from public.lab_observations where member_id = $1", [miembroE])
+        ).length;
+        const documentos = (
+          await h.filas("select id from public.lab_documents where member_id = $1", [miembroE])
+        ).length;
+        const condiciones = (
+          await h.filas("select id from public.member_conditions where member_id = $1", [miembroE])
+        ).length;
+        const restricciones = (
+          await h.filas("select id from public.member_clinical_restrictions where member_id = $1", [
+            miembroE,
+          ])
+        ).length;
+        return { intento, observaciones, documentos, condiciones, restricciones };
+      },
+    );
+
+    expect(intento.filas, "el UPDATE de user_id ajeno no puede tocar ninguna fila").toBe(0);
+
+    const fila = await h.comoAdmin(() =>
+      h.fila<{ user_id: string | null }>(
+        "select user_id from public.household_members where id = $1",
+        [miembroE],
+      ),
+    );
+    expect(fila!.user_id, "la cuenta de Elena quedó desvinculada").toBe(USER_E);
+
+    expect({ observaciones, documentos, condiciones, restricciones }).toEqual({
+      observaciones: 0,
+      documentos: 0,
+      condiciones: 0,
+      restricciones: 0,
+    });
+
+    // Y la observación sigue existiendo: lo que se negó fue la LECTURA ajena,
+    // no el dato. ERROR != VACÍO, y "no autorizado" != "no hay nada".
+    const sigue = await h.comoAdmin(() =>
+      h.fila("select id from public.lab_observations where id = $1", [observacionE]),
+    );
+    expect(sigue).not.toBeNull();
+  });
+
+  it("la dueña SÍ lee lo suyo: el candado no rompe el acceso legítimo", async () => {
+    const propias = await h.como(USER_E, () =>
+      h.filas("select id from public.lab_observations where member_id = $1", [miembroE]),
+    );
+    expect(propias).toHaveLength(1);
+  });
+});

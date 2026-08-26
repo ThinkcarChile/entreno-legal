@@ -4,7 +4,49 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addDays, formatDate } from "@/domain/nutrition/calendar";
 import { MEAL_TYPE_LABELS, type MealType } from "@/domain/recipes/types";
+import {
+  Button,
+  ButtonOutline,
+  Card,
+  ErrorNote,
+  Icon,
+  Notice,
+  Section,
+} from "@/components/ui";
 import { clearDailyOverride, saveDailyOverride } from "../nutrition-actions";
+
+/** Campo de formulario del kit: mismo alto de toque en todas las pantallas. */
+const FIELD =
+  "min-h-[48px] w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-md py-sm font-body-md text-body-md text-on-surface";
+
+/**
+ * Chip que se ELIGE. No es el `Chip` del kit —ese solo informa—: este se toca,
+ * así que lleva área de toque completa y `aria-pressed`.
+ */
+function OpcionChip({
+  activa,
+  onClick,
+  children,
+}: {
+  activa: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={activa}
+      onClick={onClick}
+      className={`min-h-[44px] rounded-full px-md py-sm font-body-sm text-body-sm font-semibold transition-transform active:scale-95 ${
+        activa
+          ? "bg-primary text-on-primary"
+          : "border border-outline-variant text-on-surface-variant"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
 
 /**
  * QA §28 — "Modificar solo un día".
@@ -50,108 +92,89 @@ export function DailyOverrideEditor({
     });
   }
 
-  const field = "w-full rounded-xl border border-[var(--ink)]/20 bg-white px-3 py-2 text-base";
   const num = (v: string) => (v.trim() === "" ? null : Number(v));
 
   return (
-    <section className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4">
-      <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-[var(--ink)]/60">
-        Excepciones de un día
-      </h2>
-      <p className="mb-3 text-xs text-[var(--ink)]/60">
-        Para el asado del sábado o el día que se come distinto. Cambia solo esa fecha; tu patrón
-        habitual queda igual.
-      </p>
-
+    <Section
+      title="Excepciones de un día"
+      hint="Para el asado del sábado o el día que se come distinto. Cambia solo esa fecha; tu patrón habitual queda igual."
+    >
       {existing.length > 0 && (
-        <ul className="mb-4 space-y-1.5">
+        <ul className="mb-sm space-y-sm">
           {existing.map((plan) => (
-            <li
-              key={plan.date}
-              className="flex items-center justify-between gap-3 rounded-xl bg-[var(--paper)] px-3 py-2 text-sm"
-            >
-              <span>
-                <strong className="capitalize">{formatDate(plan.date)}</strong>
-                <span className="ml-2 text-[11px] text-[var(--ink)]/60">
-                  Solo este día ·{" "}
-                  {plan.meals
-                    .map(
-                      (m) =>
-                        `${MEAL_TYPE_LABELS[m.mealType]}${m.energyMax ? ` máx ${m.energyMax} kcal` : ""}`,
-                    )
-                    .join(", ")}
-                </span>
-              </span>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => run(() => clearDailyOverride(memberId, plan.date))}
-                className="shrink-0 text-xs text-[var(--ink)]/50 underline"
-              >
-                Volver al patrón habitual
-              </button>
-            </li>
+            <Card key={plan.date} as="li" className="p-md">
+              <p className="font-body-md text-body-md font-semibold capitalize text-on-surface">
+                {formatDate(plan.date)}
+              </p>
+              <p className="mt-0.5 font-body-sm text-body-sm text-on-surface-variant">
+                Solo este día ·{" "}
+                {plan.meals
+                  .map(
+                    (m) =>
+                      `${MEAL_TYPE_LABELS[m.mealType]}${m.energyMax ? ` máx ${m.energyMax} kcal` : ""}`,
+                  )
+                  .join(", ")}
+              </p>
+              <div className="mt-sm">
+                <ButtonOutline
+                  disabled={pending}
+                  onClick={() => run(() => clearDailyOverride(memberId, plan.date))}
+                >
+                  <Icon name="undo" className="text-[18px]" />
+                  Volver al patrón habitual
+                </ButtonOutline>
+              </div>
+            </Card>
           ))}
         </ul>
       )}
 
       {!abierto ? (
-        <button
-          type="button"
-          onClick={() => setAbierto(true)}
-          className="w-full rounded-full border border-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--accent)]"
-        >
+        <ButtonOutline className="w-full" onClick={() => setAbierto(true)}>
+          <Icon name="edit_calendar" className="text-[18px]" />
           Modificar solo un día
-        </button>
+        </ButtonOutline>
       ) : (
-        <div className="space-y-3">
-          <div>
-            <label htmlFor="fecha" className="mb-1 block text-xs font-medium text-[var(--ink)]/70">
+        <Card className="space-y-md p-md">
+          <label className="block" htmlFor="fecha">
+            <span className="mb-xs block font-label-md text-label-md text-on-surface-variant">
               Fecha
-            </label>
+            </span>
             <input
               id="fecha"
               type="date"
               min={today}
               value={fecha}
               onChange={(e) => setFecha(e.target.value)}
-              className={field}
+              className={FIELD}
             />
-          </div>
+          </label>
 
           <div>
-            <p className="mb-1 text-xs font-medium text-[var(--ink)]/70">Comida</p>
-            <div className="flex flex-wrap gap-2">
+            <p className="mb-xs font-label-md text-label-md text-on-surface-variant">Comida</p>
+            <div className="flex flex-wrap gap-sm">
               {(["BREAKFAST", "LUNCH", "TEA", "DINNER"] as MealType[]).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setComida(m)}
-                  className={`rounded-full px-3 py-2 text-xs font-medium ${
-                    comida === m
-                      ? "bg-[var(--accent)] text-white"
-                      : "border border-[var(--ink)]/20 text-[var(--ink)]/70"
-                  }`}
-                >
+                <OpcionChip key={m} activa={comida === m} onClick={() => setComida(m)}>
                   {MEAL_TYPE_LABELS[m]}
-                </button>
+                </OpcionChip>
               ))}
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-sm font-body-md text-body-md text-on-surface">
             <input
               type="checkbox"
               checked={habilitada}
               onChange={(e) => setHabilitada(e.target.checked)}
+              className="h-5 w-5 shrink-0 accent-primary"
             />
             Ese día sí como {MEAL_TYPE_LABELS[comida].toLowerCase()}
           </label>
 
-          <div>
-            <label htmlFor="kcalDia" className="mb-1 block text-xs font-medium text-[var(--ink)]/70">
+          <label className="block" htmlFor="kcalDia">
+            <span className="mb-xs block font-label-md text-label-md text-on-surface-variant">
               Máximo de calorías solo ese día
-            </label>
+            </span>
             <input
               id="kcalDia"
               type="number"
@@ -159,13 +182,15 @@ export function DailyOverrideEditor({
               placeholder="1000"
               value={energyMax}
               onChange={(e) => setEnergyMax(e.target.value)}
-              className={field}
+              className={`${FIELD} placeholder:text-outline`}
             />
-          </div>
+          </label>
 
           <div>
-            <p className="mb-1 text-xs font-medium text-[var(--ink)]/70">Proteína solo ese día (g)</p>
-            <div className="flex gap-2">
+            <p className="mb-xs font-label-md text-label-md text-on-surface-variant">
+              Proteína solo ese día (g)
+            </p>
+            <div className="grid grid-cols-3 gap-sm">
               {(
                 [
                   ["mínimo", proteinMin, setProteinMin],
@@ -173,35 +198,34 @@ export function DailyOverrideEditor({
                   ["máximo", proteinMax, setProteinMax],
                 ] as const
               ).map(([etiqueta, valor, setter]) => (
-                <div key={etiqueta} className="flex-1">
-                  <label className="mb-0.5 block text-[11px] text-[var(--ink)]/50">{etiqueta}</label>
+                <label key={etiqueta} className="min-w-0">
+                  <span className="mb-0.5 block font-label-md text-label-md text-on-surface-variant">
+                    {etiqueta}
+                  </span>
                   <input
                     type="number"
                     min={0}
                     value={valor}
                     onChange={(e) => setter(e.target.value)}
-                    className={field}
+                    className={FIELD}
                   />
-                </div>
+                </label>
               ))}
             </div>
           </div>
 
-          <p className="rounded-xl bg-[var(--ink)]/5 px-3 py-2 text-xs text-[var(--ink)]/70">
-            Solo para el <strong className="capitalize">{formatDate(fecha)}</strong>. Tu patrón
+          <Notice icon="event">
+            Solo para el{" "}
+            <strong className="font-semibold capitalize">{formatDate(fecha)}</strong>. Tu patrón
             habitual no cambia.
-          </p>
+          </Notice>
 
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setAbierto(false)}
-              className="flex-1 rounded-full border border-[var(--ink)]/20 px-4 py-2 text-sm"
-            >
+          <div className="flex flex-wrap gap-sm">
+            <ButtonOutline className="flex-1" onClick={() => setAbierto(false)}>
               Cancelar
-            </button>
-            <button
-              type="button"
+            </ButtonOutline>
+            <Button
+              className="flex-1"
               disabled={pending}
               onClick={() =>
                 run(async () => {
@@ -218,20 +242,24 @@ export function DailyOverrideEditor({
                   return r;
                 })
               }
-              className="flex-1 rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
               Guardar
-            </button>
+            </Button>
           </div>
-        </div>
+        </Card>
       )}
 
-      {message && <p className="mt-2 text-xs text-[var(--accent)]">{message}</p>}
-      {error && (
-        <p className="mt-2 text-xs text-red-700" role="alert">
-          {error}
+      {message && (
+        <p className="mt-sm flex items-start gap-sm rounded-2xl bg-primary-fixed px-md py-sm font-body-sm text-body-sm text-on-primary-fixed">
+          <Icon name="check_circle" className="mt-0.5 shrink-0 text-[18px]" />
+          <span className="min-w-0">{message}</span>
         </p>
       )}
-    </section>
+      {error && (
+        <div className="mt-sm">
+          <ErrorNote>{error}</ErrorNote>
+        </div>
+      )}
+    </Section>
   );
 }

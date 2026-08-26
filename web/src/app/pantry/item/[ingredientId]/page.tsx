@@ -1,8 +1,8 @@
 import { uuidParam } from "@/lib/route-params";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell } from "@/components/AppShell";
+import { Card, Chip, Icon, LinkButton, Notice, Section } from "@/components/ui";
 import { effectiveDate, formatDate } from "@/domain/nutrition/calendar";
 import { formatQuantity } from "@/domain/shopping/engine";
 import { analyzeStock } from "@/domain/stock/engine";
@@ -56,151 +56,179 @@ export default async function StockItemPage({ params, searchParams }: Props) {
 
   const shortfallsPropios = input.shortfalls.filter((s) => s.ingredientId === ingredientId);
 
+  const tarjetas = [
+    { k: "Cobertura", icon: "event_available", v: coverageText(item) },
+    {
+      k: "Consumo 7 días",
+      icon: "trending_down",
+      v: item.rate.last7 !== null ? formatQuantity(item.rate.last7, item.unit) : "—",
+    },
+    {
+      k: "Consumo 30 días",
+      icon: "calendar_month",
+      v: item.rate.last30 !== null ? formatQuantity(item.rate.last30, item.unit) : "—",
+    },
+    {
+      k: "Confianza",
+      icon: "verified",
+      v: item.confidence ? CONFIDENCE_LABELS[item.confidence] : "sin datos",
+    },
+  ];
+
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-16">
-      <AppNav active="pantry" />
-      <Link href="/pantry" className="text-xs text-[var(--accent)] underline">
-        ← Despensa
-      </Link>
+    <AppShell
+      active="pantry"
+      title={`${item.hasApproximate ? "~" : ""}${item.label}`}
+      subtitle={`En casa ${formatQuantity(item.onHand, item.unit)} · reservado ${formatQuantity(
+        item.reserved,
+        item.unit,
+      )} · ${
+        item.available >= 0
+          ? `libre ${formatQuantity(item.available, item.unit)}`
+          : `faltan ${formatQuantity(-item.available, item.unit)} para el plan`
+      }`}
+      action={
+        <LinkButton href="/pantry" variant="outline">
+          <Icon name="arrow_back" className="text-[18px]" />
+          Despensa
+        </LinkButton>
+      }
+    >
+      <Section className="mt-md">
+        <ul className="grid grid-cols-2 gap-sm sm:grid-cols-4">
+          {tarjetas.map((c) => (
+            <li key={c.k}>
+              <Card className="h-full p-md">
+                <p className="font-label-md text-label-md uppercase text-on-surface-variant">
+                  {c.k}
+                </p>
+                <p className="mt-1 flex items-center gap-1 font-headline-sm text-headline-sm text-on-surface">
+                  <Icon name={c.icon} className="shrink-0 text-[20px] text-primary" />
+                  <span className="min-w-0 truncate">{c.v}</span>
+                </p>
+              </Card>
+            </li>
+          ))}
+        </ul>
+      </Section>
 
-      <header className="mb-4 mt-2">
-        <h1 className="text-2xl font-semibold">
-          {item.hasApproximate && "~"}
-          {item.label}
-        </h1>
-        <p className="mt-1 text-sm text-[var(--ink)]/60">
-          En casa {formatQuantity(item.onHand, item.unit)} · reservado{" "}
-          {formatQuantity(item.reserved, item.unit)} ·{" "}
-          {item.available >= 0
-            ? `libre ${formatQuantity(item.available, item.unit)}`
-            : `faltan ${formatQuantity(-item.available, item.unit)} para el plan`}
-        </p>
-      </header>
-
-      <section className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {[
-          { k: "Cobertura", v: coverageText(item) },
-          {
-            k: "Consumo 7 días",
-            v: item.rate.last7 !== null ? formatQuantity(item.rate.last7, item.unit) : "—",
-          },
-          {
-            k: "Consumo 30 días",
-            v: item.rate.last30 !== null ? formatQuantity(item.rate.last30, item.unit) : "—",
-          },
-          {
-            k: "Confianza",
-            v: item.confidence ? CONFIDENCE_LABELS[item.confidence] : "sin datos",
-          },
-        ].map((c) => (
-          <div key={c.k} className="rounded-2xl border border-[var(--ink)]/10 bg-white p-3">
-            <p className="text-[10px] uppercase tracking-wide text-[var(--ink)]/50">{c.k}</p>
-            <p className="mt-0.5 text-sm font-semibold">{c.v}</p>
-          </div>
-        ))}
-      </section>
-
-      <section className="mb-4 rounded-2xl border border-[var(--accent)]/30 bg-[var(--accent)]/5 p-4">
-        <h2 className="text-sm font-semibold">
-          {item.reorder.recommendedQuantity !== null
-            ? `Recomendación: comprar ${formatQuantity(item.reorder.recommendedQuantity, item.unit)}`
-            : item.reorder.status === "UNRESOLVED"
-              ? "Recomendación sin resolver"
-              : "Sin compra recomendada por ahora"}
-        </h2>
-        <details className="mt-2">
-          <summary className="cursor-pointer text-xs font-medium text-[var(--accent)]">
-            ¿Por qué?
-          </summary>
-          <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-[var(--ink)]/70">
-            {item.reorder.reasons.map((r, i) => (
-              <li key={i}>{r}</li>
-            ))}
-            {item.confidenceReasons.map((r, i) => (
-              <li key={`c${i}`}>{r}</li>
-            ))}
-            {item.rate.historyDays > 0 && (
-              <li>Hay {item.rate.historyDays} días de historia válida.</li>
-            )}
-          </ul>
-          <p className="mt-2 text-[10px] text-[var(--ink)]/40">
-            {item.reorder.forecastVersion} · {item.reorder.engineVersion} · horizonte{" "}
-            {item.reorder.horizonDays} días
-          </p>
-        </details>
-      </section>
+      <Section>
+        <Card className="p-md">
+          <h2 className="flex items-start gap-sm font-headline-sm text-headline-sm text-on-surface">
+            <Icon name="shopping_cart" className="mt-0.5 shrink-0 text-primary" />
+            <span className="min-w-0">
+              {item.reorder.recommendedQuantity !== null
+                ? `Recomendación: comprar ${formatQuantity(item.reorder.recommendedQuantity, item.unit)}`
+                : item.reorder.status === "UNRESOLVED"
+                  ? "Recomendación sin resolver"
+                  : "Sin compra recomendada por ahora"}
+            </span>
+          </h2>
+          <details className="mt-sm">
+            <summary className="cursor-pointer font-body-sm text-body-sm font-semibold text-primary">
+              ¿Por qué?
+            </summary>
+            <ul className="mt-sm list-inside list-disc space-y-1 font-body-sm text-body-sm text-on-surface-variant">
+              {item.reorder.reasons.map((r, i) => (
+                <li key={i}>{r}</li>
+              ))}
+              {item.confidenceReasons.map((r, i) => (
+                <li key={`c${i}`}>{r}</li>
+              ))}
+              {item.rate.historyDays > 0 && (
+                <li>Hay {item.rate.historyDays} días de historia válida.</li>
+              )}
+            </ul>
+            <p className="mt-sm font-label-md text-label-md text-outline">
+              {item.reorder.forecastVersion} · {item.reorder.engineVersion} · horizonte{" "}
+              {item.reorder.horizonDays} días
+            </p>
+          </details>
+        </Card>
+      </Section>
 
       {item.unresolvedDemand.length > 0 && (
-        <section className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-          <h2 className="mb-1 font-semibold">Demanda sin resolver</h2>
-          {item.unresolvedDemand.map((d, i) => (
-            <p key={i}>
-              {formatQuantity(d.quantity, d.unit)} ({d.weightBasis.toLowerCase()}): {d.reason}
-            </p>
-          ))}
-        </section>
+        <Section>
+          <Notice icon="help">
+            <p className="font-semibold">Demanda sin resolver</p>
+            {item.unresolvedDemand.map((d, i) => (
+              <p key={i} className="mt-0.5">
+                {formatQuantity(d.quantity, d.unit)} ({d.weightBasis.toLowerCase()}): {d.reason}
+              </p>
+            ))}
+          </Notice>
+        </Section>
       )}
 
-      <section className="mb-4 rounded-2xl border border-[var(--ink)]/10 bg-white p-4">
-        <h2 className="mb-2 text-sm font-semibold">Lotes</h2>
-        {item.lots.length === 0 ? (
-          <p className="text-xs text-[var(--ink)]/50">Sin lotes usables.</p>
-        ) : (
-          <ul className="space-y-1 text-xs">
-            {item.lots.map((l) => {
-              const info = expiryInfo(l, hoy);
-              return (
-                <li key={l.id} className="flex items-center justify-between gap-2 rounded-xl border border-[var(--ink)]/10 px-3 py-2">
-                  <span className="min-w-0 truncate">
-                    {l.isApproximate && "~"}
-                    {l.label}
-                    {item.useFirstLotId === l.id && (
-                      <span className="ml-1.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] text-emerald-900">
-                        usa primero
+      <Section title="Lotes">
+        <Card className="p-md">
+          {item.lots.length === 0 ? (
+            <p className="font-body-sm text-body-sm text-on-surface-variant">Sin lotes usables.</p>
+          ) : (
+            <ul className="space-y-sm">
+              {item.lots.map((l) => {
+                const info = expiryInfo(l, hoy);
+                return (
+                  <li
+                    key={l.id}
+                    className="flex flex-wrap items-center justify-between gap-x-md gap-y-1 rounded-2xl bg-surface-container-low px-md py-sm"
+                  >
+                    <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+                      <span className="min-w-0 truncate font-body-md text-body-md text-on-surface">
+                        {l.isApproximate && "~"}
+                        {l.label}
                       </span>
-                    )}
-                  </span>
-                  <span className="shrink-0 text-right">
-                    {formatQuantity(l.quantity, l.unit)}
-                    {info.state !== "NO_DATE" && (
-                      <span className="ml-1 text-[var(--ink)]/40">
-                        · vence {formatDate((l.useBy ?? l.expiryDate)!)}
-                      </span>
-                    )}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+                      {item.useFirstLotId === l.id && (
+                        <Chip tono="primario" icon="bolt">
+                          usa primero
+                        </Chip>
+                      )}
+                    </span>
+                    <span className="shrink-0 text-right font-body-sm text-body-sm text-on-surface">
+                      {formatQuantity(l.quantity, l.unit)}
+                      {info.state !== "NO_DATE" && (
+                        <span className="text-on-surface-variant">
+                          {" "}
+                          · vence {formatDate((l.useBy ?? l.expiryDate)!)}
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+      </Section>
 
       {(item.waste30 > 0 || shortfallsPropios.length > 0 || item.overbuySignal) && (
-        <section className="mb-4 rounded-2xl border border-[var(--ink)]/10 bg-white p-4 text-xs">
-          <h2 className="mb-2 text-sm font-semibold">Señales</h2>
-          {item.waste30 > 0 && (
-            <p>
-              Merma últimos 30 días: {formatQuantity(item.waste30, item.unit)}
-              {item.wasteCost30 !== null && <> (~${item.wasteCost30.toLocaleString("es-CL")})</>}
-            </p>
-          )}
-          {item.overbuySignal && (
-            <p className="mt-1 text-amber-800">
-              Históricamente compras por encima del consumo observado. Tu objetivo no se cambió:
-              decide tú si quieres ajustarlo.
-            </p>
-          )}
-          {shortfallsPropios.length > 0 && (
-            <p className="mt-1">
-              Consumo no trazado reciente:{" "}
-              {formatQuantity(
-                shortfallsPropios.reduce((a, s) => a + s.quantity, 0),
-                item.unit,
-              )}{" "}
-              en {shortfallsPropios.length} {shortfallsPropios.length === 1 ? "comida" : "comidas"}.
-            </p>
-          )}
-        </section>
+        <Section title="Señales">
+          <Card className="space-y-sm p-md font-body-sm text-body-sm text-on-surface-variant">
+            {item.waste30 > 0 && (
+              <p>
+                Merma últimos 30 días: {formatQuantity(item.waste30, item.unit)}
+                {item.wasteCost30 !== null && <> (~${item.wasteCost30.toLocaleString("es-CL")})</>}
+              </p>
+            )}
+            {item.overbuySignal && (
+              <Notice icon="trending_up">
+                Históricamente compras por encima del consumo observado. Tu objetivo no se cambió:
+                decide tú si quieres ajustarlo.
+              </Notice>
+            )}
+            {shortfallsPropios.length > 0 && (
+              <p>
+                Consumo no trazado reciente:{" "}
+                {formatQuantity(
+                  shortfallsPropios.reduce((a, s) => a + s.quantity, 0),
+                  item.unit,
+                )}{" "}
+                en {shortfallsPropios.length}{" "}
+                {shortfallsPropios.length === 1 ? "comida" : "comidas"}.
+              </p>
+            )}
+          </Card>
+        </Section>
       )}
 
       <ItemDetailActions
@@ -209,6 +237,6 @@ export default async function StockItemPage({ params, searchParams }: Props) {
         unit={item.unit}
         target={item.target}
       />
-    </main>
+    </AppShell>
   );
 }

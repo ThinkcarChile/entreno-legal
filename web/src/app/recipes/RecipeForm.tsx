@@ -18,6 +18,7 @@ import {
   type TemplateKind,
 } from "@/domain/recipes/types";
 import type { RecipeDraftInput } from "@/domain/recipes/schemas";
+import { Button, ButtonOutline, Card, ErrorNote, Icon, Notice, Section } from "@/components/ui";
 import type { IngredientOption } from "./queries";
 import { createRecipe, publishVersion, saveDraft } from "./actions";
 
@@ -42,6 +43,70 @@ const OFFERED_SLOTS: SlotType[] = [
   "TOPPING",
   "SWEETENER",
 ];
+
+/** Campo de formulario del kit: mismo alto de toque en todas las pantallas. */
+const FIELD =
+  "min-h-[48px] w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-md py-sm font-body-md text-body-md text-on-surface";
+
+/** Etiqueta de campo del kit. */
+const LABEL = "mb-xs block font-label-md text-label-md text-on-surface-variant";
+
+/**
+ * Chip que se ELIGE. No es el `Chip` del kit —ese solo informa—: este se toca,
+ * así que lleva área de toque completa y `aria-pressed`.
+ */
+function OpcionChip({
+  activa,
+  onClick,
+  children,
+}: {
+  activa: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={activa}
+      onClick={onClick}
+      className={`min-h-[44px] rounded-full px-md py-sm font-body-sm text-body-sm font-semibold transition-transform active:scale-95 ${
+        activa
+          ? "bg-primary text-on-primary"
+          : "border border-outline-variant text-on-surface-variant"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Botón de quitar: icono con área de toque completa y nombre accesible. */
+function BotonQuitar({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-transform active:scale-90"
+    >
+      <Icon name="close" className="text-[18px]" />
+    </button>
+  );
+}
+
+/** Enlace de acción dentro de una tarjeta (agregar alimento, paso, alternativa). */
+function BotonAgregar({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex min-h-[44px] items-center gap-xs rounded-full px-md py-sm font-body-sm text-body-sm font-semibold text-primary transition-transform active:scale-95"
+    >
+      <Icon name="add" className="text-[18px]" />
+      {children}
+    </button>
+  );
+}
 
 interface DraftComponent {
   key: string;
@@ -291,129 +356,119 @@ export function RecipeForm({
     });
   }
 
-  const field =
-    "w-full rounded-xl border border-[var(--ink)]/20 bg-white px-3 py-2 text-base";
-  const chip = "rounded-full px-3 py-2 text-xs font-medium";
-
   return (
-    <div className="space-y-5 pb-28">
-      <section className="space-y-3 rounded-2xl border border-[var(--ink)]/10 bg-white p-4">
-        <div>
-          <label htmlFor="name" className="mb-1 block text-sm font-medium">
-            ¿Cómo se llama?
-          </label>
-          <input
-            id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Pollo con arroz y ensalada"
-            className={field}
-          />
-        </div>
-
-        <div>
-          <p className="mb-1 text-sm font-medium">¿Cuándo se come?</p>
-          <div className="flex flex-wrap gap-2">
-            {MEAL_TYPES.filter((t) => t !== "OTHER").map((type) => {
-              const on = mealTypes.includes(type);
-              return (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() =>
-                    setMealTypes((current) =>
-                      on ? current.filter((t) => t !== type) : [...current, type],
-                    )
-                  }
-                  className={`${chip} ${
-                    on
-                      ? "bg-[var(--accent)] text-white"
-                      : "border border-[var(--ink)]/20 text-[var(--ink)]/70"
-                  }`}
-                >
-                  {MEAL_TYPE_LABELS[type]}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <label htmlFor="servings" className="mb-1 block text-sm font-medium">
-              ¿Para cuántas personas?
+    <div className="pb-[9rem] md:pb-24">
+      <Section title="Lo básico">
+        <Card className="space-y-md p-md">
+          <div>
+            <label htmlFor="name" className={LABEL}>
+              ¿Cómo se llama?
             </label>
             <input
-              id="servings"
-              type="number"
-              min={1}
-              max={50}
-              value={baseServings}
-              onChange={(e) => setBaseServings(e.target.value)}
-              className={field}
-            />
-            <p className="mt-1 text-[11px] text-[var(--ink)]/50">
-              Las cantidades que anotes son de la olla completa para esta cantidad de gente.
-            </p>
-          </div>
-          <div className="w-28">
-            <label htmlFor="time" className="mb-1 block text-sm font-medium">
-              Minutos
-            </label>
-            <input
-              id="time"
-              type="number"
-              min={1}
-              value={baseTime}
-              onChange={(e) => setBaseTime(e.target.value)}
-              className={field}
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Pollo con arroz y ensalada"
+              className={FIELD}
             />
           </div>
-        </div>
 
-        <div>
-          <p className="mb-1 text-sm font-medium">Tipo</p>
-          <div className="flex gap-2">
-            {(["MEAL", "SALAD", "DESSERT"] as TemplateKind[]).map((k) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => setKind(k)}
-                className={`${chip} ${
-                  kind === k
-                    ? "bg-[var(--accent)] text-white"
-                    : "border border-[var(--ink)]/20 text-[var(--ink)]/70"
-                }`}
-              >
-                {k === "MEAL" ? "Plato" : k === "SALAD" ? "Ensalada" : "Postre"}
-              </button>
-            ))}
+          <div>
+            <p className={LABEL}>¿Cuándo se come?</p>
+            <div className="flex flex-wrap gap-sm">
+              {MEAL_TYPES.filter((t) => t !== "OTHER").map((type) => {
+                const on = mealTypes.includes(type);
+                return (
+                  <OpcionChip
+                    key={type}
+                    activa={on}
+                    onClick={() =>
+                      setMealTypes((current) =>
+                        on ? current.filter((t) => t !== type) : [...current, type],
+                      )
+                    }
+                  >
+                    {MEAL_TYPE_LABELS[type]}
+                  </OpcionChip>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      </section>
+
+          <div className="flex gap-sm">
+            <div className="min-w-0 flex-1">
+              <label htmlFor="servings" className={LABEL}>
+                ¿Para cuántas personas?
+              </label>
+              <input
+                id="servings"
+                type="number"
+                min={1}
+                max={50}
+                value={baseServings}
+                onChange={(e) => setBaseServings(e.target.value)}
+                className={FIELD}
+              />
+              <p className="mt-xs font-body-sm text-body-sm text-on-surface-variant">
+                Las cantidades que anotes son de la olla completa para esta cantidad de gente.
+              </p>
+            </div>
+            <div className="w-24 shrink-0">
+              <label htmlFor="time" className={LABEL}>
+                Minutos
+              </label>
+              <input
+                id="time"
+                type="number"
+                min={1}
+                value={baseTime}
+                onChange={(e) => setBaseTime(e.target.value)}
+                className={FIELD}
+              />
+            </div>
+          </div>
+
+          <div>
+            <p className={LABEL}>Tipo</p>
+            <div className="flex flex-wrap gap-sm">
+              {(["MEAL", "SALAD", "DESSERT"] as TemplateKind[]).map((k) => (
+                <OpcionChip key={k} activa={kind === k} onClick={() => setKind(k)}>
+                  {k === "MEAL" ? "Plato" : k === "SALAD" ? "Ensalada" : "Postre"}
+                </OpcionChip>
+              ))}
+            </div>
+          </div>
+        </Card>
+      </Section>
 
       {slots.map((slot) => (
-        <section key={slot.key} className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4">
-          <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-sm font-medium">{SLOT_LABELS[slot.slotType]}</h3>
-            <button
-              type="button"
+        <Card key={slot.key} as="section" className="mb-md p-md">
+          <div className="mb-sm flex items-center gap-sm">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-container text-primary">
+              <Icon name="restaurant_menu" filled />
+            </span>
+            <h3 className="min-w-0 flex-1 truncate font-headline-sm text-headline-sm text-on-surface">
+              {SLOT_LABELS[slot.slotType]}
+            </h3>
+            <BotonQuitar
+              label={`Quitar ${SLOT_LABELS[slot.slotType].toLowerCase()}`}
               onClick={() => setSlots((c) => c.filter((s) => s.key !== slot.key))}
-              className="text-xs text-[var(--ink)]/50 underline"
-            >
-              Quitar
-            </button>
+            />
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-sm">
             {slot.components.map((component) => (
-              <div key={component.key} className="space-y-2 rounded-xl bg-[var(--paper)] p-3">
+              <div
+                key={component.key}
+                className="space-y-sm rounded-2xl bg-surface-container-low p-md"
+              >
                 <select
                   value={component.ingredientId}
                   onChange={(e) =>
                     updateComponent(slot.key, component.key, { ingredientId: e.target.value })
                   }
-                  className={field}
+                  className={FIELD}
+                  aria-label="Alimento"
                 >
                   <option value="">Elegir alimento…</option>
                   {ingredients.map((ingredient) => (
@@ -423,7 +478,7 @@ export function RecipeForm({
                   ))}
                 </select>
 
-                <div className="flex gap-2">
+                <div className="flex gap-sm">
                   <input
                     type="number"
                     min={0}
@@ -433,7 +488,8 @@ export function RecipeForm({
                     onChange={(e) =>
                       updateComponent(slot.key, component.key, { quantity: e.target.value })
                     }
-                    className={`${field} flex-1`}
+                    className={`${FIELD} flex-1`}
+                    aria-label="Cantidad"
                   />
                   <select
                     value={component.weightBasis}
@@ -442,7 +498,8 @@ export function RecipeForm({
                         weightBasis: e.target.value as WeightBasis,
                       })
                     }
-                    className={`${field} flex-1`}
+                    className={`${FIELD} flex-1`}
+                    aria-label="Estado del alimento"
                   >
                     {BASES.map((basis) => {
                       const available =
@@ -457,13 +514,14 @@ export function RecipeForm({
                   </select>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-sm">
                   <select
                     value={component.cookingMethod}
                     onChange={(e) =>
                       updateComponent(slot.key, component.key, { cookingMethod: e.target.value })
                     }
-                    className={`${field} flex-1`}
+                    className={`${FIELD} min-w-0 flex-1`}
+                    aria-label="Método de cocción"
                   >
                     <option value="">Sin método</option>
                     {COOKING_METHODS.map((method) => (
@@ -472,19 +530,20 @@ export function RecipeForm({
                       </option>
                     ))}
                   </select>
-                  <label className="flex items-center gap-2 text-xs">
+                  <label className="flex min-h-[44px] shrink-0 items-center gap-sm font-body-sm text-body-sm text-on-surface-variant">
                     <input
                       type="checkbox"
                       checked={component.isOptional}
                       onChange={(e) =>
                         updateComponent(slot.key, component.key, { isOptional: e.target.checked })
                       }
+                      className="h-5 w-5 accent-primary"
                     />
                     Opcional
                   </label>
                   {slot.components.length > 1 && (
-                    <button
-                      type="button"
+                    <BotonQuitar
+                      label="Quitar este alimento"
                       onClick={() =>
                         setSlots((current) =>
                           current.map((s) =>
@@ -497,58 +556,50 @@ export function RecipeForm({
                           ),
                         )
                       }
-                      className="text-xs text-[var(--ink)]/50 underline"
-                    >
-                      Quitar
-                    </button>
+                    />
                   )}
                 </div>
 
                 <div>
-                  <p className="mb-1 text-[11px] text-[var(--ink)]/60">
+                  <p className="mb-xs font-body-sm text-body-sm text-on-surface-variant">
                     ¿Qué es en el plato? Solo la <strong>grasa añadida</strong> se le puede quitar a
                     quien prefiere evitarla; la palta o el queso son comida aunque sean grasos.
                   </p>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-sm">
                     {(["MAIN", "ADDED_FAT", "SEASONING"] as DraftComponent["role"][]).map((r) => (
-                      <button
+                      <OpcionChip
                         key={r}
-                        type="button"
+                        activa={component.role === r}
                         onClick={() => updateComponent(slot.key, component.key, { role: r })}
-                        className={`rounded-full px-3 py-2 text-xs ${
-                          component.role === r
-                            ? "bg-[var(--accent)] text-white"
-                            : "border border-[var(--ink)]/20 text-[var(--ink)]/70"
-                        }`}
                       >
                         {ROLE_LABELS[r]}
-                      </button>
+                      </OpcionChip>
                     ))}
                   </div>
                 </div>
 
                 {component.ingredientId &&
                   byId.get(component.ingredientId)?.facts.length === 0 && (
-                    <p className="text-[11px] text-amber-700">
+                    <Notice icon="warning">
                       Este alimento no tiene datos nutricionales: el plato quedará con cálculo
                       incompleto.
-                    </p>
+                    </Notice>
                   )}
               </div>
             ))}
           </div>
 
-          <div className="mt-3 border-t border-[var(--ink)]/10 pt-3">
-            <p className="mb-1 text-xs font-medium text-[var(--ink)]/70">
+          <div className="mt-md border-t border-outline-variant/40 pt-md">
+            <p className="font-label-md text-label-md text-on-surface-variant">
               En vez de esto también sirve
             </p>
-            <p className="mb-2 text-[11px] text-[var(--ink)]/50">
+            <p className="mt-xs mb-sm font-body-sm text-body-sm text-on-surface-variant">
               Reemplazos válidos en la cocina. No afirman equivalencia nutricional: la cantidad la
               recalcula el motor de porciones.
             </p>
 
             {slot.alternatives.map((alt) => (
-              <div key={alt.key} className="mb-2 flex gap-2">
+              <div key={alt.key} className="mb-sm flex items-center gap-sm">
                 <select
                   value={alt.ingredientId}
                   onChange={(e) =>
@@ -565,7 +616,8 @@ export function RecipeForm({
                       ),
                     )
                   }
-                  className={`${field} flex-1`}
+                  className={`${FIELD} min-w-0 flex-1`}
+                  aria-label="Alimento de reemplazo"
                 >
                   <option value="">Elegir alimento…</option>
                   {ingredients.map((i) => (
@@ -592,7 +644,8 @@ export function RecipeForm({
                       ),
                     )
                   }
-                  className={`${field} flex-1`}
+                  className={`${FIELD} min-w-0 flex-1`}
+                  aria-label="Qué tan bien reemplaza"
                 >
                   {(["EXCELLENT", "GOOD", "ACCEPTABLE"] as DraftAlternative["compatibility"][]).map(
                     (c) => (
@@ -602,8 +655,8 @@ export function RecipeForm({
                     ),
                   )}
                 </select>
-                <button
-                  type="button"
+                <BotonQuitar
+                  label="Quitar alternativa"
                   onClick={() =>
                     setSlots((current) =>
                       current.map((s) =>
@@ -613,15 +666,11 @@ export function RecipeForm({
                       ),
                     )
                   }
-                  className="text-xs text-[var(--ink)]/50 underline"
-                >
-                  Quitar
-                </button>
+                />
               </div>
             ))}
 
-            <button
-              type="button"
+            <BotonAgregar
               onClick={() =>
                 setSlots((current) =>
                   current.map((s) =>
@@ -637,142 +686,135 @@ export function RecipeForm({
                   ),
                 )
               }
-              className="text-sm text-[var(--accent)] underline"
             >
               Agregar alternativa
-            </button>
+            </BotonAgregar>
           </div>
 
-          <button
-            type="button"
-            onClick={() =>
-              setSlots((current) =>
-                current.map((s) =>
-                  s.key !== slot.key
-                    ? s
-                    : {
-                        ...s,
-                        components: [
-                          ...s.components,
-                          {
-                            key: nextKey(),
-                            ingredientId: "",
-                            quantity: "",
-                            weightBasis: "RAW" as WeightBasis,
-                            cookingMethod: "",
-                            isOptional: false,
-                            role: (slot.slotType === "FAT" ? "ADDED_FAT" : "MAIN") as
-                              DraftComponent["role"],
-                          },
-                        ],
-                      },
-                ),
-              )
-            }
-            className="mt-3 text-sm text-[var(--accent)] underline"
-          >
-            Agregar otro alimento a {SLOT_LABELS[slot.slotType].toLowerCase()}
-          </button>
-        </section>
+          <div className="mt-sm">
+            <BotonAgregar
+              onClick={() =>
+                setSlots((current) =>
+                  current.map((s) =>
+                    s.key !== slot.key
+                      ? s
+                      : {
+                          ...s,
+                          components: [
+                            ...s.components,
+                            {
+                              key: nextKey(),
+                              ingredientId: "",
+                              quantity: "",
+                              weightBasis: "RAW" as WeightBasis,
+                              cookingMethod: "",
+                              isOptional: false,
+                              role: (slot.slotType === "FAT" ? "ADDED_FAT" : "MAIN") as
+                                DraftComponent["role"],
+                            },
+                          ],
+                        },
+                  ),
+                )
+              }
+            >
+              Agregar otro alimento a {SLOT_LABELS[slot.slotType].toLowerCase()}
+            </BotonAgregar>
+          </div>
+        </Card>
       ))}
 
-      <section>
-        <p className="mb-2 text-sm font-medium">¿Qué lleva el plato?</p>
-        <div className="flex flex-wrap gap-2">
+      <Section title="¿Qué lleva el plato?">
+        <div className="flex flex-wrap gap-sm">
           {OFFERED_SLOTS.map((slotType) => (
             <button
               key={slotType}
               type="button"
               onClick={() => addSlot(slotType)}
-              className="rounded-full border border-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent)]"
+              className="inline-flex min-h-[44px] items-center gap-xs rounded-full border border-primary px-md py-sm font-body-sm text-body-sm font-semibold text-primary transition-transform active:scale-95"
             >
+              <Icon name="add" className="text-[18px]" />
               {SLOT_ADD_LABELS[slotType]}
             </button>
           ))}
         </div>
-      </section>
+      </Section>
 
-      <section className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4">
-        <h3 className="mb-2 text-sm font-medium">Preparación</h3>
-        <div className="space-y-2">
-          {steps.map((step, index) => (
-            <div key={step.key} className="flex gap-2">
-              <span className="mt-2 w-5 shrink-0 text-xs text-[var(--ink)]/50">{index + 1}.</span>
-              <textarea
-                value={step.instruction}
-                onChange={(e) =>
-                  setSteps((current) =>
-                    current.map((s) =>
-                      s.key === step.key ? { ...s, instruction: e.target.value } : s,
-                    ),
-                  )
-                }
-                rows={2}
-                placeholder="Hornear el pollo 25 minutos a 200 °C"
-                className={`${field} flex-1`}
-              />
-              <input
-                type="number"
-                min={1}
-                placeholder="min"
-                value={step.durationMinutes}
-                onChange={(e) =>
-                  setSteps((current) =>
-                    current.map((s) =>
-                      s.key === step.key ? { ...s, durationMinutes: e.target.value } : s,
-                    ),
-                  )
-                }
-                className={`${field} w-20`}
-              />
-            </div>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={() =>
-            setSteps((current) => [
-              ...current,
-              { key: nextKey(), instruction: "", durationMinutes: "" },
-            ])
-          }
-          className="mt-3 text-sm text-[var(--accent)] underline"
-        >
-          Agregar paso
-        </button>
-      </section>
+      <Section title="Preparación">
+        <Card className="p-md">
+          <div className="space-y-sm">
+            {steps.map((step, index) => (
+              <div key={step.key} className="flex gap-sm">
+                <span className="mt-sm w-6 shrink-0 font-label-md text-label-md text-on-surface-variant">
+                  {index + 1}.
+                </span>
+                <textarea
+                  value={step.instruction}
+                  onChange={(e) =>
+                    setSteps((current) =>
+                      current.map((s) =>
+                        s.key === step.key ? { ...s, instruction: e.target.value } : s,
+                      ),
+                    )
+                  }
+                  rows={2}
+                  placeholder="Hornear el pollo 25 minutos a 200 °C"
+                  className={`${FIELD} min-w-0 flex-1`}
+                  aria-label={`Paso ${index + 1}`}
+                />
+                <input
+                  type="number"
+                  min={1}
+                  placeholder="min"
+                  value={step.durationMinutes}
+                  onChange={(e) =>
+                    setSteps((current) =>
+                      current.map((s) =>
+                        s.key === step.key ? { ...s, durationMinutes: e.target.value } : s,
+                      ),
+                    )
+                  }
+                  className={`${FIELD} w-20 shrink-0`}
+                  aria-label={`Minutos del paso ${index + 1}`}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="mt-sm">
+            <BotonAgregar
+              onClick={() =>
+                setSteps((current) => [
+                  ...current,
+                  { key: nextKey(), instruction: "", durationMinutes: "" },
+                ])
+              }
+            >
+              Agregar paso
+            </BotonAgregar>
+          </div>
+        </Card>
+      </Section>
 
       {nutrition && (
-        <div className="space-y-3">
+        <div className="mb-lg space-y-sm">
           <NutritionPanel title="Así va el plato completo" nutrition={nutrition.total} />
           <NutritionPanel title="Por porción" nutrition={nutrition.perServing} compact />
         </div>
       )}
 
-      {error && (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-          {error}
-        </p>
-      )}
+      {error && <ErrorNote>{error}</ErrorNote>}
 
-      <div className="fixed inset-x-0 bottom-0 border-t border-[var(--ink)]/10 bg-[var(--paper)] px-4 py-3">
-        <div className="mx-auto flex max-w-3xl gap-2">
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => submit(false)}
-            className="flex-1 rounded-full border border-[var(--ink)]/20 px-4 py-2.5 text-sm font-medium disabled:opacity-50"
-          >
+      {/* Barra fija: en móvil se apoya SOBRE la navegación inferior, no debajo. */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-outline-variant/30 bg-surface-container-lowest/95 px-container-margin pt-sm pb-[88px] backdrop-blur-md md:pb-sm">
+        <div className="mx-auto flex max-w-[48rem] gap-sm">
+          <ButtonOutline className="flex-1" disabled={pending} onClick={() => submit(false)}>
+            <Icon name="save" className="text-[18px]" />
             Guardar borrador
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => submit(true)}
-            className="flex-1 rounded-full bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
-          >
+          </ButtonOutline>
+          <Button className="flex-1" disabled={pending} onClick={() => submit(true)}>
+            <Icon name="publish" className="text-[18px]" />
             Publicar
-          </button>
+          </Button>
         </div>
       </div>
     </div>

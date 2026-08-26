@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell, ShellAction } from "@/components/AppShell";
+import { Icon, Notice } from "@/components/ui";
 import { effectiveDate } from "@/domain/nutrition/calendar";
 import { analyzeStock } from "@/domain/stock/engine";
 import { planPurchases } from "@/domain/procurement/engine";
@@ -75,35 +76,32 @@ export default async function ProcurementPage() {
   });
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-16">
-      <AppNav active="procurement" />
-      <header className="mb-4 flex items-end justify-between gap-2">
-        <div>
-          <h1 className="text-xl font-semibold">Pedidos a proveedores</h1>
-          <p className="text-xs text-[var(--ink)]/60">
-            El sistema sugiere: qué pedir, cuánto, cuándo y a quién. Aprobar, pedir y recibir
-            lo decides tú.
-          </p>
-        </div>
-        <Link
-          href="/procurement/suppliers"
-          className="shrink-0 rounded-full border border-[var(--accent)] px-4 py-2.5 text-xs font-medium text-[var(--accent)]"
-        >
+    <AppShell
+      active="procurement"
+      title="Pedidos a proveedores"
+      subtitle="El sistema sugiere qué pedir, cuánto, cuándo y a quién. Aprobar, pedir y recibir lo decides tú."
+      action={
+        <ShellAction href="/procurement/suppliers">
+          <Icon name="storefront" className="text-[18px]" />
           Proveedores
-        </Link>
-      </header>
+        </ShellAction>
+      }
+    >
+      <div className="mt-md">
+        {config.supplierProducts.length === 0 && (
+          <div className="mb-md">
+            <Notice icon="storefront">
+              Aún no hay proveedores con presentaciones.{" "}
+              <Link href="/procurement/suppliers" className="font-semibold underline">
+                Configura el primero
+              </Link>{" "}
+              para que las sugerencias traigan cantidades, fechas y proveedor.
+            </Notice>
+          </div>
+        )}
 
-      {config.supplierProducts.length === 0 && (
-        <p className="mb-3 rounded-2xl border border-dashed border-[var(--ink)]/20 bg-white p-4 text-xs text-[var(--ink)]/60">
-          Aún no hay proveedores con presentaciones.{" "}
-          <Link href="/procurement/suppliers" className="font-medium text-[var(--accent)] underline">
-            Configura el primero
-          </Link>{" "}
-          para que las sugerencias traigan cantidades, fechas y proveedor.
-        </p>
-      )}
-
-      <ProcurementBoard plan={plan} orders={orders} today={hoy} timeZone={tz} />
-    </main>
+        <ProcurementBoard plan={plan} orders={orders} today={hoy} timeZone={tz} />
+      </div>
+    </AppShell>
   );
 }

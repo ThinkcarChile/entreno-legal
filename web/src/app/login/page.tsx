@@ -1,61 +1,89 @@
+import { Card, ErrorNote, Icon } from "@/components/ui";
 import { signIn, signUp } from "./actions";
 
 interface Props {
   searchParams: Promise<{ error?: string; next?: string }>;
 }
 
+/**
+ * Puerta de entrada: una sola columna centrada, sin navegación (todavía no hay
+ * sesión que navegar). Campos de 48 px y botones a lo ancho — esto se abre
+ * parado, con una mano.
+ */
+const CAMPO =
+  "w-full min-h-[48px] rounded-xl border border-outline-variant bg-surface-container-lowest px-md py-3 font-body-md text-body-md text-on-surface";
+
+const ETIQUETA = "mb-1 block font-body-sm text-body-sm font-semibold text-on-surface";
+
 export default async function LoginPage({ searchParams }: Props) {
   const { error, next } = await searchParams;
 
   return (
-    <main className="pt-16">
-      <h1 className="text-3xl font-bold">Mesa Familiar</h1>
-      <p className="mt-1 text-sm opacity-70">Inicia sesión o crea tu cuenta.</p>
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-container-margin py-xl">
+      <div className="w-full max-w-[24rem]">
+        <div className="flex flex-col items-center text-center">
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-fixed text-on-primary-fixed">
+            <Icon name="family_restroom" className="text-[32px]" />
+          </span>
+          <h1 className="mt-md font-headline-lg-mobile text-headline-lg-mobile text-primary">
+            Mesa Familiar
+          </h1>
+          <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
+            Inicia sesión o crea tu cuenta.
+          </p>
+        </div>
 
-      {error ? (
-        <p className="mt-4 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-800" role="alert">
-          {error}
-        </p>
-      ) : null}
+        {error ? (
+          <div className="mt-md">
+            <ErrorNote>{error}</ErrorNote>
+          </div>
+        ) : null}
 
-      <form className="mt-6 flex flex-col gap-3">
-        <input type="hidden" name="next" value={next ?? "/family"} />
-        <label className="text-sm font-medium" htmlFor="email">
-          Correo
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          required
-          autoComplete="email"
-          className="rounded-xl border border-gray-300 bg-white px-4 py-3"
-        />
-        <label className="text-sm font-medium" htmlFor="password">
-          Contraseña
-        </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          required
-          minLength={8}
-          autoComplete="current-password"
-          className="rounded-xl border border-gray-300 bg-white px-4 py-3"
-        />
-        <button
-          formAction={signIn}
-          className="mt-2 rounded-xl bg-[var(--accent)] px-4 py-3 font-semibold text-white"
-        >
-          Entrar
-        </button>
-        <button
-          formAction={signUp}
-          className="rounded-xl border border-[var(--accent)] px-4 py-3 font-semibold text-[var(--accent)]"
-        >
-          Crear cuenta
-        </button>
-      </form>
+        <Card className="mt-lg">
+          <form className="space-y-md p-md">
+            <input type="hidden" name="next" value={next ?? "/family"} />
+            <label className="block">
+              <span className={ETIQUETA}>Correo</span>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                autoComplete="email"
+                className={CAMPO}
+              />
+            </label>
+            <label className="block">
+              <span className={ETIQUETA}>Contraseña</span>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                minLength={8}
+                autoComplete="current-password"
+                className={CAMPO}
+              />
+            </label>
+            <div className="space-y-sm pt-xs">
+              <button
+                formAction={signIn}
+                className="inline-flex w-full items-center justify-center gap-sm rounded-full bg-primary px-lg py-3 font-body-md text-body-md font-semibold text-on-primary transition-transform active:scale-95"
+              >
+                <Icon name="login" className="text-[18px]" />
+                Entrar
+              </button>
+              <button
+                formAction={signUp}
+                className="inline-flex w-full items-center justify-center gap-sm rounded-full border border-outline px-lg py-3 font-body-md text-body-md font-semibold text-on-surface-variant transition-transform active:scale-95"
+              >
+                <Icon name="person_add" className="text-[18px]" />
+                Crear cuenta
+              </button>
+            </div>
+          </form>
+        </Card>
+      </div>
     </main>
   );
 }

@@ -215,7 +215,32 @@ describe("REGRESIÓN del director: demanda 1.155 g, stock 1.120 g", () => {
     );
     // Es lo que leerá el pronóstico: X, no Y.
     expect(Number(declarado!.proposed_quantity)).toBe(1155);
-    expect(declarado!.status).toBe("CONSUMED");
+    // Contrato nuevo (0036): la porción llega hasta SERVED. Servir no es comer,
+    // y el sistema dejó de escribir un consumo que nadie declaró. El INVARIANTE
+    // de este test —el faltante no achica lo que la comida pedía— no depende de
+    // ese estado, y por eso se sigue probando abajo por el camino nuevo.
+    expect(declarado!.status).toBe("SERVED");
+
+    // El plan congelado del acto físico dice exactamente lo mismo, y encima
+    // separa lo que la despensa PUDO pagar de lo que no: se sirvió 1.155, el
+    // ledger entregó 1.120 y los 35 que faltaron quedaron declarados faltantes.
+    // Ninguno de los dos números se disfrazó del otro.
+    const renglon = await h.como(USER_A, () =>
+      h.fila<{
+        planned_quantity: string; served_quantity: string;
+        deducted_quantity: string; shortfall_quantity: string;
+      }>(
+        `select i.planned_quantity, i.served_quantity, i.deducted_quantity, i.shortfall_quantity
+         from public.meal_serving_record_items i
+         join public.meal_serving_records r on r.id = i.record_id
+         where r.assignment_id = $1 and r.status = 'ACTIVE'`,
+        [asignacion],
+      ),
+    );
+    expect(Number(renglon!.planned_quantity)).toBe(1155);
+    expect(Number(renglon!.served_quantity)).toBe(1155);
+    expect(Number(renglon!.deducted_quantity)).toBe(1120);
+    expect(Number(renglon!.shortfall_quantity)).toBe(35);
   });
 
   it("K-22 con desajuste: consumir de nuevo no duplica ni el descuento ni el shortfall", async () => {

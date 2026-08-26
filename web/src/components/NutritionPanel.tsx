@@ -5,11 +5,16 @@ import {
   type AggregatedNutrition,
 } from "@/domain/catalog/types";
 import { roundForDisplay } from "@/domain/catalog/nutrition";
+import { Card, Icon, Notice } from "@/components/ui";
 
 /**
  * Muestra una agregación nutricional sin mentir: un valor PARCIAL nunca se
  * presenta como si fuera el total, y un desconocido nunca se muestra como 0
  * (ADR 0002 §5).
+ *
+ * Por eso el "≥" y el "Sin datos" viajan como TEXTO y no como un color: quien
+ * no distingue el matiz igual tiene que enterarse de que el número está
+ * incompleto.
  */
 export function NutritionPanel({
   title,
@@ -27,33 +32,41 @@ export function NutritionPanel({
   const incomplete = NUTRIENT_KEYS.filter((k) => nutrition.completeness[k] === "PARTIAL");
 
   return (
-    <section className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4">
-      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[var(--ink)]/60">
-        {title}
-      </h3>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
+    <Card as="section" className="p-md">
+      <div className="mb-md flex items-center gap-sm">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-fixed text-on-primary-fixed">
+          <Icon name="nutrition" filled />
+        </span>
+        <h3 className="min-w-0 font-headline-sm text-headline-sm text-on-surface">{title}</h3>
+      </div>
+
+      <dl className="grid grid-cols-2 gap-x-md gap-y-md sm:grid-cols-3">
         {keys.map((key) => {
           const state = nutrition.completeness[key];
           const value = nutrition.values[key];
           const rounded = roundForDisplay(value, key === "energy_kcal" ? 0 : 1);
           return (
-            <div key={key}>
-              <dt className="text-xs text-[var(--ink)]/60">{NUTRIENT_LABELS[key].label}</dt>
-              <dd className="text-base font-medium">
+            <div key={key} className="min-w-0">
+              <dt className="font-label-md text-label-md text-on-surface-variant">
+                {NUTRIENT_LABELS[key].label}
+              </dt>
+              <dd className="font-body-md text-body-md font-semibold tabular-nums text-on-surface">
                 {state === "UNKNOWN" || rounded === null ? (
-                  <span className="text-[var(--ink)]/40">Sin datos</span>
+                  <span className="font-normal text-outline">Sin datos</span>
                 ) : (
                   <>
                     {state === "PARTIAL" && <span aria-hidden>≥ </span>}
                     {rounded.toLocaleString("es-CL")}{" "}
-                    <span className="text-xs font-normal text-[var(--ink)]/60">
+                    <span className="font-body-sm text-body-sm font-normal text-on-surface-variant">
                       {NUTRIENT_LABELS[key].unit}
                     </span>
                   </>
                 )}
               </dd>
               {state === "PARTIAL" && (
-                <p className="text-[11px] text-amber-700">{COMPLETENESS_LABELS.PARTIAL}</p>
+                <p className="font-label-md text-label-md text-on-secondary-fixed-variant">
+                  {COMPLETENESS_LABELS.PARTIAL}
+                </p>
               )}
             </div>
           );
@@ -61,12 +74,14 @@ export function NutritionPanel({
       </dl>
 
       {incomplete.length > 0 && (
-        <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          Algún ingrediente no informa{" "}
-          {incomplete.map((k) => NUTRIENT_LABELS[k].label.toLowerCase()).join(", ")}. Lo que se
-          muestra es la suma de lo que sí se conoce, no el total del plato.
-        </p>
+        <div className="mt-md">
+          <Notice icon="rule">
+            Algún ingrediente no informa{" "}
+            {incomplete.map((k) => NUTRIENT_LABELS[k].label.toLowerCase()).join(", ")}. Lo que se
+            muestra es la suma de lo que sí se conoce, no el total del plato.
+          </Notice>
+        </div>
       )}
-    </section>
+    </Card>
   );
 }

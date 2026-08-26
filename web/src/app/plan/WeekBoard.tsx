@@ -6,6 +6,7 @@ import Link from "next/link";
 import { dayOfMonth, weekdayName } from "@/domain/nutrition/calendar";
 import { eventCoversDate } from "@/domain/nutrition/events";
 import { MEAL_TYPE_LABELS, type MealType } from "@/domain/recipes/types";
+import { Button, ButtonOutline, Card, Chip, ErrorNote, Icon, Notice } from "@/components/ui";
 import type { WeekPlan } from "./queries";
 import {
   assignMeal,
@@ -35,6 +36,18 @@ const COMIDAS_BASE: MealType[] = ["BREAKFAST", "LUNCH", "TEA", "DINNER"];
  */
 const COMIDAS_EXTRA: MealType[] = ["DESSERT", "SNACK", "FRUIT", "OTHER"];
 
+/** Cada comida con su icono del kit: el momento del día se reconoce sin leer. */
+const MEAL_ICONS: Record<MealType, string> = {
+  BREAKFAST: "wb_sunny",
+  LUNCH: "lunch_dining",
+  TEA: "local_cafe",
+  DINNER: "dinner_dining",
+  DESSERT: "icecream",
+  SNACK: "cookie",
+  FRUIT: "nutrition",
+  OTHER: "restaurant",
+};
+
 const KIND_LABELS: Record<string, string> = {
   RECIPE: "Receta",
   EAT_OUT: "Comemos afuera",
@@ -59,6 +72,17 @@ const STRATEGY_LABELS: Record<string, string> = {
   LIGHTER_AROUND: "Más liviano alrededor",
   SKIP_TRACKING: "Sin conteo ese día",
 };
+
+/** Campo de formulario del kit: mismo alto de toque en todos lados. */
+const FIELD =
+  "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-md py-sm font-body-md text-body-md text-on-surface";
+
+/** Botón chico de una fila de comida: cabe en 320 px al lado del título. */
+const BOTON_FILA =
+  "inline-flex shrink-0 items-center gap-1 rounded-full border border-outline px-3 py-1.5 font-label-md text-label-md text-on-surface-variant transition-transform active:scale-95";
+
+/** Enlace de texto dentro de una comida. */
+const ENLACE = "font-body-sm text-body-sm font-semibold text-primary underline";
 
 export function WeekBoard({
   week,
@@ -95,20 +119,15 @@ export function WeekBoard({
     });
   }
 
-  const field = "w-full rounded-xl border border-[var(--ink)]/20 bg-white px-3 py-2 text-base";
-
   return (
-    <div className="space-y-3">
+    <div className="space-y-md">
       {message && (
-        <p className="rounded-xl bg-[var(--accent)]/10 px-3 py-2 text-sm text-[var(--accent)]">
+        <p className="flex items-start gap-sm rounded-2xl bg-primary-fixed px-md py-sm font-body-sm text-body-sm text-on-primary-fixed">
+          <Icon name="check_circle" className="mt-0.5 shrink-0 text-[18px]" />
           {message}
         </p>
       )}
-      {error && (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-          {error}
-        </p>
-      )}
+      {error && <ErrorNote>{error}</ErrorNote>}
 
       {week.days.map((day) => {
         // Un viaje de jueves a domingo tiene que verse los cuatro días, no solo
@@ -116,39 +135,40 @@ export function WeekBoard({
         const eventos = week.events.filter((e) => eventCoversDate(e, day.date));
         const esHoy = day.date === today;
         return (
-          <section
+          <Card
+            as="section"
             key={day.id}
-            className={`rounded-2xl border bg-white p-4 ${
-              esHoy ? "border-[var(--accent)]" : "border-[var(--ink)]/10"
-            }`}
+            className={`p-md ${esHoy ? "border-2 border-primary" : ""}`}
           >
-            <header className="mb-2 flex items-baseline justify-between">
-              <h2 className="text-sm font-semibold">
+            <header className="mb-sm flex items-center justify-between gap-sm">
+              <h2 className="font-headline-sm text-headline-sm capitalize text-on-surface">
                 {weekdayName(day.date)} {dayOfMonth(day.date)}
-                {esHoy && (
-                  <span className="ml-2 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] text-white">
-                    hoy
-                  </span>
-                )}
               </h2>
+              {esHoy && (
+                <Chip tono="primario" icon="today">
+                  hoy
+                </Chip>
+              )}
             </header>
 
             {eventos.length > 0 && (
-              <ul className="mb-2 space-y-1">
+              <ul className="mb-sm space-y-1">
                 {eventos.map((e) => (
                   <li
                     key={e.id}
-                    className="flex items-center justify-between gap-2 rounded-xl bg-amber-50 px-3 py-1.5 text-xs text-amber-900"
+                    className="flex items-start justify-between gap-sm rounded-2xl bg-secondary-fixed px-md py-sm text-on-secondary-fixed-variant"
                   >
-                    <span>
-                      <strong>{e.title}</strong> · {EVENT_LABELS[e.eventType] ?? e.eventType} ·{" "}
+                    <span className="min-w-0 font-body-sm text-body-sm">
+                      <Icon name="celebration" className="mr-1 align-middle text-[16px]" />
+                      <strong className="font-semibold">{e.title}</strong> ·{" "}
+                      {EVENT_LABELS[e.eventType] ?? e.eventType} ·{" "}
                       {STRATEGY_LABELS[e.strategy] ?? e.strategy}
                     </span>
                     <button
                       type="button"
                       disabled={pending}
                       onClick={() => run(() => deleteEvent(e.id))}
-                      className="shrink-0 underline"
+                      className="shrink-0 font-body-sm text-body-sm font-semibold underline disabled:opacity-40"
                     >
                       Quitar
                     </button>
@@ -157,7 +177,7 @@ export function WeekBoard({
               </ul>
             )}
 
-            <div className="space-y-1.5">
+            <div className="space-y-sm">
               {[
                 ...COMIDAS_BASE,
                 ...COMIDAS_EXTRA.filter(
@@ -171,58 +191,85 @@ export function WeekBoard({
                 const confirmada = asignacion?.status === "CONFIRMED" || asignacion?.status === "SERVED";
 
                 return (
-                  <div key={mealType} className="rounded-xl border border-[var(--ink)]/10">
-                    <div className="flex items-center justify-between gap-2 px-3 py-2">
-                      <div className="min-w-0">
-                        <p className="text-xs text-[var(--ink)]/60">{MEAL_TYPE_LABELS[mealType]}</p>
-                        {asignacion ? (
-                          <p className="truncate text-sm font-medium">
-                            {asignacion.kind === "RECIPE"
-                              ? asignacion.recipeName
-                              : (KIND_LABELS[asignacion.kind] ?? asignacion.kind)}
-                            {asignacion.versionNumber && (
-                              <span className="ml-1.5 text-[11px] font-normal text-[var(--ink)]/40">
-                                v{asignacion.versionNumber}
-                              </span>
-                            )}
+                  <div
+                    key={mealType}
+                    className="overflow-hidden rounded-2xl border border-outline-variant/60"
+                  >
+                    <div className="flex items-start justify-between gap-sm px-md py-sm">
+                      <div className="flex min-w-0 flex-1 items-start gap-sm">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-container text-primary">
+                          <Icon name={MEAL_ICONS[mealType]} className="text-[18px]" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="font-label-md text-label-md uppercase text-on-surface-variant">
+                            {MEAL_TYPE_LABELS[mealType]}
                           </p>
-                        ) : (
-                          <p className="text-sm text-[var(--ink)]/40">Sin planificar</p>
-                        )}
+                          {asignacion ? (
+                            <p className="truncate font-body-md text-body-md font-semibold text-on-surface">
+                              {asignacion.kind === "RECIPE"
+                                ? asignacion.recipeName
+                                : (KIND_LABELS[asignacion.kind] ?? asignacion.kind)}
+                              {asignacion.versionNumber && (
+                                <span className="ml-1.5 font-body-sm text-body-sm font-normal text-outline">
+                                  v{asignacion.versionNumber}
+                                </span>
+                              )}
+                            </p>
+                          ) : (
+                            <p className="font-body-sm text-body-sm text-outline">Sin planificar</p>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex shrink-0 items-center gap-2">
-                        {asignacion?.needsReview && (
-                          <span
-                            className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] text-amber-900"
-                            title={asignacion.reviewReason ?? undefined}
-                          >
+                      <button
+                        type="button"
+                        onClick={() => setAbierto(abierto === clave ? null : clave)}
+                        className={BOTON_FILA}
+                      >
+                        <Icon name={asignacion ? "edit" : "add"} className="text-[14px]" />
+                        {asignacion ? "Cambiar" : "Planificar"}
+                      </button>
+                    </div>
+
+                    {/* Los chips van en su propia fila: en 320 px "requiere
+                        revisión para 3 integrantes" no cabe al lado del título. */}
+                    <div className="flex flex-wrap items-center gap-1.5 px-md pb-sm empty:hidden">
+                      {asignacion?.needsReview && (
+                        <span title={asignacion.reviewReason ?? undefined}>
+                          <Chip tono="atencion" icon="error">
                             revisar
-                          </span>
-                        )}
-                        {confirmada && (
-                          <span className="rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[10px] text-[var(--accent)]">
-                            {asignacion!.servingCount} porciones
-                          </span>
-                        )}
-                        {asignacion!.clinicalReviewCount > 0 && (
-                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-900">
-                            ⚠ requiere revisión para {asignacion!.clinicalReviewCount}{" "}
-                            {asignacion!.clinicalReviewCount === 1 ? "integrante" : "integrantes"}
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setAbierto(abierto === clave ? null : clave)}
-                          className="text-xs text-[var(--accent)] underline"
-                        >
-                          {asignacion ? "Cambiar" : "Planificar"}
-                        </button>
-                      </div>
+                          </Chip>
+                        </span>
+                      )}
+                      {confirmada && (
+                        <Chip tono="primario" icon="check_circle">
+                          {asignacion!.servingCount} porciones
+                        </Chip>
+                      )}
+                      {/* `asignacion` puede no existir (comida sin planificar):
+                          leerla con `!` reventaba la fila entera. */}
+                      {(asignacion?.clinicalReviewCount ?? 0) > 0 && (
+                        <Chip tono="atencion" icon="warning">
+                          requiere revisión para {asignacion!.clinicalReviewCount}{" "}
+                          {asignacion!.clinicalReviewCount === 1 ? "integrante" : "integrantes"}
+                        </Chip>
+                      )}
+                      {/* Una comida confirmada cuyas porciones nunca pasaron por
+                          el motor clínico no puede verse igual que una evaluada
+                          y limpia: en el tablero "limpia" es no tener chip, así
+                          que SIN EVALUAR necesita el suyo — UNKNOWN NUNCA
+                          SIGNIFICA NORMAL. Solo el conteo: el porqué vive en
+                          Salud (§58). */}
+                      {(asignacion?.clinicalUnassessedCount ?? 0) > 0 && (
+                        <Chip tono="atencion" icon="help">
+                          sin evaluación clínica: {asignacion!.clinicalUnassessedCount}{" "}
+                          {asignacion!.clinicalUnassessedCount === 1 ? "porción" : "porciones"}
+                        </Chip>
+                      )}
                     </div>
 
                     {asignacion && (
-                      <div className="border-t border-[var(--ink)]/5 px-3 py-2">
+                      <div className="border-t border-outline-variant/40 px-md py-sm">
                         <button
                           type="button"
                           onClick={() =>
@@ -230,7 +277,7 @@ export function WeekBoard({
                               comensalesAbierto === asignacion.id ? null : asignacion.id,
                             )
                           }
-                          className="text-xs text-[var(--ink)]/60 underline"
+                          className="text-left font-body-sm text-body-sm text-on-surface-variant underline"
                         >
                           Comen:{" "}
                           {asignacion.participantIds.length === 0
@@ -253,64 +300,62 @@ export function WeekBoard({
                     )}
 
                     {asignacion?.kind === "RECIPE" && (
-                      <div className="flex flex-wrap items-center gap-2 border-t border-[var(--ink)]/5 px-3 py-2">
+                      <div className="flex flex-wrap items-center gap-sm border-t border-outline-variant/40 px-md py-sm">
                         <Link
                           href={`/recipes/${asignacion.templateId}/family?meal=${mealType}&v=${asignacion.versionId}&assignment=${asignacion.id}`}
-                          className="text-xs text-[var(--accent)] underline"
+                          className={ENLACE}
                         >
                           Ver porciones
                         </Link>
                         {confirmada ? (
                           <>
-                            <Link
-                              href={`/plan/comida/${asignacion.id}`}
-                              className="text-xs text-[var(--accent)] underline"
-                            >
+                            <Link href={`/plan/comida/${asignacion.id}`} className={ENLACE}>
                               Ver lo guardado
                             </Link>
                             {asignacion.status === "CONFIRMED" && (
-                              <button
-                                type="button"
+                              <ButtonOutline
                                 disabled={pending}
                                 onClick={() => run(() => consumePlannedMeal(asignacion.id))}
-                                className="rounded-full border border-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent)] disabled:opacity-50"
                               >
+                                <Icon name="restaurant" className="text-[18px]" />
                                 Comimos lo planificado
-                              </button>
+                              </ButtonOutline>
                             )}
                             <button
                               type="button"
                               disabled={pending}
                               onClick={() => run(() => unconfirmMeal(asignacion.id))}
-                              className="text-xs text-[var(--ink)]/50 underline"
+                              className="font-body-sm text-body-sm text-on-surface-variant underline disabled:opacity-40"
                             >
                               Deshacer confirmación
                             </button>
                           </>
                         ) : (
-                          <button
-                            type="button"
+                          <Button
                             disabled={pending}
                             onClick={() => run(() => confirmMeal(asignacion.id))}
-                            className="rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
                           >
+                            <Icon name="check" className="text-[18px]" />
                             Confirmar y guardar porciones
-                          </button>
+                          </Button>
                         )}
                         {asignacion.needsReview && (
-                          <p className="w-full text-[11px] text-amber-800">
-                            {asignacion.reviewReason ?? "Algo cambió alrededor de esta comida"}. Las
-                            porciones guardadas quedaron como estaban: deshaz la confirmación si
-                            quieres recalcularlas.
-                          </p>
+                          <div className="w-full">
+                            <Notice icon="history">
+                              {asignacion.reviewReason ?? "Algo cambió alrededor de esta comida"}.
+                              Las porciones guardadas quedaron como estaban: deshaz la confirmación
+                              si quieres recalcularlas.
+                            </Notice>
+                          </div>
                         )}
                       </div>
                     )}
 
                     {abierto === clave && (
-                      <div className="space-y-2 border-t border-[var(--ink)]/10 px-3 py-3">
+                      <div className="space-y-sm border-t border-outline-variant/40 bg-surface-container-low px-md py-md">
                         <select
-                          className={field}
+                          className={FIELD}
+                          aria-label={`Planificar ${MEAL_TYPE_LABELS[mealType]}`}
                           defaultValue=""
                           onChange={(e) => {
                             const valor = e.target.value;
@@ -360,14 +405,14 @@ export function WeekBoard({
                         </select>
 
                         {asignacion && (
-                          <button
-                            type="button"
+                          <ButtonOutline
+                            className="w-full"
                             disabled={pending}
                             onClick={() => run(() => clearAssignment(asignacion.id))}
-                            className="w-full rounded-full border border-[var(--ink)]/20 px-4 py-2 text-sm"
                           >
+                            <Icon name="delete" className="text-[18px]" />
                             Quitar de la semana
-                          </button>
+                          </ButtonOutline>
                         )}
                       </div>
                     )}
@@ -380,23 +425,25 @@ export function WeekBoard({
                   <button
                     type="button"
                     onClick={() => setDiasExpandidos([...diasExpandidos, day.id])}
-                    className="w-full rounded-xl border border-dashed border-[var(--ink)]/20 px-3 py-2 text-xs text-[var(--ink)]/60"
+                    className="flex w-full items-center justify-center gap-sm rounded-2xl border border-dashed border-outline px-md py-sm font-body-sm text-body-sm font-semibold text-primary transition-transform active:scale-[0.99]"
                   >
-                    + Postre, snack, fruta u otra comida
+                    <Icon name="add" className="text-[18px]" />
+                    Postre, snack, fruta u otra comida
                   </button>
                 )}
             </div>
-          </section>
+          </Card>
         );
       })}
 
-      <section className="rounded-2xl border border-dashed border-[var(--ink)]/20 bg-white p-4">
+      <Card as="section" className="border border-dashed border-outline p-md">
         {!eventoAbierto ? (
           <button
             type="button"
             onClick={() => setEventoAbierto(true)}
-            className="w-full rounded-full border border-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--accent)]"
+            className="flex w-full items-center justify-center gap-sm rounded-2xl px-md py-sm font-body-md text-body-md font-semibold text-primary transition-transform active:scale-[0.99]"
           >
+            <Icon name="celebration" className="text-[20px]" />
             Agregar un evento a la semana
           </button>
         ) : (
@@ -409,7 +456,7 @@ export function WeekBoard({
             onCancel={() => setEventoAbierto(false)}
           />
         )}
-      </section>
+      </Card>
     </div>
   );
 }
@@ -436,14 +483,14 @@ function Comensales({
   const todos = marcados.length === members.length;
 
   return (
-    <div className="mt-2 space-y-2 rounded-xl bg-[var(--ink)]/5 p-3">
+    <div className="mt-sm space-y-sm rounded-2xl bg-surface-container p-md">
       <ul className="space-y-1">
         {members.map((m) => (
           <li key={m.id}>
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex items-center gap-sm font-body-md text-body-md text-on-surface">
               <input
                 type="checkbox"
-                className="size-4"
+                className="size-5 shrink-0 accent-primary"
                 checked={marcados.includes(m.id)}
                 onChange={(e) =>
                   setMarcados(
@@ -459,18 +506,15 @@ function Comensales({
         ))}
       </ul>
       {marcados.length === 0 && (
-        <p className="text-[11px] text-amber-800">
-          Si no come nadie, mejor quita la comida de la semana.
-        </p>
+        <Notice icon="info">Si no come nadie, mejor quita la comida de la semana.</Notice>
       )}
-      <button
-        type="button"
+      <Button
+        full
         disabled={pending || marcados.length === 0}
         onClick={() => onGuardar(todos ? [] : marcados)}
-        className="w-full rounded-full bg-[var(--accent)] px-4 py-2 text-xs font-medium text-white disabled:opacity-50"
       >
         Guardar quién come
-      </button>
+      </Button>
     </div>
   );
 }
@@ -498,12 +542,10 @@ function EventForm({
   const [estrategia, setEstrategia] = useState("RELAXED");
   const [afectados, setAfectados] = useState<string[]>([]);
 
-  const field = "w-full rounded-xl border border-[var(--ink)]/20 bg-white px-3 py-2 text-base";
-
   return (
-    <div className="space-y-3">
-      <h3 className="text-sm font-semibold">Evento de la semana</h3>
-      <p className="text-xs text-[var(--ink)]/60">
+    <div className="space-y-md">
+      <h3 className="font-headline-sm text-headline-sm text-on-surface">Evento de la semana</h3>
+      <p className="font-body-sm text-body-sm text-on-surface-variant">
         Un asado, un cumpleaños o un viaje. Da margen ese día sin compensar en los otros: nadie
         &quot;paga&quot; una comida con un día de ayuno.
       </p>
@@ -512,18 +554,29 @@ function EventForm({
         value={titulo}
         onChange={(e) => setTitulo(e.target.value)}
         placeholder="Asado en casa de mi hermana"
-        className={field}
+        aria-label="Título del evento"
+        className={FIELD}
       />
 
-      <div className="flex gap-2">
-        <select value={fecha} onChange={(e) => setFecha(e.target.value)} className={field}>
+      <div className="flex flex-wrap gap-sm">
+        <select
+          value={fecha}
+          onChange={(e) => setFecha(e.target.value)}
+          aria-label="Día del evento"
+          className={`${FIELD} flex-1`}
+        >
           {dias.map((d) => (
             <option key={d} value={d}>
               {weekdayName(d)} {dayOfMonth(d)}
             </option>
           ))}
         </select>
-        <select value={tipo} onChange={(e) => setTipo(e.target.value)} className={field}>
+        <select
+          value={tipo}
+          onChange={(e) => setTipo(e.target.value)}
+          aria-label="Tipo de evento"
+          className={`${FIELD} flex-1`}
+        >
           {Object.entries(EVENT_LABELS).map(([valor, texto]) => (
             <option key={valor} value={valor}>
               {texto}
@@ -532,11 +585,12 @@ function EventForm({
         </select>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-sm">
         <select
           value={comida}
           onChange={(e) => setComida(e.target.value as MealType | "")}
-          className={field}
+          aria-label="Comida afectada"
+          className={`${FIELD} flex-1`}
         >
           <option value="">Todo el día</option>
           {[...COMIDAS_BASE, ...COMIDAS_EXTRA].map((m) => (
@@ -548,7 +602,8 @@ function EventForm({
         <select
           value={estrategia}
           onChange={(e) => setEstrategia(e.target.value)}
-          className={field}
+          aria-label="Estrategia del día"
+          className={`${FIELD} flex-1`}
         >
           {Object.entries(STRATEGY_LABELS).map(([valor, texto]) => (
             <option key={valor} value={valor}>
@@ -558,12 +613,12 @@ function EventForm({
         </select>
       </div>
 
-      <label className="block text-xs text-[var(--ink)]/60">
+      <label className="block font-body-sm text-body-sm text-on-surface-variant">
         Si dura varios días (un viaje), hasta cuándo
         <select
           value={hasta}
           onChange={(e) => setHasta(e.target.value)}
-          className={`${field} mt-1`}
+          className={`${FIELD} mt-1`}
         >
           <option value="">Solo ese día</option>
           {dias
@@ -577,16 +632,16 @@ function EventForm({
       </label>
 
       <fieldset>
-        <legend className="text-xs text-[var(--ink)]/60">
+        <legend className="font-body-sm text-body-sm text-on-surface-variant">
           ¿A quién afecta? Sin marcar a nadie, es de toda la familia.
         </legend>
-        <ul className="mt-1 flex flex-wrap gap-2">
+        <ul className="mt-sm flex flex-wrap gap-sm">
           {members.map((m) => (
             <li key={m.id}>
-              <label className="flex items-center gap-1.5 rounded-full border border-[var(--ink)]/20 px-3 py-1.5 text-xs">
+              <label className="flex items-center gap-sm rounded-full border border-outline-variant px-3 py-1.5 font-body-sm text-body-sm text-on-surface">
                 <input
                   type="checkbox"
-                  className="size-3.5"
+                  className="size-4 shrink-0 accent-primary"
                   checked={afectados.includes(m.id)}
                   onChange={(e) =>
                     setAfectados(
@@ -603,16 +658,12 @@ function EventForm({
         </ul>
       </fieldset>
 
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 rounded-full border border-[var(--ink)]/20 px-4 py-2 text-sm"
-        >
+      <div className="flex flex-wrap gap-sm">
+        <ButtonOutline className="flex-1" onClick={onCancel}>
           Cancelar
-        </button>
-        <button
-          type="button"
+        </ButtonOutline>
+        <Button
+          className="flex-1"
           disabled={pending}
           onClick={() =>
             onSave(async () => {
@@ -635,10 +686,9 @@ function EventForm({
               return r;
             })
           }
-          className="flex-1 rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           Guardar evento
-        </button>
+        </Button>
       </div>
     </div>
   );

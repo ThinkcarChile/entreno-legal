@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { TemplateStatus } from "@/domain/recipes/types";
+import { ErrorNote } from "@/components/ui";
 import { duplicateRecipe, publishVersion, startNewVersion } from "../actions";
 
 /**
@@ -24,9 +25,10 @@ export function RecipeVersionActions({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const button = "rounded-full px-4 py-2 text-sm font-medium disabled:opacity-50";
-  const primary = `${button} bg-[var(--accent)] text-white`;
-  const secondary = `${button} border border-[var(--ink)]/20`;
+  const button =
+    "inline-flex items-center justify-center gap-sm rounded-full px-lg py-sm font-body-md text-body-sm font-semibold transition-transform active:scale-95 disabled:opacity-40";
+  const primary = `${button} bg-primary text-on-primary`;
+  const secondary = `${button} border border-outline text-on-surface-variant`;
 
   function run(action: () => Promise<{ ok: boolean; error?: string; templateId?: string }>) {
     setError(null);
@@ -42,8 +44,8 @@ export function RecipeVersionActions({
   }
 
   return (
-    <div className="mb-4">
-      <div className="flex flex-wrap gap-2">
+    <div className="mb-lg">
+      <div className="flex flex-wrap gap-sm">
         {isOwn && status === "DRAFT" && (
           <>
             <a href={`/recipes/${templateId}/edit?v=${versionId}`} className={secondary}>
@@ -81,7 +83,11 @@ export function RecipeVersionActions({
         </button>
       </div>
 
-      {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
+      {error && (
+        <div className="mt-sm">
+          <ErrorNote>{error}</ErrorNote>
+        </div>
+      )}
     </div>
   );
 }

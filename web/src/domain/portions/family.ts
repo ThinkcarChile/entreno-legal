@@ -4,6 +4,7 @@ import {
   optimizePortion,
   type AcceptedSubstitution,
   type AvailableAlternative,
+  type ClinicalCeiling,
   type MemberServingProjection,
   type PortionComponent,
 } from "./optimizer";
@@ -30,6 +31,20 @@ export interface FamilyProjectionInput {
     resolvedTargets?: TargetSet | null;
     /** Reemplazos que ESTA persona aceptó. */
     substitutions?: readonly AcceptedSubstitution[];
+    /**
+     * Techos clínicos CONFIRMADOS de ESTA persona (§31).
+     *
+     * Existían en `optimizePortion` desde el Sprint 11 y nadie se los pasaba:
+     * el proyector familiar ni siquiera declaraba el campo, así que
+     * `input.clinicalCeilings ?? []` era SIEMPRE lista vacía y una restricción
+     * HARD confirmada no limitaba en nada la porción que se calculaba y se
+     * guardaba. Son POR PERSONA —el techo de sodio de la abuela no capa el
+     * plato del nieto— y por eso viven acá, en el integrante, no en la comida.
+     *
+     * Ausente (`undefined`) = esta persona no tiene techos clínicos; el motor
+     * se comporta EXACTAMENTE igual que antes de que este campo existiera.
+     */
+    clinicalCeilings?: readonly ClinicalCeiling[];
   }[];
 }
 
@@ -53,18 +68,20 @@ export interface FamilyServingProjection {
 }
 
 export function projectFamilyServings(input: FamilyProjectionInput): FamilyServingProjection {
-  const servings = input.members.map(({ profile, override, resolvedTargets, substitutions }) =>
-    optimizePortion({
-      versionId: input.versionId,
-      components: input.components,
-      alternatives: input.alternatives,
-      substitutions,
-      baseServings: input.baseServings,
-      profile,
-      mealType: input.mealType,
-      override,
-      resolvedTargets,
-    }),
+  const servings = input.members.map(
+    ({ profile, override, resolvedTargets, substitutions, clinicalCeilings }) =>
+      optimizePortion({
+        versionId: input.versionId,
+        components: input.components,
+        alternatives: input.alternatives,
+        substitutions,
+        baseServings: input.baseServings,
+        profile,
+        mealType: input.mealType,
+        override,
+        resolvedTargets,
+        clinicalCeilings,
+      }),
   );
 
   const totals = preparationTotals(servings);

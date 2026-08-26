@@ -11,9 +11,17 @@ import { projectFamilyServings } from "@/domain/portions/family";
 import type {
   AcceptedSubstitution,
   AvailableAlternative,
+  ClinicalCeiling,
   PortionComponent,
 } from "@/domain/portions/optimizer";
 import type { MealType } from "@/domain/recipes/types";
+import {
+  clinicalCeilingsFrom,
+  evaluateMeal,
+  loadClinicalContext,
+  persistMealAssessment,
+  type ClinicalContext,
+} from "@/app/health/assess-service";
 import { loadDailyOverride, loadHouseholdProfiles } from "@/app/family/nutrition-queries";
 import { publishProfileSnapshot } from "@/app/family/profile-publish";
 import { loadAlternativesWithFacts, loadRecipeDetail } from "@/app/recipes/queries";
@@ -334,6 +342,44 @@ export async function confirmMeal(
   const eventos = await loadEventsForDate(supabase, fechaEfectiva, householdId);
   const efectosPorMiembro = new Map<string, ReturnType<typeof effectFor>>();
 
+  // --- Techos clínicos ANTES de calcular la porción (§31, ADR 0012) --------
+  //
+  // Auditoría posterior al Sprint 11.5: `optimizePortion` aceptaba
+  // `clinicalCeilings` desde el primer día y NADIE se los pasaba. Una
+  // restricción HARD confirmada —un máximo de sodio, un techo de proteína—
+  // no capaba en nada la porción que se calculaba y se guardaba. El motor
+  // clínico estaba construido, probado… y desconectado.
+  //
+  // Esta primera pasada es un SCREENING declarado (`assignmentId: null` ⇒
+  // fuente RECIPE_BASE_ESTIMATE): todavía no existe la porción de esta
+  // persona, así que su veredicto NO se guarda ni se muestra. Lo único que se
+  // usa de ella son los techos confirmados, que sí valen igual porque salen
+  // de la restricción, no de la nutrición del plato.
+  //
+  // Si la lectura clínica rebota (sin permiso, base caída, fila deforme) la
+  // persona queda anotada en `sinClinica`: su porción se calcula sin techos
+  // —no hay con qué— y más abajo se marca REVIEW_REQUIRED. Jamás compatible:
+  // UNKNOWN NUNCA SIGNIFICA NORMAL.
+  const contextosClinicos = new Map<string, ClinicalContext>();
+  const techosPorMiembro = new Map<string, ClinicalCeiling[]>();
+  const sinClinica = new Set<string>();
+  for (const profile of comen) {
+    try {
+      const contexto = await loadClinicalContext(supabase, profile.memberId);
+      contextosClinicos.set(profile.memberId, contexto);
+      const previa = await evaluateMeal(supabase, {
+        memberId: profile.memberId,
+        versionId: asignacion.version_id,
+        assignmentId: null,
+        date: fechaEfectiva,
+        context: contexto,
+      });
+      techosPorMiembro.set(profile.memberId, clinicalCeilingsFrom(previa.assessment));
+    } catch {
+      sinClinica.add(profile.memberId);
+    }
+  }
+
   const proyeccion = projectFamilyServings({
     versionId: asignacion.version_id,
     components,
@@ -370,6 +416,9 @@ export async function confirmMeal(
         profile,
         resolvedTargets: conEvento,
         substitutions,
+        // §31: AI NEVER OVERRIDES CLINICAL RULES — y el objetivo deportivo
+        // tampoco. El techo médico entra al cálculo, no al comentario.
+        clinicalCeilings: techosPorMiembro.get(profile.memberId),
       };
     }),
   });
@@ -442,8 +491,120 @@ export async function confirmMeal(
   });
   if (error) return { ok: false, error: `No se pudo confirmar: ${error.message}` };
 
+  const sinEvaluar = await evaluarPorcionesConfirmadas(supabase, {
+    assignmentId,
+    versionId: asignacion.version_id,
+    date: fechaEfectiva,
+    contextos: contextosClinicos,
+    sinClinica,
+    nombres: new Map(profiles.map((p) => [p.memberId, p.memberName])),
+  });
+
   revalidatePath("/plan");
-  return { ok: true, message: `Comida confirmada con ${guardadas} porciones guardadas.` };
+  const base = `Comida confirmada con ${guardadas} porciones guardadas.`;
+  if (sinEvaluar.length === 0) return { ok: true, message: base };
+  // La comida QUEDÓ confirmada: decir `ok: false` sería mentir al revés. Lo
+  // que falta es el veredicto clínico, y eso se dice con todas sus letras.
+  return {
+    ok: true,
+    message:
+      `${base} OJO: la porción de ${sinEvaluar.join(", ")} quedó SIN evaluación clínica ` +
+      "(no se pudieron leer sus restricciones). Revísala antes de servir.",
+  };
+}
+
+/**
+ * Veredicto clínico de cada porción recién confirmada (§30/§43).
+ *
+ * Recién ahora existe la porción de cada persona, así que recién ahora el
+ * motor puede hablar de ELLA y no del promedio de la olla: la fuente sube de
+ * RECIPE_BASE_ESTIMATE a PROJECTED_MEMBER_SERVING y el "dentro del límite"
+ * pasa a valer para esta persona (§1 del cierre v2).
+ *
+ * Ninguna porción queda en un estado que se pueda confundir con "compatible":
+ *  · evaluada → su estado real (COMPATIBLE … CLINICALLY_INVALIDATED);
+ *  · no se pudo evaluar pero sí escribir → REVIEW_REQUIRED sin evaluación
+ *    asociada (el motivo vive en Salud, no acá);
+ *  · no se pudo ni escribir (sin permiso médico) → el estado queda NULO, que
+ *    la pantalla y el tablero muestran como SIN EVALUAR, jamás como limpia.
+ *
+ * Devuelve los nombres de quienes quedaron sin veredicto.
+ */
+async function evaluarPorcionesConfirmadas(
+  supabase: Awaited<ReturnType<typeof client>>,
+  input: {
+    assignmentId: string;
+    versionId: string;
+    date: string;
+    contextos: Map<string, ClinicalContext>;
+    sinClinica: Set<string>;
+    nombres: Map<string, string>;
+  },
+): Promise<string[]> {
+  const { data: proyecciones, error: proyError } = await supabase
+    .from("member_serving_projections")
+    .select("id, member_id")
+    .eq("assignment_id", input.assignmentId);
+  if (proyError) throw new DataAccessError("porciones recién confirmadas", proyError);
+  const filas = parseRows(
+    z.object({ id: uuid, member_id: uuid }),
+    proyecciones,
+    "porciones recién confirmadas",
+  );
+
+  const sinEvaluar: string[] = [];
+  for (const fila of filas) {
+    const nombre = input.nombres.get(fila.member_id) ?? "un integrante";
+
+    // Último recurso: dejar la porción pidiendo revisión humana, sin decir por
+    // qué. Si ni esto se puede (quien confirma no tiene acceso médico a esta
+    // persona), el estado queda nulo = SIN EVALUAR, que es la verdad.
+    const pedirRevision = async (): Promise<void> => {
+      const { error } = await supabase.rpc("set_serving_clinical_status", {
+        p_projection_id: fila.id,
+        p_status: "REVIEW_REQUIRED",
+        p_assessment_id: null,
+      });
+      if (error) sinEvaluar.push(nombre);
+    };
+
+    if (input.sinClinica.has(fila.member_id)) {
+      await pedirRevision();
+      continue;
+    }
+
+    try {
+      const veredicto = await evaluateMeal(supabase, {
+        memberId: fila.member_id,
+        versionId: input.versionId,
+        assignmentId: input.assignmentId,
+        date: input.date,
+        context: input.contextos.get(fila.member_id) ?? null,
+      });
+      const guardada = await persistMealAssessment(supabase, {
+        memberId: fila.member_id,
+        versionId: input.versionId,
+        assignmentId: input.assignmentId,
+        evaluacion: veredicto,
+      });
+      // Guardar es también la comprobación de permiso: el RPC exige el mismo
+      // `medical_access` que la RLS de las restricciones. Si rebota, el
+      // veredicto se calculó sobre una lectura vacía y se descarta entero.
+      if (!guardada.ok) {
+        await pedirRevision();
+        continue;
+      }
+      const { error: estadoError } = await supabase.rpc("set_serving_clinical_status", {
+        p_projection_id: fila.id,
+        p_status: veredicto.assessment.status,
+        p_assessment_id: guardada.id,
+      });
+      if (estadoError) await pedirRevision();
+    } catch {
+      await pedirRevision();
+    }
+  }
+  return [...new Set(sinEvaluar)];
 }
 
 export async function unconfirmMeal(assignmentId: string): Promise<ActionResult> {

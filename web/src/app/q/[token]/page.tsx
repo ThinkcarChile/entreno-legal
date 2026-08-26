@@ -4,6 +4,7 @@ import { loadHouseholdMembers } from "@/app/family/nutrition-queries";
 import { DataAccessError } from "@/lib/supabase/unwrap";
 import { z } from "zod";
 import { parseRows, uuid } from "@/lib/supabase/rows";
+import { Icon, LinkButton } from "@/components/ui";
 import { QrActions } from "./QrActions";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,9 @@ const lotSchema = z.object({
  * /q/[token] (§36-§37): la puerta del QR. El token es OPACO; resolverlo exige
  * sesión y pertenencia al hogar — token desconocido y token ajeno responden
  * lo mismo. Nada del hogar viaja en la URL.
+ *
+ * Pantalla sin AppShell a propósito: se abre desde la cámara del teléfono,
+ * apuntando a un paquete. Nada de navegación alrededor — solo el paquete.
  */
 export default async function QrPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -40,12 +44,22 @@ export default async function QrPage({ params }: { params: Promise<{ token: stri
   const { data, error } = await supabase.rpc("resolve_lot_token", { p_token: token });
   if (error) {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-xl flex-col items-center justify-center gap-4 px-6 text-center">
-        <p className="text-4xl">🔒</p>
-        <h1 className="text-xl font-semibold">Etiqueta no disponible</h1>
-        <p className="text-sm text-[var(--ink)]/60">
-          Este código no corresponde a un paquete de tu hogar.
-        </p>
+      <main className="mx-auto flex min-h-dvh max-w-[36rem] flex-col items-center justify-center gap-md bg-background px-container-margin py-xl text-center">
+        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-surface-container text-on-surface-variant">
+          <Icon name="lock" className="text-[32px]" />
+        </span>
+        <div>
+          <h1 className="font-headline-md text-headline-md text-on-surface">
+            Etiqueta no disponible
+          </h1>
+          <p className="mt-sm font-body-md text-body-md text-on-surface-variant">
+            Este código no corresponde a un paquete de tu hogar.
+          </p>
+        </div>
+        <LinkButton href="/pantry" variant="outline">
+          <Icon name="inventory_2" className="text-[18px]" />
+          Ir a la despensa
+        </LinkButton>
       </main>
     );
   }

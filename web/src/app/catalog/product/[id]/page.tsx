@@ -1,7 +1,8 @@
 import { uuidParam } from "@/lib/route-params";
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell } from "@/components/AppShell";
+import { Card, Chip, DataRow, EmptyState, Icon, LinkButton, Section } from "@/components/ui";
 import { QuantityCalculator } from "@/components/QuantityCalculator";
 import { DataAccessError } from "@/lib/supabase/unwrap";
 import {
@@ -65,42 +66,64 @@ export default async function ProductPage({ params }: Props) {
 
   const unitLabel = (u: string | null) => (u === "ML" ? "ml" : "g");
 
-  return (
-    <main className="pt-2">
-      <AppNav active="catalog" />
-      <h1 className="text-2xl font-bold">{product.name}</h1>
-      <p className="text-sm opacity-70">
-        {product.brand ?? "Sin marca"}
-        {product.household_id ? " · producto de tu hogar" : " · catálogo"}
-      </p>
+  // El envase solo aparece si hay algo que mostrar: una tarjeta vacía con tres
+  // etiquetas y ningún dato ocupa el lugar de la información real.
+  const hayDatosDeEnvase = Boolean(
+    product.barcode || product.package_quantity || product.serving_quantity,
+  );
 
-      <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-        {product.barcode ? (
-          <>
-            <dt className="opacity-60">Código</dt>
-            <dd className="text-right font-mono">{product.barcode}</dd>
-          </>
+  return (
+    <AppShell
+      active="catalog"
+      title={product.name}
+      subtitle={product.brand ?? "Sin marca"}
+      action={
+        <LinkButton href="/catalog" variant="outline">
+          <Icon name="arrow_back" className="text-[18px]" />
+          Catálogo
+        </LinkButton>
+      }
+    >
+      <div className="mt-md flex flex-wrap gap-sm">
+        <Chip tono={product.household_id ? "primario" : "neutro"} icon={product.household_id ? "home" : "inventory_2"}>
+          {product.household_id ? "Producto de tu hogar" : "Del catálogo"}
+        </Chip>
+        {factData ? (
+          <Chip
+            tono={factData.verified ? "primario" : "neutro"}
+            icon={factData.verified ? "verified" : "help"}
+          >
+            {factData.verified ? "Verificado" : "Sin verificar"}
+          </Chip>
         ) : null}
-        {product.package_quantity ? (
-          <>
-            <dt className="opacity-60">Envase</dt>
-            <dd className="text-right">
-              {Number(product.package_quantity)} {unitLabel(product.package_unit)}
-            </dd>
-          </>
-        ) : null}
-        {product.serving_quantity ? (
-          <>
-            <dt className="opacity-60">Porción{product.serving_name ? ` (${product.serving_name})` : ""}</dt>
-            <dd className="text-right">
-              {Number(product.serving_quantity)} {unitLabel(product.serving_unit)}
-            </dd>
-          </>
-        ) : null}
-      </dl>
+      </div>
+
+      {hayDatosDeEnvase ? (
+        <Section title="Envase" className="mt-lg">
+          <Card className="px-md py-xs">
+            {product.barcode ? (
+              <DataRow label="Código de barras">
+                <span className="tabular-nums">{product.barcode}</span>
+              </DataRow>
+            ) : null}
+            {product.package_quantity ? (
+              <DataRow label="Contenido">
+                {Number(product.package_quantity)} {unitLabel(product.package_unit)}
+              </DataRow>
+            ) : null}
+            {product.serving_quantity ? (
+              <DataRow
+                label={`Porción${product.serving_name ? ` (${product.serving_name})` : ""}`}
+              >
+                {Number(product.serving_quantity)} {unitLabel(product.serving_unit)}
+              </DataRow>
+            ) : null}
+          </Card>
+        </Section>
+      ) : null}
 
       {factData ? (
-        <div className="mt-4">
+        <div className="mt-lg">
           <QuantityCalculator
             per100={per100}
             basisUnit={basisUnit}
@@ -110,23 +133,31 @@ export default async function ProductPage({ params }: Props) {
           />
         </div>
       ) : (
-        <p className="mt-4 text-sm opacity-70">Este producto aún no tiene información nutricional.</p>
+        <div className="mt-lg">
+          <EmptyState icon="nutrition">
+            Este producto aún no tiene información nutricional.
+          </EmptyState>
+        </div>
       )}
 
-      {factData?.original_serving_quantity ? (
-        <p className="mt-3 text-xs opacity-60">
-          Etiqueta original: por porción de {Number(factData.original_serving_quantity)}{" "}
-          {unitLabel(factData.original_serving_unit)} (valores normalizados a 100{" "}
-          {basisUnit === "ML" ? "ml" : "g"}; el dato original se conserva).
-        </p>
-      ) : null}
-
       {factData ? (
-        <p className="mt-2 text-xs opacity-70">
-          Fuente: {SOURCE_TYPE_LABELS[factData.source_type as SourceType]} — {factData.source_name}.{" "}
-          {factData.verified ? "✓ Verificado." : "No verificado."}
-        </p>
+        <Card className="mt-lg flex items-start gap-sm p-md">
+          <Icon name="info" className="mt-0.5 shrink-0 text-primary" />
+          <div className="min-w-0 space-y-sm font-body-sm text-body-sm text-on-surface-variant">
+            {factData.original_serving_quantity ? (
+              <p>
+                Etiqueta original: por porción de {Number(factData.original_serving_quantity)}{" "}
+                {unitLabel(factData.original_serving_unit)} (valores normalizados a 100{" "}
+                {basisUnit === "ML" ? "ml" : "g"}; el dato original se conserva).
+              </p>
+            ) : null}
+            <p>
+              Fuente: {SOURCE_TYPE_LABELS[factData.source_type as SourceType]} —{" "}
+              {factData.source_name}.
+            </p>
+          </div>
+        </Card>
       ) : null}
-    </main>
+    </AppShell>
   );
 }

@@ -2,7 +2,17 @@ import { uuidParam } from "@/lib/route-params";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell } from "@/components/AppShell";
+import {
+  Card,
+  Chip,
+  DataRow,
+  ErrorNote,
+  Icon,
+  LinkButton,
+  Notice,
+  Section,
+} from "@/components/ui";
 import { SOURCE_TYPE_LABELS, WEIGHT_BASIS_LABELS } from "@/domain/catalog/types";
 import {
   COOKING_METHOD_LABELS,
@@ -21,6 +31,11 @@ interface Props {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ v?: string }>;
 }
+
+/** Píldora de versión: navega, por eso no es el `Chip` del kit. */
+const VERSION = "shrink-0 rounded-full px-md py-2 font-label-md text-label-md transition-colors";
+const VERSION_ON = `${VERSION} bg-primary text-on-primary`;
+const VERSION_OFF = `${VERSION} bg-surface-container-high text-on-surface-variant`;
 
 export default async function RecipeDetailPage({ params, searchParams }: Props) {
   const { id: idCrudo } = await params;
@@ -50,39 +65,50 @@ export default async function RecipeDetailPage({ params, searchParams }: Props) 
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-16">
-      <AppNav active="recipes" />
-
-      <Link href="/recipes" className="text-sm text-[var(--accent)]">
-        ← Recetas
+    <AppShell active="recipes" title={recipe.name} subtitle={recipe.description ?? undefined}>
+      <Link
+        href="/recipes"
+        className="mt-md inline-flex items-center gap-1 font-body-sm text-body-sm font-semibold text-primary"
+      >
+        <Icon name="arrow_back" className="text-[18px]" />
+        Recetas
       </Link>
 
-      <header className="mb-4 mt-2">
-        <h1 className="text-2xl font-semibold">{recipe.name}</h1>
-        <p className="mt-1 text-sm text-[var(--ink)]/60">
-          Versión {recipe.versionNumber} · {STATUS_LABELS[recipe.status]}
-          {recipe.mealTypes.length > 0 && (
-            <> · {recipe.mealTypes.map((t) => MEAL_TYPE_LABELS[t]).join(", ")}</>
-          )}
-          {recipe.baseTimeMinutes && <> · {recipe.baseTimeMinutes} min</>}
-        </p>
-        {recipe.description && (
-          <p className="mt-2 text-sm text-[var(--ink)]/70">{recipe.description}</p>
+      <div className="mt-md mb-lg flex flex-wrap items-center gap-sm">
+        <Chip tono="neutro" icon="history">
+          Versión {recipe.versionNumber}
+        </Chip>
+        <Chip tono={recipe.status === "PUBLISHED" ? "primario" : "atencion"}>
+          {STATUS_LABELS[recipe.status]}
+        </Chip>
+        {recipe.mealTypes.length > 0 && (
+          <Chip tono="info" icon="schedule">
+            {recipe.mealTypes.map((t) => MEAL_TYPE_LABELS[t]).join(", ")}
+          </Chip>
         )}
-        {recipe.isGlobal && (
-          <p className="mt-2 rounded-xl bg-[var(--ink)]/5 px-3 py-2 text-xs text-[var(--ink)]/70">
+        {recipe.baseTimeMinutes && (
+          <Chip tono="neutro" icon="timer">
+            {recipe.baseTimeMinutes} min
+          </Chip>
+        )}
+      </div>
+
+      {recipe.isGlobal && (
+        <div className="mb-lg">
+          <Notice icon="menu_book" tono="info">
             Receta de la biblioteca. No se edita: cópiala a tus recetas para cambiarla.
-          </p>
-        )}
-      </header>
+          </Notice>
+        </div>
+      )}
 
       {recipe.status === "PUBLISHED" && (
-        <Link
+        <LinkButton
           href={`/recipes/${recipe.templateId}/family?v=${recipe.versionId}`}
-          className="mb-4 block rounded-2xl bg-[var(--accent)] px-4 py-3 text-center text-sm font-medium text-white"
+          className="mb-md w-full py-3"
         >
+          <Icon name="group" className="text-[18px]" />
           Ver porciones para mi familia
-        </Link>
+        </LinkButton>
       )}
 
       <RecipeVersionActions
@@ -93,16 +119,15 @@ export default async function RecipeDetailPage({ params, searchParams }: Props) 
       />
 
       {recipe.versions.length > 1 && (
-        <nav className="mb-4 flex flex-wrap gap-2">
+        <nav
+          aria-label="Versiones de la receta"
+          className="hide-scrollbar mb-lg flex gap-sm overflow-x-auto pb-1 md:flex-wrap"
+        >
           {recipe.versions.map((version) => (
             <Link
               key={version.id}
               href={`/recipes/${recipe.templateId}?v=${version.id}`}
-              className={`rounded-full px-3 py-2 text-xs ${
-                version.id === recipe.versionId
-                  ? "bg-[var(--accent)] text-white"
-                  : "border border-[var(--ink)]/20 text-[var(--ink)]/70"
-              }`}
+              className={version.id === recipe.versionId ? VERSION_ON : VERSION_OFF}
             >
               v{version.versionNumber} · {STATUS_LABELS[version.status]}
             </Link>
@@ -110,107 +135,116 @@ export default async function RecipeDetailPage({ params, searchParams }: Props) 
         </nav>
       )}
 
-      <section className="mb-5 space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--ink)]/60">
-          Ingredientes · receta para {recipe.baseServings}{" "}
-          {recipe.baseServings === 1 ? "persona" : "personas"}
-        </h2>
-        {bySlot.map(({ slot, components, alternatives }) => (
-          <div key={slot.id} className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4">
-            <h3 className="mb-2 text-sm font-medium">
-              {slot.label ?? SLOT_LABELS[slot.slotType]}
-              {!slot.isRequired && (
-                <span className="ml-2 text-[11px] font-normal text-[var(--ink)]/50">opcional</span>
-              )}
-            </h3>
-            <ul className="space-y-1.5">
-              {components.map((component) => (
-                <li key={component.id} className="flex items-baseline justify-between gap-3 text-sm">
-                  <span>
-                    {component.label}
-                    <span className="ml-2 text-[11px] text-[var(--ink)]/50">
-                      {WEIGHT_BASIS_LABELS[component.weightBasis]}
-                      {component.cookingMethod && (
-                        <> · {COOKING_METHOD_LABELS[component.cookingMethod]}</>
-                      )}
-                      {component.isOptional && <> · opcional</>}
+      <Section
+        title="Ingredientes"
+        hint={`Receta para ${recipe.baseServings} ${
+          recipe.baseServings === 1 ? "persona" : "personas"
+        }`}
+      >
+        <div className="grid grid-cols-1 gap-sm md:grid-cols-2">
+          {bySlot.map(({ slot, components, alternatives }) => (
+            <Card key={slot.id} className="p-md">
+              <h4 className="mb-sm flex items-baseline gap-sm font-body-md text-body-md font-semibold text-on-surface">
+                {slot.label ?? SLOT_LABELS[slot.slotType]}
+                {!slot.isRequired && (
+                  <span className="font-label-md text-label-md text-on-surface-variant">
+                    opcional
+                  </span>
+                )}
+              </h4>
+              <ul className="space-y-sm">
+                {components.map((component) => (
+                  <li
+                    key={component.id}
+                    className="flex items-center gap-md rounded-xl bg-surface-container-low p-sm"
+                  >
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-container text-on-surface-variant">
+                      <Icon name="nutrition" className="text-[20px]" />
                     </span>
-                  </span>
-                  <span className="shrink-0 tabular-nums">
-                    {Math.round(component.quantity).toLocaleString("es-CL")}{" "}
-                    {component.unit === "G" ? "g" : "ml"}
-                  </span>
-                </li>
-              ))}
-            </ul>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-body-md text-body-md text-on-surface">
+                        {component.label}
+                      </span>
+                      <span className="block font-body-sm text-body-sm text-on-surface-variant">
+                        {WEIGHT_BASIS_LABELS[component.weightBasis]}
+                        {component.cookingMethod && (
+                          <> · {COOKING_METHOD_LABELS[component.cookingMethod]}</>
+                        )}
+                        {component.isOptional && <> · opcional</>}
+                      </span>
+                    </span>
+                    <span className="shrink-0 font-headline-sm text-headline-sm tabular-nums text-primary">
+                      {Math.round(component.quantity).toLocaleString("es-CL")}{" "}
+                      {component.unit === "G" ? "g" : "ml"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
 
-            {alternatives.length > 0 && (
-              <div className="mt-3 border-t border-[var(--ink)]/5 pt-2">
-                <p className="text-[11px] text-[var(--ink)]/60">
-                  En vez de esto también sirve:{" "}
-                  {alternatives
-                    .map(
-                      (a) =>
-                        `${a.label} (${CULINARY_COMPATIBILITY_LABELS[a.culinaryCompatibility].toLowerCase()})`,
-                    )
-                    .join(", ")}
-                  .
-                </p>
-                <p className="mt-1 text-[11px] text-[var(--ink)]/45">
-                  Reemplazo de cocina, no equivalencia nutricional: la cantidad se recalcula.
-                </p>
-              </div>
-            )}
-          </div>
-        ))}
-      </section>
+              {alternatives.length > 0 && (
+                <div className="mt-md border-t border-outline-variant/40 pt-sm">
+                  <p className="font-body-sm text-body-sm text-on-surface-variant">
+                    En vez de esto también sirve:{" "}
+                    {alternatives
+                      .map(
+                        (a) =>
+                          `${a.label} (${CULINARY_COMPATIBILITY_LABELS[a.culinaryCompatibility].toLowerCase()})`,
+                      )
+                      .join(", ")}
+                    .
+                  </p>
+                  <p className="mt-1 font-label-md text-label-md text-outline">
+                    Reemplazo de cocina, no equivalencia nutricional: la cantidad se recalcula.
+                  </p>
+                </div>
+              )}
+            </Card>
+          ))}
+        </div>
+      </Section>
 
       {recipe.issues.length > 0 && (
-        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          <p className="font-medium">Hay ingredientes que no se pudieron calcular</p>
-          <ul className="mt-1 list-disc pl-5 text-xs">
-            {recipe.issues.map((issue) => (
-              <li key={issue}>{issue}</li>
-            ))}
-          </ul>
-          <p className="mt-2 text-xs">
-            Esos ingredientes aportan <strong>desconocido</strong> al total, nunca cero.
-          </p>
+        <div className="mb-lg space-y-sm">
+          <ErrorNote>Hay ingredientes que no se pudieron calcular</ErrorNote>
+          <Card className="p-md">
+            <ul className="list-disc space-y-1 pl-lg font-body-sm text-body-sm text-on-surface-variant">
+              {recipe.issues.map((issue) => (
+                <li key={issue}>{issue}</li>
+              ))}
+            </ul>
+            <p className="mt-sm font-body-sm text-body-sm text-on-surface-variant">
+              Esos ingredientes aportan <strong className="text-on-surface">desconocido</strong> al
+              total, nunca cero.
+            </p>
+          </Card>
         </div>
       )}
 
-      <section className="mb-5">
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--ink)]/60">
-          Nutrición
-        </h2>
+      <Section title="Nutrición">
         <ServingsCalculator components={recipe.components} baseServings={recipe.baseServings} />
-      </section>
+      </Section>
 
       {recipe.totalYieldFactor === null && (
-        <p className="mb-5 rounded-xl bg-[var(--ink)]/5 px-3 py-2 text-xs text-[var(--ink)]/70">
-          Rendimiento después de cocinar: <strong>desconocido</strong>. Las cantidades son de los
-          ingredientes tal como se compran o preparan; no se asume que el peso se mantenga.
-        </p>
+        <div className="mb-lg">
+          <Notice icon="scale" tono="info">
+            Rendimiento después de cocinar: <strong>desconocido</strong>. Las cantidades son de los
+            ingredientes tal como se compran o preparan; no se asume que el peso se mantenga.
+          </Notice>
+        </div>
       )}
 
       {recipe.steps.length > 0 && (
-        <section className="mb-5">
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--ink)]/60">
-            Preparación
-          </h2>
-          <ol className="space-y-2">
+        <Section title="Preparación">
+          <ol className="space-y-sm">
             {recipe.steps.map((step) => (
-              <li
-                key={step.id}
-                className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4 text-sm"
-              >
-                <div className="flex gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent)]/10 text-xs font-medium text-[var(--accent)]">
+              <li key={step.id}>
+                <Card className="flex gap-md p-md">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-fixed font-body-sm text-body-sm font-semibold text-on-primary-fixed">
                     {step.stepNumber}
                   </span>
-                  <div>
-                    <p>{step.instruction}</p>
-                    <p className="mt-1 text-[11px] text-[var(--ink)]/50">
+                  <div className="min-w-0">
+                    <p className="font-body-md text-body-md text-on-surface">{step.instruction}</p>
+                    <p className="mt-1 font-label-md text-label-md text-on-surface-variant">
                       {step.durationMinutes && <>{step.durationMinutes} min</>}
                       {step.temperatureC && <> · {step.temperatureC} °C</>}
                       {step.parallelGroup !== null &&
@@ -219,39 +253,35 @@ export default async function RecipeDetailPage({ params, searchParams }: Props) 
                         )}
                     </p>
                     {step.optionalCapability && step.manualAlternative && (
-                      <p className="mt-2 rounded-xl bg-[var(--ink)]/5 px-3 py-2 text-[11px] text-[var(--ink)]/70">
+                      <p className="mt-sm rounded-xl bg-surface-container px-md py-sm font-body-sm text-body-sm text-on-surface-variant">
                         Sin {step.optionalCapability.toLowerCase().replace("_", " ")}:{" "}
                         {step.manualAlternative}
                       </p>
                     )}
                   </div>
-                </div>
+                </Card>
               </li>
             ))}
           </ol>
-        </section>
+        </Section>
       )}
 
       {recipe.sources.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--ink)]/60">
-            De dónde salen los datos
-          </h2>
-          <ul className="divide-y divide-[var(--ink)]/5 rounded-2xl border border-[var(--ink)]/10 bg-white text-xs">
+        <Section title="De dónde salen los datos">
+          <Card className="px-md py-xs">
             {recipe.sources.map((source, index) => (
-              <li key={`${source.label}-${index}`} className="flex justify-between gap-3 px-4 py-2">
-                <span>{source.label}</span>
-                <span className="shrink-0 text-right text-[var(--ink)]/60">
+              <DataRow key={`${source.label}-${index}`} label={source.label}>
+                <span className="font-body-sm text-body-sm text-on-surface-variant">
                   {source.sourceType ? SOURCE_TYPE_LABELS[source.sourceType] : "Sin ficha"}
                   {source.frozen && (
-                    <span className="ml-2 text-[var(--ink)]/40">congelada en esta versión</span>
+                    <span className="ml-2 text-outline">congelada en esta versión</span>
                   )}
                 </span>
-              </li>
+              </DataRow>
             ))}
-          </ul>
-        </section>
+          </Card>
+        </Section>
       )}
-    </main>
+    </AppShell>
   );
 }

@@ -3,3 +3,9 @@ node_modules/
 .env*.local
 *.tsbuildinfo
 .DS_Store
+
+# Artefactos intermedios de los lotes de contenido: los agentes devuelven JSON,
+# el conversor emite el TypeScript y ESE es el que vale. Siete megas de pasos
+# intermedios en la historia no le sirven a nadie y esconden el diff que sí
+# importa. La biblioteca tipada es la fuente de verdad; el seed se genera de ahí.
+.plan/

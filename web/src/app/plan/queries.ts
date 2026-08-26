@@ -3,8 +3,26 @@ import { z } from "zod";
 import { DataAccessError } from "@/lib/supabase/unwrap";
 import { dateString, nullableNumeric, parseRows, uuid } from "@/lib/supabase/rows";
 import { weekDays } from "@/domain/nutrition/calendar";
+import {
+  ESTADOS_CLINICOS_EVALUADOS,
+  ESTADOS_CLINICOS_LIMPIOS,
+  type ClinicalAssessmentStatus,
+} from "@/domain/clinical/types";
 import type { DayEvent, EventStrategy } from "@/domain/nutrition/events";
 import type { MealType } from "@/domain/recipes/types";
+
+/**
+ * Lectura del estado clínico de una porción, siempre por COMPLEMENTO.
+ *
+ * `null` (filas anteriores a la 0035) y cualquier etiqueta desconocida caen
+ * del lado de SIN EVALUAR, jamás del lado limpio: si mañana la base aprende
+ * una palabra nueva, la pantalla la muestra como pendiente en vez de dejarla
+ * pasar en silencio.
+ */
+const estaLimpio = (estado: string | null): boolean =>
+  ESTADOS_CLINICOS_LIMPIOS.includes(estado as ClinicalAssessmentStatus);
+const fueEvaluado = (estado: string | null): boolean =>
+  ESTADOS_CLINICOS_EVALUADOS.includes(estado as ClinicalAssessmentStatus);
 
 type Db = SupabaseClient;
 
@@ -28,6 +46,15 @@ export interface Assignment {
   notes: string | null;
   /** Sprint 11 §58: porciones con estado clínico que exige revisión (solo el conteo). */
   clinicalReviewCount: number;
+  /**
+   * Porciones que NUNCA pasaron por el motor clínico (`clinical_status` nulo).
+   *
+   * No es lo mismo que "evaluada y sin problemas" y no se puede mostrar igual:
+   * una comida jamás evaluada se veía idéntica a una limpia, que es
+   * exactamente lo que la regla del Sprint 11 prohíbe (UNKNOWN NUNCA SIGNIFICA
+   * NORMAL). Igual que el resto: solo el CONTEO, jamás el porqué.
+   */
+  clinicalUnassessedCount: number;
   /** Cuántas porciones quedaron guardadas al confirmar. */
   servingCount: number;
   /**
@@ -175,6 +202,8 @@ export async function loadWeek(
   // Sprint 11 §58: el planner ve CUÁNTAS porciones requieren revisión clínica
   // — jamás por qué. El estado categórico es toda la divulgación.
   const revisionClinica = new Map<string, number>();
+  // Porciones sin veredicto clínico: ni compatibles ni incompatibles, SIN EVALUAR.
+  const sinEvaluarClinica = new Map<string, number>();
   const confirmadas = assignments.filter((a) => a.status !== "PLANNED").map((a) => a.id);
   if (confirmadas.length > 0) {
     const { data, error } = await db
@@ -188,8 +217,22 @@ export async function loadWeek(
       "porciones confirmadas",
     )) {
       conteos.set(fila.assignment_id, (conteos.get(fila.assignment_id) ?? 0) + 1);
-      if (fila.clinical_status === "CLINICALLY_INVALIDATED" || fila.clinical_status === "REVIEW_REQUIRED") {
+      // Regla por COMPLEMENTO, no por lista de estados alarmantes: limpio es
+      // sólo lo que está explícitamente limpio. Todo lo demás pesa, incluido
+      // lo que este código todavía no sabe leer.
+      const estado = fila.clinical_status ?? "NOT_ASSESSED";
+      if (estaLimpio(estado)) {
+        // nada que reportar: alguien la miró y salió bien.
+      } else if (fueEvaluado(estado)) {
         revisionClinica.set(fila.assignment_id, (revisionClinica.get(fila.assignment_id) ?? 0) + 1);
+      } else {
+        // Sin veredicto: la porción no pasó por el motor clínico (o quien
+        // confirmó no tenía acceso médico a esa persona). Se cuenta aparte
+        // para que el tablero pueda decirlo — callarlo la haría pasar por
+        // compatible, que es el falso-seguro que este conteo existe para
+        // impedir. NULL (filas anteriores a 0035) cae acá igual que
+        // NOT_ASSESSED: significan lo mismo.
+        sinEvaluarClinica.set(fila.assignment_id, (sinEvaluarClinica.get(fila.assignment_id) ?? 0) + 1);
       }
     }
   }
@@ -246,6 +289,7 @@ export async function loadWeek(
           notes: a.notes,
           servingCount: conteos.get(a.id) ?? 0,
           clinicalReviewCount: revisionClinica.get(a.id) ?? 0,
+          clinicalUnassessedCount: sinEvaluarClinica.get(a.id) ?? 0,
           participantIds: participantes.get(a.id) ?? [],
           needsReview: a.needs_review,
           reviewReason: a.review_reason,
@@ -389,7 +433,12 @@ export async function loadConfirmedServings(db: Db, assignmentId: string) {
     reasons: row.reasons as { code: string; text: string }[],
     unverifiableConstraints: row.unverifiable_constraints,
     // §43: SOLO el estado categórico — la cocina jamás ve el porqué clínico.
-    clinicalStatus: row.clinical_status,
+    // `null` NO es "compatible": es SIN EVALUAR, y la pantalla tiene una rama
+    // propia para eso. El `.catch(null)` del schema empuja al mismo lado: un
+    // estado que no se entiende se trata como no evaluado, nunca como limpio.
+    clinicalStatus: row.clinical_status ?? "NOT_ASSESSED",
+    /** ¿Pasó por el motor clínico? Explícito para que nadie lo deduzca mal. */
+    clinicalAssessed: fueEvaluado(row.clinical_status),
     // §1: con qué se evaluó. No es dato médico: es la CALIDAD del veredicto.
     clinicalSource: row.meal_clinical_assessments?.nutrition_source ?? null,
     components: [...row.member_serving_components].sort((a, b) => a.sort_order - b.sort_order),

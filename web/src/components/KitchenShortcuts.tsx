@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Icon } from "@/components/ui";
 
 /**
  * §57: "¿Qué quieres hacer?" — el atajo que conecta cocina con inventario sin
@@ -6,25 +7,27 @@ import Link from "next/link";
  */
 export function KitchenShortcuts() {
   const items = [
-    { href: "/plan", icon: "🍳", label: "Cocinar ahora" },
-    { href: "/prep", icon: "🔪", label: "Preparar compra" },
-    { href: "/prep", icon: "📦", label: "Porcionar" },
-    { href: "/plan", icon: "🍽", label: "Servir" },
-    { href: "/pantry", icon: "🥡", label: "Usar sobras" },
-    { href: "/pantry", icon: "⏳", label: "Qué usar pronto" },
+    { href: "/plan", icon: "cooking", label: "Cocinar ahora" },
+    { href: "/prep", icon: "shopping_basket", label: "Preparar compra" },
+    { href: "/prep", icon: "pie_chart", label: "Porcionar" },
+    { href: "/plan", icon: "room_service", label: "Servir" },
+    { href: "/pantry", icon: "takeout_dining", label: "Usar sobras" },
+    { href: "/pantry", icon: "schedule", label: "Qué usar pronto" },
   ];
   return (
-    <section className="mt-4">
-      <p className="mb-2 text-sm font-semibold">¿Qué quieres hacer?</p>
-      <div className="grid grid-cols-3 gap-2">
+    <section className="mt-md">
+      <p className="mb-sm font-body-sm text-body-sm font-semibold text-on-surface">
+        ¿Qué quieres hacer?
+      </p>
+      <div className="grid grid-cols-3 gap-sm">
         {items.map((i) => (
           <Link
             key={i.label}
             href={i.href}
-            className="flex flex-col items-center gap-1 rounded-2xl border border-[var(--ink)]/10 bg-white px-2 py-3 text-center"
+            className="flex min-h-[88px] flex-col items-center justify-center gap-1 rounded-2xl bg-surface-container px-2 py-md text-center text-on-surface transition-transform hover:bg-surface-container-high active:scale-95"
           >
-            <span className="text-2xl">{i.icon}</span>
-            <span className="text-[11px] font-medium leading-tight">{i.label}</span>
+            <Icon name={i.icon} className="text-[28px] text-primary" />
+            <span className="font-label-md text-label-md leading-tight">{i.label}</span>
           </Link>
         ))}
       </div>

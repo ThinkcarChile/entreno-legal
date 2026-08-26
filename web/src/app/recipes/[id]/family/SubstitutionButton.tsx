@@ -13,6 +13,16 @@ import { clearSubstitution, saveSubstitution } from "@/app/plan/actions";
  * semana) el botón sigue siendo una vista previa por URL: no hay a qué colgar
  * la decisión.
  */
+
+/**
+ * "Aplicar" vive DENTRO de un `Notice` (fondo secondary-fixed), así que la
+ * píldora usa el par secondary/on-secondary del kit para leerse encima.
+ * "Deshacer" es un enlace en medio de una frase, no una píldora.
+ */
+const APLICAR =
+  "inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-full bg-secondary px-md py-2 font-label-md text-label-md text-on-secondary transition-transform active:scale-95";
+const DESHACER = "font-body-sm text-body-sm font-semibold text-primary underline";
+
 export function SubstitutionButton({
   assignmentId,
   memberId,
@@ -34,14 +44,7 @@ export function SubstitutionButton({
 
   if (!assignmentId) {
     return (
-      <a
-        href={previewHref}
-        className={
-          modo === "APLICAR"
-            ? "shrink-0 rounded-full bg-amber-200 px-3 py-1 font-medium"
-            : "underline"
-        }
-      >
+      <a href={previewHref} className={modo === "APLICAR" ? APLICAR : DESHACER}>
         {modo === "APLICAR" ? "Aplicar" : "Deshacer"}
       </a>
     );
@@ -66,16 +69,12 @@ export function SubstitutionButton({
             router.refresh();
           })
         }
-        className={
-          modo === "APLICAR"
-            ? "shrink-0 rounded-full bg-amber-200 px-3 py-1 font-medium disabled:opacity-50"
-            : "underline disabled:opacity-50"
-        }
+        className={`${modo === "APLICAR" ? APLICAR : DESHACER} disabled:opacity-40`}
       >
         {modo === "APLICAR" ? "Aplicar" : "Deshacer"}
       </button>
       {error && (
-        <span className="ml-2 text-[11px] text-red-700" role="alert">
+        <span className="ml-sm font-label-md text-label-md text-error" role="alert">
           {error}
         </span>
       )}

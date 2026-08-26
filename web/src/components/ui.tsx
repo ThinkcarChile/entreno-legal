@@ -265,3 +265,22 @@ export function DataRow({ label, children }: { label: string; children: React.Re
     </div>
   );
 }
+
+/**
+ * Aviso flotante (snackbar) de una acción recién hecha. Vive sobre la
+ * navegación inferior (`bottom-28`), no debajo. Estaba copiado idéntico en
+ * ocho tableros; vive acá una sola vez para que el alto de la barra no haya
+ * que corregirlo en ocho lugares.
+ */
+export function Flotante({ tono, children }: { tono: "ok" | "error"; children: React.ReactNode }) {
+  return (
+    <p
+      role={tono === "error" ? "alert" : undefined}
+      className={`soft-shadow fixed inset-x-md bottom-28 z-50 mx-auto max-w-3xl rounded-2xl px-md py-sm font-body-sm text-body-sm md:bottom-lg ${
+        tono === "error" ? "bg-error text-on-error" : "bg-primary text-on-primary"
+      }`}
+    >
+      {children}
+    </p>
+  );
+}

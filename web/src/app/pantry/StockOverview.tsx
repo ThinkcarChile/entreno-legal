@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { formatQuantity } from "@/domain/shopping/engine";
 import type { StockItem } from "@/domain/stock/types";
+import { CardLink, Chip, Icon, Section, type Tono } from "@/components/ui";
 
 /**
  * Bloques de Stock Intelligence (§30): qué usar pronto, qué está bajo, qué
@@ -25,115 +25,150 @@ export function coverageText(item: StockItem): string {
   }
 }
 
-export function statusBadge(item: StockItem): { text: string; cls: string } {
+export function statusBadge(item: StockItem): { text: string; tono: Tono } {
   switch (item.reorder.status) {
     case "REORDER_NOW":
-      return { text: "comprar ahora", cls: "bg-red-100 text-red-900" };
+      return { text: "comprar ahora", tono: "peligro" };
     case "REORDER_SOON":
-      return { text: "comprar pronto", cls: "bg-amber-100 text-amber-900" };
+      return { text: "comprar pronto", tono: "atencion" };
     case "WATCH":
-      return { text: "revisar", cls: "bg-amber-50 text-amber-800" };
+      return { text: "revisar", tono: "atencion" };
     case "UNRESOLVED":
-      return { text: "sin resolver", cls: "bg-[var(--ink)]/10 text-[var(--ink)]/70" };
+      return { text: "sin resolver", tono: "neutro" };
     case "NO_ACTION":
       // §6 [U-1]: "bien" es un veredicto — sin cobertura calculada no se da.
       return item.coverage.kind === "DAYS"
-        ? { text: "bien", cls: "bg-emerald-100 text-emerald-900" }
-        : { text: "sin datos", cls: "bg-[var(--ink)]/10 text-[var(--ink)]/70" };
+        ? { text: "bien", tono: "primario" }
+        : { text: "sin datos", tono: "neutro" };
   }
 }
+
+/** Paleta del bloque de resumen, por grupo. Solo tokens del kit. */
+const TILE: Record<Tono, string> = {
+  peligro: "bg-error-container text-on-error-container",
+  atencion: "bg-secondary-fixed text-on-secondary-fixed-variant",
+  primario: "bg-primary-fixed text-on-primary-fixed",
+  info: "bg-tertiary-fixed text-on-tertiary-fixed-variant",
+  neutro: "bg-surface-container text-on-surface-variant",
+};
 
 export function StockOverview({ items }: { items: StockItem[] }) {
   if (items.length === 0) return null;
 
-  const grupos: { titulo: string; filtro: (i: StockItem) => boolean; tono: string }[] = [
+  const grupos: { titulo: string; icon: string; tono: Tono; filtro: (i: StockItem) => boolean }[] = [
     {
       titulo: "Por reponer",
+      icon: "shopping_cart",
+      tono: "peligro",
       filtro: (i) => i.reorder.status === "REORDER_NOW" || i.reorder.status === "REORDER_SOON",
-      tono: "border-red-200 bg-red-50",
     },
     {
       titulo: "Stock bajo",
+      icon: "warning",
+      tono: "atencion",
       filtro: (i) =>
         i.reorder.status === "WATCH" ||
         (i.target?.minimumQuantity != null && i.available < i.target.minimumQuantity),
-      tono: "border-amber-200 bg-amber-50",
     },
     {
       titulo: "Bien abastecido",
+      icon: "check_circle",
+      tono: "primario",
       // Gate final §6 [U-1]: verde SOLO con cobertura CALCULADA. Un alimento
       // cuya cobertura el motor declara incalculable (INSUFFICIENT_DATA)
       // caía acá con badge "bien" — desconocido vestido de seguro.
       filtro: (i) => i.reorder.status === "NO_ACTION" && i.coverage.kind === "DAYS",
-      tono: "border-emerald-200 bg-emerald-50",
     },
     {
       titulo: "Sin datos suficientes",
+      icon: "help",
+      tono: "neutro",
       filtro: (i) =>
         (i.reorder.status === "NO_ACTION" && i.coverage.kind !== "DAYS") ||
         i.reorder.status === "UNRESOLVED",
-      tono: "border-[var(--ink)]/15 bg-[var(--ink)]/5",
     },
   ];
 
   const asignados = new Set<string>();
+  // Un solo reparto: cada alimento cae en el primer grupo que lo reclama, y el
+  // resumen de arriba cuenta exactamente lo que se lista abajo.
+  const repartidos = grupos.map((grupo) => {
+    const propios = items.filter((i) => !asignados.has(i.ingredientId + i.unit) && grupo.filtro(i));
+    propios.forEach((i) => asignados.add(i.ingredientId + i.unit));
+    return { grupo, propios };
+  });
 
   return (
-    <div className="space-y-3">
-      {grupos.map((grupo) => {
-        const propios = items.filter(
-          (i) => !asignados.has(i.ingredientId + i.unit) && grupo.filtro(i),
-        );
-        propios.forEach((i) => asignados.add(i.ingredientId + i.unit));
-        if (propios.length === 0) return null;
-        return (
-          <section key={grupo.titulo} className={`rounded-2xl border p-3 ${grupo.tono}`}>
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--ink)]/60">
-              {grupo.titulo}
-            </h2>
-            <ul className="space-y-1.5">
+    <div>
+      <div className="hide-scrollbar -mx-container-margin mb-lg flex snap-x snap-mandatory gap-md overflow-x-auto px-container-margin md:mx-0 md:px-0">
+        {repartidos
+          .filter(({ propios }) => propios.length > 0)
+          .map(({ grupo, propios }) => (
+            <div
+              key={grupo.titulo}
+              className={`soft-shadow flex w-36 shrink-0 snap-start flex-col justify-between rounded-xl p-md ${TILE[grupo.tono]}`}
+            >
+              <span className="font-label-md text-label-md uppercase">{grupo.titulo}</span>
+              <span className="mt-sm font-headline-xl text-headline-xl">{propios.length}</span>
+            </div>
+          ))}
+      </div>
+
+      {repartidos.map(({ grupo, propios }) =>
+        propios.length === 0 ? null : (
+          <Section
+            key={grupo.titulo}
+            title={grupo.titulo}
+            action={<Chip tono={grupo.tono}>{propios.length}</Chip>}
+          >
+            <ul className="space-y-sm">
               {propios.map((item) => (
                 <li key={item.ingredientId + item.unit}>
-                  <Link
+                  <CardLink
                     href={`/pantry/item/${item.ingredientId}?unit=${item.unit}`}
-                    className="block rounded-xl bg-white/80 px-3 py-2"
+                    className="flex items-start gap-md p-md"
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="min-w-0 truncate text-sm font-medium">
-                        {item.hasApproximate && "~"}
-                        {item.label}
-                      </p>
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${statusBadge(item).cls}`}
-                      >
-                        {statusBadge(item).text}
+                    <span
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${TILE[grupo.tono]}`}
+                    >
+                      <Icon name={grupo.icon} filled />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-start justify-between gap-sm">
+                        <span className="min-w-0 truncate font-body-md text-body-md font-semibold text-on-surface">
+                          {item.hasApproximate && "~"}
+                          {item.label}
+                        </span>
+                        <Chip tono={statusBadge(item).tono}>{statusBadge(item).text}</Chip>
                       </span>
-                    </div>
-                    <p className="mt-0.5 text-xs text-[var(--ink)]/60">
-                      En casa {formatQuantity(item.onHand, item.unit)}
-                      {item.reserved > 0 && (
-                        <> · reservado {formatQuantity(item.reserved, item.unit)}</>
+                      <span className="mt-0.5 block font-body-sm text-body-sm text-on-surface-variant">
+                        En casa {formatQuantity(item.onHand, item.unit)}
+                        {item.reserved > 0 && (
+                          <> · reservado {formatQuantity(item.reserved, item.unit)}</>
+                        )}
+                        {" · "}libre{" "}
+                        {item.available >= 0
+                          ? formatQuantity(item.available, item.unit)
+                          : `faltan ${formatQuantity(-item.available, item.unit)}`}
+                        {" · "}
+                        {coverageText(item)}
+                      </span>
+                      {item.reorder.recommendedQuantity !== null && (
+                        <span className="mt-0.5 block font-body-sm text-body-sm font-semibold text-primary">
+                          Comprar {formatQuantity(item.reorder.recommendedQuantity, item.unit)}
+                          {item.confidence && (
+                            <> · confianza {CONFIDENCE_LABELS[item.confidence]}</>
+                          )}
+                        </span>
                       )}
-                      {" · "}libre{" "}
-                      {item.available >= 0
-                        ? formatQuantity(item.available, item.unit)
-                        : `faltan ${formatQuantity(-item.available, item.unit)}`}
-                      {" · "}
-                      {coverageText(item)}
-                    </p>
-                    {item.reorder.recommendedQuantity !== null && (
-                      <p className="mt-0.5 text-xs font-medium text-[var(--accent)]">
-                        Comprar {formatQuantity(item.reorder.recommendedQuantity, item.unit)}
-                        {item.confidence && <> · confianza {CONFIDENCE_LABELS[item.confidence]}</>}
-                      </p>
-                    )}
-                  </Link>
+                    </span>
+                  </CardLink>
                 </li>
               ))}
             </ul>
-          </section>
-        );
-      })}
+          </Section>
+        ),
+      )}
     </div>
   );
 }

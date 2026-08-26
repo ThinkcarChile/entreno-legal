@@ -3,7 +3,17 @@ import Link from "next/link";
 import { SubstitutionButton } from "./SubstitutionButton";
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell } from "@/components/AppShell";
+import {
+  Card,
+  Chip,
+  EmptyState,
+  Icon,
+  LinkButton,
+  Notice,
+  Section,
+  type Tono,
+} from "@/components/ui";
 import { roundForDisplay } from "@/domain/catalog/nutrition";
 import { NUTRIENT_LABELS } from "@/domain/catalog/types";
 import { countsCalories } from "@/domain/nutrition/profile";
@@ -34,13 +44,17 @@ const FIT_LABELS: Record<string, string> = {
   NOT_COMPATIBLE: "No puede comerlo",
 };
 
-const FIT_TONE: Record<string, string> = {
-  COMPATIBLE: "bg-[var(--ink)]/5 text-[var(--ink)]/70",
-  COMPATIBLE_WITH_PORTION_CHANGE: "bg-[var(--accent)]/10 text-[var(--accent)]",
-  COMPATIBLE_WITH_COOKING_CHANGE: "bg-[var(--accent)]/10 text-[var(--accent)]",
-  COMPATIBLE_WITH_ONE_SUBSTITUTION: "bg-amber-100 text-amber-800",
-  TARGET_CONFLICT: "bg-amber-100 text-amber-800",
-  NOT_COMPATIBLE: "bg-red-100 text-red-800",
+/**
+ * El color acompaña al texto del chip, nunca lo reemplaza: el rótulo de arriba
+ * ya dice qué pasa, así que nadie tiene que distinguir verde de rojo.
+ */
+const FIT_TONE: Record<string, Tono> = {
+  COMPATIBLE: "neutro",
+  COMPATIBLE_WITH_PORTION_CHANGE: "primario",
+  COMPATIBLE_WITH_COOKING_CHANGE: "primario",
+  COMPATIBLE_WITH_ONE_SUBSTITUTION: "atencion",
+  TARGET_CONFLICT: "atencion",
+  NOT_COMPATIBLE: "peligro",
 };
 
 export default async function FamilyServingsPage({ params, searchParams }: Props) {
@@ -162,229 +176,245 @@ export default async function FamilyServingsPage({ params, searchParams }: Props
   const g = (n: number) => `${Math.round(n).toLocaleString("es-CL")}`;
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-16">
-      <AppNav active="recipes" />
-      <Link href={`/recipes/${id}`} className="text-sm text-[var(--accent)]">
-        ← {recipe.name}
-      </Link>
+    <AppShell
+      active="recipes"
+      title="Porciones para mi familia"
+      subtitle={`${recipe.name} · versión ${recipe.versionNumber} · receta base para ${recipe.baseServings}`}
+    >
+      <div className="mt-md">
+        <Link
+          href={`/recipes/${id}`}
+          className="inline-flex items-center gap-xs font-body-sm text-body-sm font-semibold text-primary"
+        >
+          <Icon name="arrow_back" className="text-[18px]" />
+          {recipe.name}
+        </Link>
+      </div>
 
-      <header className="mb-4 mt-2">
-        <h1 className="text-2xl font-semibold">Porciones para mi familia</h1>
-        <p className="mt-1 text-sm text-[var(--ink)]/60">
-          {recipe.name} · versión {recipe.versionNumber} · receta base para {recipe.baseServings}
-        </p>
-      </header>
-
-      <nav className="mb-5 flex flex-wrap gap-2">
+      {/* Selector de comida: en 320 px envuelve a dos filas antes de desbordar. */}
+      <nav className="mt-md mb-lg flex flex-wrap gap-sm">
         {(["BREAKFAST", "LUNCH", "TEA", "DINNER"] as MealType[]).map((m) => (
-          <Link
+          <LinkButton
             key={m}
             href={`/recipes/${id}/family?meal=${m}${v ? `&v=${v}` : ""}`}
-            className={`rounded-full px-3 py-2 text-xs font-medium ${
-              m === mealType
-                ? "bg-[var(--accent)] text-white"
-                : "border border-[var(--ink)]/20 text-[var(--ink)]/70"
-            }`}
+            variant={m === mealType ? "filled" : "outline"}
           >
             {MEAL_TYPE_LABELS[m]}
-          </Link>
+          </LinkButton>
         ))}
       </nav>
 
       {!proyeccion ? (
-        <p className="rounded-2xl border border-dashed border-[var(--ink)]/20 p-6 text-center text-sm text-[var(--ink)]/60">
-          Primero crea o únete a un hogar con integrantes.
-        </p>
+        <EmptyState icon="group_add">Primero crea o únete a un hogar con integrantes.</EmptyState>
       ) : (
         <>
-          <section className="mb-6 space-y-3">
-            {proyeccion.servings.map((serving) => {
-              const profile = profiles.find((p) => p.memberId === serving.memberId)!;
-              return (
-                <article
-                  key={serving.memberId}
-                  className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4"
-                >
-                  <div className="mb-2 flex items-start justify-between gap-3">
-                    <div>
-                      <h2 className="font-medium">{serving.memberName}</h2>
-                      <p className="text-[11px] text-[var(--ink)]/50">
-                        {TRACKING_LABELS[profile.trackingMode]}
-                      </p>
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium ${FIT_TONE[serving.fit]}`}
-                    >
-                      {FIT_LABELS[serving.fit]}
-                    </span>
-                  </div>
-
-                  {serving.fit === "NOT_COMPATIBLE" ? (
-                    <p className="text-sm text-red-700">
-                      Esta receta no es compatible. Necesita un reemplazo antes de servirse.
-                    </p>
-                  ) : (
-                    <>
-                      <ul className="mb-3 space-y-1 text-sm">
-                        {serving.components
-                          .filter((c) => c.proposedQuantity > 0)
-                          .map((c) => (
-                            <li key={c.id} className="flex justify-between gap-3">
-                              <span>
-                                {c.label}
-                                {c.cookingMethod && (
-                                  <span className="ml-2 text-[11px] text-[var(--ink)]/50">
-                                    {COOKING_METHOD_LABELS[c.cookingMethod]}
-                                  </span>
-                                )}
-                              </span>
-                              <span className="shrink-0 tabular-nums">
-                                {g(c.proposedQuantity)} {c.unit === "G" ? "g" : "ml"}
-                                {c.changed && (
-                                  <span className="ml-1.5 text-[11px] text-[var(--ink)]/40">
-                                    (base {g(c.baseQuantity)})
-                                  </span>
-                                )}
-                              </span>
-                            </li>
-                          ))}
-                      </ul>
-
-                      {/* Una persona sin seguimiento no ve "te quedan 0 kcal" (§10) */}
-                      {countsCalories(profile) || profile.trackingMode === "BASIC" ? (
-                        <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1 rounded-xl bg-[var(--paper)] px-3 py-2 text-xs">
-                          {(["energy_kcal", "protein_g", "carbohydrates_g", "fat_g"] as const).map(
-                            (key) => {
-                              const state = serving.nutrition.completeness[key];
-                              const val = roundForDisplay(
-                                serving.nutrition.values[key],
-                                key === "energy_kcal" ? 0 : 1,
-                              );
-                              return (
-                                <span key={key} className="text-[var(--ink)]/70">
-                                  {NUTRIENT_LABELS[key].label}:{" "}
-                                  {state === "UNKNOWN" || val === null ? (
-                                    <span className="text-[var(--ink)]/40">sin datos</span>
-                                  ) : (
-                                    <strong className="tabular-nums">
-                                      {state === "PARTIAL" && "≥ "}
-                                      {val.toLocaleString("es-CL")} {NUTRIENT_LABELS[key].unit}
-                                    </strong>
-                                  )}
-                                </span>
-                              );
-                            },
-                          )}
-                        </div>
-                      ) : (
-                        <p className="mb-3 text-xs text-[var(--ink)]/50">
-                          Sin seguimiento: recibe su porción sin conteo de calorías.
-                        </p>
-                      )}
-                    </>
-                  )}
-
-                  {serving.suggestions.length > 0 && (
-                    <div className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                      {serving.suggestions.map((s) => (
-                        <div key={s.componentId} className="flex items-center justify-between gap-2">
-                          <span>
-                            Sugerencia: cambiar <strong>{s.componentLabel}</strong> por{" "}
-                            <strong>{s.alternativeLabel}</strong>.
+          <Section>
+            <ul className="grid grid-cols-1 gap-md md:grid-cols-2">
+              {proyeccion.servings.map((serving) => {
+                const profile = profiles.find((p) => p.memberId === serving.memberId)!;
+                return (
+                  <li key={serving.memberId}>
+                    <Card as="article" className="flex h-full flex-col p-md">
+                      <div className="mb-md flex items-start justify-between gap-sm">
+                        <div className="flex min-w-0 items-center gap-sm">
+                          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-fixed font-headline-sm text-headline-sm text-on-primary-fixed">
+                            {serving.memberName.slice(0, 1)}
                           </span>
+                          <div className="min-w-0">
+                            <h3 className="truncate font-headline-sm text-headline-sm text-on-surface">
+                              {serving.memberName}
+                            </h3>
+                            <p className="font-label-md text-label-md text-on-surface-variant">
+                              {TRACKING_LABELS[profile.trackingMode]}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="shrink-0">
+                          <Chip tono={FIT_TONE[serving.fit]}>{FIT_LABELS[serving.fit]}</Chip>
+                        </div>
+                      </div>
+
+                      {serving.fit === "NOT_COMPATIBLE" ? (
+                        <p className="font-body-sm text-body-sm text-on-error-container">
+                          Esta receta no es compatible. Necesita un reemplazo antes de servirse.
+                        </p>
+                      ) : (
+                        <>
+                          <ul className="mb-md">
+                            {serving.components
+                              .filter((c) => c.proposedQuantity > 0)
+                              .map((c) => (
+                                <li
+                                  key={c.id}
+                                  className="flex items-baseline justify-between gap-md border-b border-outline-variant/40 py-sm last:border-0"
+                                >
+                                  <span className="min-w-0 font-body-sm text-body-sm text-on-surface-variant">
+                                    {c.label}
+                                    {c.cookingMethod && (
+                                      <span className="ml-2 font-label-md text-label-md text-outline">
+                                        {COOKING_METHOD_LABELS[c.cookingMethod]}
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span className="shrink-0 font-body-md text-body-md font-semibold tabular-nums text-on-surface">
+                                    {g(c.proposedQuantity)} {c.unit === "G" ? "g" : "ml"}
+                                    {c.changed && (
+                                      <span className="ml-1.5 font-label-md text-label-md font-normal text-outline">
+                                        (base {g(c.baseQuantity)})
+                                      </span>
+                                    )}
+                                  </span>
+                                </li>
+                              ))}
+                          </ul>
+
+                          {/* Una persona sin seguimiento no ve "te quedan 0 kcal" (§10) */}
+                          {countsCalories(profile) || profile.trackingMode === "BASIC" ? (
+                            <div className="mb-md flex flex-wrap gap-x-md gap-y-1 rounded-2xl bg-surface-container-low px-md py-sm">
+                              {(["energy_kcal", "protein_g", "carbohydrates_g", "fat_g"] as const).map(
+                                (key) => {
+                                  const state = serving.nutrition.completeness[key];
+                                  const val = roundForDisplay(
+                                    serving.nutrition.values[key],
+                                    key === "energy_kcal" ? 0 : 1,
+                                  );
+                                  return (
+                                    <span
+                                      key={key}
+                                      className="font-body-sm text-body-sm text-on-surface-variant"
+                                    >
+                                      {NUTRIENT_LABELS[key].label}:{" "}
+                                      {state === "UNKNOWN" || val === null ? (
+                                        <span className="text-outline">sin datos</span>
+                                      ) : (
+                                        <strong className="tabular-nums text-on-surface">
+                                          {state === "PARTIAL" && "≥ "}
+                                          {val.toLocaleString("es-CL")} {NUTRIENT_LABELS[key].unit}
+                                        </strong>
+                                      )}
+                                    </span>
+                                  );
+                                },
+                              )}
+                            </div>
+                          ) : (
+                            <p className="mb-md font-body-sm text-body-sm text-on-surface-variant">
+                              Sin seguimiento: recibe su porción sin conteo de calorías.
+                            </p>
+                          )}
+                        </>
+                      )}
+
+                      {serving.suggestions.length > 0 && (
+                        <div className="mb-md">
+                          <Notice icon="swap_horiz">
+                            {serving.suggestions.map((s) => (
+                              <div
+                                key={s.componentId}
+                                className="flex flex-wrap items-center justify-between gap-sm"
+                              >
+                                <span>
+                                  Sugerencia: cambiar <strong>{s.componentLabel}</strong> por{" "}
+                                  <strong>{s.alternativeLabel}</strong>.
+                                </span>
+                                <SubstitutionButton
+                                  modo="APLICAR"
+                                  assignmentId={assignment ?? null}
+                                  memberId={serving.memberId}
+                                  componentId={s.componentId}
+                                  ingredientId={s.ingredientId}
+                                  previewHref={`/recipes/${id}/family?meal=${mealType}${v ? `&v=${v}` : ""}${subParams
+                                    .map((x) => `&sub=${encodeURIComponent(x)}`)
+                                    .join("")}&sub=${encodeURIComponent(
+                                    `${serving.memberId}~${s.componentId}~${s.ingredientId}`,
+                                  )}`}
+                                />
+                              </div>
+                            ))}
+                          </Notice>
+                        </div>
+                      )}
+
+                      {acceptedByMember.get(serving.memberId)?.length ? (
+                        <p className="mb-md font-body-sm text-body-sm text-on-surface-variant">
+                          {assignment
+                            ? "Reemplazo guardado para esta comida."
+                            : "Reemplazo aplicado (vista previa)."}{" "}
                           <SubstitutionButton
-                            modo="APLICAR"
+                            modo="DESHACER"
                             assignmentId={assignment ?? null}
                             memberId={serving.memberId}
-                            componentId={s.componentId}
-                            ingredientId={s.ingredientId}
-                            previewHref={`/recipes/${id}/family?meal=${mealType}${v ? `&v=${v}` : ""}${subParams
-                              .map((x) => `&sub=${encodeURIComponent(x)}`)
-                              .join("")}&sub=${encodeURIComponent(
-                              `${serving.memberId}~${s.componentId}~${s.ingredientId}`,
-                            )}`}
+                            componentId={acceptedByMember.get(serving.memberId)![0]!.componentId}
+                            ingredientId={acceptedByMember.get(serving.memberId)![0]!.ingredientId}
+                            previewHref={`/recipes/${id}/family?meal=${mealType}${v ? `&v=${v}` : ""}`}
                           />
-                        </div>
-                      ))}
+                        </p>
+                      ) : null}
+
+                      {serving.reasons.length > 0 && (
+                        <details className="mt-auto font-body-sm text-body-sm">
+                          <summary className="cursor-pointer font-semibold text-primary">
+                            ¿Por qué?
+                          </summary>
+                          <ul className="mt-sm space-y-1.5 text-on-surface-variant">
+                            {serving.reasons.map((r, i) => (
+                              <li key={`${r.code}-${i}`}>{r.text}</li>
+                            ))}
+                          </ul>
+                        </details>
+                      )}
+                    </Card>
+                  </li>
+                );
+              })}
+            </ul>
+          </Section>
+
+          <Section
+            title="Preparar para la familia"
+            hint="No es la receta multiplicada por personas: es la suma exacta de las porciones de cada uno."
+          >
+            <Card>
+              <ul className="divide-y divide-outline-variant/40">
+                {proyeccion.totals.map((total) => (
+                  <li key={total.componentId} className="px-md py-sm">
+                    <div className="flex items-baseline justify-between gap-md">
+                      <span className="font-body-md text-body-md font-semibold text-on-surface">
+                        {total.label}
+                      </span>
+                      <span className="shrink-0 font-headline-sm text-headline-sm tabular-nums text-primary">
+                        {g(total.total)} {total.unit}
+                      </span>
                     </div>
-                  )}
-
-                  {acceptedByMember.get(serving.memberId)?.length ? (
-                    <p className="mb-3 text-[11px] text-[var(--ink)]/60">
-                      {assignment ? "Reemplazo guardado para esta comida." : "Reemplazo aplicado (vista previa)."}{" "}
-                      <SubstitutionButton
-                        modo="DESHACER"
-                        assignmentId={assignment ?? null}
-                        memberId={serving.memberId}
-                        componentId={acceptedByMember.get(serving.memberId)![0]!.componentId}
-                        ingredientId={acceptedByMember.get(serving.memberId)![0]!.ingredientId}
-                        previewHref={`/recipes/${id}/family?meal=${mealType}${v ? `&v=${v}` : ""}`}
-                      />
-                    </p>
-                  ) : null}
-
-                  {serving.reasons.length > 0 && (
-                    <details className="text-sm">
-                      <summary className="cursor-pointer text-[var(--accent)]">¿Por qué?</summary>
-                      <ul className="mt-2 space-y-1.5 text-xs text-[var(--ink)]/70">
-                        {serving.reasons.map((r, i) => (
-                          <li key={`${r.code}-${i}`}>{r.text}</li>
+                    {total.byMethod.length > 1 && (
+                      <ul className="mt-sm flex flex-wrap gap-xs">
+                        {total.byMethod.map((group, i) => (
+                          <li key={i}>
+                            <Chip>
+                              {group.method
+                                ? COOKING_METHOD_LABELS[group.method as never]
+                                : "Sin método"}
+                              {" · "}
+                              {group.members.join(", ")}: {g(group.quantity)} {total.unit}
+                            </Chip>
+                          </li>
                         ))}
                       </ul>
-                    </details>
-                  )}
-                </article>
-              );
-            })}
-          </section>
-
-          <section className="mb-5">
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--ink)]/60">
-              Preparar para la familia
-            </h2>
-            <p className="mb-2 text-xs text-[var(--ink)]/50">
-              No es la receta multiplicada por personas: es la suma exacta de las porciones de cada
-              uno.
-            </p>
-            <ul className="divide-y divide-[var(--ink)]/5 rounded-2xl border border-[var(--ink)]/10 bg-white">
-              {proyeccion.totals.map((total) => (
-                <li key={total.componentId} className="px-4 py-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium">{total.label}</span>
-                    <span className="tabular-nums">
-                      {g(total.total)} {total.unit}
-                    </span>
-                  </div>
-                  {total.byMethod.length > 1 && (
-                    <ul className="mt-1.5 space-y-0.5 text-[11px] text-[var(--ink)]/60">
-                      {total.byMethod.map((group, i) => (
-                        <li key={i} className="flex justify-between">
-                          <span>
-                            {group.method ? COOKING_METHOD_LABELS[group.method as never] : "Sin método"}
-                            {" · "}
-                            {group.members.join(", ")}
-                          </span>
-                          <span className="tabular-nums">
-                            {g(group.quantity)} {total.unit}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </Section>
 
           {proyeccion.needsAttention.length > 0 && (
-            <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Revisa a{" "}
-              {proyeccion.needsAttention.map((n) => n.memberName).join(", ")}: esta receta no cuadra
-              con su configuración tal como está.
-            </p>
+            <Notice icon="priority_high">
+              Revisa a {proyeccion.needsAttention.map((n) => n.memberName).join(", ")}: esta receta
+              no cuadra con su configuración tal como está.
+            </Notice>
           )}
         </>
       )}
-    </main>
+    </AppShell>
   );
 }

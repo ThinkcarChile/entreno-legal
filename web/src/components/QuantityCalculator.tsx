@@ -12,6 +12,11 @@ import {
   type BasisUnit,
   type NutritionValues,
 } from "@/domain/catalog/types";
+import { Card, ErrorNote, Icon } from "@/components/ui";
+
+/** Campo de formulario del kit: mismo alto de toque en todas las pantallas. */
+const FIELD =
+  "mt-xs min-h-[48px] rounded-xl border border-outline-variant bg-surface-container-lowest px-md py-sm font-body-md text-body-md text-on-surface";
 
 interface Measure {
   name: string;
@@ -59,40 +64,47 @@ export function QuantityCalculator({
   const unitLabel = basisUnit === "ML" ? "ml" : "g";
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-4">
-      <h2 className="font-semibold">Calcular por cantidad</h2>
-      <div className="mt-3 flex flex-wrap items-end gap-3">
-        <label className="flex flex-col text-sm">
+    <Card as="section" className="p-md">
+      <div className="flex items-center gap-sm">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-fixed text-on-primary-fixed">
+          <Icon name="calculate" filled />
+        </span>
+        <h2 className="font-headline-sm text-headline-sm text-on-surface">Calcular por cantidad</h2>
+      </div>
+
+      <div className="mt-md flex flex-wrap items-end gap-md">
+        <label className="flex flex-col font-body-sm text-body-sm font-semibold text-on-surface-variant">
           Cantidad ({unitLabel})
           <input
             inputMode="decimal"
             value={quantityText}
             onChange={(e) => setQuantityText(e.target.value)}
-            className="mt-1 w-28 rounded-xl border border-gray-300 px-3 py-2 text-lg font-semibold"
+            className={`${FIELD} w-28 font-body-lg text-body-lg font-semibold tabular-nums`}
             aria-label={`Cantidad en ${unitLabel}`}
           />
         </label>
         {servingQuantity ? (
-          <label className="flex flex-col text-sm">
+          <label className="flex flex-col font-body-sm text-body-sm font-semibold text-on-surface-variant">
             {servingName ? `Porciones (${servingName})` : "Porciones"}
             <input
               inputMode="decimal"
               value={servingsText}
               onChange={(e) => applyServings(e.target.value)}
               placeholder={`1 = ${servingQuantity} ${unitLabel}`}
-              className="mt-1 w-32 rounded-xl border border-gray-300 px-3 py-2"
+              className={`${FIELD} w-32 tabular-nums`}
             />
           </label>
         ) : null}
       </div>
+
       {measures.length > 0 ? (
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-sm flex flex-wrap gap-sm">
           {measures.map((m) => (
             <button
               key={m.name}
               type="button"
               onClick={() => setQuantityText(String(m.quantity))}
-              className="rounded-full border border-gray-300 px-2.5 py-1 text-xs"
+              className="min-h-[44px] rounded-full border border-outline-variant px-md py-sm font-body-sm text-body-sm font-semibold text-on-surface-variant transition-transform active:scale-95"
             >
               {m.name} · {m.quantity} {m.unit === "ML" ? "ml" : "g"}
             </button>
@@ -101,34 +113,44 @@ export function QuantityCalculator({
       ) : null}
 
       {result ? (
-        <table className="mt-4 w-full text-sm">
-          <tbody>
-            {NUTRIENT_KEYS.map((key) => {
-              const value = result[key];
-              const rounded = roundForDisplay(value ?? null, key === "energy_kcal" ? 0 : 1);
-              return (
-                <tr key={key} className="border-t border-gray-100">
-                  <td className="py-1.5">{NUTRIENT_LABELS[key].label}</td>
-                  <td className="py-1.5 text-right font-semibold tabular-nums">
-                    {rounded === null ? (
-                      <span className="font-normal opacity-50" title="Dato no disponible en la fuente">
-                        sin dato
-                      </span>
-                    ) : (
-                      `${rounded} ${NUTRIENT_LABELS[key].unit}`
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="mt-md overflow-x-auto">
+          <table className="w-full font-body-sm text-body-sm">
+            <tbody>
+              {NUTRIENT_KEYS.map((key) => {
+                const value = result[key];
+                const rounded = roundForDisplay(value ?? null, key === "energy_kcal" ? 0 : 1);
+                return (
+                  <tr key={key} className="border-t border-outline-variant/40">
+                    <td className="py-sm pr-md text-on-surface-variant">
+                      {NUTRIENT_LABELS[key].label}
+                    </td>
+                    <td className="py-sm text-right font-semibold tabular-nums text-on-surface">
+                      {rounded === null ? (
+                        <span
+                          className="font-normal text-outline"
+                          title="Dato no disponible en la fuente"
+                        >
+                          sin dato
+                        </span>
+                      ) : (
+                        `${rounded} ${NUTRIENT_LABELS[key].unit}`
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       ) : (
-        <p className="mt-3 text-sm text-red-700">Ingresa una cantidad válida.</p>
+        <div className="mt-md">
+          <ErrorNote>Ingresa una cantidad válida.</ErrorNote>
+        </div>
       )}
-      <p className="mt-2 text-xs opacity-60">
+
+      <p className="mt-sm font-label-md text-label-md text-outline">
         “Sin dato” significa que la fuente no informa ese nutriente (no es cero).
       </p>
-    </section>
+    </Card>
   );
 }

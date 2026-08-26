@@ -164,7 +164,7 @@ describe("§39 — doble submit: un solo efecto físico", () => {
     expect(hijos.reduce((a, x) => a + Number(x.quantity), 0)).toBe(1000);
   });
 
-  it("doble CONSUMO de la misma comida descuenta una sola vez", async () => {
+  it("doble SERVIDO de la misma comida descuenta una sola vez", async () => {
     const fecha = (await h.fila<{ d: string }>(
       "select plan_date::text as d from public.weekly_plan_days where id = (select day_id from public.meal_assignments where id = $1)",
       [asignacion],
@@ -197,13 +197,26 @@ describe("§39 — doble submit: un solo efecto físico", () => {
 
     // 200 g de UNA porción, una sola vez. Jamás 400.
     expect(antes - (await total())).toBe(200);
-    const consumidas = await h.como(USER, () =>
+    // La porción se movió UNA vez. Desde 0036 el estado que gana la carrera es
+    // SERVED (servir no es comer): cambia el nombre del estado, no el hecho de
+    // que solo uno de los dos submits lo mueve.
+    const servidas = await h.como(USER, () =>
       h.filas(
-        "select id from public.member_serving_projections where assignment_id = $1 and status = 'CONSUMED'",
+        "select id from public.member_serving_projections where assignment_id = $1 and status = 'SERVED'",
         [asignacion],
       ),
     );
-    expect(consumidas).toHaveLength(1);
+    expect(servidas).toHaveLength(1);
+    // Y hay UN solo acto físico: el segundo submit no escribió un segundo
+    // registro de servido, que es lo único que autoriza descontar.
+    const registros = await h.como(USER, () =>
+      h.filas(
+        `select id from public.meal_serving_records
+         where assignment_id = $1 and status = 'ACTIVE'`,
+        [asignacion],
+      ),
+    );
+    expect(registros).toHaveLength(1);
   });
 
   it("doble APROBACIÓN de la misma orden crea UNA orden", async () => {
@@ -378,25 +391,48 @@ describe("gate final §2/§15", () => {
     });
   });
 
-  it("confirm y consume v5 llevan el candado (contrato de serialización)", async () => {
+  it("confirm y serve v6 llevan el candado (contrato de serialización)", async () => {
     // PGlite es mono-sesión: la carrera REAL se prueba en vivo con doble
     // disparo contra Supabase. Acá se congela el CONTRATO: si alguien borra el
-    // `for update of a` de cualquiera de los dos RPC, este test lo delata.
+    // `for update of a`, este test lo delata.
+    //
+    // Desde 0036 el que sirve —y por lo tanto el que descuenta— es
+    // `serve_meal_assignment`; `consume_planned_meal` quedó como envoltorio de
+    // compatibilidad. El candado se exige DONDE OCURRE EL ACTO FÍSICO, y al
+    // envoltorio se le exige que siga delegando: si mañana se escribe un camino
+    // propio adentro de él, no tendría el candado y este test lo delata igual.
     const defs = await h.filas<{ nombre: string; def: string }>(
       `select p.proname as nombre, pg_get_functiondef(p.oid) as def
        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
        where n.nspname = 'public'
-         and p.proname in ('confirm_meal_assignment', 'consume_planned_meal')`,
+         and p.proname in ('confirm_meal_assignment', 'serve_meal_assignment',
+                           'consume_planned_meal')`,
     );
-    expect(defs).toHaveLength(2);
-    for (const fn of defs) {
+    expect(defs.map((d) => d.nombre).sort()).toEqual([
+      "confirm_meal_assignment",
+      "consume_planned_meal",
+      "serve_meal_assignment",
+    ]);
+    for (const fn of defs.filter((d) => d.nombre !== "consume_planned_meal")) {
       expect(fn.def, `${fn.nombre} perdió el candado de la asignación`).toMatch(
         /for update of a/i,
       );
     }
-    // Y los recorridos FEFO del consumo bloquean los lotes.
-    const consume = defs.find((d) => d.nombre === "consume_planned_meal")!;
-    expect(consume.def).toMatch(/for update of l/i);
+    const envoltorio = defs.find((d) => d.nombre === "consume_planned_meal")!;
+    expect(
+      envoltorio.def,
+      "consume_planned_meal dejó de delegar en el dueño del acto físico",
+    ).toMatch(/serve_meal_assignment/i);
+
+    // Y el recorrido FEFO del descuento bloquea los lotes. También se mudó: hoy
+    // vive en el único escritor de movimientos CONSUMED.
+    const fefo = await h.fila<{ def: string }>(
+      `select pg_get_functiondef(p.oid) as def
+       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'app' and p.proname = 'fefo_deduct_serving_item'`,
+    );
+    expect(fefo, "app.fefo_deduct_serving_item desapareció").not.toBeNull();
+    expect(fefo!.def).toMatch(/for update of l/i);
   });
 
   it("tras consumir, confirmar ESPERA el candado y rechaza con la verdad", async () => {

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell, ShellAction } from "@/components/AppShell";
+import { CardLink, Chip, EmptyState, Icon, Section } from "@/components/ui";
 import { loadRecipes } from "./queries";
 import {
   MEAL_TYPES,
@@ -22,6 +23,22 @@ const KIND_LABELS: Record<TemplateKind, string> = {
   SALAD: "Ensalada",
   DESSERT: "Postre",
 };
+
+/** Icono por clase de plantilla: la tarjeta se reconoce antes de leerla. */
+const KIND_ICONS: Record<TemplateKind, string> = {
+  MEAL: "restaurant",
+  SALAD: "eco",
+  DESSERT: "cake",
+};
+
+/**
+ * Píldora de filtro. No es el `Chip` del kit a propósito: esto NAVEGA, y un
+ * chip es texto de estado. Se queda como cadena de clases hasta que el kit
+ * tenga su propia pieza de filtro.
+ */
+const FILTRO = "shrink-0 rounded-full px-md py-2 font-label-md text-label-md transition-colors";
+const FILTRO_ON = `${FILTRO} bg-primary text-on-primary`;
+const FILTRO_OFF = `${FILTRO} bg-surface-container-high text-on-surface-variant`;
 
 export default async function RecipesPage({ searchParams }: Props) {
   const params = await searchParams;
@@ -45,10 +62,6 @@ export default async function RecipesPage({ searchParams }: Props) {
     scope === "mine" ? !r.isGlobal : scope === "global" ? r.isGlobal : true,
   );
 
-  const chip = "rounded-full px-3 py-2 text-xs font-medium";
-  const chipOn = `${chip} bg-[var(--accent)] text-white`;
-  const chipOff = `${chip} border border-[var(--ink)]/20 text-[var(--ink)]/70`;
-
   function href(next: Record<string, string | undefined>) {
     const sp = new URLSearchParams();
     const merged = { q, type: mealType, kind, scope, ...next };
@@ -60,98 +73,108 @@ export default async function RecipesPage({ searchParams }: Props) {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-16">
-      <AppNav active="recipes" />
-
-      <header className="mb-4 flex items-baseline justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Recetas</h1>
-        <Link
-          href="/recipes/new"
-          className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white"
-        >
+    <AppShell
+      active="recipes"
+      title="Recetas"
+      subtitle="Platos, ensaladas y postres: los tuyos y los de la biblioteca."
+      action={
+        <ShellAction href="/recipes/new">
+          <Icon name="add" className="text-[18px]" />
           Crear receta
-        </Link>
-      </header>
-
-      <form action="/recipes" className="mb-3">
-        <input
-          type="search"
-          name="q"
-          defaultValue={q}
-          placeholder="Buscar por nombre"
-          className="w-full rounded-full border border-[var(--ink)]/20 bg-white px-4 py-2 text-sm"
-        />
+        </ShellAction>
+      }
+    >
+      <form action="/recipes" className="mt-md">
+        <label className="relative block">
+          <span className="sr-only">Buscar receta por nombre</span>
+          <Icon
+            name="search"
+            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-outline"
+          />
+          <input
+            type="search"
+            name="q"
+            defaultValue={q}
+            placeholder="Buscar por nombre"
+            className="min-h-[48px] w-full rounded-full border border-outline-variant bg-surface-container-lowest py-3 pl-13 pr-md font-body-md text-body-md text-on-surface"
+          />
+        </label>
         {mealType && <input type="hidden" name="type" value={mealType} />}
         {kind && <input type="hidden" name="kind" value={kind} />}
         {scope !== "all" && <input type="hidden" name="scope" value={scope} />}
       </form>
 
-      <div className="mb-2 flex flex-wrap gap-2">
-        <Link href={href({ scope: "all" })} className={scope === "all" ? chipOn : chipOff}>
+      <div className="hide-scrollbar mt-md flex gap-sm overflow-x-auto pb-1 md:flex-wrap">
+        <Link href={href({ scope: "all" })} className={scope === "all" ? FILTRO_ON : FILTRO_OFF}>
           Todas
         </Link>
-        <Link href={href({ scope: "mine" })} className={scope === "mine" ? chipOn : chipOff}>
+        <Link href={href({ scope: "mine" })} className={scope === "mine" ? FILTRO_ON : FILTRO_OFF}>
           Mis recetas
         </Link>
-        <Link href={href({ scope: "global" })} className={scope === "global" ? chipOn : chipOff}>
+        <Link
+          href={href({ scope: "global" })}
+          className={scope === "global" ? FILTRO_ON : FILTRO_OFF}
+        >
           Biblioteca
         </Link>
       </div>
 
-      <div className="mb-5 flex flex-wrap gap-2">
-        <Link href={href({ type: undefined })} className={!mealType ? chipOn : chipOff}>
+      <div className="hide-scrollbar mt-sm mb-lg flex gap-sm overflow-x-auto pb-1 md:flex-wrap">
+        <Link href={href({ type: undefined })} className={!mealType ? FILTRO_ON : FILTRO_OFF}>
           Cualquier momento
         </Link>
         {MEAL_TYPES.filter((t) => t !== "OTHER").map((t) => (
-          <Link key={t} href={href({ type: t })} className={mealType === t ? chipOn : chipOff}>
+          <Link key={t} href={href({ type: t })} className={mealType === t ? FILTRO_ON : FILTRO_OFF}>
             {MEAL_TYPE_LABELS[t]}
           </Link>
         ))}
       </div>
 
-      {recipes.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-[var(--ink)]/20 p-6 text-center text-sm text-[var(--ink)]/60">
-          No hay recetas que coincidan. Prueba con otro filtro o crea una nueva.
-        </p>
-      ) : (
-        <ul className="space-y-2">
-          {recipes.map((recipe) => (
-            <li key={recipe.templateId}>
-              <Link
-                href={`/recipes/${recipe.templateId}`}
-                className="block rounded-2xl border border-[var(--ink)]/10 bg-white p-4"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium">{recipe.name}</p>
-                    <p className="mt-0.5 text-xs text-[var(--ink)]/60">
+      <Section
+        title={recipes.length === 1 ? "1 receta" : `${recipes.length} recetas`}
+        hint={q ? `Coinciden con “${q}”.` : undefined}
+      >
+        {recipes.length === 0 ? (
+          <EmptyState icon="menu_book">
+            No hay recetas que coincidan. Prueba con otro filtro o crea una nueva.
+          </EmptyState>
+        ) : (
+          <ul className="space-y-sm">
+            {recipes.map((recipe) => (
+              <li key={recipe.templateId}>
+                <CardLink
+                  href={`/recipes/${recipe.templateId}`}
+                  className="flex items-center gap-md p-md"
+                >
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary-fixed text-on-primary-fixed">
+                    <Icon name={KIND_ICONS[recipe.kind]} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-body-md text-body-md font-semibold text-on-surface">
+                      {recipe.name}
+                    </span>
+                    <span className="block truncate font-body-sm text-body-sm text-on-surface-variant">
                       {KIND_LABELS[recipe.kind]}
                       {recipe.mealTypes.length > 0 && (
                         <> · {recipe.mealTypes.map((t) => MEAL_TYPE_LABELS[t]).join(", ")}</>
                       )}
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    {recipe.isGlobal ? (
-                      <span className="rounded-full bg-[var(--ink)]/5 px-2 py-0.5 text-[11px] text-[var(--ink)]/60">
-                        Biblioteca
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[11px] text-[var(--accent)]">
-                        Mía
-                      </span>
-                    )}
-                    <p className="mt-1 text-[11px] text-[var(--ink)]/50">
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 flex-col items-end gap-1">
+                    <Chip tono={recipe.isGlobal ? "neutro" : "primario"}>
+                      {recipe.isGlobal ? "Biblioteca" : "Mía"}
+                    </Chip>
+                    <span className="font-label-md text-label-md text-on-surface-variant">
                       v{recipe.versionNumber}
                       {recipe.status !== "PUBLISHED" && ` · ${STATUS_LABELS[recipe.status]}`}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </main>
+                    </span>
+                  </span>
+                </CardLink>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+    </AppShell>
   );
 }

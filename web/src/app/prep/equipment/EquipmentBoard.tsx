@@ -5,8 +5,36 @@ import { useRouter } from "next/navigation";
 import type { PrepPreference } from "@/domain/prep/types";
 import { saveEquipment, saveEquipmentConfig, savePrepPreference } from "../actions";
 import type { EquipmentView } from "../queries";
+import { Button, ButtonOutline, Card, Chip, Flotante, Icon, Section } from "@/components/ui";
 
-const field = "w-full rounded-xl border border-[var(--ink)]/20 bg-white px-3 py-2 text-sm";
+/**
+ * Tablero de equipamiento: cada equipo con sus configuraciones declaradas
+ * como datos (§10) y las preferencias de preparación por alimento (§11).
+ * El motor solo sugiere lo que está acá — jamás inventa un corte (§12).
+ */
+
+/** Campo de formulario del kit: mismo alto de toque en todos lados. */
+const FIELD =
+  "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-md py-sm font-body-md text-body-md text-on-surface";
+
+
+/** Etiqueta de campo: texto arriba, control abajo. */
+function Campo({
+  label,
+  children,
+  className = "",
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <label className={`block font-body-sm text-body-sm text-on-surface-variant ${className}`}>
+      {label}
+      <span className="mt-1 block">{children}</span>
+    </label>
+  );
+}
 
 export function EquipmentBoard({
   equipment,
@@ -34,7 +62,10 @@ export function EquipmentBoard({
   const [pCapId, setPCapId] = useState("");
   const [pManual, setPManual] = useState("");
 
-  function run(action: () => Promise<{ ok: boolean; error?: string; message?: string }>, done?: () => void) {
+  function run(
+    action: () => Promise<{ ok: boolean; error?: string; message?: string }>,
+    done?: () => void,
+  ) {
     setError(null);
     setMessage(null);
     startTransition(async () => {
@@ -52,109 +83,151 @@ export function EquipmentBoard({
   const todasConfigs = equipment.flatMap((e) => e.configs);
 
   return (
-    <div className="space-y-5">
-      {message && (
-        <p className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-3xl rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm text-white shadow-lg">
-          {message}
-        </p>
-      )}
-      {error && (
-        <p className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-3xl rounded-xl bg-red-600 px-4 py-2.5 text-sm text-white shadow-lg" role="alert">
-          {error}
-        </p>
-      )}
+    <div>
+      {message && <Flotante tono="ok">{message}</Flotante>}
+      {error && <Flotante tono="error">{error}</Flotante>}
 
       {/* ---- Equipos ---- */}
-      <section className="space-y-2">
-        {equipment.map((e) => (
-          <div key={e.id} className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-medium">
-                {e.name}
-                {!e.isActive && <span className="ml-2 text-xs text-[var(--ink)]/40">(inactivo)</span>}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => run(() => saveEquipment({ id: e.id, name: e.name, notes: e.notes, isActive: !e.isActive }))}
-                  className="rounded-full border border-[var(--ink)]/20 px-4 py-2.5 text-xs disabled:opacity-50"
-                >
-                  {e.isActive ? "Desactivar" : "Activar"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAbierto(abierto === e.id ? null : e.id)}
-                  className="rounded-full border border-[var(--accent)] px-4 py-2.5 text-xs font-medium text-[var(--accent)]"
-                >
-                  {abierto === e.id ? "Cerrar" : "Agregar configuración"}
-                </button>
-              </div>
-            </div>
+      <Section title="Mi equipamiento" hint="Lo que hay en tu cocina, con sus configuraciones.">
+        <ul className="grid gap-md md:grid-cols-2">
+          {equipment.map((e) => (
+            <li key={e.id}>
+              <Card as="article" className="flex h-full flex-col p-md">
+                <div className="flex flex-wrap items-start justify-between gap-sm">
+                  <div className="flex min-w-0 items-center gap-sm">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-fixed text-on-primary-fixed">
+                      <Icon name="blender" filled />
+                    </span>
+                    <h3 className="min-w-0 font-headline-sm text-headline-sm text-on-surface">
+                      {e.name}
+                    </h3>
+                  </div>
+                  <Chip
+                    tono={e.isActive ? "primario" : "neutro"}
+                    icon={e.isActive ? "check_circle" : "pause_circle"}
+                  >
+                    {e.isActive ? "Listo" : "Inactivo"}
+                  </Chip>
+                </div>
 
-            {e.configs.length > 0 && (
-              <ul className="mt-2 flex flex-wrap gap-1.5">
-                {e.configs.map((c) => (
-                  <li key={c.id} className="rounded-full bg-[var(--paper)] px-2.5 py-1 text-[10px] text-[var(--ink)]/70">
-                    {c.capability}
-                    {(c.params as { size_mm?: number }).size_mm != null && <> {(c.params as { size_mm?: number }).size_mm} mm</>}
-                    {c.maxBatchQuantity != null && <> · máx {c.maxBatchQuantity} g/tanda</>}
-                  </li>
-                ))}
-              </ul>
-            )}
+                {e.configs.length > 0 && (
+                  <div className="mt-md">
+                    <p className="font-label-md text-label-md uppercase text-on-surface-variant">
+                      Configuraciones
+                    </p>
+                    <ul className="mt-sm flex flex-wrap gap-xs">
+                      {e.configs.map((c) => (
+                        <li key={c.id}>
+                          <Chip>
+                            {c.capability}
+                            {(c.params as { size_mm?: number }).size_mm != null && (
+                              <> {(c.params as { size_mm?: number }).size_mm} mm</>
+                            )}
+                            {c.maxBatchQuantity != null && <> · máx {c.maxBatchQuantity} g/tanda</>}
+                          </Chip>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-            {abierto === e.id && (
-              <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-[var(--ink)]/10 p-3">
-                <label className="text-xs text-[var(--ink)]/60">
-                  Capacidad (código libre)
-                  <input value={cCap} onChange={(ev) => setCCap(ev.target.value)} placeholder="CUT_SHRED" className={`${field} mt-1`} />
-                </label>
-                <label className="text-xs text-[var(--ink)]/60">
-                  Tamaño mm (opcional)
-                  <input type="number" min="0" step="any" value={cTam} onChange={(ev) => setCTam(ev.target.value)} className={`${field} mt-1`} />
-                </label>
-                <label className="text-xs text-[var(--ink)]/60">
-                  Máx. por tanda en g (opcional)
-                  <input type="number" min="0" step="any" value={cTanda} onChange={(ev) => setCTanda(ev.target.value)} className={`${field} mt-1`} />
-                </label>
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => {
-                    if ([cTam, cTanda].some((x) => x.trim() !== "" && !Number.isFinite(Number(x)))) {
-                      setError("Revisa los números.");
-                      return;
-                    }
-                    run(
-                      () =>
-                        saveEquipmentConfig({
-                          equipmentId: e.id,
-                          capability: cCap,
-                          sizeMm: cTam.trim() === "" ? null : Number(cTam),
-                          maxBatchQuantity: cTanda.trim() === "" ? null : Number(cTanda),
+                <div className="mt-md flex flex-wrap gap-sm">
+                  <ButtonOutline
+                    disabled={pending}
+                    onClick={() =>
+                      run(() =>
+                        saveEquipment({
+                          id: e.id,
+                          name: e.name,
+                          notes: e.notes,
+                          isActive: !e.isActive,
                         }),
-                      () => {
-                        setCTam("");
-                        setCTanda("");
-                      },
-                    );
-                  }}
-                  className="self-end rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                >
-                  Guardar
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
+                      )
+                    }
+                  >
+                    {e.isActive ? "Desactivar" : "Activar"}
+                  </ButtonOutline>
+                  <ButtonOutline onClick={() => setAbierto(abierto === e.id ? null : e.id)}>
+                    <Icon name={abierto === e.id ? "close" : "tune"} className="text-[18px]" />
+                    {abierto === e.id ? "Cerrar" : "Agregar configuración"}
+                  </ButtonOutline>
+                </div>
 
-        <div className="rounded-2xl border border-dashed border-[var(--ink)]/20 bg-white p-4">
-          <p className="mb-2 text-sm font-semibold">Nuevo equipo</p>
-          <div className="flex gap-2">
-            <input value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} placeholder="Cortadora de verduras" className={field} />
-            <button
-              type="button"
+                {abierto === e.id && (
+                  <div className="mt-md grid gap-sm rounded-2xl bg-surface-container-low p-md sm:grid-cols-2">
+                    <Campo label="Capacidad (código libre)">
+                      <input
+                        value={cCap}
+                        onChange={(ev) => setCCap(ev.target.value)}
+                        placeholder="CUT_SHRED"
+                        className={FIELD}
+                      />
+                    </Campo>
+                    <Campo label="Tamaño mm (opcional)">
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={cTam}
+                        onChange={(ev) => setCTam(ev.target.value)}
+                        className={FIELD}
+                      />
+                    </Campo>
+                    <Campo label="Máx. por tanda en g (opcional)">
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={cTanda}
+                        onChange={(ev) => setCTanda(ev.target.value)}
+                        className={FIELD}
+                      />
+                    </Campo>
+                    <div className="flex items-end">
+                      <Button
+                        disabled={pending}
+                        onClick={() => {
+                          if (
+                            [cTam, cTanda].some((x) => x.trim() !== "" && !Number.isFinite(Number(x)))
+                          ) {
+                            setError("Revisa los números.");
+                            return;
+                          }
+                          run(
+                            () =>
+                              saveEquipmentConfig({
+                                equipmentId: e.id,
+                                capability: cCap,
+                                sizeMm: cTam.trim() === "" ? null : Number(cTam),
+                                maxBatchQuantity: cTanda.trim() === "" ? null : Number(cTanda),
+                              }),
+                            () => {
+                              setCTam("");
+                              setCTanda("");
+                            },
+                          );
+                        }}
+                      >
+                        Guardar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            </li>
+          ))}
+        </ul>
+
+        <Card className="mt-md border border-dashed border-outline-variant p-md">
+          <p className="font-body-md text-body-md font-semibold text-on-surface">Nuevo equipo</p>
+          <div className="mt-sm flex flex-wrap gap-sm">
+            <input
+              value={nuevoNombre}
+              onChange={(e) => setNuevoNombre(e.target.value)}
+              placeholder="Cortadora de verduras"
+              className={`${FIELD} flex-1 basis-48`}
+            />
+            <Button
               disabled={pending || nuevoNombre.trim() === ""}
               onClick={() =>
                 run(
@@ -162,107 +235,125 @@ export function EquipmentBoard({
                   () => setNuevoNombre(""),
                 )
               }
-              className="shrink-0 rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
+              <Icon name="add" className="text-[18px]" />
               Agregar
-            </button>
+            </Button>
           </div>
-        </div>
-      </section>
+        </Card>
+      </Section>
 
       {/* ---- Preferencias por alimento ---- */}
-      <section className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4">
-        <p className="text-sm font-semibold">Cómo preparar cada alimento</p>
-        <p className="mb-2 text-xs text-[var(--ink)]/60">
-          El motor SOLO sugiere cortes que tú declares acá — jamás inventa.
-        </p>
-        {preferences.length > 0 && (
-          <ul className="mb-3 space-y-1">
-            {preferences.map((p) => (
-              <li key={p.ingredientId + p.taskType} className="rounded-xl bg-[var(--paper)] px-3 py-2 text-xs text-[var(--ink)]/70">
-                <strong className="text-[var(--ink)]">
-                  {ingredientes.find((i) => i.id === p.ingredientId)?.name ?? "(alimento)"}
-                </strong>{" "}
-                — {p.taskType}
-                {(p.params as { size_mm?: number }).size_mm != null && <> {(p.params as { size_mm?: number }).size_mm} mm</>}
-                {p.manualAlternative && <> · manual: {p.manualAlternative}</>}
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="grid grid-cols-2 gap-2">
-          <label className="text-xs text-[var(--ink)]/60">
-            Alimento
-            <select value={pIng} onChange={(e) => setPIng(e.target.value)} className={`${field} mt-1`}>
-              <option value="">Elige…</option>
-              {ingredientes.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.name}
-                </option>
+      <Section
+        title="Cómo preparar cada alimento"
+        hint="El motor SOLO sugiere cortes que tú declares acá — jamás inventa."
+      >
+        <Card className="p-md">
+          {preferences.length > 0 && (
+            <ul className="mb-md space-y-sm">
+              {preferences.map((p) => (
+                <li
+                  key={p.ingredientId + p.taskType}
+                  className="rounded-2xl bg-surface-container px-md py-sm font-body-sm text-body-sm text-on-surface-variant"
+                >
+                  <strong className="font-semibold text-on-surface">
+                    {ingredientes.find((i) => i.id === p.ingredientId)?.name ?? "(alimento)"}
+                  </strong>{" "}
+                  — {p.taskType}
+                  {(p.params as { size_mm?: number }).size_mm != null && (
+                    <> {(p.params as { size_mm?: number }).size_mm} mm</>
+                  )}
+                  {p.manualAlternative && <> · manual: {p.manualAlternative}</>}
+                </li>
               ))}
-            </select>
-          </label>
-          <label className="text-xs text-[var(--ink)]/60">
-            Preparación
-            <select value={pTipo} onChange={(e) => setPTipo(e.target.value)} className={`${field} mt-1`}>
-              {["WASH", "PEEL", "TRIM", "CUT", "SHRED", "SLICE", "DICE"].map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-xs text-[var(--ink)]/60">
-            Tamaño mm (opcional)
-            <input type="number" min="0" step="any" value={pTam} onChange={(e) => setPTam(e.target.value)} className={`${field} mt-1`} />
-          </label>
-          <label className="text-xs text-[var(--ink)]/60">
-            Con el equipo (opcional)
-            <select value={pCapId} onChange={(e) => setPCapId(e.target.value)} className={`${field} mt-1`}>
-              <option value="">A mano</option>
-              {todasConfigs.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.equipmentName}: {c.capability}
-                  {(c.params as { size_mm?: number }).size_mm != null ? ` ${(c.params as { size_mm?: number }).size_mm} mm` : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="col-span-2 text-xs text-[var(--ink)]/60">
-            Alternativa manual (§12 — siempre existe)
-            <input value={pManual} onChange={(e) => setPManual(e.target.value)} placeholder="rallador manual" className={`${field} mt-1`} />
-          </label>
-        </div>
-        <button
-          type="button"
-          disabled={pending || pIng === ""}
-          onClick={() => {
-            if (pTam.trim() !== "" && !Number.isFinite(Number(pTam))) {
-              setError("Revisa el tamaño.");
-              return;
-            }
-            run(
-              () =>
-                savePrepPreference({
-                  ingredientId: pIng,
-                  taskType: pTipo,
-                  sizeMm: pTam.trim() === "" ? null : Number(pTam),
-                  capabilityId: pCapId || null,
-                  manualAlternative: pManual || null,
-                }),
-              () => {
-                setPIng("");
-                setPTam("");
-                setPCapId("");
-                setPManual("");
-              },
-            );
-          }}
-          className="mt-2 w-full rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
-          Guardar preferencia
-        </button>
-      </section>
+            </ul>
+          )}
+
+          <div className="grid gap-sm sm:grid-cols-2">
+            <Campo label="Alimento">
+              <select value={pIng} onChange={(e) => setPIng(e.target.value)} className={FIELD}>
+                <option value="">Elige…</option>
+                {ingredientes.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.name}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+            <Campo label="Preparación">
+              <select value={pTipo} onChange={(e) => setPTipo(e.target.value)} className={FIELD}>
+                {["WASH", "PEEL", "TRIM", "CUT", "SHRED", "SLICE", "DICE"].map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+            <Campo label="Tamaño mm (opcional)">
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={pTam}
+                onChange={(e) => setPTam(e.target.value)}
+                className={FIELD}
+              />
+            </Campo>
+            <Campo label="Con el equipo (opcional)">
+              <select value={pCapId} onChange={(e) => setPCapId(e.target.value)} className={FIELD}>
+                <option value="">A mano</option>
+                {todasConfigs.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.equipmentName}: {c.capability}
+                    {(c.params as { size_mm?: number }).size_mm != null
+                      ? ` ${(c.params as { size_mm?: number }).size_mm} mm`
+                      : ""}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+            <Campo label="Alternativa manual (§12 — siempre existe)" className="sm:col-span-2">
+              <input
+                value={pManual}
+                onChange={(e) => setPManual(e.target.value)}
+                placeholder="rallador manual"
+                className={FIELD}
+              />
+            </Campo>
+          </div>
+
+          <div className="mt-md">
+            <Button
+              full
+              disabled={pending || pIng === ""}
+              onClick={() => {
+                if (pTam.trim() !== "" && !Number.isFinite(Number(pTam))) {
+                  setError("Revisa el tamaño.");
+                  return;
+                }
+                run(
+                  () =>
+                    savePrepPreference({
+                      ingredientId: pIng,
+                      taskType: pTipo,
+                      sizeMm: pTam.trim() === "" ? null : Number(pTam),
+                      capabilityId: pCapId || null,
+                      manualAlternative: pManual || null,
+                    }),
+                  () => {
+                    setPIng("");
+                    setPTam("");
+                    setPCapId("");
+                    setPManual("");
+                  },
+                );
+              }}
+            >
+              Guardar preferencia
+            </Button>
+          </div>
+        </Card>
+      </Section>
     </div>
   );
 }

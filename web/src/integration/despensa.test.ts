@@ -232,13 +232,39 @@ describe("el libro mayor manda", () => {
   });
 
   it("el inventario no queda negativo: un movimiento imposible se rechaza", async () => {
+    // El INVARIANTE no cambió: un movimiento que dejaría el lote bajo cero se
+    // rechaza. Lo que cambió (0036) es el camino para llegar hasta esa pared:
+    // un CONSUMED suelto ya lo rebota antes el candado del dueño ("primero se
+    // sirve, después se descuenta"), así que probar con él dejaría de probar
+    // que la pared del inventario sigue en pie. Acá se llega hasta ella por el
+    // camino NUEVO: un renglón servido legítimo del hogar, que sirvió 9.999 y
+    // por lo tanto autoriza descontar 9.999 — y el lote, que tiene 500, no los
+    // puede pagar.
+    //
+    // Todo en UN solo `do` (una transacción): el registro de servido nace y
+    // muere con el intento, así que este test no le deja nada a los que siguen.
     await expect(
       h.comoAdmin(() =>
-        h.db.query(
-          `insert into public.inventory_movements (household_id, lot_id, reason, delta)
-           values ($1, $2, 'CONSUMED', -9999)`,
-          [hogarA.householdId, lote],
-        ),
+        h.db.query(`
+          do $$
+          declare v_record uuid; v_item uuid;
+          begin
+            insert into public.meal_serving_records
+              (household_id, member_id, kind, served_on)
+            values ('${hogarA.householdId}', '${hogarA.memberId}', 'OFF_PLAN', current_date)
+            returning id into v_record;
+
+            insert into public.meal_serving_record_items
+              (record_id, label, served_quantity, served_unit, served_weight_basis,
+               served_quantity_is_declared)
+            values (v_record, 'Pollo imposible', 9999, 'G', 'RAW', true)
+            returning id into v_item;
+
+            insert into public.inventory_movements
+              (household_id, lot_id, reason, delta, serving_record_item_id, covers_quantity)
+            values ('${hogarA.householdId}', '${lote}', 'CONSUMED', -9999, v_item, -9999);
+          end $$;
+        `),
       ),
     ).rejects.toThrow(/negativo/i);
   });
@@ -444,7 +470,7 @@ describe("K-18: mover al congelador y de vuelta", () => {
 
 // ---------------------------------------------------------------------------
 describe("comimos lo planificado", () => {
-  it("porciones a CONSUMED + registro + descuento FEFO capado al stock", async () => {
+  it("porciones a SERVED + registro de servido + descuento FEFO capado al stock", async () => {
     const antes = await h.como(USER_A, () =>
       h.fila<{ total: string }>(
         "select sum(quantity) as total from public.inventory_lots where household_id = $1 and ingredient_id = $2",
@@ -459,19 +485,53 @@ describe("comimos lo planificado", () => {
     );
     expect(n!.consume_planned_meal.servings).toBe(1);
 
-    // Porción CONSUMED, registro único, y 180 g menos de pollo (había stock).
+    // Porción SERVED, registro de servido único, y 180 g menos de pollo (había
+    // stock). CONTRATO NUEVO (0036): servir no es comer. La porción llega hasta
+    // SERVED y ahí se detiene; quién comió y cuánto lo declara una persona.
     const porcion = await h.como(USER_A, () =>
       h.fila<{ status: string }>(
         "select status from public.member_serving_projections where assignment_id = $1",
         [almuerzoA],
       ),
     );
-    expect(porcion!.status).toBe("CONSUMED");
+    expect(porcion!.status).toBe("SERVED");
 
+    // El REGISTRO sigue siendo único — lo que cambió es cuál: el acto físico
+    // vive en meal_serving_records, no en un consumption_log que nadie declaró.
+    const registro = await h.como(USER_A, () =>
+      h.filas<{ id: string; kind: string; status: string }>(
+        `select id, kind::text as kind, status from public.meal_serving_records
+         where assignment_id = $1`,
+        [almuerzoA],
+      ),
+    );
+    expect(registro).toHaveLength(1);
+    expect(registro[0]!.kind).toBe("FROM_PLAN");
+    expect(registro[0]!.status).toBe("ACTIVE");
+
+    // Y NADIE fabrica un consumo declarado: el eje REAL queda vacío hasta que
+    // una persona lo diga. VACÍO ≠ CERO, y por eso se afirma explícito.
     const log = await h.como(USER_A, () =>
       h.filas("select 1 from public.consumption_logs where assignment_id = $1", [almuerzoA]),
     );
-    expect(log).toHaveLength(1);
+    expect(log).toHaveLength(0);
+
+    // El renglón servido congela el plan (180) y dice, sin ambigüedad, cuánto
+    // salió de verdad de la despensa: servido = descontado + faltante.
+    const renglon = await h.como(USER_A, () =>
+      h.fila<{
+        planned_quantity: string; served_quantity: string;
+        deducted_quantity: string; shortfall_quantity: string;
+      }>(
+        `select planned_quantity, served_quantity, deducted_quantity, shortfall_quantity
+         from public.meal_serving_record_items where record_id = $1`,
+        [registro[0]!.id],
+      ),
+    );
+    expect(Number(renglon!.planned_quantity)).toBe(180);
+    expect(Number(renglon!.served_quantity)).toBe(180);
+    expect(Number(renglon!.deducted_quantity)).toBe(180);
+    expect(Number(renglon!.shortfall_quantity)).toBe(0);
 
     const despues = await h.como(USER_A, () =>
       h.fila<{ total: string }>(

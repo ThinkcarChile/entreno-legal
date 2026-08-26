@@ -123,6 +123,20 @@ export interface SubstitutionSuggestion {
   reason: string;
 }
 
+/**
+ * Techo clínico CONFIRMADO por el ClinicalRulesEngine (§31).
+ *
+ * Vive acá —y no en el dominio clínico— porque es lo ÚNICO clínico que el
+ * optimizador entiende: un número y de qué restricción salió. Ni el
+ * biomarcador, ni el diagnóstico, ni el texto de la regla cruzan esta puerta.
+ */
+export interface ClinicalCeiling {
+  nutrient: NutrientKey;
+  max: number;
+  /** De qué restricción salió: para poder citarla en el conflicto (§74). */
+  restrictionId: string;
+}
+
 export interface OptimizeInput {
   versionId: string;
   components: readonly PortionComponent[];
@@ -153,11 +167,7 @@ export interface OptimizeInput {
    * se negocian; si no se pueden cumplir el resultado es TARGET_CONFLICT con
    * razón clínica, jamás una porción diminuta presentada como correcta (§32).
    */
-  clinicalCeilings?: readonly {
-    nutrient: NutrientKey;
-    max: number;
-    restrictionId: string;
-  }[];
+  clinicalCeilings?: readonly ClinicalCeiling[];
 }
 
 /** Márgenes conservadores cuando la receta no define límites (§29). */

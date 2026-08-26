@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell } from "@/components/AppShell";
+import { EmptyState, Icon, LinkButton } from "@/components/ui";
 import { loadIngredientOptions } from "../queries";
 import { RecipeForm } from "../RecipeForm";
 
@@ -17,20 +17,26 @@ export default async function NewRecipePage() {
   const ingredients = await loadIngredientOptions(supabase);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-16">
-      <AppNav active="recipes" />
-      <Link href="/recipes" className="text-sm text-[var(--accent)]">
-        ← Recetas
-      </Link>
-      <h1 className="mb-4 mt-2 text-2xl font-semibold">Crear receta</h1>
-
-      {ingredients.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-[var(--ink)]/20 p-6 text-center text-sm text-[var(--ink)]/60">
-          Todavía no hay alimentos en el catálogo. Agrega alguno antes de armar una receta.
-        </p>
-      ) : (
-        <RecipeForm ingredients={ingredients} />
-      )}
-    </main>
+    <AppShell
+      active="recipes"
+      title="Crear receta"
+      subtitle="Arma el plato por partes: proteína, carbohidrato, verduras. La nutrición se calcula sola."
+      action={
+        <LinkButton href="/recipes" variant="outline">
+          <Icon name="arrow_back" className="text-[18px]" />
+          Recetas
+        </LinkButton>
+      }
+    >
+      <div className="mt-md">
+        {ingredients.length === 0 ? (
+          <EmptyState icon="nutrition">
+            Todavía no hay alimentos en el catálogo. Agrega alguno antes de armar una receta.
+          </EmptyState>
+        ) : (
+          <RecipeForm ingredients={ingredients} />
+        )}
+      </div>
+    </AppShell>
   );
 }

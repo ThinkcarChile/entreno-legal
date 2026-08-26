@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell, ShellAction } from "@/components/AppShell";
+import { Icon } from "@/components/ui";
 import { loadHouseholdMembers } from "@/app/family/nutrition-queries";
 import { loadPrepPlans } from "./queries";
 import { PrepHome } from "./PrepHome";
@@ -26,23 +26,20 @@ export default async function PrepPage() {
   const plans = await loadPrepPlans(supabase, householdId);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-16">
-      <AppNav active="prep" />
-      <header className="mb-4 flex items-end justify-between gap-2">
-        <div>
-          <h1 className="text-xl font-semibold">Preparación</h1>
-          <p className="text-xs text-[var(--ink)]/60">
-            Qué conviene preparar ahora — y qué conviene no tocar todavía.
-          </p>
-        </div>
-        <Link
-          href="/prep/equipment"
-          className="shrink-0 rounded-full border border-[var(--accent)] px-4 py-2.5 text-xs font-medium text-[var(--accent)]"
-        >
+    <AppShell
+      active="prep"
+      title="Preparación"
+      subtitle="Qué conviene preparar ahora — y qué conviene no tocar todavía."
+      action={
+        <ShellAction href="/prep/equipment">
+          <Icon name="blender" className="text-[18px]" />
           Equipos
-        </Link>
-      </header>
-      <PrepHome plans={plans} />
-    </main>
+        </ShellAction>
+      }
+    >
+      <div className="mt-md">
+        <PrepHome plans={plans} />
+      </div>
+    </AppShell>
   );
 }

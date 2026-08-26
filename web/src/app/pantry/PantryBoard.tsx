@@ -5,6 +5,16 @@ import { useRouter } from "next/navigation";
 import { expiryInfo, fefoOrder, type PantryLot } from "@/domain/inventory/fefo";
 import { formatQuantity } from "@/domain/shopping/engine";
 import { formatDate } from "@/domain/nutrition/calendar";
+import {
+  Button,
+  ButtonOutline,
+  Card,
+  Chip,
+  Flotante,
+  Icon,
+  Notice,
+  Section,
+} from "@/components/ui";
 import type { PantryData, Shortfall, StorageLocation } from "./queries";
 import {
   addManualLot,
@@ -28,12 +38,24 @@ const KIND_LABELS: Record<StorageLocation["kind"], string> = {
   OTHER: "Otro",
 };
 
+const KIND_ICONS: Record<StorageLocation["kind"], string> = {
+  PANTRY: "shelves",
+  FRIDGE: "kitchen",
+  FREEZER: "ac_unit",
+  OTHER: "inventory_2",
+};
+
 const DISCARD_REASONS = [
   { value: "SPOILED", label: "Se echó a perder" },
   { value: "EXPIRED", label: "Venció" },
   { value: "DAMAGED", label: "Se dañó" },
   { value: "DISCARDED_LEFTOVER", label: "Sobra que no se comió" },
 ] as const;
+
+/** Campo de formulario del kit: mismo alto de toque en todos lados. */
+const FIELD =
+  "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-md py-sm font-body-md text-body-md text-on-surface";
+
 
 export function PantryBoard({
   pantry,
@@ -70,8 +92,6 @@ export function PantryBoard({
     });
   }
 
-  const field = "w-full rounded-xl border border-[var(--ink)]/20 bg-white px-3 py-2 text-base";
-
   // Lo que vence primero, arriba de todo: es el aviso que evita botar comida.
   const porVencer = fefoOrder(pantry.lots).filter((l) => {
     const info = expiryInfo(l, today);
@@ -84,114 +104,99 @@ export function PantryBoard({
   }
 
   return (
-    <div className="space-y-3">
-      {message && (
-        <p className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-3xl rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm text-white shadow-lg">
-          {message}
-        </p>
-      )}
-      {error && (
-        <p
-          className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-3xl rounded-xl bg-red-600 px-4 py-2.5 text-sm text-white shadow-lg"
-          role="alert"
-        >
-          {error}
-        </p>
-      )}
+    <div>
+      {message && <Flotante tono="ok">{message}</Flotante>}
+      {error && <Flotante tono="error">{error}</Flotante>}
 
       {desajustes.length > 0 && (
-        <section className="rounded-2xl border border-red-200 bg-red-50 p-3">
-          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-red-900">
-            Desajustes de inventario
-          </h2>
-          <p className="mb-2 text-[11px] text-red-800">
-            Estas comidas consumieron más de lo que la despensa tenía registrado. El consumo
-            declarado no se tocó: decide tú qué pasó con la diferencia.
-          </p>
-          <ul className="space-y-2">
-            {desajustes.map((d) => (
-              <li key={d.id} className="rounded-xl bg-white/70 px-3 py-2 text-xs">
-                <p className="mb-1">
-                  <strong>{d.label}</strong>: faltaron {formatQuantity(d.quantity, d.unit)}
-                  {d.weightBasis === "COOKED" && " (cocido)"}
-                  {d.servingDate && (
-                    <span className="text-red-800/70"> · {formatDate(d.servingDate)}</span>
-                  )}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() => run(() => resolveShortfall(d.id, "RESOLVED_ADJUSTMENT"))}
-                    className="rounded-full border border-red-300 px-3 py-1 disabled:opacity-50"
-                  >
-                    Ya ajusté el inventario
-                  </button>
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() => run(() => resolveShortfall(d.id, "ACCEPTED_UNTRACED"))}
-                    className="rounded-full border border-red-300 px-3 py-1 disabled:opacity-50"
-                  >
-                    Dejar como consumo no trazado
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <Section title="Desajustes de inventario">
+          <Card className="space-y-sm p-md">
+            <p className="font-body-sm text-body-sm text-on-surface-variant">
+              Estas comidas consumieron más de lo que la despensa tenía registrado. El consumo
+              declarado no se tocó: decide tú qué pasó con la diferencia.
+            </p>
+            <ul className="space-y-sm">
+              {desajustes.map((d) => (
+                <li
+                  key={d.id}
+                  className="rounded-2xl bg-error-container px-md py-sm text-on-error-container"
+                >
+                  <p className="font-body-sm text-body-sm">
+                    <strong className="font-semibold">{d.label}</strong>: faltaron{" "}
+                    {formatQuantity(d.quantity, d.unit)}
+                    {d.weightBasis === "COOKED" && " (cocido)"}
+                    {d.servingDate && <span> · {formatDate(d.servingDate)}</span>}
+                  </p>
+                  <div className="mt-sm flex flex-wrap gap-sm">
+                    <ButtonOutline
+                      disabled={pending}
+                      onClick={() => run(() => resolveShortfall(d.id, "RESOLVED_ADJUSTMENT"))}
+                    >
+                      Ya ajusté el inventario
+                    </ButtonOutline>
+                    <ButtonOutline
+                      disabled={pending}
+                      onClick={() => run(() => resolveShortfall(d.id, "ACCEPTED_UNTRACED"))}
+                    >
+                      Dejar como consumo no trazado
+                    </ButtonOutline>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </Section>
       )}
 
       {porVencer.length > 0 && (
-        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-3">
-          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-900">
-            Para usar pronto
-          </h2>
-          <ul className="space-y-0.5 text-xs text-amber-900">
-            {porVencer.slice(0, 5).map((l) => {
-              const info = expiryInfo(l, today);
-              return (
-                <li key={l.id} className="flex justify-between gap-2">
-                  <span>
-                    {l.label} · {formatQuantity(l.quantity, l.unit)}
-                  </span>
-                  <span className="shrink-0 font-medium">
-                    {info.state === "EXPIRED" && "vencido"}
-                    {info.state === "USE_TODAY" && "usar hoy"}
-                    {info.state === "SOON" && `en ${info.days} ${info.days === 1 ? "día" : "días"}`}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
+        <Section className="mb-lg">
+          <Notice icon="schedule">
+            <p className="font-semibold">Para usar pronto</p>
+            <ul className="mt-sm space-y-1">
+              {porVencer.slice(0, 5).map((l) => {
+                const info = expiryInfo(l, today);
+                return (
+                  <li key={l.id} className="flex justify-between gap-sm">
+                    <span className="min-w-0 truncate">
+                      {l.label} · {formatQuantity(l.quantity, l.unit)}
+                    </span>
+                    <span className="shrink-0 font-semibold">
+                      {info.state === "EXPIRED" && "vencido"}
+                      {info.state === "USE_TODAY" && "usar hoy"}
+                      {info.state === "SOON" &&
+                        `en ${info.days} ${info.days === 1 ? "día" : "días"}`}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </Notice>
+        </Section>
       )}
 
       {pantry.locations.length === 0 && (
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => run(() => ensureLocations())}
-          className="w-full rounded-full bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
-        >
-          Crear despensa, refrigerador y congelador
-        </button>
+        <div className="mb-lg">
+          <Button full disabled={pending} onClick={() => run(() => ensureLocations())}>
+            <Icon name="add_home" className="text-[18px]" />
+            Crear despensa, refrigerador y congelador
+          </Button>
+        </div>
       )}
 
       {pantry.locations.map((loc) => {
         const lots = porUbicacion.get(loc.id) ?? [];
         return (
-          <section key={loc.id} className="rounded-2xl border border-[var(--ink)]/10 bg-white p-3">
-            <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-[var(--ink)]/50">
-              {loc.name}
-              {loc.name !== KIND_LABELS[loc.kind] && (
-                <span className="ml-1 font-normal normal-case">({KIND_LABELS[loc.kind]})</span>
-              )}
-            </h2>
+          <Ubicacion
+            key={loc.id}
+            icon={KIND_ICONS[loc.kind]}
+            titulo={loc.name}
+            detalle={loc.name !== KIND_LABELS[loc.kind] ? KIND_LABELS[loc.kind] : null}
+            cantidad={lots.length}
+          >
             {lots.length === 0 ? (
-              <p className="px-1 pb-1 text-xs text-[var(--ink)]/40">Vacío.</p>
+              <p className="px-md pb-md font-body-sm text-body-sm text-outline">Vacío.</p>
             ) : (
-              <ul className="space-y-1">
+              <ul className="space-y-sm px-md pb-md">
                 {lots.map((lot) => (
                   <LotRow
                     key={lot.id}
@@ -206,16 +211,18 @@ export function PantryBoard({
                 ))}
               </ul>
             )}
-          </section>
+          </Ubicacion>
         );
       })}
 
       {porUbicacion.has(null) && (
-        <section className="rounded-2xl border border-[var(--ink)]/10 bg-white p-3">
-          <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-[var(--ink)]/50">
-            Sin ubicación
-          </h2>
-          <ul className="space-y-1">
+        <Ubicacion
+          icon="help"
+          titulo="Sin ubicación"
+          detalle={null}
+          cantidad={porUbicacion.get(null)!.length}
+        >
+          <ul className="space-y-sm px-md pb-md">
             {porUbicacion.get(null)!.map((lot) => (
               <LotRow
                 key={lot.id}
@@ -229,30 +236,65 @@ export function PantryBoard({
               />
             ))}
           </ul>
-        </section>
+        </Ubicacion>
       )}
 
-      <section className="rounded-2xl border border-dashed border-[var(--ink)]/20 bg-white p-4">
+      <Card className="mt-lg p-md">
         {!altaAbierta ? (
           <button
             type="button"
             onClick={() => setAltaAbierta(true)}
-            className="w-full rounded-full border border-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--accent)]"
+            className="flex w-full items-center justify-center gap-sm rounded-2xl border border-dashed border-outline px-lg py-md font-body-md text-body-md font-semibold text-primary transition-transform active:scale-[0.99]"
           >
-            + Agregar algo a la despensa
+            <Icon name="add" className="text-[20px]" />
+            Agregar algo a la despensa
           </button>
         ) : (
           <AltaManual
             locations={pantry.locations}
             ingredientes={ingredientes}
             pending={pending}
-            field={field}
             onSave={run}
             onCancel={() => setAltaAbierta(false)}
           />
         )}
-      </section>
+      </Card>
     </div>
+  );
+}
+
+/** Tarjeta de una ubicación de guardado, con su cabecera y sus lotes. */
+function Ubicacion({
+  icon,
+  titulo,
+  detalle,
+  cantidad,
+  children,
+}: {
+  icon: string;
+  titulo: string;
+  detalle: string | null;
+  cantidad: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card as="section" className="mb-md overflow-hidden">
+      <div className="flex items-center gap-sm p-md">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-container text-primary">
+          <Icon name={icon} filled />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate font-headline-sm text-headline-sm text-on-surface">{titulo}</h3>
+          {detalle && (
+            <p className="font-body-sm text-body-sm text-on-surface-variant">{detalle}</p>
+          )}
+        </div>
+        <Chip>
+          {cantidad} {cantidad === 1 ? "lote" : "lotes"}
+        </Chip>
+      </div>
+      {children}
+    </Card>
   );
 }
 
@@ -279,59 +321,67 @@ function LotRow({
   const info = expiryInfo(lot, today);
 
   return (
-    <li className="rounded-xl border border-[var(--ink)]/10">
-      <button type="button" onClick={onToggle} className="w-full px-3 py-2 text-left">
-        <div className="flex items-center justify-between gap-2">
-          <p className="min-w-0 truncate text-sm">
-            {lot.label}
+    <li className="rounded-2xl bg-surface-container-low">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={abierto}
+        className="w-full px-md py-sm text-left"
+      >
+        <span className="flex items-center justify-between gap-sm">
+          <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+            <span className="min-w-0 truncate font-body-md text-body-md text-on-surface">
+              {lot.label}
+            </span>
             {lot.processingState === "COOKED" && (
-              <span className="ml-1.5 rounded-full bg-[var(--ink)]/10 px-1.5 py-0.5 text-[9px]">
-                cocinado
-              </span>
+              <Chip icon="local_fire_department">cocinado</Chip>
             )}
             {lot.temperatureState === "FROZEN" && (
-              <span className="ml-1.5 rounded-full bg-sky-100 px-1.5 py-0.5 text-[9px] text-sky-900">
+              <Chip tono="info" icon="ac_unit">
                 congelado
-              </span>
+              </Chip>
             )}
-          </p>
-          <span className="shrink-0 text-sm font-medium">{formatQuantity(lot.quantity, lot.unit)}</span>
-        </div>
-        <p className="text-xs text-[var(--ink)]/50">
+          </span>
+          <span className="shrink-0 font-body-md text-body-md font-semibold text-on-surface">
+            {formatQuantity(lot.quantity, lot.unit)}
+          </span>
+        </span>
+        <span className="mt-0.5 block font-body-sm text-body-sm text-on-surface-variant">
           {info.state === "NO_DATE" && "sin fecha de vencimiento"}
-          {info.state === "EXPIRED" && <span className="text-red-700">vencido</span>}
-          {info.state === "USE_TODAY" && <span className="text-amber-800">usar hoy</span>}
+          {info.state === "EXPIRED" && <span className="text-error">vencido</span>}
+          {info.state === "USE_TODAY" && (
+            <span className="text-on-secondary-fixed-variant">usar hoy</span>
+          )}
           {info.state === "SOON" && (
-            <span className="text-amber-800">
+            <span className="text-on-secondary-fixed-variant">
               vence en {info.days} {info.days === 1 ? "día" : "días"}
             </span>
           )}
           {info.state === "OK" && `vence el ${formatDate((lot.useBy ?? lot.expiryDate)!)}`}
-        </p>
+        </span>
       </button>
 
       {abierto && (
-        <div className="space-y-2 border-t border-[var(--ink)]/10 px-3 py-3 text-xs">
+        <div className="space-y-sm border-t border-outline-variant/40 px-md py-md">
           {!ajustando ? (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
+            <div className="flex flex-wrap items-center gap-sm">
+              <ButtonOutline
                 disabled={pending}
                 onClick={() => {
                   setCantidad(String(lot.quantity));
                   setAjustando(true);
                 }}
-                className="rounded-full border border-[var(--ink)]/20 px-3 py-1.5 disabled:opacity-50"
               >
+                <Icon name="scale" className="text-[18px]" />
                 Ajustar cantidad
-              </button>
+              </ButtonOutline>
               <select
                 disabled={pending}
                 defaultValue=""
                 onChange={(e) => {
                   if (e.target.value) run(() => moveLot(lot.id, e.target.value));
                 }}
-                className="rounded-full border border-[var(--ink)]/20 bg-white px-3 py-1.5 disabled:opacity-50"
+                className="rounded-full border border-outline bg-surface-container-lowest px-md py-sm font-body-sm text-body-sm text-on-surface-variant disabled:opacity-40"
                 aria-label="Mover a otra ubicación"
               >
                 <option value="">Mover a…</option>
@@ -347,7 +397,7 @@ function LotRow({
                 disabled={pending}
                 value={causaDescarte}
                 onChange={(e) => setCausaDescarte(e.target.value)}
-                className="rounded-full border border-red-200 bg-white px-3 py-1.5 text-red-700 disabled:opacity-50"
+                className="rounded-full border border-error-container bg-surface-container-lowest px-md py-sm font-body-sm text-body-sm text-error disabled:opacity-40"
                 aria-label="Causa del descarte"
               >
                 <option value="">Descartar…</option>
@@ -365,28 +415,28 @@ function LotRow({
                     run(() => discardLot(lot.id, causaDescarte as "SPOILED"));
                     setCausaDescarte("");
                   }}
-                  className="rounded-full bg-red-600 px-3 py-1.5 font-medium text-white disabled:opacity-50"
+                  className="inline-flex items-center gap-sm rounded-full bg-error px-lg py-sm font-body-md text-body-sm font-semibold text-on-error transition-transform active:scale-95 disabled:opacity-40"
                 >
+                  <Icon name="delete" className="text-[18px]" />
                   Confirmar descarte
                 </button>
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-sm">
               <input
                 type="number"
                 min="0"
                 step="any"
                 value={cantidad}
                 onChange={(e) => setCantidad(e.target.value)}
-                className="w-28 rounded-xl border border-[var(--ink)]/20 bg-white px-3 py-1.5"
+                className="w-28 rounded-xl border border-outline-variant bg-surface-container-lowest px-md py-sm font-body-md text-body-md text-on-surface"
                 aria-label="Cantidad real que queda"
               />
-              <span className="text-[var(--ink)]/50">
+              <span className="font-body-sm text-body-sm text-on-surface-variant">
                 {lot.unit === "G" ? "g" : lot.unit === "ML" ? "ml" : "unidades"}
               </span>
-              <button
-                type="button"
+              <Button
                 disabled={pending}
                 onClick={() => {
                   // Vacío NO es cero: dejar el campo en blanco no vacía el lote.
@@ -397,16 +447,15 @@ function LotRow({
                   run(() => adjustLot(lot.id, n));
                   setAjustando(false);
                 }}
-                className="rounded-full bg-[var(--accent)] px-3 py-1.5 font-medium text-white disabled:opacity-50"
               >
                 Guardar
-              </button>
+              </Button>
+              <ButtonOutline onClick={() => setAjustando(false)}>Cancelar</ButtonOutline>
               {cantidad.trim() === "0" && (
-                <span className="text-amber-800">El lote quedará en 0 y saldrá de la despensa.</span>
+                <p className="w-full font-body-sm text-body-sm text-on-secondary-fixed-variant">
+                  El lote quedará en 0 y saldrá de la despensa.
+                </p>
               )}
-              <button type="button" onClick={() => setAjustando(false)} className="underline">
-                Cancelar
-              </button>
             </div>
           )}
         </div>
@@ -419,14 +468,12 @@ function AltaManual({
   locations,
   ingredientes,
   pending,
-  field,
   onSave,
   onCancel,
 }: {
   locations: StorageLocation[];
   ingredientes: { id: string; name: string }[];
   pending: boolean;
-  field: string;
   onSave: (a: () => Promise<{ ok: boolean; error?: string; message?: string }>) => void;
   onCancel: () => void;
 }) {
@@ -438,15 +485,15 @@ function AltaManual({
   const [ingrediente, setIngrediente] = useState("");
 
   return (
-    <div className="space-y-2">
-      <p className="text-xs text-[var(--ink)]/60">
+    <div className="space-y-sm">
+      <p className="font-body-sm text-body-sm text-on-surface-variant">
         Algo que llegó sin pasar por la lista: una compra de feria, un regalo, una sobra.
       </p>
       <input
         value={label}
         onChange={(e) => setLabel(e.target.value)}
         placeholder="Tomates de la feria"
-        className={field}
+        className={FIELD}
       />
       <select
         value={ingrediente}
@@ -458,7 +505,7 @@ function AltaManual({
             if (opcion) setLabel(opcion.name);
           }
         }}
-        className={field}
+        className={FIELD}
         aria-label="Vincular a un alimento del catálogo"
       >
         <option value="">Sin vincular al catálogo (no contará para la lista de compras)</option>
@@ -468,7 +515,7 @@ function AltaManual({
           </option>
         ))}
       </select>
-      <div className="flex gap-2">
+      <div className="flex gap-sm">
         <input
           type="number"
           min="0"
@@ -476,20 +523,16 @@ function AltaManual({
           value={cantidad}
           onChange={(e) => setCantidad(e.target.value)}
           placeholder="Cantidad"
-          className={field}
+          className={FIELD}
         />
-        <select
-          value={unidad}
-          onChange={(e) => setUnidad(e.target.value as "G")}
-          className={field}
-        >
+        <select value={unidad} onChange={(e) => setUnidad(e.target.value as "G")} className={FIELD}>
           <option value="G">gramos</option>
           <option value="ML">ml</option>
           <option value="UNIT">unidades</option>
         </select>
       </div>
-      <div className="flex gap-2">
-        <select value={ubicacion} onChange={(e) => setUbicacion(e.target.value)} className={field}>
+      <div className="flex gap-sm">
+        <select value={ubicacion} onChange={(e) => setUbicacion(e.target.value)} className={FIELD}>
           <option value="">Ubicación…</option>
           {locations.map((l) => (
             <option key={l.id} value={l.id}>
@@ -501,20 +544,16 @@ function AltaManual({
           type="date"
           value={vence}
           onChange={(e) => setVence(e.target.value)}
-          className={field}
+          className={FIELD}
           aria-label="Fecha de vencimiento (opcional)"
         />
       </div>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 rounded-full border border-[var(--ink)]/20 px-4 py-2 text-sm"
-        >
+      <div className="flex gap-sm">
+        <ButtonOutline className="flex-1" onClick={onCancel}>
           Cancelar
-        </button>
-        <button
-          type="button"
+        </ButtonOutline>
+        <Button
+          className="flex-1"
           disabled={pending}
           onClick={() =>
             onSave(async () => {
@@ -535,10 +574,9 @@ function AltaManual({
               return r;
             })
           }
-          className="flex-1 rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           Agregar
-        </button>
+        </Button>
       </div>
     </div>
   );

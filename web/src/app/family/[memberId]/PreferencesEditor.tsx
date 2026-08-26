@@ -9,12 +9,59 @@ import {
   type PreferenceType,
   type UserSettablePreference,
 } from "@/domain/nutrition/types";
+import { Button, Card, EmptyState, ErrorNote, Icon, Section } from "@/components/ui";
 import type { PreferenceContext } from "../nutrition-queries";
 import {
   removeCookingPreference,
   setCookingPreference,
   setIngredientPreference,
 } from "../nutrition-actions";
+
+/** Campo de formulario del kit: mismo alto de toque en todas las pantallas. */
+const FIELD =
+  "min-h-[48px] w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-md py-sm font-body-md text-body-md text-on-surface";
+
+/**
+ * Chip que se ELIGE. No es el `Chip` del kit —ese solo informa—: este se toca,
+ * así que lleva área de toque completa y `aria-pressed`.
+ */
+function OpcionChip({
+  activa,
+  disabled,
+  onClick,
+  children,
+}: {
+  activa: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      aria-pressed={activa}
+      onClick={onClick}
+      className={`min-h-[44px] rounded-full px-md py-sm font-body-sm text-body-sm font-semibold transition-transform active:scale-95 disabled:opacity-40 ${
+        activa
+          ? "bg-primary text-on-primary"
+          : "border border-outline-variant text-on-surface-variant"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Confirmación de guardado. Lo que FALLA se muestra con `ErrorNote`. */
+function AvisoOk({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="flex items-start gap-sm rounded-2xl bg-primary-fixed px-md py-sm font-body-sm text-body-sm text-on-primary-fixed">
+      <Icon name="check_circle" className="mt-0.5 shrink-0 text-[18px]" />
+      <span className="min-w-0">{children}</span>
+    </p>
+  );
+}
 
 /**
  * QA §27. Dos cosas distintas en una pantalla: qué alimentos le gustan y cómo
@@ -59,120 +106,123 @@ export function PreferencesEditor({
     });
   }
 
-  const field = "w-full rounded-xl border border-[var(--ink)]/20 bg-white px-3 py-2 text-base";
-  const chip = "rounded-full px-3 py-2 text-xs font-medium";
-
   return (
-    <>
-      <section className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4">
-        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-[var(--ink)]/60">
-          Preferencias de alimentos
-        </h2>
-        <p className="mb-3 text-xs text-[var(--ink)]/60">
-          &quot;No me gusta&quot; anota y explica, no prohíbe. Una alergia sí bloquea el plato entero.
-        </p>
-
+    <div>
+      <Section
+        title="Preferencias de alimentos"
+        hint="«No me gusta» anota y explica, no prohíbe. Una alergia sí bloquea el plato entero."
+      >
         {context.foodPreferences.length === 0 ? (
-          <p className="mb-3 text-sm text-[var(--ink)]/60">Todavía no hay preferencias.</p>
+          <div className="mb-sm">
+            <EmptyState icon="restaurant">Todavía no hay preferencias.</EmptyState>
+          </div>
         ) : (
-          <ul className="mb-4 space-y-1.5">
+          <ul className="mb-sm flex flex-wrap gap-sm">
             {context.foodPreferences.map((pref) => (
               <li
                 key={pref.ingredientId}
-                className="flex items-center justify-between gap-3 rounded-xl bg-[var(--paper)] px-3 py-2 text-sm"
+                className={`inline-flex max-w-full items-center gap-xs rounded-full py-xs pl-md ${
+                  pref.editable
+                    ? "border border-outline-variant bg-surface-container pr-xs text-on-surface"
+                    : "bg-error-container pr-md text-on-error-container"
+                }`}
               >
-                <span>
-                  {pref.label}
-                  <span className="ml-2 text-[11px] text-[var(--ink)]/60">
-                    {PREFERENCE_LABELS[pref.preferenceType as PreferenceType] ?? pref.preferenceType}
-                  </span>
+                <span className="min-w-0 truncate font-body-sm text-body-sm">{pref.label}</span>
+                <span className="shrink-0 font-label-md text-label-md opacity-80">
+                  {PREFERENCE_LABELS[pref.preferenceType as PreferenceType] ?? pref.preferenceType}
                 </span>
                 {pref.editable ? (
                   <button
                     type="button"
                     disabled={pending}
+                    aria-label={`Quitar ${pref.label}`}
                     onClick={() =>
-                      run(() => setIngredientPreference(memberId, memberName, pref.ingredientId, "REMOVE"))
+                      run(() =>
+                        setIngredientPreference(memberId, memberName, pref.ingredientId, "REMOVE"),
+                      )
                     }
-                    className="text-xs text-[var(--ink)]/50 underline"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-transform active:scale-90 disabled:opacity-40"
                   >
-                    Quitar
+                    <Icon name="close" className="text-[18px]" />
                   </button>
                 ) : (
-                  <span className="text-[11px] text-[var(--ink)]/40">restricción médica</span>
+                  <span className="shrink-0 font-label-md text-label-md">restricción médica</span>
                 )}
               </li>
             ))}
           </ul>
         )}
 
-        <div className="space-y-2">
-          <select
-            value={nuevoAlimento}
-            onChange={(e) => setNuevoAlimento(e.target.value)}
-            className={field}
-          >
-            <option value="">Elegir alimento…</option>
-            {context.ingredients.map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.name}
-              </option>
-            ))}
-          </select>
-          <div className="flex flex-wrap gap-2">
+        <Card className="space-y-sm p-md">
+          <label className="block">
+            <span className="mb-xs block font-label-md text-label-md text-on-surface-variant">
+              Alimento
+            </span>
+            <select
+              value={nuevoAlimento}
+              onChange={(e) => setNuevoAlimento(e.target.value)}
+              className={FIELD}
+            >
+              <option value="">Elegir alimento…</option>
+              {context.ingredients.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="flex flex-wrap gap-sm">
             {USER_SETTABLE_PREFERENCES.map((tipo) => (
-              <button
+              <OpcionChip
                 key={tipo}
-                type="button"
+                activa={nuevoTipo === tipo}
                 onClick={() => setNuevoTipo(tipo)}
-                className={`${chip} ${
-                  nuevoTipo === tipo
-                    ? "bg-[var(--accent)] text-white"
-                    : "border border-[var(--ink)]/20 text-[var(--ink)]/70"
-                }`}
               >
                 {PREFERENCE_LABELS[tipo as PreferenceType]}
-              </button>
+              </OpcionChip>
             ))}
           </div>
-          <button
-            type="button"
+
+          <Button
+            full
             disabled={pending || !nuevoAlimento}
             onClick={() =>
               run(async () => {
-                const r = await setIngredientPreference(memberId, memberName, nuevoAlimento, nuevoTipo);
+                const r = await setIngredientPreference(
+                  memberId,
+                  memberName,
+                  nuevoAlimento,
+                  nuevoTipo,
+                );
                 if (r.ok) setNuevoAlimento("");
                 return r;
               })
             }
-            className="w-full rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
+            <Icon name="add" className="text-[18px]" />
             Agregar preferencia
-          </button>
-        </div>
-      </section>
+          </Button>
+        </Card>
+      </Section>
 
-      <section className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4">
-        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-[var(--ink)]/60">
-          Preferencias de preparación
-        </h2>
-        <p className="mb-3 text-xs text-[var(--ink)]/60">
-          Gana lo más específico: una regla para un alimento pisa a la de su categoría, y esa pisa a
-          la general.
-        </p>
-
+      <Section
+        title="Preferencias de preparación"
+        hint="Gana lo más específico: una regla para un alimento pisa a la de su categoría, y esa pisa a la general."
+      >
         {context.cookingPreferences.length === 0 ? (
-          <p className="mb-3 text-sm text-[var(--ink)]/60">Sin reglas de preparación.</p>
+          <div className="mb-sm">
+            <EmptyState icon="skillet">Sin reglas de preparación.</EmptyState>
+          </div>
         ) : (
-          <ul className="mb-4 space-y-1.5">
+          <ul className="mb-sm space-y-sm">
             {context.cookingPreferences.map((pref) => (
-              <li
-                key={pref.id}
-                className="flex items-center justify-between gap-3 rounded-xl bg-[var(--paper)] px-3 py-2 text-sm"
-              >
-                <span>
-                  {pref.label}
-                  <span className="ml-2 text-[11px] text-[var(--ink)]/60">
+              <Card key={pref.id} as="li" className="flex items-center gap-sm py-xs pl-md pr-xs">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-body-md text-body-md text-on-surface">
+                    {pref.label}
+                  </span>
+                  <span className="block font-label-md text-label-md text-on-surface-variant">
                     {COOKING_METHOD_LABELS[pref.cookingMethod as never] ?? pref.cookingMethod} ·{" "}
                     {pref.stance === "PREFERRED"
                       ? "preferido"
@@ -184,75 +234,97 @@ export function PreferencesEditor({
                 <button
                   type="button"
                   disabled={pending}
+                  aria-label={`Quitar regla de ${pref.label}`}
                   onClick={() => run(() => removeCookingPreference(memberId, memberName, pref.id))}
-                  className="text-xs text-[var(--ink)]/50 underline"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-transform active:scale-90 disabled:opacity-40"
                 >
-                  Quitar
+                  <Icon name="close" className="text-[18px]" />
                 </button>
-              </li>
+              </Card>
             ))}
           </ul>
         )}
 
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            {(
-              [
-                ["GLOBAL", "En general"],
-                ["CATEGORY", "Una categoría"],
-                ["INGREDIENT", "Un alimento"],
-              ] as const
-            ).map(([valor, texto]) => (
-              <button
-                key={valor}
-                type="button"
-                onClick={() => {
-                  setAlcance(valor);
-                  setObjetivo("");
-                }}
-                className={`${chip} ${
-                  alcance === valor
-                    ? "bg-[var(--accent)] text-white"
-                    : "border border-[var(--ink)]/20 text-[var(--ink)]/70"
-                }`}
-              >
-                {texto}
-              </button>
-            ))}
+        <Card className="space-y-sm p-md">
+          <div>
+            <p className="mb-xs font-label-md text-label-md text-on-surface-variant">
+              A qué se aplica
+            </p>
+            <div className="flex flex-wrap gap-sm">
+              {(
+                [
+                  ["GLOBAL", "En general"],
+                  ["CATEGORY", "Una categoría"],
+                  ["INGREDIENT", "Un alimento"],
+                ] as const
+              ).map(([valor, texto]) => (
+                <OpcionChip
+                  key={valor}
+                  activa={alcance === valor}
+                  onClick={() => {
+                    setAlcance(valor);
+                    setObjetivo("");
+                  }}
+                >
+                  {texto}
+                </OpcionChip>
+              ))}
+            </div>
           </div>
 
           {alcance !== "GLOBAL" && (
-            <select value={objetivo} onChange={(e) => setObjetivo(e.target.value)} className={field}>
-              <option value="">{alcance === "CATEGORY" ? "Elegir categoría…" : "Elegir alimento…"}</option>
-              {(alcance === "CATEGORY" ? context.categories : context.ingredients).map((x) => (
-                <option key={x.id} value={x.id}>
-                  {x.name}
+            <label className="block">
+              <span className="mb-xs block font-label-md text-label-md text-on-surface-variant">
+                {alcance === "CATEGORY" ? "Categoría" : "Alimento"}
+              </span>
+              <select
+                value={objetivo}
+                onChange={(e) => setObjetivo(e.target.value)}
+                className={FIELD}
+              >
+                <option value="">
+                  {alcance === "CATEGORY" ? "Elegir categoría…" : "Elegir alimento…"}
                 </option>
-              ))}
-            </select>
+                {(alcance === "CATEGORY" ? context.categories : context.ingredients).map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.name}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
 
-          <div className="flex gap-2">
-            <select value={metodo} onChange={(e) => setMetodo(e.target.value)} className={field}>
-              {COOKING_METHODS.map((m) => (
-                <option key={m} value={m}>
-                  {COOKING_METHOD_LABELS[m]}
-                </option>
-              ))}
-            </select>
-            <select
-              value={postura}
-              onChange={(e) => setPostura(e.target.value as typeof postura)}
-              className={field}
-            >
-              <option value="PREFERRED">Preferido</option>
-              <option value="ACCEPTED">Lo acepta</option>
-              <option value="AVOID">Evitar</option>
-            </select>
+          <div className="grid grid-cols-1 gap-sm sm:grid-cols-2">
+            <label className="block min-w-0">
+              <span className="mb-xs block font-label-md text-label-md text-on-surface-variant">
+                Método
+              </span>
+              <select value={metodo} onChange={(e) => setMetodo(e.target.value)} className={FIELD}>
+                {COOKING_METHODS.map((m) => (
+                  <option key={m} value={m}>
+                    {COOKING_METHOD_LABELS[m]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block min-w-0">
+              <span className="mb-xs block font-label-md text-label-md text-on-surface-variant">
+                Postura
+              </span>
+              <select
+                value={postura}
+                onChange={(e) => setPostura(e.target.value as typeof postura)}
+                className={FIELD}
+              >
+                <option value="PREFERRED">Preferido</option>
+                <option value="ACCEPTED">Lo acepta</option>
+                <option value="AVOID">Evitar</option>
+              </select>
+            </label>
           </div>
 
-          <button
-            type="button"
+          <Button
+            full
             disabled={pending || (alcance !== "GLOBAL" && !objetivo)}
             onClick={() =>
               run(async () => {
@@ -266,21 +338,15 @@ export function PreferencesEditor({
                 return r;
               })
             }
-            className="w-full rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
+            <Icon name="add" className="text-[18px]" />
             Agregar regla de preparación
-          </button>
-        </div>
-      </section>
+          </Button>
+        </Card>
+      </Section>
 
-      {message && (
-        <p className="rounded-xl bg-[var(--accent)]/10 px-3 py-2 text-sm text-[var(--accent)]">{message}</p>
-      )}
-      {error && (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-          {error}
-        </p>
-      )}
-    </>
+      {message && <AvisoOk>{message}</AvisoOk>}
+      {error && <ErrorNote>{error}</ErrorNote>}
+    </div>
   );
 }

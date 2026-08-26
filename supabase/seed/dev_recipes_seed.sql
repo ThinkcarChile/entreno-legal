@@ -124,6 +124,12 @@ declare
   v_unit public.nutrition_basis_unit;
 begin
   v_fact := pg_temp.fact(p_ing, p_basis);
+  -- Sprint 11.5: antes esto aceptaba NULL en silencio, y tres componentes de
+  -- las recetas demo quedaron publicados sin ninguna ficha nutricional. Un
+  -- componente sin base resoluble es una cantidad sin significado.
+  if v_fact is null then
+    raise exception 'El alimento % no tiene ficha nutricional en base %', p_ing, p_basis;
+  end if;
   select basis_unit into v_unit from public.nutrition_facts where id = v_fact;
 
   -- Ajustabilidad y limites (secciones 28 y 29): un opcional puede irse a 0; el
@@ -325,13 +331,13 @@ begin
   v_pan := pg_temp.recipe('Pan con huevo y tomate', 'MEAL', '{BREAKFAST,TEA}', 2, 12,
     'Estructura simple: no toda receta tiene proteína animal en el centro ni tres tiempos.');
   s := pg_temp.slot(v_pan, 'CARBOHYDRATE', 1, 'Pan');
-  perform pg_temp.comp(s, 'pan marraqueta', 'AS_PACKAGED', 200, null, false, 1);
+  perform pg_temp.comp(s, 'pan marraqueta', 'EDIBLE_PORTION', 200, null, false, 1);
   s := pg_temp.slot(v_pan, 'PROTEIN', 2);
   perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 110, 'PAN_SEARED', false, 1);
   s := pg_temp.slot(v_pan, 'VEGETABLE', 3);
   perform pg_temp.comp(s, 'tomate', 'RAW', 150, 'RAW', false, 1);
   s := pg_temp.slot(v_pan, 'FAT', 4, 'Opcional', false);
-  perform pg_temp.comp(s, 'palta', 'RAW', 80, 'RAW', true, 1);
+  perform pg_temp.comp(s, 'palta', 'EDIBLE_PORTION', 80, 'RAW', true, 1);
   perform pg_temp.step(v_pan, 1, 'Tostar el pan.', 3, null, null, null, 1);
   perform pg_temp.step(v_pan, 2, 'Freír los huevos a fuego medio.', 5, null, null, null, 1);
   perform pg_temp.step(v_pan, 3, 'Armar con el tomate en rodajas.', 2);
@@ -344,7 +350,7 @@ begin
   perform pg_temp.comp(s, 'yogur natural', 'AS_PACKAGED', 300, null, false, 1);
   s := pg_temp.slot(v_postre, 'FRUIT', 2, 'Fruta');
   perform pg_temp.comp(s, 'arandanos', 'RAW', 100, 'RAW', false, 1);
-  perform pg_temp.comp(s, 'platano',   'RAW', 120, 'RAW', false, 2);
+  perform pg_temp.comp(s, 'platano',   'EDIBLE_PORTION', 120, 'RAW', false, 2);
   perform pg_temp.alt(s, 'manzana', 'GOOD');
   s := pg_temp.slot(v_postre, 'TOPPING', 3, 'Topping', false);
   perform pg_temp.comp(s, 'avena tradicional', 'RAW', 30, null, true, 1);

@@ -2,7 +2,8 @@ import { uuidParam } from "@/lib/route-params";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell } from "@/components/AppShell";
+import { Card, Chip, EmptyState, ErrorNote, Icon, Notice, Section } from "@/components/ui";
 import { roundForDisplay } from "@/domain/catalog/nutrition";
 import { NUTRIENT_LABELS, type NutrientKey } from "@/domain/catalog/types";
 import { formatDate } from "@/domain/nutrition/calendar";
@@ -100,186 +101,259 @@ export default async function ComidaConfirmadaPage({ params }: Props) {
 
   const g = (n: number) => Math.round(n).toLocaleString("es-CL");
 
-  return (
-    <main className="mx-auto max-w-3xl px-4 pb-16">
-      <AppNav active="plan" />
-      <Link href="/plan" className="text-sm text-[var(--accent)]">
-        ← Semana
-      </Link>
+  const partes = [
+    fecha ? formatDate(fecha) : null,
+    MEAL_TYPE_LABELS[asignacion.meal_type as MealType],
+    receta?.version_number ? `receta v${receta.version_number}` : null,
+  ].filter(Boolean);
+  const crudo = partes.join(" · ");
+  const subtitulo = crudo.charAt(0).toUpperCase() + crudo.slice(1);
 
-      <header className="mb-4 mt-2">
-        <h1 className="text-2xl font-semibold">{receta?.name ?? "Comida confirmada"}</h1>
-        <p className="mt-1 text-sm text-[var(--ink)]/60">
-          {fecha && <span className="capitalize">{formatDate(fecha)}</span>} ·{" "}
-          {MEAL_TYPE_LABELS[asignacion.meal_type as MealType]}
-          {receta?.version_number && <> · receta v{receta.version_number}</>}
-        </p>
-        {asignacion.confirmed_at && (
-          <p className="mt-1 text-xs text-[var(--ink)]/50">
-            Confirmada el{" "}
-            {new Date(asignacion.confirmed_at).toLocaleString("es-CL", {
-              timeZone: "America/Santiago",
-            })}
-            . Estas porciones quedaron guardadas tal como se calcularon.
-            {Number(asignacion.confirm_count ?? 0) > 1 && (
-              <> Se recalculó {asignacion.confirm_count} veces antes de servirse.</>
-            )}
+  return (
+    <AppShell active="plan" title={receta?.name ?? "Comida confirmada"} subtitle={subtitulo}>
+      <div className="mt-md space-y-md">
+        <Link
+          href="/plan"
+          className="inline-flex items-center gap-xs font-body-sm text-body-sm font-semibold text-primary"
+        >
+          <Icon name="arrow_back" className="text-[18px]" />
+          Semana
+        </Link>
+
+        <Card className="p-md">
+          {asignacion.confirmed_at && (
+            <p className="font-body-sm text-body-sm text-on-surface-variant">
+              Confirmada el{" "}
+              {new Date(asignacion.confirmed_at).toLocaleString("es-CL", {
+                timeZone: "America/Santiago",
+              })}
+              . Estas porciones quedaron guardadas tal como se calcularon.
+              {Number(asignacion.confirm_count ?? 0) > 1 && (
+                <> Se recalculó {asignacion.confirm_count} veces antes de servirse.</>
+              )}
+            </p>
+          )}
+          <p className="mt-sm flex items-start gap-sm font-body-sm text-body-sm text-on-surface-variant">
+            <Icon name="group" className="mt-0.5 shrink-0 text-[18px] text-primary" />
+            <span>Comieron: {nombres.length === 0 ? "toda la familia" : nombres.join(", ")}.</span>
           </p>
-        )}
-        <p className="mt-1 text-xs text-[var(--ink)]/50">
-          Comieron: {nombres.length === 0 ? "toda la familia" : nombres.join(", ")}.
-        </p>
+        </Card>
+
         {asignacion.needs_review && (
-          <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <Notice icon="pending_actions">
             {asignacion.review_reason ?? "Algo cambió alrededor de esta comida"}. Lo guardado acá no
             se tocó: sigue siendo lo que se calculó ese día.
-          </p>
+          </Notice>
         )}
-      </header>
+      </div>
 
       {servings.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-[var(--ink)]/20 p-6 text-center text-sm text-[var(--ink)]/60">
-          Esta comida todavía no tiene porciones guardadas.
-        </p>
+        <div className="mt-lg">
+          <EmptyState icon="no_meals">
+            Esta comida todavía no tiene porciones guardadas.
+          </EmptyState>
+        </div>
       ) : (
         <>
-          <section className="mb-6 space-y-3">
-            {servings.map((s) => (
-              <article key={s.id} className="rounded-2xl border border-[var(--ink)]/10 bg-white p-4">
-                <div className="mb-2 flex items-start justify-between gap-3">
-                  <h2 className="font-medium">{s.memberName}</h2>
-                  <span className="shrink-0 text-[11px] text-[var(--ink)]/50">
-                    nivel {s.adaptationLevel} · {s.fit}
-                  </span>
-                </div>
+          <Section title="Se sirvió" className="mt-lg">
+            <ul className="space-y-md">
+              {servings.map((s) => (
+                <li key={s.id}>
+                  <Card as="article" className="p-md">
+                    <div className="mb-md flex items-start gap-md">
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-tertiary-fixed font-headline-sm text-headline-sm text-on-tertiary-fixed">
+                        {s.memberName.slice(0, 1)}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate font-headline-sm text-headline-sm text-on-surface">
+                          {s.memberName}
+                        </h3>
+                        <p className="mt-0.5 font-body-sm text-body-sm text-on-surface-variant">
+                          nivel {s.adaptationLevel} · {s.fit}
+                        </p>
+                      </div>
+                    </div>
 
-                {s.clinicalStatus === "CLINICALLY_INVALIDATED" && (
-                  <p className="mb-2 rounded-xl border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-900" role="alert">
-                    ⛔ NO SERVIR SIN REVISIÓN — esta porción quedó clínicamente invalidada.
-                    El detalle vive en Salud, con quien tiene permiso.
-                  </p>
-                )}
-                {s.clinicalStatus === "REVIEW_REQUIRED" && (
-                  <p className="mb-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                    Adaptación/revisión requerida para esta persona antes de servir.
-                  </p>
-                )}
-                {s.clinicalSource && (
-                  <p className="mb-2 text-[11px] text-[var(--ink)]/50">
-                    {s.clinicalSource === "RECIPE_BASE_ESTIMATE"
-                      ? "Evaluación preliminar basada en la porción base de la receta."
-                      : s.clinicalSource === "NONE"
-                        ? "Sin nutrición evaluable para esta comida."
-                        : "Evaluado con tu porción individual."}
-                  </p>
-                )}
-                {s.unverifiableConstraints.length > 0 && (
-                  <p className="mb-2 inline-block rounded-full bg-amber-100 px-2.5 py-1 text-[11px] text-amber-900">
-                    {s.unverifiableConstraints.includes("ENERGY_MAX")
-                      ? "Tope de calorías SIN verificar (ficha incompleta)"
-                      : "Mínimo de proteína SIN verificar (ficha incompleta)"}
-                  </p>
-                )}
+                    {s.clinicalStatus === "CLINICALLY_INVALIDATED" && (
+                      <div className="mb-sm">
+                        <ErrorNote>
+                          <Icon name="block" className="mr-1 align-[-4px] text-[18px]" />
+                          <strong>NO SERVIR SIN REVISIÓN</strong> — esta porción quedó clínicamente
+                          invalidada. El detalle vive en Salud, con quien tiene permiso.
+                        </ErrorNote>
+                      </div>
+                    )}
+                    {s.clinicalStatus === "REVIEW_REQUIRED" && (
+                      <div className="mb-sm">
+                        <Notice icon="stethoscope">
+                          Adaptación/revisión requerida para esta persona antes de servir.
+                        </Notice>
+                      </div>
+                    )}
+                    {/*
+                      SIN EVALUAR ≠ compatible. Antes solo se pintaba algo si el
+                      estado era CLINICALLY_INVALIDATED o REVIEW_REQUIRED, así
+                      que una porción que JAMÁS pasó por el motor clínico se veía
+                      idéntica a una evaluada y limpia. Esa es exactamente la
+                      mentira que el Sprint 11 prohíbe: UNKNOWN NUNCA SIGNIFICA
+                      NORMAL. Las dos ramas de abajo son las dos caras que
+                      faltaban.
+                    */}
+                    {(s.clinicalStatus === "NOT_ASSESSED" || !s.clinicalAssessed) && (
+                      <div className="mb-sm">
+                        <Notice icon="help">
+                          <strong>SIN EVALUACIÓN CLÍNICA</strong> — esta porción no pasó por el
+                          motor clínico, así que no está dicho que sea compatible ni que no lo sea.
+                          Si esta persona tiene restricciones médicas, revísalas en Salud antes de
+                          servir.
+                        </Notice>
+                      </div>
+                    )}
+                    {(s.clinicalStatus === "COMPATIBLE" ||
+                      s.clinicalStatus === "COMPATIBLE_WITH_CAUTION") && (
+                      <div className="mb-sm">
+                        <Chip
+                          tono={s.clinicalStatus === "COMPATIBLE" ? "primario" : "atencion"}
+                          icon={s.clinicalStatus === "COMPATIBLE" ? "verified" : "info"}
+                        >
+                          {s.clinicalStatus === "COMPATIBLE"
+                            ? "Evaluada: sin conflictos clínicos"
+                            : "Evaluada: compatible con precauciones"}
+                        </Chip>
+                      </div>
+                    )}
+                    {s.clinicalSource && (
+                      <p className="mb-sm font-body-sm text-body-sm text-on-surface-variant">
+                        {s.clinicalSource === "RECIPE_BASE_ESTIMATE"
+                          ? "Evaluación preliminar basada en la porción base de la receta."
+                          : s.clinicalSource === "NONE"
+                            ? "Sin nutrición evaluable para esta comida."
+                            : "Evaluado con tu porción individual."}
+                      </p>
+                    )}
+                    {s.unverifiableConstraints.length > 0 && (
+                      <div className="mb-sm">
+                        <Chip tono="atencion" icon="help">
+                          {s.unverifiableConstraints.includes("ENERGY_MAX")
+                            ? "Tope de calorías SIN verificar (ficha incompleta)"
+                            : "Mínimo de proteína SIN verificar (ficha incompleta)"}
+                        </Chip>
+                      </div>
+                    )}
 
-                <ul className="mb-3 space-y-1 text-sm">
-                  {s.components
-                    .filter((c) => (c.proposed_quantity ?? 0) > 0)
-                    .map((c, i) => (
-                      <li key={`${c.label}-${i}`} className="flex justify-between gap-3">
-                        <span>
-                          {c.label}
-                          {c.cooking_method && (
-                            <span className="ml-2 text-[11px] text-[var(--ink)]/50">
-                              {COOKING_METHOD_LABELS[c.cooking_method as never] ?? c.cooking_method}
+                    <ul className="mb-md grid grid-cols-2 gap-sm sm:grid-cols-3">
+                      {s.components
+                        .filter((c) => (c.proposed_quantity ?? 0) > 0)
+                        .map((c, i) => (
+                          <li
+                            key={`${c.label}-${i}`}
+                            className="flex flex-col items-center gap-xs rounded-xl bg-surface-container px-sm py-md text-center"
+                          >
+                            <span className="font-label-md text-label-md text-on-surface-variant">
+                              {c.label}
                             </span>
-                          )}
-                        </span>
-                        <span className="shrink-0 tabular-nums">
-                          {g(c.proposed_quantity ?? 0)} {c.unit === "G" ? "g" : "ml"}
-                        </span>
-                      </li>
-                    ))}
-                </ul>
-
-                <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1 rounded-xl bg-[var(--paper)] px-3 py-2 text-xs">
-                  {(["energy_kcal", "protein_g", "carbohydrates_g", "fat_g"] as NutrientKey[]).map(
-                    (key) => {
-                      const valor = (s.nutrition as Record<string, number | null>)[key];
-                      const estado = (s.completeness as Record<string, string>)[key];
-                      const redondeado = roundForDisplay(valor, key === "energy_kcal" ? 0 : 1);
-                      return (
-                        <span key={key} className="text-[var(--ink)]/70">
-                          {NUTRIENT_LABELS[key].label}:{" "}
-                          {redondeado === null ? (
-                            <span className="text-[var(--ink)]/40">sin datos</span>
-                          ) : (
-                            <strong className="tabular-nums">
-                              {estado === "PARTIAL" && "≥ "}
-                              {redondeado.toLocaleString("es-CL")} {NUTRIENT_LABELS[key].unit}
-                            </strong>
-                          )}
-                        </span>
-                      );
-                    },
-                  )}
-                </div>
-
-                {s.substitutions.length > 0 && (
-                  <p className="mb-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                    Se aplicó un reemplazo aceptado por la persona.
-                  </p>
-                )}
-
-                {s.reasons.length > 0 && (
-                  <details className="text-sm">
-                    <summary className="cursor-pointer text-[var(--accent)]">¿Por qué?</summary>
-                    <ul className="mt-2 space-y-1.5 text-xs text-[var(--ink)]/70">
-                      {s.reasons.map((r, i) => (
-                        <li key={`${r.code}-${i}`}>{r.text}</li>
-                      ))}
+                            <span className="font-headline-sm text-headline-sm tabular-nums text-on-surface">
+                              {g(c.proposed_quantity ?? 0)} {c.unit === "G" ? "g" : "ml"}
+                            </span>
+                            {c.cooking_method && (
+                              <span className="font-body-sm text-body-sm text-on-surface-variant">
+                                {COOKING_METHOD_LABELS[c.cooking_method as never] ??
+                                  c.cooking_method}
+                              </span>
+                            )}
+                          </li>
+                        ))}
                     </ul>
-                  </details>
-                )}
 
-                <p className="mt-2 text-[10px] text-[var(--ink)]/35">
-                  Calculado con {s.optimizerVersion} · perfil {s.profileId.slice(0, 8)} · receta{" "}
-                  {s.versionId.slice(0, 8)}
-                </p>
-              </article>
-            ))}
-          </section>
+                    <div className="mb-sm flex flex-wrap gap-x-md gap-y-1 rounded-2xl bg-surface-container-low px-md py-sm">
+                      {(["energy_kcal", "protein_g", "carbohydrates_g", "fat_g"] as NutrientKey[]).map(
+                        (key) => {
+                          const valor = (s.nutrition as Record<string, number | null>)[key];
+                          const estado = (s.completeness as Record<string, string>)[key];
+                          const redondeado = roundForDisplay(valor, key === "energy_kcal" ? 0 : 1);
+                          return (
+                            <span
+                              key={key}
+                              className="font-body-sm text-body-sm text-on-surface-variant"
+                            >
+                              {NUTRIENT_LABELS[key].label}:{" "}
+                              {redondeado === null ? (
+                                <span className="text-outline">sin datos</span>
+                              ) : (
+                                <strong className="tabular-nums text-on-surface">
+                                  {estado === "PARTIAL" && "≥ "}
+                                  {redondeado.toLocaleString("es-CL")} {NUTRIENT_LABELS[key].unit}
+                                </strong>
+                              )}
+                            </span>
+                          );
+                        },
+                      )}
+                    </div>
 
-          <section>
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--ink)]/60">
-              Se preparó
-            </h2>
-            <ul className="divide-y divide-[var(--ink)]/5 rounded-2xl border border-[var(--ink)]/10 bg-white">
-              {[...totales.entries()].map(([label, datos]) => (
-                <li key={label} className="px-4 py-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium">{label}</span>
-                    <span className="tabular-nums">
-                      {g(datos.total)} {datos.unidad}
-                    </span>
-                  </div>
-                  {datos.porMetodo.size > 1 && (
-                    <ul className="mt-1 space-y-0.5 text-[11px] text-[var(--ink)]/60">
-                      {[...datos.porMetodo.entries()].map(([metodo, cantidad]) => (
-                        <li key={metodo} className="flex justify-between">
-                          <span>{COOKING_METHOD_LABELS[metodo as never] ?? metodo}</span>
-                          <span className="tabular-nums">
-                            {g(cantidad)} {datos.unidad}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                    {s.substitutions.length > 0 && (
+                      <div className="mb-sm">
+                        <Notice icon="swap_horiz">
+                          Se aplicó un reemplazo aceptado por la persona.
+                        </Notice>
+                      </div>
+                    )}
+
+                    {s.reasons.length > 0 && (
+                      <details className="font-body-sm text-body-sm">
+                        <summary className="cursor-pointer font-semibold text-primary">
+                          ¿Por qué?
+                        </summary>
+                        <ul className="mt-sm space-y-1.5 text-on-surface-variant">
+                          {s.reasons.map((r, i) => (
+                            <li key={`${r.code}-${i}`}>{r.text}</li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
+
+                    <p className="mt-sm font-label-md text-label-md text-outline">
+                      Calculado con {s.optimizerVersion} · perfil {s.profileId.slice(0, 8)} · receta{" "}
+                      {s.versionId.slice(0, 8)}
+                    </p>
+                  </Card>
                 </li>
               ))}
             </ul>
-          </section>
+          </Section>
+
+          <Section title="Se preparó">
+            <Card>
+              <ul className="divide-y divide-outline-variant/40">
+                {[...totales.entries()].map(([label, datos]) => (
+                  <li key={label} className="px-md py-sm">
+                    <div className="flex items-baseline justify-between gap-md">
+                      <span className="font-body-md text-body-md font-semibold text-on-surface">
+                        {label}
+                      </span>
+                      <span className="shrink-0 font-headline-sm text-headline-sm tabular-nums text-primary">
+                        {g(datos.total)} {datos.unidad}
+                      </span>
+                    </div>
+                    {datos.porMetodo.size > 1 && (
+                      <ul className="mt-sm flex flex-wrap gap-xs">
+                        {[...datos.porMetodo.entries()].map(([metodo, cantidad]) => (
+                          <li key={metodo}>
+                            <Chip>
+                              {COOKING_METHOD_LABELS[metodo as never] ?? metodo}: {g(cantidad)}{" "}
+                              {datos.unidad}
+                            </Chip>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </Section>
         </>
       )}
-    </main>
+    </AppShell>
   );
 }

@@ -6,8 +6,14 @@ import { createProduct } from "../../actions";
 import { createProductSchema, type CreateProductInput } from "@/domain/catalog/schemas";
 import { normalizeLabelToPer100, roundForDisplay } from "@/domain/catalog/nutrition";
 import { NUTRIENT_KEYS, NUTRIENT_LABELS, type NutritionValues } from "@/domain/catalog/types";
+import { Button, ButtonOutline, Card, ErrorNote, Icon } from "@/components/ui";
 
-const inputCls = "rounded-xl border border-gray-300 bg-white px-3 py-2.5 w-full";
+/** Campo de formulario del kit: mismo alto de toque en todas las pantallas. */
+const FIELD =
+  "mt-xs min-h-[48px] w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-md py-sm font-body-md text-body-md text-on-surface";
+
+/** Etiqueta sobre el campo. */
+const LABEL = "block font-body-sm text-body-sm font-semibold text-on-surface-variant";
 
 export function ProductForm({ initialBarcode }: { initialBarcode: string }) {
   const router = useRouter();
@@ -69,192 +75,212 @@ export function ProductForm({ initialBarcode }: { initialBarcode: string }) {
       : review.packageUnit === "ML" ? "ml" : "g";
 
     return (
-      <section className="rounded-xl border border-[var(--accent)] bg-white p-4">
-        <h2 className="font-semibold">Interpretamos:</h2>
-        <p className="mt-1 text-sm">
-          <strong>{review.name}</strong>
+      <Card as="section" className="p-md">
+        <div className="flex items-center gap-sm">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-fixed text-on-primary-fixed">
+            <Icon name="fact_check" filled />
+          </span>
+          <h2 className="font-headline-sm text-headline-sm text-on-surface">Interpretamos</h2>
+        </div>
+
+        <p className="mt-sm font-body-md text-body-md text-on-surface">
+          <strong className="font-semibold">{review.name}</strong>
           {review.brand ? ` · ${review.brand}` : ""}
           {review.barcode ? ` · ${review.barcode}` : ""}
         </p>
         {isPerServing ? (
-          <p className="mt-1 text-sm opacity-70">
+          <p className="mt-xs font-body-sm text-body-sm text-on-surface-variant">
             Porción de {review.servingQuantity} {unit}
             {review.nutrition.energy_kcal != null ? ` = ${review.nutrition.energy_kcal} kcal` : ""}.
             Normalizado a 100 {unit} (el dato original se conserva):
           </p>
         ) : (
-          <p className="mt-1 text-sm opacity-70">Valores por 100 {unit}:</p>
+          <p className="mt-xs font-body-sm text-body-sm text-on-surface-variant">
+            Valores por 100 {unit}:
+          </p>
         )}
-        <table className="mt-2 w-full text-sm">
-          <tbody>
-            {NUTRIENT_KEYS.map((key) => {
-              const value = per100[key];
-              if (value === null || value === undefined) return null;
-              return (
-                <tr key={key} className="border-t border-gray-100">
-                  <td className="py-1">{NUTRIENT_LABELS[key].label}</td>
-                  <td className="py-1 text-right tabular-nums">
-                    {roundForDisplay(value, 1)} {NUTRIENT_LABELS[key].unit} / 100 {unit}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        <p className="mt-2 text-xs opacity-60">
+
+        <div className="mt-sm overflow-x-auto">
+          <table className="w-full font-body-sm text-body-sm">
+            <tbody>
+              {NUTRIENT_KEYS.map((key) => {
+                const value = per100[key];
+                if (value === null || value === undefined) return null;
+                return (
+                  <tr key={key} className="border-t border-outline-variant/40">
+                    <td className="py-sm pr-md text-on-surface-variant">
+                      {NUTRIENT_LABELS[key].label}
+                    </td>
+                    <td className="py-sm text-right font-semibold tabular-nums text-on-surface">
+                      {roundForDisplay(value, 1)} {NUTRIENT_LABELS[key].unit} / 100 {unit}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <p className="mt-sm font-label-md text-label-md text-outline">
           Los nutrientes no ingresados quedarán como “sin dato” (no como cero).
         </p>
-        <div className="mt-4 flex gap-2">
-          <button
-            onClick={confirm}
-            disabled={pending}
-            className="flex-1 rounded-xl bg-[var(--accent)] px-4 py-3 font-semibold text-white disabled:opacity-50"
-          >
+
+        <div className="mt-md flex flex-wrap gap-sm">
+          <Button onClick={confirm} disabled={pending} className="flex-1 py-3">
+            <Icon name="save" className="text-[18px]" />
             {pending ? "Guardando…" : "Confirmar y guardar"}
-          </button>
-          <button
-            onClick={() => setReview(null)}
-            disabled={pending}
-            className="rounded-xl border border-gray-300 px-4 py-3"
-          >
+          </Button>
+          <ButtonOutline onClick={() => setReview(null)} disabled={pending} className="py-3">
             Corregir
-          </button>
+          </ButtonOutline>
         </div>
-      </section>
+      </Card>
     );
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      {error ? (
-        <p className="rounded-lg bg-red-100 px-3 py-2 text-sm text-red-800" role="alert">
-          {error}
-        </p>
-      ) : null}
+    <div className="flex flex-col gap-md">
+      {error ? <ErrorNote>{error}</ErrorNote> : null}
 
-      <label className="text-sm font-medium">
-        Nombre *
-        <input className={inputCls} value={form.name} onChange={(e) => set("name", e.target.value)} />
-      </label>
-      <label className="text-sm font-medium">
-        Marca
-        <input className={inputCls} value={form.brand} onChange={(e) => set("brand", e.target.value)} />
-      </label>
-      <label className="text-sm font-medium">
-        Código de barras
-        <input
-          className={inputCls}
-          inputMode="numeric"
-          value={form.barcode}
-          onChange={(e) => set("barcode", e.target.value)}
-          placeholder="EAN-8 / UPC-A / EAN-13 / GTIN-14"
-        />
-      </label>
-
-      <div className="grid grid-cols-2 gap-2">
-        <label className="text-sm font-medium">
-          Peso del envase
+      <Card className="flex flex-col gap-md p-md">
+        <label className={LABEL}>
+          Nombre *
           <input
-            className={inputCls}
-            inputMode="decimal"
-            value={form.packageQuantity}
-            onChange={(e) => set("packageQuantity", e.target.value)}
+            className={FIELD}
+            value={form.name}
+            onChange={(e) => set("name", e.target.value)}
           />
         </label>
-        <label className="text-sm font-medium">
-          Unidad
-          <select
-            className={inputCls}
-            value={form.packageUnit}
-            onChange={(e) => set("packageUnit", e.target.value)}
-          >
-            <option value="G">g</option>
-            <option value="ML">ml</option>
-          </select>
+        <label className={LABEL}>
+          Marca
+          <input
+            className={FIELD}
+            value={form.brand}
+            onChange={(e) => set("brand", e.target.value)}
+          />
         </label>
-      </div>
+        <label className={LABEL}>
+          Código de barras
+          <input
+            className={FIELD}
+            inputMode="numeric"
+            value={form.barcode}
+            onChange={(e) => set("barcode", e.target.value)}
+            placeholder="EAN-8 / UPC-A / EAN-13 / GTIN-14"
+          />
+        </label>
 
-      <fieldset className="rounded-xl border border-gray-200 p-3">
-        <legend className="px-1 text-sm font-semibold">Información nutricional</legend>
-        <div className="flex gap-3 text-sm">
-          <label className="flex items-center gap-1.5">
+        <div className="grid grid-cols-2 gap-sm">
+          <label className={LABEL}>
+            Peso del envase
             <input
-              type="radio"
-              checked={form.nutritionMode === "PER_SERVING"}
-              onChange={() => set("nutritionMode", "PER_SERVING")}
+              className={FIELD}
+              inputMode="decimal"
+              value={form.packageQuantity}
+              onChange={(e) => set("packageQuantity", e.target.value)}
             />
-            Por porción
           </label>
-          <label className="flex items-center gap-1.5">
-            <input
-              type="radio"
-              checked={form.nutritionMode === "PER_100"}
-              onChange={() => set("nutritionMode", "PER_100")}
-            />
-            Por 100 g/ml
+          <label className={LABEL}>
+            Unidad
+            <select
+              className={FIELD}
+              value={form.packageUnit}
+              onChange={(e) => set("packageUnit", e.target.value)}
+            >
+              <option value="G">g</option>
+              <option value="ML">ml</option>
+            </select>
           </label>
         </div>
+      </Card>
 
-        {form.nutritionMode === "PER_SERVING" ? (
-          <div className="mt-2 grid grid-cols-3 gap-2">
-            <label className="text-sm">
-              Porción *
+      <Card as="section" className="p-md">
+        <fieldset className="min-w-0">
+          <legend className="mb-sm font-headline-sm text-headline-sm text-on-surface">
+            Información nutricional
+          </legend>
+
+          <div className="flex flex-wrap gap-md">
+            <label className="flex items-center gap-xs font-body-sm text-body-sm text-on-surface">
               <input
-                className={inputCls}
-                inputMode="decimal"
-                value={form.servingQuantity}
-                onChange={(e) => set("servingQuantity", e.target.value)}
-                placeholder="48"
+                type="radio"
+                className="h-5 w-5 accent-primary"
+                checked={form.nutritionMode === "PER_SERVING"}
+                onChange={() => set("nutritionMode", "PER_SERVING")}
               />
+              Por porción
             </label>
-            <label className="text-sm">
-              Unidad
-              <select
-                className={inputCls}
-                value={form.servingUnit}
-                onChange={(e) => set("servingUnit", e.target.value)}
-              >
-                <option value="G">g</option>
-                <option value="ML">ml</option>
-              </select>
-            </label>
-            <label className="text-sm">
-              Nombre
+            <label className="flex items-center gap-xs font-body-sm text-body-sm text-on-surface">
               <input
-                className={inputCls}
-                value={form.servingName}
-                onChange={(e) => set("servingName", e.target.value)}
-                placeholder="rebanada"
+                type="radio"
+                className="h-5 w-5 accent-primary"
+                checked={form.nutritionMode === "PER_100"}
+                onChange={() => set("nutritionMode", "PER_100")}
               />
+              Por 100 g/ml
             </label>
           </div>
-        ) : null}
 
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {NUTRIENT_KEYS.map((key) => (
-            <label key={key} className="text-sm">
-              {NUTRIENT_LABELS[key].label} ({NUTRIENT_LABELS[key].unit})
-              <input
-                className={inputCls}
-                inputMode="decimal"
-                value={form.nutrition[key] ?? ""}
-                onChange={(e) => setNutrient(key, e.target.value)}
-                placeholder="sin dato"
-              />
-            </label>
-          ))}
-        </div>
-        <p className="mt-2 text-xs opacity-60">
-          Deja vacío lo que la etiqueta no informa: se guardará como “sin dato”, nunca como 0.
-        </p>
-      </fieldset>
+          {form.nutritionMode === "PER_SERVING" ? (
+            <div className="mt-md grid grid-cols-2 gap-sm sm:grid-cols-3">
+              <label className={LABEL}>
+                Porción *
+                <input
+                  className={FIELD}
+                  inputMode="decimal"
+                  value={form.servingQuantity}
+                  onChange={(e) => set("servingQuantity", e.target.value)}
+                  placeholder="48"
+                />
+              </label>
+              <label className={LABEL}>
+                Unidad
+                <select
+                  className={FIELD}
+                  value={form.servingUnit}
+                  onChange={(e) => set("servingUnit", e.target.value)}
+                >
+                  <option value="G">g</option>
+                  <option value="ML">ml</option>
+                </select>
+              </label>
+              <label className={`${LABEL} col-span-2 sm:col-span-1`}>
+                Nombre
+                <input
+                  className={FIELD}
+                  value={form.servingName}
+                  onChange={(e) => set("servingName", e.target.value)}
+                  placeholder="rebanada"
+                />
+              </label>
+            </div>
+          ) : null}
 
-      <button
-        onClick={toReview}
-        className="rounded-xl bg-[var(--accent)] px-4 py-3 font-semibold text-white"
-      >
+          <div className="mt-md grid grid-cols-1 gap-sm sm:grid-cols-2">
+            {NUTRIENT_KEYS.map((key) => (
+              <label key={key} className={LABEL}>
+                {NUTRIENT_LABELS[key].label} ({NUTRIENT_LABELS[key].unit})
+                <input
+                  className={FIELD}
+                  inputMode="decimal"
+                  value={form.nutrition[key] ?? ""}
+                  onChange={(e) => setNutrient(key, e.target.value)}
+                  placeholder="sin dato"
+                />
+              </label>
+            ))}
+          </div>
+
+          <p className="mt-sm font-label-md text-label-md text-outline">
+            Deja vacío lo que la etiqueta no informa: se guardará como “sin dato”, nunca como 0.
+          </p>
+        </fieldset>
+      </Card>
+
+      <Button full onClick={toReview}>
+        <Icon name="checklist" className="text-[18px]" />
         Revisar antes de guardar
-      </button>
+      </Button>
     </div>
   );
 }

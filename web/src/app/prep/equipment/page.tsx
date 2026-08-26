@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { AppNav } from "@/components/AppNav";
+import { AppShell } from "@/components/AppShell";
+import { Icon, LinkButton } from "@/components/ui";
 import { loadHouseholdMembers } from "@/app/family/nutrition-queries";
 import { loadIngredientOptions } from "@/app/pantry/queries";
 import { loadEquipment, loadPrepPreferences } from "../queries";
@@ -31,24 +31,24 @@ export default async function EquipmentPage() {
   ]);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-16">
-      <AppNav active="prep" />
-      <header className="mb-4 flex items-end justify-between gap-2">
-        <div>
-          <h1 className="text-xl font-semibold">Equipos y preferencias</h1>
-          <p className="text-xs text-[var(--ink)]/60">
-            Lo que hay en TU cocina y cómo prefieres preparar cada alimento. El equipo nunca es
-            requisito: siempre existe el camino manual.
-          </p>
-        </div>
-        <Link
-          href="/prep"
-          className="shrink-0 rounded-full border border-[var(--accent)] px-4 py-2.5 text-xs font-medium text-[var(--accent)]"
-        >
-          ← Preparación
-        </Link>
-      </header>
-      <EquipmentBoard equipment={equipment} preferences={preferences} ingredientes={ingredientes} />
-    </main>
+    <AppShell
+      active="prep"
+      title="Equipos y preferencias"
+      subtitle="Lo que hay en TU cocina y cómo prefieres preparar cada alimento. El equipo nunca es requisito: siempre existe el camino manual."
+      action={
+        <LinkButton href="/prep" variant="outline">
+          <Icon name="arrow_back" className="text-[18px]" />
+          Preparación
+        </LinkButton>
+      }
+    >
+      <div className="mt-md">
+        <EquipmentBoard
+          equipment={equipment}
+          preferences={preferences}
+          ingredientes={ingredientes}
+        />
+      </div>
+    </AppShell>
   );
 }

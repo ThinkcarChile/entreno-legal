@@ -7,10 +7,10 @@ import { crearHogar, levantarBase, type Harness } from "./harness";
 /**
  * Integración del Sprint 8 — la costura base de datos → dominio → motor.
  *
- * Las reservas salen de porciones PLANNED reales, el consumo de porciones
- * CONSUMED reales, la merma de la vista sobre el ledger — y el motor se
- * alimenta con esas filas, no con objetos de fantasía. RLS con rol
- * authenticated, jamás superusuario.
+ * Las reservas salen de porciones PLANNED reales, el consumo de registros de
+ * servido reales (0036: el hecho físico ya no es un estado de la porción), la
+ * merma de la vista sobre el ledger — y el motor se alimenta con esas filas, no
+ * con objetos de fantasía. RLS con rol authenticated, jamás superusuario.
  */
 
 const USER_A = "00000000-0000-0000-0000-0000000000d8";
@@ -146,21 +146,44 @@ async function stockInputDesdeBase(): Promise<StockInput> {
       projectionId: d.projection_id,
     }));
 
+    // Eje ACTUAL — lo que de verdad salió de la despensa.
+    //
+    // Desde 0036 el hecho físico NO vive más en el estado de la porción: vive
+    // en el registro de servido, que es el único que autoriza un descuento.
+    // Preguntar por porciones CONSUMED devolvía vacío, y el motor lee vacío
+    // como CERO: el forecast se quedaba sin historia sin decir una palabra.
+    //
+    // Las porciones CONSUMED del mundo anterior a 0036 siguen siendo consumo
+    // real (así lo declara `app.protect_served_projection`), así que se suman:
+    // los dos conjuntos son disjuntos por estado y ninguno tapa al otro.
+    //
+    // El cargador de produccion (`web/src/app/stock/queries.ts`) hace esta
+    // MISMA union: lo servido de la 0036 mas las porciones CONSUMED del mundo
+    // anterior. Si alguna de las dos mitades se cae de alla, la pantalla de
+    // stock lee historia vacia y el motor lee el vacio como cero, asi que las
+    // dos consultas tienen que seguir viajando juntas en los dos lados.
     const consumption = (
       await h.filas<{
-        serving_date: string; ingredient_id: string; proposed_quantity: string;
+        serving_date: string; ingredient_id: string; quantity: string;
         unit: string; weight_basis: string; cooking_method: string | null;
       }>(
-        `select p.serving_date::text, c.ingredient_id, c.proposed_quantity,
-                c.unit::text as unit, c.weight_basis::text as weight_basis,
-                c.cooking_method::text as cooking_method
+        `select r.served_on::text as serving_date, i.ingredient_id,
+                i.served_quantity as quantity, i.served_unit as unit,
+                i.served_weight_basis::text as weight_basis,
+                i.planned_cooking_method::text as cooking_method
+         from public.meal_serving_records r
+         join public.meal_serving_record_items i on i.record_id = r.id
+         where r.status = 'ACTIVE' and i.ingredient_id is not null
+         union all
+         select p.serving_date::text, c.ingredient_id, c.proposed_quantity,
+                c.unit::text, c.weight_basis::text, c.cooking_method::text
          from public.member_serving_projections p
          join public.member_serving_components c on c.projection_id = p.id
          where p.status = 'CONSUMED' and c.ingredient_id is not null`,
       )
     ).map((c) => ({
       ingredientId: c.ingredient_id,
-      quantity: Number(c.proposed_quantity),
+      quantity: Number(c.quantity),
       unit: c.unit as "G",
       weightBasis: c.weight_basis as "RAW",
       cookingMethod: c.cooking_method,
@@ -311,7 +334,7 @@ describe("§4/§59 el ejemplo del director, desde filas reales", () => {
     expect(items.find((i) => i.ingredientId === polloId)!.reserved).toBe(3200);
   });
 
-  it("§59A consumir la comida: la reserva cae y el consumo aparece", async () => {
+  it("§59A servir la comida: la reserva cae y el consumo aparece", async () => {
     await h.como(USER_A, async () => {
       await h.db.query("select public.consume_planned_meal($1)", [martes]);
     });
@@ -319,13 +342,17 @@ describe("§4/§59 el ejemplo del director, desde filas reales", () => {
     const input = await stockInputDesdeBase();
     const items = analyzeStock(input);
     const pollo = items.find((i) => i.ingredientId === polloId)!;
-    // La porción CONSUMED salió de las reservas futuras (§4)…
+    // La porción servida salió de las reservas futuras (§4)…
     expect(pollo.reserved).toBe(2100);
     // …el stock físico bajó por FEFO (4.500 − 1.100)…
     expect(pollo.onHand).toBe(3400);
     expect(pollo.available).toBe(1300); // libre igual: comió lo reservado
-    // …y el consumo declarado alimenta la historia.
+    // …y lo que salió a la mesa alimenta la historia. El invariante es el
+    // mismo de siempre; lo que cambió es quién lo cuenta: el registro de
+    // servido, que es el dueño del hecho físico.
     expect(input.consumption.some((c) => c.quantity === 1100)).toBe(true);
+    // Y lo cuenta UNA sola vez: nada de sumar la porción y su registro.
+    expect(input.consumption.filter((c) => c.quantity === 1100)).toHaveLength(1);
   });
 
   it("§45/§59E sustitución: pollo baja, merluza sube — el alimento REAL", async () => {
