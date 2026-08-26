@@ -10,7 +10,7 @@
  *   node scripts/aplicar-migracion.mjs --check        (solo credenciales)
  *   node scripts/aplicar-migracion.mjs --pendientes   (qué falta aplicar)
  *
- * El token se lee de `web/.env.local` (ignorado por git) o del entorno:
+ * El token se lee de `.env.deploy` en la raiz (ignorado por git) o del entorno:
  *   SUPABASE_ACCESS_TOKEN=sbp_...
  * Se crea en https://supabase.com/dashboard/account/tokens y se revoca desde
  * ahí mismo cuando se quiera. NUNCA se imprime ni se guarda en el repo.
@@ -21,27 +21,75 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+const SALTO = String.fromCharCode(10);
+const COMILLAS = new RegExp("^[\"']|[\"']$", "g");
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIGRACIONES = path.join(RAIZ, "supabase", "migrations");
 const ENV_LOCAL = path.join(RAIZ, "web", ".env.local");
 
-/** Lee una variable de `web/.env.local` sin volcar el archivo a memoria global. */
-function delEnvLocal(clave) {
-  if (!existsSync(ENV_LOCAL)) return null;
-  for (const linea of readFileSync(ENV_LOCAL, "utf8").split("\n")) {
+/**
+ * EL TOKEN NO VIVE EN `web/.env.local`, Y ESO NO ES UNA PREFERENCIA.
+ *
+ * Next.js carga TODO `.env.local` dentro de `process.env` del proceso del
+ * servidor web. Las `NEXT_PUBLIC_*` ademas se incrustan en el bundle del
+ * navegador, pero las otras tampoco son inocuas: quedan al alcance de cada
+ * server action, cada route handler y cada dependencia que corra ahi adentro.
+ *
+ * `SUPABASE_ACCESS_TOKEN` es un token de la Management API: puede ejecutar SQL
+ * arbitrario sobre cualquier proyecto de la cuenta, incluida la base clinica.
+ * La aplicacion NO lo usa — lo usa solo este script de linea de comandos. Que
+ * viviera en el entorno del servidor web era darle a la app entera un poder que
+ * no necesita, y cualquier volcado de entorno o traza de error lo exponia.
+ *
+ * Ahora vive en `.env.deploy` en la raiz (ignorado por git), que Next.js no lee
+ * nunca. La URL del proyecto si puede seguir saliendo de `web/.env.local`: es
+ * publica y viaja en el bundle del navegador de todas formas.
+ */
+const ENV_DESPLIEGUE = path.join(RAIZ, ".env.deploy");
+
+/** Lee una variable de un archivo de entorno sin volcarlo a memoria global. */
+function delArchivo(archivo, clave) {
+  if (!existsSync(archivo)) return null;
+  for (const linea of readFileSync(archivo, "utf8").split(SALTO)) {
     const limpia = linea.trim();
     if (limpia.startsWith("#") || !limpia.includes("=")) continue;
     const i = limpia.indexOf("=");
     if (limpia.slice(0, i).trim() === clave) {
-      return limpia.slice(i + 1).trim().replace(/^["']|["']$/g, "");
+      return limpia.slice(i + 1).trim().replace(COMILLAS, "");
     }
   }
   return null;
 }
 
-const TOKEN = process.env.SUPABASE_ACCESS_TOKEN ?? delEnvLocal("SUPABASE_ACCESS_TOKEN");
+const delEnvLocal = (clave) => delArchivo(ENV_LOCAL, clave);
+
+const TOKEN =
+  process.env.SUPABASE_ACCESS_TOKEN ?? delArchivo(ENV_DESPLIEGUE, "SUPABASE_ACCESS_TOKEN");
+
+// Si el token quedo en el .env de la web se avisa fuerte, en vez de usarlo en
+// silencio: seguir funcionando sin decir nada lo dejaria expuesto para siempre,
+// porque nada volveria a recordarlo.
+if (!TOKEN && delEnvLocal("SUPABASE_ACCESS_TOKEN")) {
+  console.error(
+    [
+      "",
+      "El token esta en web/.env.local, que Next.js carga en el proceso del servidor web.",
+      "Muevelo a .env.deploy en la raiz del repo (ignorado por git) y borralo de alla:",
+      "",
+      "  SUPABASE_ACCESS_TOKEN=sbp_...",
+      "",
+      "Ese token corre SQL arbitrario sobre toda la cuenta; la app web no lo necesita.",
+      "",
+    ].join(SALTO),
+  );
+  process.exit(1);
+}
+
 const URL_SUPABASE =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ?? delEnvLocal("NEXT_PUBLIC_SUPABASE_URL") ?? "";
+  process.env.NEXT_PUBLIC_SUPABASE_URL ??
+  delArchivo(ENV_DESPLIEGUE, "NEXT_PUBLIC_SUPABASE_URL") ??
+  delEnvLocal("NEXT_PUBLIC_SUPABASE_URL") ??
+  "";
 const REF = URL_SUPABASE.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1] ?? null;
 
 function salir(mensaje, codigo = 1) {

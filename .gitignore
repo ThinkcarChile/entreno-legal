@@ -9,3 +9,8 @@ node_modules/
 # intermedios en la historia no le sirven a nadie y esconden el diff que sí
 # importa. La biblioteca tipada es la fuente de verdad; el seed se genera de ahí.
 .plan/
+
+# Token de despliegue (Management API de Supabase). NO va en web/.env.local:
+# Next.js carga ese archivo dentro del proceso del servidor web, y este token
+# puede correr SQL arbitrario sobre toda la cuenta.
+.env.deploy
