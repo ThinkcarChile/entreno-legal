@@ -401,26 +401,70 @@ describe("gate final §2/§15", () => {
     // compatibilidad. El candado se exige DONDE OCURRE EL ACTO FÍSICO, y al
     // envoltorio se le exige que siga delegando: si mañana se escribe un camino
     // propio adentro de él, no tendría el candado y este test lo delata igual.
-    const defs = await h.filas<{ nombre: string; def: string }>(
-      `select p.proname as nombre, pg_get_functiondef(p.oid) as def
+    // EL CANDADO SE EXIGE DONDE OCURRE EL ACTO, Y EL ACTO SE MUDÓ DE ESQUEMA.
+    //
+    // La 0039 conectó `can_edit_plan` y `can_cook`, y para no reescribir tres
+    // funciones de trescientas líneas movió las reales a `app` y dejó en
+    // `public` un envoltorio que primero pregunta el permiso y después delega.
+    // Este test se puso rojo y tenía razón: los envoltorios NO llevan el
+    // candado. Lo que cambió no es el contrato — es dónde vive el acto.
+    //
+    // Así que ahora se exigen las DOS mitades, y ninguna es opcional:
+    //   · la función real (esté en `app` o en `public`) lleva `for update of a`;
+    //   · el envoltorio de `public` DELEGA en ella.
+    // Sin la segunda mitad, mañana alguien escribe un camino propio adentro del
+    // envoltorio, se salta el candado, y el test seguiría verde mirando una
+    // función en `app` que ya nadie llama.
+    const defs = await h.filas<{ esquema: string; nombre: string; def: string }>(
+      `select n.nspname as esquema, p.proname as nombre, pg_get_functiondef(p.oid) as def
        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-       where n.nspname = 'public'
+       where n.nspname in ('public', 'app')
          and p.proname in ('confirm_meal_assignment', 'serve_meal_assignment',
                            'consume_planned_meal')`,
     );
-    expect(defs.map((d) => d.nombre).sort()).toEqual([
-      "confirm_meal_assignment",
-      "consume_planned_meal",
-      "serve_meal_assignment",
-    ]);
-    for (const fn of defs.filter((d) => d.nombre !== "consume_planned_meal")) {
-      expect(fn.def, `${fn.nombre} perdió el candado de la asignación`).toMatch(
+
+    /** La definición de una función, por esquema. */
+    const def = (esquema: string, nombre: string) =>
+      defs.find((d) => d.esquema === esquema && d.nombre === nombre)?.def ?? null;
+
+    // Las tres siguen existiendo en `public`: son la superficie que la app
+    // llama por PostgREST. Si una desaparece, la pantalla que la usa muere.
+    for (const nombre of ["confirm_meal_assignment", "serve_meal_assignment", "consume_planned_meal"]) {
+      expect(def("public", nombre), `public.${nombre} desapareció`).not.toBeNull();
+    }
+
+    for (const nombre of ["confirm_meal_assignment", "serve_meal_assignment"]) {
+      const enApp = def("app", nombre);
+      const enPublic = def("public", nombre)!;
+
+      if (enApp === null) {
+        // Todavía no se mudó: el candado tiene que estar acá mismo.
+        expect(enPublic, `public.${nombre} perdió el candado de la asignación`).toMatch(
+          /for update of a/i,
+        );
+        continue;
+      }
+
+      // Se mudó: el candado va en la real y el envoltorio tiene que delegar.
+      expect(enApp, `app.${nombre} perdió el candado de la asignación`).toMatch(
         /for update of a/i,
       );
+      expect(
+        enPublic,
+        `public.${nombre} dejó de delegar en app.${nombre}: si escribe su propio camino, ` +
+          `no pasa por el candado y esta prueba no lo vería`,
+      ).toMatch(new RegExp(`app\.${nombre}`, "i"));
+      // Y el envoltorio NO puede traerse el acto de vuelta: si tiene su propio
+      // recorrido de asignaciones, ya no es un envoltorio.
+      expect(
+        enPublic,
+        `public.${nombre} volvió a tener cuerpo propio en vez de delegar`,
+      ).not.toMatch(/for update of a/i);
     }
-    const envoltorio = defs.find((d) => d.nombre === "consume_planned_meal")!;
+
+    // El envoltorio histórico sigue apuntando al dueño del acto físico.
     expect(
-      envoltorio.def,
+      def("public", "consume_planned_meal")!,
       "consume_planned_meal dejó de delegar en el dueño del acto físico",
     ).toMatch(/serve_meal_assignment/i);
 
