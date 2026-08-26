@@ -402,7 +402,18 @@ describe("registro acumulado de la biblioteca", () => {
 \`web/src/integration/registro-acumulado.test.ts\`, y se regenera después de cada
 lote. No editar a mano: el test falla si este archivo y la realidad se separan.
 
-**Estado:** ${recetas.length} recetas publicadas · ${ingredientes.length} alimentos en catálogo · ${nuevos} agregados por la biblioteca · ${BIBLIOTECA.length} recetas en la biblioteca tipada.
+**Estado de la BASE DE PRUEBAS**, que es donde se mide esto: ${recetas.length} recetas · ${ingredientes.length} alimentos · ${nuevos} agregados por la biblioteca · ${BIBLIOTECA.length} recetas en la biblioteca tipada.
+
+> **Esto NO es producción.** El número sale de aplicar migraciones y seeds sobre un Postgres
+> efímero, no de consultar la base real. La biblioteca vive en
+> \`supabase/seed/dev_recipes_biblioteca.sql\`, cuya primera línea dice "NO aplicar en
+> producción sin revisión" — porque su nutrición es \`DEV_SEED\`, valores de referencia de
+> desarrollo y no datos del INTA. Mientras ese seed no se aplique, producción sigue con los 23
+> alimentos originales y ninguna de estas recetas.
+>
+> Acá decía "recetas publicadas", y eso se leía como "están en la base". No lo estaban. Una
+> auditoría lo levantó como una promesa que el sistema no cumple, y tenía razón: el número era
+> aritmética sobre los arreglos del código.
 
 > **Regla que gobierna estos registros:** señalan huecos, no los rellenan.
 > Ningún factor de porción comestible ni de rendimiento se inventa para que una
