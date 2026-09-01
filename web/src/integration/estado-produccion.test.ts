@@ -272,8 +272,15 @@ describe("el método con el que se supo decide cuánto vale lo que dice el libro
 describe("el SQL de los testigos, ejecutado", () => {
   let db!: PGlite;
 
-  beforeAll(() => {
-    db = new PGlite();
+  beforeAll(async () => {
+    // Se ESPERA a que la base esté arriba. Antes decía `db = new PGlite()` en un
+    // callback síncrono: `beforeAll` se daba por cumplido con el arranque a
+    // medias y el primer test empezaba a consultar encima del bootstrap. De ahí
+    // salían los rojos que aparecían una corrida de cada tantas —siempre con
+    // otro archivo de integración levantando su propio PostgreSQL al lado— y que
+    // a solas no se reproducían nunca. Los demás archivos de integración ya
+    // usaban `await PGlite.create(...)`; éste era el único que no.
+    db = await PGlite.create();
   }, 60_000);
 
   afterAll(async () => {

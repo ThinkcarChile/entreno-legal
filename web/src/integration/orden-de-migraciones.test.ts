@@ -390,7 +390,10 @@ const RETRATO_DEL_ESQUEMA = `
 `;
 
 async function retratoTrasAplicar(orden: string[]): Promise<string[]> {
-  const db = new PGlite({ extensions: { pg_trgm, pgcrypto } });
+  // `await PGlite.create(...)` y no `new PGlite(...)`: con el constructor a secas
+  // la primera consulta sale encima del bootstrap, que es de donde salían los
+  // rojos de una corrida de cada tantas en estado-produccion.test.ts.
+  const db = await PGlite.create({ extensions: { pg_trgm, pgcrypto } });
   try {
     await db.exec(readFileSync(path.join(RAIZ, "supabase", "tests", "auth_stub.sql"), "utf8"));
     for (const archivo of orden) {
