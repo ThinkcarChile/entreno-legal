@@ -1155,8 +1155,8 @@ begin
     values (v_ing, 'AS_PACKAGED', 'ML', 250, 0.1, 11.2, 0.1, 0, 11.2, 8, 'DEV_SEED', src, 'DEV_SEED por 100 ml, tomando como referencia el extracto de vainilla con alcohol (~35% v/v), donde casi toda la energia es etanol. La esencia artificial sin alcohol tiene mucho menos. En cualquier caso se usan 5-10 ml por receta: el aporte al plato es despreciable y la ficha existe para que el motor no tenga un hueco, no porque el numero mueva la nutricion.');
   end if;
 
-  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type)
-  values ('yema de huevo', 'Yema de huevo', (cats->>'EGGS')::uuid, 'MASS')
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('yema de huevo', 'Yema de huevo', (cats->>'EGGS')::uuid, 'MASS', 0.33)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
     insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
@@ -1164,8 +1164,8 @@ begin
     values (v_ing, 'EDIBLE_PORTION', 'G', 322, 15.9, 3.6, 26.5, 0, 0.6, 9.6, 48, 109, 390, 'DEV_SEED', src, 'DEV_SEED, yema sola. Referencia practica: una yema de huevo grande pesa unos 17-18 g. Declararla como huevo entero mentiria fuerte, que es justo lo que evalua el motor clinico: la yema concentra TODA la grasa, todo el colesterol (~1085 mg/100 g, sin campo donde declararlo) y casi todo el fosforo del huevo. Fibra 0 derivable.');
   end if;
 
-  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type)
-  values ('clara de huevo', 'Clara de huevo', (cats->>'EGGS')::uuid, 'MASS')
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('clara de huevo', 'Clara de huevo', (cats->>'EGGS')::uuid, 'MASS', 0.6)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
     insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
@@ -1389,6 +1389,23 @@ begin
     values (v_ing, 'RAW', 'G', 30, 0.7, 10.5, 0.2, 2.8, 1.7, 2, 102, 18, 'DEV_SEED', src, 'DEV_SEED, aproximado con el perfil de lima acida (Citrus aurantiifolia), que es la especie del limon de Pica; es una variedad distinta del limon comun: mucho mas chica, mas aromatica y con mas cascara en proporcion. El factor 0,45 es la pulpa sin cascara ni semillas. AVISO para el ShoppingEngine: si la receta mide JUGO, el rendimiento real es aun menor (del orden de 30-35% del peso de la fruta), asi que este factor puede quedar corto para comprar.');
   end if;
 end $$;
+
+-- ---------------------------------------------------------------------------
+-- Rendimientos crudo→cocido confirmados (1)
+-- ---------------------------------------------------------------------------
+-- El ShoppingEngine consulta ingredient_yields; sin la fila, "no sé cuánto
+-- comprar" (que es lo correcto) y la receta queda en el registro 8. Cada factor
+-- de acá tiene su razón escrita en RENDIMIENTOS_CONFIRMADOS del catálogo tipado:
+-- esta tabla es donde un hueco se CIERRA, nunca donde se tapa.
+
+insert into public.ingredient_yields (ingredient_id, cooking_method, yield_factor, notes)
+select i.id, r.metodo::public.cooking_method, r.factor, r.nota
+from public.ingredients i
+join (values
+  ('quinoa', 'BOILED', 2.7, 'quínoa hervida ~2,7x su peso seco; referencia DEV_SEED, mismo criterio que el arroz (2,8)')
+) as r(nombre, metodo, factor, nota) on i.canonical_name = r.nombre
+where i.household_id is null
+on conflict do nothing;
 
 -- ---------------------------------------------------------------------------
 -- Ayudantes de sesión (pg_temp: desaparecen al cerrar la conexión).

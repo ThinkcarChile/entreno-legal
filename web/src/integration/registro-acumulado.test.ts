@@ -144,7 +144,7 @@ async function registro1(): Promise<string[]> {
 }
 
 // ---------------------------------------------------------------- registro 2
-function registro2(): { porcion: string[]; rendimiento: string[] } {
+async function registro2(): Promise<{ porcion: string[]; rendimiento: string[] }> {
   const porNombre = new Map(ingredientes.map((i) => [i.canonical_name, i]));
 
   const porcion = REQUIEREN_PORCION_COMESTIBLE.filter((e) => {
@@ -153,8 +153,12 @@ function registro2(): { porcion: string[]; rendimiento: string[] } {
   }).map((e) => `| \`${e.ingrediente}\` | ${e.razon} | sin factor |`);
 
   // Un alimento "tiene rendimiento" si existe una fila en ingredient_yields o
-  // si alguna receta lo declara. Se mira el catálogo, no la receta: el
-  // ShoppingEngine consulta ingredient_yields, no los componentes.
+  // si alguna receta lo declara. El comentario decía esto desde el primer día;
+  // el código miraba SOLO las recetas, así que la quínoa siguió apareciendo
+  // como hueco después de que su rendimiento entró a la tabla — un registro que
+  // acusa un hueco ya cerrado le enseña a la gente a dejar de leerlo, que es la
+  // muerte de un registro. Ahora se consulta la tabla de verdad, que es la que
+  // el ShoppingEngine lee.
   const declaradosEnRecetas = new Set(
     recetas.flatMap((r) =>
       r.componentes
@@ -162,10 +166,17 @@ function registro2(): { porcion: string[]; rendimiento: string[] } {
         .map((c) => (c.target as { ingredientId: string }).ingredientId),
     ),
   );
+  const enTabla = new Set(
+    (
+      await h.filas<{ ingredient_id: string }>(
+        "select distinct ingredient_id from public.ingredient_yields",
+      )
+    ).map((f) => f.ingredient_id),
+  );
 
   const rendimiento = REQUIEREN_RENDIMIENTO.filter((e) => {
     const i = porNombre.get(e.ingrediente);
-    return i && !declaradosEnRecetas.has(i.id);
+    return i && !declaradosEnRecetas.has(i.id) && !enTabla.has(i.id);
   }).map((e) => `| \`${e.ingrediente}\` | ${e.razon} | sin rendimiento en ninguna receta ni en \`ingredient_yields\` |`);
 
   return { porcion, rendimiento };
@@ -384,7 +395,7 @@ async function registro8(): Promise<string[]> {
 describe("registro acumulado de la biblioteca", () => {
   it("el documento commiteado refleja el estado real de hoy", async () => {
     const r1 = await registro1();
-    const r2 = registro2();
+    const r2 = await registro2();
     const r3 = registro3();
     const r4 = await registro4();
     const r5 = registro5();

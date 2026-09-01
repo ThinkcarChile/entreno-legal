@@ -1,5 +1,6 @@
 import {
   INGREDIENTES_NUEVOS,
+  RENDIMIENTOS_CONFIRMADOS,
   MEDIDAS_POR_UNIDAD,
   RECETAS_ANIDADAS,
 } from "./catalog";
@@ -446,6 +447,9 @@ end $$;
 /** SQL completo del lote, derivado de la biblioteca tipada. */
 export function generarSeedSQL(recetas: LibraryRecipe[]): string {
   const ingredientes = INGREDIENTES_NUEVOS.map(sqlIngrediente).join("\n");
+  const rendimientos = RENDIMIENTOS_CONFIRMADOS.map(
+    (r) => `  (${texto(r.ingrediente)}, ${texto(r.metodo)}, ${r.factor}, ${texto(r.nota)})`,
+  ).join(",\n");
 
   return (
     CABECERA +
@@ -466,6 +470,23 @@ begin
   end loop;
 
 ${ingredientes}end $$;
+
+-- ---------------------------------------------------------------------------
+-- Rendimientos crudo→cocido confirmados (${RENDIMIENTOS_CONFIRMADOS.length})
+-- ---------------------------------------------------------------------------
+-- El ShoppingEngine consulta ingredient_yields; sin la fila, "no sé cuánto
+-- comprar" (que es lo correcto) y la receta queda en el registro 8. Cada factor
+-- de acá tiene su razón escrita en RENDIMIENTOS_CONFIRMADOS del catálogo tipado:
+-- esta tabla es donde un hueco se CIERRA, nunca donde se tapa.
+
+insert into public.ingredient_yields (ingredient_id, cooking_method, yield_factor, notes)
+select i.id, r.metodo::public.cooking_method, r.factor, r.nota
+from public.ingredients i
+join (values
+${rendimientos}
+) as r(nombre, metodo, factor, nota) on i.canonical_name = r.nombre
+where i.household_id is null
+on conflict do nothing;
 ` +
     HELPERS +
     `

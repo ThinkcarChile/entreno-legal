@@ -5,6 +5,7 @@ export {
   RECETAS_EXISTENTES,
   RECETAS_ANIDADAS,
   MEDIDAS_POR_UNIDAD,
+  RENDIMIENTOS_CONFIRMADOS,
 } from "./catalog";
 export { LOTE_A } from "./lote-a";
 export { LOTE_B } from "./lote-b";

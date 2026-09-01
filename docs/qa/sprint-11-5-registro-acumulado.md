@@ -226,9 +226,6 @@ el sistema compra el peso que se come en vez del que se compra.
 |---|---|---|
 | `papa` | se pela | sin factor |
 | `limon` | se usa el jugo; cáscara y semillas se botan | sin factor |
-| `pan marraqueta` | su ficha está en EDIBLE_PORTION y el ShoppingEngine necesita el factor para llegar a la cantidad de compra; el pan se come entero, así que el factor real es 1, pero el catálogo no lo declara y el motor no puede suponerlo | sin factor |
-| `yema de huevo` | nadie compra yemas: se compran HUEVOS. El factor tiene que convertir gramos de yema a gramos de huevo entero (un huevo de 55 g da unos 18 g de yema, o sea ~0,33), y hasta que alguien confirme ese número el motor no puede decir cuántos huevos comprar para los alfajores ni para el mil hojas | sin factor |
-| `clara de huevo` | mismo caso por el otro lado: un huevo de 55 g da unos 33 g de clara (~0,60). Sin el factor, los merengues y el turrón de vino no llegan a cantidad de compra | sin factor |
 
 
 ### 2b · Sin rendimiento crudo→cocido
@@ -239,9 +236,7 @@ llegar al crudo a comprar y lo declara sin resolver (ver registro 8).
 | alimento | por qué lo necesita | estado |
 |---|---|---|
 | `avena tradicional` | absorbe líquido al cocerse | sin rendimiento en ninguna receta ni en `ingredient_yields` |
-| `lentejas` | legumbre seca que se hidrata | sin rendimiento en ninguna receta ni en `ingredient_yields` |
 | `vacuno posta negra` | mismo caso: las recetas que parten de carne ya cocida no se pueden convertir a cantidad de compra | sin rendimiento en ninguna receta ni en `ingredient_yields` |
-| `quinoa` | el pescado con costra la declara COCIDA porque así entra al plato, y sin rendimiento el motor no llega al grano seco que hay que comprar. Absorbe parecido al arroz (~2,7x), pero el número no se pone acá hasta que alguien lo confirme | sin rendimiento en ninguna receta ni en `ingredient_yields` |
 
 
 ---
@@ -765,38 +760,6 @@ que llenar con un dato real.
 
 | receta | alimento | base de compra | razón |
 |---|---|---|---|
-| Albóndigas en salsa de tomate | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Alfajores de hojarasca | Yema de huevo | RAW | No se conoce la porción comestible de Yema de huevo: no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Alfajores de maicena | Yema de huevo | RAW | No se conoce la porción comestible de Yema de huevo: no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Budín de pan | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Caldillo de huevo | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Camarones al pil pil | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Chilenitos | Yema de huevo | RAW | No se conoce la porción comestible de Yema de huevo: no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Chupe de atún | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Chupe de jaiba | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Chupe de jibia | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Chupe de locos | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Chupe de mariscos | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Chupe de pescado | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Churrasco con tomate y palta | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Copa de merengue con crema y duraznos | Clara de huevo | RAW | No se conoce la porción comestible de Clara de huevo: no se puede convertir a cantidad con cáscara/hueso sin inventar. |
 | Ensalada de pollo con papas y arvejas | Pechuga de pollo (sin piel) | RAW | No hay rendimiento crudo→cocido para Pechuga de pollo (sin piel) (poached): no se puede calcular cuánto comprar sin inventar un factor. |
-| Hamburguesas caseras en marraqueta | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Hamburguesas de pavo | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Huevo a la copa con marraqueta | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Huevos revueltos con pan | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Lomo vetado a la parrilla | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Macarrones franceses | Clara de huevo | RAW | No se conoce la porción comestible de Clara de huevo: no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Machas a la parmesana | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Mariscal caliente | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Merengón con berries | Clara de huevo | RAW | No se conoce la porción comestible de Clara de huevo: no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Once con quesillo y palta | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Pan con huevo y tomate | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Pescado con costra de quínoa | Quínoa | RAW | No hay rendimiento crudo→cocido para Quínoa (boiled): no se puede calcular cuánto comprar sin inventar un factor. |
 | Sandwich de ave palta | Pechuga de pollo (sin piel) | RAW | No hay rendimiento crudo→cocido para Pechuga de pollo (sin piel) (boiled): no se puede calcular cuánto comprar sin inventar un factor. |
-| Sandwich de ave palta | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Sándwich de atún con cebolla | Pan marraqueta (genérico) | RAW | No se conoce la porción comestible de Pan marraqueta (genérico): no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Torta de merengue con lúcuma | Clara de huevo | RAW | No se conoce la porción comestible de Clara de huevo: no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Torta de mil hojas | Yema de huevo | RAW | No se conoce la porción comestible de Yema de huevo: no se puede convertir a cantidad con cáscara/hueso sin inventar. |
-| Turron de vino | Clara de huevo | RAW | No se conoce la porción comestible de Clara de huevo: no se puede convertir a cantidad con cáscara/hueso sin inventar. |
 

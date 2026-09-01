@@ -2799,6 +2799,12 @@ export const INGREDIENTES_NUEVOS: LibraryIngredient[] = [
     category: "EGGS",
     aliases: ["yemas", "yema"],
     defaultMeasurementType: "MASS",
+    // Nadie compra yemas: se compran HUEVOS. El factor convierte gramos de yema
+    // a gramos de huevo entero comprado, y sin él cuatro recetas (alfajores,
+    // mil hojas, chilenitos) no llegaban a cantidad de compra. NO es un número
+    // inventado: es aritmética sobre el huevo de 55 g que MEDIDAS_POR_UNIDAD ya
+    // declara — una yema pesa 17-18 g (la propia ficha lo dice), y 18/55 ≈ 0,33.
+    ediblePortionFactor: 0.33,
     nutrition: [
       {
         basis: "EDIBLE_PORTION",
@@ -2823,6 +2829,10 @@ export const INGREDIENTES_NUEVOS: LibraryIngredient[] = [
     category: "EGGS",
     aliases: ["claras", "clara"],
     defaultMeasurementType: "MASS",
+    // La otra mitad del mismo huevo: 33 g de clara en un huevo de 55 g ≈ 0,60.
+    // Desbloquea los merengues y el turrón de vino, que sin esto no llegaban a
+    // cantidad de compra. Misma aritmética documentada que la yema; ver arriba.
+    ediblePortionFactor: 0.6,
     nutrition: [
       {
         basis: "EDIBLE_PORTION",
@@ -3436,6 +3446,35 @@ export const INGREDIENTES_NUEVOS: LibraryIngredient[] = [
  * insertarlos con otro nombre ("cilantro fresco") habría creado dos identidades
  * para el mismo alimento — con dos stocks, dos precios y dos historiales.
  */
+/**
+ * Rendimientos crudo→cocido CONFIRMADOS por la biblioteca.
+ *
+ * El ShoppingEngine consulta `ingredient_yields` para convertir una cantidad
+ * declarada en COCIDO al crudo que hay que comprar. La regla de siempre manda:
+ * un rendimiento sin dato NO se inventa — el motor declara "no sé cuánto
+ * comprar" y el hueco aparece en el registro 8. Esta lista es el lugar donde un
+ * hueco se CIERRA con su razón escrita, y el seed la vuelca a la tabla.
+ *
+ * La quínoa estuvo un tiempo acá como hueco declarado: el pescado con costra la
+ * pide COCIDA y era la única receta que el motor no podía convertir. Absorbe
+ * parecido al arroz (2,8 en este mismo catálogo) y las referencias de cocina la
+ * ponen entre 2,6 y 3 veces su peso seco; 2,7 es el centro de ese rango, mismo
+ * nivel de evidencia DEV_SEED que el resto del catálogo.
+ */
+export const RENDIMIENTOS_CONFIRMADOS: {
+  ingrediente: string;
+  metodo: "BOILED" | "STEAMED" | "STEWED";
+  factor: number;
+  nota: string;
+}[] = [
+  {
+    ingrediente: "quinoa",
+    metodo: "BOILED",
+    factor: 2.7,
+    nota: "quínoa hervida ~2,7x su peso seco; referencia DEV_SEED, mismo criterio que el arroz (2,8)",
+  },
+];
+
 export const INGREDIENTES_EXISTENTES: string[] = [
   "aceite de oliva",
   "arandanos",

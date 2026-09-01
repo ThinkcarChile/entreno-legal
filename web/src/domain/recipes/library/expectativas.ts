@@ -32,18 +32,18 @@ export const REQUIEREN_PORCION_COMESTIBLE: ExpectativaPorcionComestible[] = [
   {
     ingrediente: "pan marraqueta",
     razon:
-      "su ficha está en EDIBLE_PORTION y el ShoppingEngine necesita el factor para llegar a la cantidad de compra; el pan se come entero, así que el factor real es 1, pero el catálogo no lo declara y el motor no puede suponerlo",
+      "su ficha está en EDIBLE_PORTION y el ShoppingEngine necesita el factor para llegar a la cantidad de compra; el pan se come entero, así que el factor real es exactamente 1. RESUELTO: declarado en dev_catalog_seed.sql; esta entrada queda como el registro de por qué hizo falta",
   },
   { ingrediente: "zanahoria", razon: "se pela o se raspa" },
   {
     ingrediente: "yema de huevo",
     razon:
-      "nadie compra yemas: se compran HUEVOS. El factor tiene que convertir gramos de yema a gramos de huevo entero (un huevo de 55 g da unos 18 g de yema, o sea ~0,33), y hasta que alguien confirme ese número el motor no puede decir cuántos huevos comprar para los alfajores ni para el mil hojas",
+      "nadie compra yemas: se compran HUEVOS. El factor tiene que convertir gramos de yema a gramos de huevo entero (un huevo de 55 g da unos 18 g de yema, o sea ~0,33), RESUELTO: el 0,33 está declarado en la ficha de la biblioteca (catalog.ts) con su aritmética escrita; esta entrada queda como el registro de por qué hizo falta",
   },
   {
     ingrediente: "clara de huevo",
     razon:
-      "mismo caso por el otro lado: un huevo de 55 g da unos 33 g de clara (~0,60). Sin el factor, los merengues y el turrón de vino no llegan a cantidad de compra",
+      "mismo caso por el otro lado: un huevo de 55 g da unos 33 g de clara (~0,60). RESUELTO: el 0,60 está declarado en la ficha de la biblioteca con la misma aritmética del huevo de 55 g",
   },
 ];
 
@@ -72,7 +72,7 @@ export const REQUIEREN_RENDIMIENTO: ExpectativaRendimiento[] = [
   {
     ingrediente: "quinoa",
     razon:
-      "el pescado con costra la declara COCIDA porque así entra al plato, y sin rendimiento el motor no llega al grano seco que hay que comprar. Absorbe parecido al arroz (~2,7x), pero el número no se pone acá hasta que alguien lo confirme",
+      "el pescado con costra la declara COCIDA porque así entra al plato, y sin rendimiento el motor no llega al grano seco que hay que comprar. RESUELTO: el factor (2,7x, criterio DEV_SEED igual que el arroz) vive en RENDIMIENTOS_CONFIRMADOS del catálogo y el seed lo vuelca a ingredient_yields; esta entrada queda como el registro de por qué hizo falta",
   },
 ];
 

@@ -94,8 +94,16 @@ begin
   values (v_ing, 'cucharada', 10, 'G');
 
   -- Pan genérico (marraqueta)
-  insert into public.ingredients (canonical_name, display_name, category_id)
-  values ('pan marraqueta', 'Pan marraqueta (genérico)', (cats->>'BREAD')::uuid)
+  --
+  -- `edible_portion_factor = 1` NO es un relleno: es la respuesta a un hueco
+  -- que bloqueaba 22 recetas. La ficha nutricional vive en EDIBLE_PORTION y el
+  -- ShoppingEngine necesita el factor para llegar a la cantidad de compra; sin
+  -- él, declaraba "no sé cuánto comprar" para cada plato con marraqueta. El pan
+  -- se come entero —no hay cáscara, hueso ni merma— así que el factor real es
+  -- exactamente 1, y dejarlo sin declarar era pedirle al motor que supusiera lo
+  -- que acá se sabe.
+  insert into public.ingredients (canonical_name, display_name, category_id, edible_portion_factor)
+  values ('pan marraqueta', 'Pan marraqueta (genérico)', (cats->>'BREAD')::uuid, 1)
   returning id into v_ing;
   insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit,
     energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg,

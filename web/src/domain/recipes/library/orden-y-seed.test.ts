@@ -96,7 +96,7 @@ describe("el SQL generado es SQL", () => {
     // no es SQL. La validación de verdad la hace el canario aplicando el
     // archivo contra un PostgreSQL real.
     const inicios =
-      /^(--|\/\*|\*|do \$\$|end \$\$;|declare|begin|end|for |values|insert|select|update|if |raise|perform|create|alter|comment|return|\$\$|\)|\s|$)/i;
+      /^(--|\/\*|\*|do \$\$|end \$\$;|declare|begin|end|for |from |join |where |on |values|insert|select|update|if |raise|perform|create|alter|comment|return|\$\$|\)|\s|$)/i;
     const raras = lineas
       .map((l, i) => ({ l, n: i + 1 }))
       .filter(({ l }) => l.length > 0 && !inicios.test(l));
