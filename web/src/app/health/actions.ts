@@ -278,6 +278,95 @@ export async function revokeAccess(grantId: string): Promise<ActionResult> {
 // Restricciones (§19) y frecuencias (§15)
 // ---------------------------------------------------------------------------
 
+/**
+ * Declara una condición de salud (diabetes, hipertensión, celiaquía…).
+ *
+ * Escribe por PostgREST directo porque la política `member_conditions_write`
+ * (0027) ES el control: exige MANAGE_CLINICAL_RESTRICTIONS por acceso médico, y
+ * este action no la relaja. `declared_by` se resuelve acá y no viene del
+ * cliente: quién declaró es un hecho del servidor, no un campo de formulario.
+ *
+ * Lo que esta función NO hace, y es la regla de la tabla: declarar una
+ * condición no crea ninguna restricción ni ningún límite. Eso pasa por
+ * `createRestriction`, con fuente y confirmación. Una condición es contexto.
+ */
+export async function declareCondition(input: {
+  memberId: string;
+  label: string;
+  confirmedBy: string | null;
+  notes: string | null;
+}): Promise<ActionResult> {
+  const etiqueta = input.label.trim();
+  if (etiqueta.length < 3) {
+    return { ok: false, error: "Escribe el nombre de la condición (al menos 3 letras)." };
+  }
+
+  const supabase = await client();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Tu sesión expiró: vuelve a entrar." };
+
+  // El integrante objetivo dice de qué hogar es; el declarante es la ficha del
+  // usuario actual EN ESE hogar. Si no tiene ficha ahí, la RLS del insert lo
+  // iba a rebotar igual — resolverlo antes da un mensaje que se entiende.
+  const { data: objetivo, error: errObjetivo } = await supabase
+    .from("household_members")
+    .select("household_id")
+    .eq("id", input.memberId)
+    .maybeSingle();
+  if (errObjetivo || !objetivo) return { ok: false, error: "No se encontró a esa persona." };
+
+  const { data: declarante, error: errDeclarante } = await supabase
+    .from("household_members")
+    .select("id")
+    .eq("household_id", objetivo.household_id)
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (errDeclarante || !declarante) {
+    return { ok: false, error: "No perteneces al hogar de esta persona." };
+  }
+
+  const { error } = await supabase.from("member_conditions").insert({
+    member_id: input.memberId,
+    label: etiqueta,
+    confirmed_by: input.confirmedBy?.trim() || null,
+    notes: input.notes?.trim() || null,
+    declared_by: declarante.id,
+  });
+  if (error) return { ok: false, error: `No se pudo declarar: ${error.message}` };
+  revalidatePath(`/health/member/${input.memberId}`);
+  return { ok: true, message: "Condición declarada." };
+}
+
+/**
+ * Quita una condición declarada.
+ *
+ * Acá el borrado físico es legítimo, y vale la pena decir por qué cuando todo
+ * el módulo clínico es historia inmutable: una condición es una DECLARACIÓN de
+ * contexto, no un hecho clínico con efectos — los efectos viven en las
+ * restricciones, que sí se retiran con estado y razón, nunca se borran. El
+ * esquema de la 0027 (congelado) no tiene columna de retiro, y agregar una
+ * migración para conservar "declaré celiaquía por error" sería guardar basura
+ * con ceremonia.
+ */
+export async function removeCondition(conditionId: string, memberId: string): Promise<ActionResult> {
+  const supabase = await client();
+  const { error, count } = await supabase
+    .from("member_conditions")
+    .delete({ count: "exact" })
+    .eq("id", conditionId);
+  if (error) return { ok: false, error: `No se pudo quitar: ${error.message}` };
+  // ERROR != VACÍO: un delete que la RLS filtró borra cero filas y "funciona".
+  // Decirle a la persona que se quitó algo que sigue ahí es peor que el error.
+  if (!count) return { ok: false, error: "No se quitó: no tienes permiso sobre esta ficha." };
+  revalidatePath(`/health/member/${memberId}`);
+  return { ok: true, message: "Condición quitada." };
+}
+
 export async function createRestriction(input: {
   memberId: string;
   type: string;

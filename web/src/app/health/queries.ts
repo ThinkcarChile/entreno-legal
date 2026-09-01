@@ -197,6 +197,36 @@ export async function loadRestrictions(db: Db, memberId: string) {
   return parseRows(restrictionRow, data, "restricciones clínicas");
 }
 
+const conditionRow = z.object({
+  id: uuid,
+  member_id: uuid,
+  label: z.string(),
+  code: z.string().nullable(),
+  confirmed_by: z.string().nullable(),
+  notes: z.string().nullable(),
+  declared_at: z.string(),
+});
+
+/**
+ * Condiciones declaradas del integrante (diabetes, hipertensión, celiaquía…).
+ *
+ * La tabla existe desde la 0027 con su RLS y su comentario, y durante meses no
+ * la leyó NADIE: una auditoría la encontró completamente muerta — no había
+ * forma de anotar que alguien es diabético. La distinción que gobierna su uso
+ * está en el propio comentario de la tabla: una condición declarada NO autoriza
+ * a inventar límites. Los límites nacen solo de restricciones confirmadas con
+ * fuente. Esto es contexto para el profesional y para la familia, nada más.
+ */
+export async function loadConditions(db: Db, memberId: string) {
+  const { data, error } = await db
+    .from("member_conditions")
+    .select("id, member_id, label, code, confirmed_by, notes, declared_at")
+    .eq("member_id", memberId)
+    .order("declared_at", { ascending: false });
+  if (error) throw new DataAccessError("condiciones declaradas", error);
+  return parseRows(conditionRow, data, "condiciones declaradas");
+}
+
 export async function loadSchedules(db: Db, memberId: string) {
   const { data, error } = await db
     .from("member_lab_schedules")

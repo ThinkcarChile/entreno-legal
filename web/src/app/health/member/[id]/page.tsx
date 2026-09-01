@@ -25,10 +25,12 @@ import {
   loadGrants,
   loadImpactReviews,
   loadRestrictions,
+  loadConditions,
   loadScheduleInputs,
   loadSchedules,
 } from "../../queries";
 import { MemberHealthActions } from "./MemberHealthActions";
+import { ConditionsPanel } from "./ConditionsPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -93,7 +95,7 @@ export default async function MemberHealthPage({ params }: { params: Promise<{ i
   if (!miembro) redirect("/health");
 
   const [documentos, observaciones, restricciones, schedules, biomarcadores, impactos, grants,
-    obsConfirmadas, restConfirmadas, scheduleInputs] = await Promise.all([
+    obsConfirmadas, restConfirmadas, scheduleInputs, condiciones] = await Promise.all([
     loadDocuments(supabase, memberId),
     loadConfirmedObservations(supabase, memberId),
     loadRestrictions(supabase, memberId),
@@ -104,6 +106,7 @@ export default async function MemberHealthPage({ params }: { params: Promise<{ i
     loadConfirmedObservations(supabase, memberId),
     loadConfirmedRestrictions(supabase, memberId),
     loadScheduleInputs(supabase, memberId),
+    loadConditions(supabase, memberId),
   ]);
 
   const hoy = effectiveDate(new Date(), "America/Santiago");
@@ -322,6 +325,21 @@ export default async function MemberHealthPage({ params }: { params: Promise<{ i
             })}
           </ul>
         )}
+      </Section>
+
+      <Section
+        title="Condiciones declaradas"
+        hint="Contexto de salud, no límites: declarar una condición no cambia el plan ni filtra recetas. Los límites nacen de las restricciones confirmadas, más arriba."
+      >
+        <ConditionsPanel
+          memberId={memberId}
+          /* GRANTED puede MIRAR por permiso explícito; escribir la ficha médica
+             ajena es de SELF o del tutor, igual que en el resto del módulo. La
+             RLS lo exige de todas formas: esto solo evita ofrecer un botón que
+             va a rebotar. */
+          puedeEscribir={miembro.relation !== "GRANTED"}
+          condiciones={condiciones}
+        />
       </Section>
 
       {miembro.relation !== "GRANTED" && (
