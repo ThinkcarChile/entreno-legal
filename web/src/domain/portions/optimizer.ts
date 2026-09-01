@@ -1,5 +1,6 @@
 import { calculateNutritionForQuantity, divideAggregated, sumAbsoluteNutrients } from "../catalog/nutrition";
 import { NUTRIENT_KEYS, type NutrientKey, type AggregatedNutrition, type BasisUnit, type NutritionFact, type WeightBasis } from "../catalog/types";
+import { goalTypeToNutrientKey } from "../nutrition/adaptive/rolling";
 import { effectiveMealTargets, hasAnyTarget, mealIsEnabled } from "../nutrition/profile";
 import type { MemberNutritionProfile, TargetSet } from "../nutrition/types";
 import { isHardPreference } from "../nutrition/types";
@@ -17,6 +18,17 @@ import { reason, type Reason } from "./reasons";
  */
 
 export const OPTIMIZER_VERSION = "portion-optimizer/1.0.0";
+
+/**
+ * Los dos nutrientes que el optimizador capa contra un techo clínico.
+ *
+ * Salen del mapeo ÚNICO GoalType→NutrientKey y no de literales repetidos: hasta
+ * hoy la traducción vivía suelta en cinco lugares de este archivo, y una
+ * traducción sin dueño es la que se desincroniza (CARBOHYDRATE_G, singular, se
+ * llama `carbohydrates_g`, plural).
+ */
+const NUTRIENTE_ENERGIA = goalTypeToNutrientKey("ENERGY_KCAL");
+const NUTRIENTE_PROTEINA = goalTypeToNutrientKey("PROTEIN_G");
 
 export type SlotAdjustability = "FIXED" | "ADJUSTABLE" | "OPTIONAL";
 
@@ -420,8 +432,8 @@ export function optimizePortion(input: OptimizeInput): MemberServingProjection {
   // proteína — el objetivo deportivo puede pedir más proteína, pero jamás por
   // encima del límite médico. La prioridad es estructural, no una opinión.
   const ceilings = input.clinicalCeilings ?? [];
-  const clinicalProteinMax = ceilings.find((c) => c.nutrient === "protein_g")?.max ?? null;
-  const clinicalEnergyMax = ceilings.find((c) => c.nutrient === "energy_kcal")?.max ?? null;
+  const clinicalProteinMax = ceilings.find((c) => c.nutrient === NUTRIENTE_PROTEINA)?.max ?? null;
+  const clinicalEnergyMax = ceilings.find((c) => c.nutrient === NUTRIENTE_ENERGIA)?.max ?? null;
   let clinicalConflict: { nutrient: string; restrictionId: string } | null = null;
 
   const targets: TargetSet = { ...targetsBase };
@@ -430,7 +442,7 @@ export function optimizePortion(input: OptimizeInput): MemberServingProjection {
     if (p.minimum != null && p.minimum > clinicalProteinMax) {
       // El mínimo deportivo pide MÁS de lo que el límite médico permite:
       // conflicto declarado con razón clínica (§74), nunca un término medio.
-      clinicalConflict = { nutrient: "protein_g", restrictionId: ceilings.find((c) => c.nutrient === "protein_g")!.restrictionId };
+      clinicalConflict = { nutrient: NUTRIENTE_PROTEINA, restrictionId: ceilings.find((c) => c.nutrient === NUTRIENTE_PROTEINA)!.restrictionId };
     }
     targets.PROTEIN_G = {
       ...p,
@@ -550,7 +562,7 @@ export function optimizePortion(input: OptimizeInput): MemberServingProjection {
       (c) => PROTEIN_SLOTS.includes(c.slotType) && c.adjustability === "ADJUSTABLE",
     );
     if (goal !== null && proteinComponents.length > 0) {
-      const current = value(nutritionOf(components), "protein_g");
+      const current = value(nutritionOf(components), NUTRIENTE_PROTEINA);
       const fromProtein = proteinComponents.reduce((sum, c) => {
         const per100 = c.nutrition?.values.protein_g ?? 0;
         return sum + (per100 ?? 0) * (c.proposedQuantity / 100);
@@ -590,12 +602,12 @@ export function optimizePortion(input: OptimizeInput): MemberServingProjection {
   const calorieMax = energyTarget?.maximum ?? null;
   if (calorieMax !== null) {
     for (const slotType of REDUCTION_ORDER) {
-      let energy = value(nutritionOf(components), "energy_kcal");
+      let energy = value(nutritionOf(components), NUTRIENTE_ENERGIA);
       if (energy <= calorieMax + 1e-6) break;
 
       for (const component of components.filter((c) => c.slotType === slotType)) {
         if (component.adjustability === "FIXED") continue;
-        energy = value(nutritionOf(components), "energy_kcal");
+        energy = value(nutritionOf(components), NUTRIENTE_ENERGIA);
         if (energy <= calorieMax + 1e-6) break;
 
         const per100 = component.nutrition?.values.energy_kcal ?? null;
@@ -608,7 +620,7 @@ export function optimizePortion(input: OptimizeInput): MemberServingProjection {
           const proteinPer100 = component.nutrition?.values.protein_g ?? 0;
           if (proteinPer100) {
             const others =
-              value(nutritionOf(components), "protein_g") -
+              value(nutritionOf(components), NUTRIENTE_PROTEINA) -
               (proteinPer100 * component.proposedQuantity) / 100;
             const needed = ((proteinTarget.minimum - others) / proteinPer100) * 100;
             floor = Math.max(floor, Math.min(component.proposedQuantity, needed));
@@ -640,7 +652,7 @@ export function optimizePortion(input: OptimizeInput): MemberServingProjection {
   // ningún componente baja de su mínimo — una porción diminuta "que cumple"
   // sería maquillaje (§32).
   for (const ceiling of ceilings) {
-    if (ceiling.nutrient === "energy_kcal" || ceiling.nutrient === "protein_g") continue;
+    if (ceiling.nutrient === NUTRIENTE_ENERGIA || ceiling.nutrient === NUTRIENTE_PROTEINA) continue;
     for (const slotType of REDUCTION_ORDER) {
       let actual = value(nutritionOf(components), ceiling.nutrient);
       if (actual <= ceiling.max + 1e-6) break;
@@ -673,8 +685,8 @@ export function optimizePortion(input: OptimizeInput): MemberServingProjection {
 
   // --- Validación final: si no se puede, se dice (§27) ---
   const finalNutrition = nutritionOf(components);
-  const finalProtein = value(finalNutrition, "protein_g");
-  const finalEnergy = value(finalNutrition, "energy_kcal");
+  const finalProtein = value(finalNutrition, NUTRIENTE_PROTEINA);
+  const finalEnergy = value(finalNutrition, NUTRIENTE_ENERGIA);
 
   const proteinMin = proteinTarget?.minimum ?? null;
   const proteinOk = proteinMin === null || finalProtein >= proteinMin - 0.5;
@@ -723,7 +735,7 @@ export function optimizePortion(input: OptimizeInput): MemberServingProjection {
   // Techos clínicos de otros nutrientes: mismo trato honesto que ENERGY_MAX.
   let clinicalOk = true;
   for (const ceiling of ceilings) {
-    if (ceiling.nutrient === "energy_kcal" || ceiling.nutrient === "protein_g") continue;
+    if (ceiling.nutrient === NUTRIENTE_ENERGIA || ceiling.nutrient === NUTRIENTE_PROTEINA) continue;
     const etiqueta = `CLINICAL:${ceiling.nutrient}`;
     const completa = finalNutrition.completeness[ceiling.nutrient] === "COMPLETE";
     const total = value(finalNutrition, ceiling.nutrient);
@@ -779,7 +791,7 @@ function scoreOf(
   let score = 100;
   const protein = targets.PROTEIN_G;
   if (protein?.preferred) {
-    const actual = value(nutrition, "protein_g");
+    const actual = value(nutrition, NUTRIENTE_PROTEINA);
     score -= Math.min(40, (Math.abs(actual - protein.preferred) / protein.preferred) * 100);
   }
   score -= unmet.filter((u) => !u.startsWith("NO_LIMITS")).length * 25;

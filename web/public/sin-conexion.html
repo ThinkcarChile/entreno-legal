@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="es-CL">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#3a684d" />
+    <title>Sin conexión — NutriFamilia</title>
+    <!--
+      Esta pantalla es la única página que el service worker guarda entera, y
+      existe justo para NO guardar las otras: las pantallas de NutriFamilia
+      traen la despensa, el plan y los exámenes ya escritos adentro del HTML.
+      Servir una copia vieja se vería idéntica a la app funcionando y estaría
+      mintiendo. Sin red preferimos decirlo.
+
+      Los estilos van en línea a propósito: el CSS del kit lleva hash en el
+      nombre y puede no estar en caché todavía. Una pantalla de "sin conexión"
+      que aparece sin estilo es una segunda falla encima de la primera.
+    -->
+    <style>
+      :root {
+        --primary: #3a684d;
+        --background: #fff8f3;
+        --surface-lowest: #ffffff;
+        --on-surface: #1e1b17;
+        --on-surface-variant: #414943;
+        --outline-variant: #c1c9c0;
+        --secondary-fixed: #ffdbca;
+        --on-secondary-fixed: #331200;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 20px;
+        background: var(--background);
+        color: var(--on-surface);
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .tarjeta {
+        width: 100%;
+        max-width: 28rem;
+        background: var(--surface-lowest);
+        border: 1px solid rgba(193, 201, 192, 0.5);
+        border-radius: 24px;
+        padding: 24px;
+        text-align: center;
+      }
+      .medallon {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto;
+        border-radius: 999px;
+        background: var(--secondary-fixed);
+        color: var(--on-secondary-fixed);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 30px;
+      }
+      h1 {
+        margin: 16px 0 0;
+        font-family: Manrope, Inter, system-ui, sans-serif;
+        font-size: 24px;
+        line-height: 1.25;
+        font-weight: 700;
+      }
+      p {
+        margin: 8px 0 0;
+        font-size: 16px;
+        line-height: 1.5;
+        color: var(--on-surface-variant);
+      }
+      .boton {
+        margin-top: 24px;
+        width: 100%;
+        min-height: 56px;
+        border: 0;
+        border-radius: 999px;
+        background: var(--primary);
+        color: #ffffff;
+        font-family: inherit;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .boton:focus-visible { outline: 3px solid var(--on-surface); outline-offset: 2px; }
+      /*
+        El color va con --on-surface-variant, NO con --outline-variant.
+        Acá decía `color: var(--outline-variant)` (#c1c9c0): sobre el blanco de
+        la tarjeta eso da 1,70:1 cuando AA pide 4,5:1, o sea la única línea que
+        explica que la app se reconecta sola quedaba prácticamente invisible.
+        --outline-variant es un color de BORDE (en todo el kit se usa solo como
+        `border-`); el de texto secundario es --on-surface-variant, 9,30:1, el
+        mismo que ya usan los dos párrafos de arriba.
+        Lo vigila sin-conexion-contraste.test.ts, que calcula el ratio real.
+      */
+      .nota {
+        margin-top: 16px;
+        font-size: 13px;
+        color: var(--on-surface-variant);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="tarjeta">
+      <span class="medallon" aria-hidden="true">☁︎</span>
+      <h1>Estás sin conexión</h1>
+      <p>
+        No pudimos llegar al servidor, así que no sabemos cómo está tu casa en este minuto.
+      </p>
+      <p>
+        No te mostramos la última versión guardada a propósito: una despensa de ayer se ve igual
+        que la de hoy y no queremos que decidas la compra con datos viejos.
+      </p>
+      <button class="boton" type="button" onclick="location.reload()">Reintentar</button>
+      <p class="nota">La app se reconecta sola apenas vuelva la red.</p>
+    </main>
+    <script>
+      // Volver solo cuando el navegador avisa que hay red otra vez: apretar
+      // "Reintentar" a ciegas dentro del túnel del metro solo repite el fracaso.
+      addEventListener("online", function () {
+        location.reload();
+      });
+    </script>
+  </body>
+</html>

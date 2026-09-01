@@ -5,7 +5,7 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { createProductSchema, type CreateProductInput } from "@/domain/catalog/schemas";
 import { normalizeLabelToPer100 } from "@/domain/catalog/nutrition";
 import { NUTRIENT_KEYS, type NutritionValues } from "@/domain/catalog/types";
-import { DataAccessError } from "@/lib/supabase/unwrap";
+import { loadCurrentMembership } from "@/app/family/current-household";
 
 export interface CreateProductResult {
   ok: boolean;
@@ -32,14 +32,9 @@ export async function createProduct(input: CreateProductInput): Promise<CreatePr
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/catalog/product/new");
 
-  const { data: membership, error: errorMembership } = await supabase
-    .from("household_members")
-    .select("id, household_id")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .limit(1)
-    .maybeSingle();
-  if (errorMembership) throw new DataAccessError("hogar del usuario", errorMembership);
+  // Mismo criterio que la portada: el hogar se elige en un solo lugar (F-1).
+  // Acá importa doble, porque el hogar elegido queda ESCRITO en el producto.
+  const membership = await loadCurrentMembership(supabase, user.id);
   if (!membership) {
     return { ok: false, error: "Primero crea o únete a un hogar (pestaña Familia)." };
   }
@@ -64,7 +59,7 @@ export async function createProduct(input: CreateProductInput): Promise<CreatePr
   const { data: product, error: productError } = await supabase
     .from("commercial_products")
     .insert({
-      household_id: membership.household_id,
+      household_id: membership.householdId,
       barcode: data.barcode,
       brand: data.brand,
       name: data.name,
@@ -74,7 +69,7 @@ export async function createProduct(input: CreateProductInput): Promise<CreatePr
       serving_unit: data.servingUnit,
       serving_name: data.servingName,
       source: "USER_ENTERED_LABEL",
-      created_by: membership.id,
+      created_by: membership.memberId,
     })
     .select("id")
     .single();
@@ -88,7 +83,7 @@ export async function createProduct(input: CreateProductInput): Promise<CreatePr
 
   const nutritionRow: Record<string, unknown> = {
     product_id: product.id,
-    household_id: membership.household_id,
+    household_id: membership.householdId,
     weight_basis: "AS_PACKAGED",
     basis_unit: data.nutritionMode === "PER_SERVING" ? data.servingUnit : data.packageUnit,
     source_type: "USER_ENTERED_LABEL",

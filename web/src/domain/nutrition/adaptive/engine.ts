@@ -333,7 +333,29 @@ export function applyClinicalBounds(
 
   const r = conPiso.range;
   if (r.minimum !== null && r.maximum !== null && r.minimum > r.maximum) {
-    return { range: null, blockedBy: "CLINICAL_CEILING_BLOCKS_PROPOSAL", overrides };
+    // UN RANGO DESORDENADO NO ES SIEMPRE UNA INDICACIÓN DE SALUD.
+    //
+    // Este `return` decía CLINICAL_CEILING_BLOCKS_PROPOSAL pasara lo que
+    // pasara, y un ataque mostró lo que eso produce: con las dos listas
+    // clínicas VACÍAS y cero restricciones activas, a una familia sin un solo
+    // dato de salud se le decía «una indicación de salud no deja espacio para
+    // este ajuste». Inventar una indicación médica que no existe es peor que
+    // no explicar nada — y en este proyecto lo clínico se CITA, no se supone.
+    //
+    // Si ninguna cota tocó este nutriente, el desorden viene de los parámetros
+    // del propio motor (o del rango que traía la propuesta), y eso tiene su
+    // código: ADJUSTMENT_CAPPED_BY_PARAMS. El bloqueo clínico se reserva para
+    // cuando de verdad hubo una cota, que es exactamente lo que `overrides`
+    // registra.
+    const huboCota =
+      overrides.length > 0 ||
+      ceilings.some((c) => c.nutrient === nutrient) ||
+      floors.some((f) => f.nutrient === nutrient);
+    return {
+      range: null,
+      blockedBy: huboCota ? "CLINICAL_CEILING_BLOCKS_PROPOSAL" : "ADJUSTMENT_CAPPED_BY_PARAMS",
+      overrides,
+    };
   }
   let preferred = r.preferred;
   if (preferred !== null && r.minimum !== null) preferred = Math.max(preferred, r.minimum);
@@ -537,7 +559,15 @@ export function reviewAdaptiveNutrition(input: AdaptiveInput): AdaptiveReview {
       nutrient: c.nutrient,
       reason: "NO_GOAL_TYPE_FOR_NUTRIENT" as const,
     }))
-    .sort((a, b) => (a.restrictionId < b.restrictionId ? -1 : a.restrictionId > b.restrictionId ? 1 : 0));
+    // La clave tiene que ser TOTAL. Ordenar solo por `restrictionId` deja el
+    // orden de dos cotas de la misma restricción sobre nutrientes distintos
+    // —sodio y potasio, que es justo el par que aparece junto— a merced del
+    // orden de entrada, y este motor promete salida idéntica byte a byte.
+    .sort((a, b) => {
+      const ka = `${a.restrictionId}|${a.nutrient}`;
+      const kb = `${b.restrictionId}|${b.nutrient}`;
+      return ka < kb ? -1 : ka > kb ? 1 : 0;
+    });
 
   // --- Regla 1: el canal clínico no se pudo leer ---
   if (

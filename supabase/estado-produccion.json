@@ -1,0 +1,279 @@
+{
+  "$comentario": [
+    "LIBRO DE ESTADO DE PRODUCCION. Fuente de verdad, legible por maquina, de hasta donde",
+    "esta aplicada la cadena de migraciones en el Supabase de verdad.",
+    "",
+    "Por que existe: gate-schema-parity.test.ts decia por escrito que garantizaba",
+    "'schema de test == schema de produccion' y levantaba la base con TODAS las migraciones",
+    "del repo, incluidas las dos que produccion no tiene. Con eso le dio el visto bueno a",
+    "una consulta contra meal_serving_record_items (0036), que revienta contra la base real.",
+    "Un gate no puede comparar contra produccion si no sabe que es produccion.",
+    "",
+    "Cada migracion declara un TESTIGO: una expresion SQL booleana falsa antes de aplicarla",
+    "y verdadera despues. Sirve para dos cosas distintas:",
+    "  1. preguntarle a la base REAL que tiene, sin adivinar y sin registro paralelo",
+    "     (node scripts/verificar-estado-produccion.mjs). Aca las migraciones se aplican por",
+    "     la Management API y NO hay tabla de historial en que confiar: la unica evidencia",
+    "     de 'ya aplicada' es el efecto.",
+    "  2. probar en PGlite que el testigo DISCRIMINA de verdad -falso antes, verdadero",
+    "     despues-, para que un testigo mal elegido no pueda dar por aplicada una migracion",
+    "     que no lo esta. Lo corre web/src/integration/estado-produccion.test.ts.",
+    "",
+    "Este archivo NO se edita a mano para ponerlo al dia despues de aplicar algo: se corre",
+    "el script con --escribir, que le pregunta a la base y anota lo que la base responde.",
+    "A mano solo se agrega la entrada de una migracion NUEVA (y el gate se pone rojo hasta",
+    "que exista, porque una migracion sin entrada es una migracion de estado desconocido)."
+  ],
+  "proyecto": "smwyxfnlxoohenhsdcjx",
+  "verificado_el": "2026-08-26",
+  "caduca_el": "2026-11-24",
+  "metodo": "TESTIGOS_EN_VIVO",
+  "metodo_nota": "MANIFIESTO = el estado sale del registro de aplicacion del repo (docs/deployment/pending-supabase-migrations.md, verificacion en vivo del 2026-08-25 por la Management API) y los checksums estan recomprobados contra los archivos. TESTIGOS_EN_VIVO = los testigos de aca abajo se corrieron contra la base real. El script es el unico que escribe TESTIGOS_EN_VIVO; a mano no se pone.",
+  "caducidad_nota": "Una verificacion vieja no es conocimiento, es un recuerdo. Pasado caduca_el el gate se pone rojo diciendo que NO PUEDE SABER el estado de produccion, y se arregla corriendo el script. ERROR != VACIO: mejor un rojo que pide una comprobacion de un minuto que un verde que no significa nada.",
+  "migraciones": {
+    "0001_family.sql": {
+      "estado": "APLICADA",
+      "sha256": "0e854bbd11746691bf61e1e19f70008130c507f18e678b50730c6e7631cfb3d4",
+      "testigo": "to_regclass('public.households') is not null",
+      "prueba": "la tabla households, que solo nace acá"
+    },
+    "0002_catalog.sql": {
+      "estado": "APLICADA",
+      "sha256": "4a3c5e0996b2a31a5e36ba29d25734a70d5d2b0fe1328724c93fcdfbe78e1d8e",
+      "testigo": "to_regclass('public.ingredients') is not null",
+      "prueba": "la tabla ingredients del catálogo"
+    },
+    "0003_recipes.sql": {
+      "estado": "APLICADA",
+      "sha256": "4f94faffc1e872a13d58ddab2a77533b91089303d8f2228b8a1ec54c8dd6863b",
+      "testigo": "to_regclass('public.meal_slot_components') is not null",
+      "prueba": "la tabla meal_slot_components de las recetas"
+    },
+    "0004_publish_consistency_guard.sql": {
+      "estado": "APLICADA",
+      "sha256": "b5c258c0947a94271906c505e3e28c20c9644f53faedfb83363f106c877cbf2b",
+      "testigo": "exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'publish_meal_template_version' and p.prosrc like '%string_agg%')",
+      "prueba": "la 0003 ya traía publish_meal_template_version: lo que distingue a la 0004 es el guardián de coherencia, que arma su mensaje con string_agg"
+    },
+    "0005_profiles_and_portions.sql": {
+      "estado": "APLICADA",
+      "sha256": "4f4a336edde7567c2285bfdc698e213c3847b35bf62a9179ed6bc6ed29622372",
+      "testigo": "to_regclass('public.nutrition_goals') is not null",
+      "prueba": "la tabla nutrition_goals de los perfiles"
+    },
+    "0006_component_roles.sql": {
+      "estado": "APLICADA",
+      "sha256": "29f63c1b7a9dd69806cb5c1158e74be26574947afc8ee9ee2c1acbe70fba270f",
+      "testigo": "to_regtype('public.component_role') is not null",
+      "prueba": "el tipo component_role"
+    },
+    "0007_weekly_planning.sql": {
+      "estado": "APLICADA",
+      "sha256": "859fd343310d0730034491b34c1f0b40a2b8378c1201b9d66f06125c408fe3fb",
+      "testigo": "to_regclass('public.weekly_plans') is not null",
+      "prueba": "la tabla weekly_plans"
+    },
+    "0008_participants_and_serving_lifecycle.sql": {
+      "estado": "APLICADA",
+      "sha256": "2f9fe3e4897b221cd5406ed24ba46b36fd17be694b150856c988a5f04e6ac06a",
+      "testigo": "to_regclass('public.meal_assignment_participants') is not null",
+      "prueba": "la tabla meal_assignment_participants"
+    },
+    "0009_shopping.sql": {
+      "estado": "APLICADA",
+      "sha256": "48a509c7bd660f6940098ee2b9108267704555e4558668b20ab5c24a91dbc488",
+      "testigo": "to_regclass('public.shopping_lists') is not null",
+      "prueba": "la tabla shopping_lists"
+    },
+    "0010_hardening_sprint6.sql": {
+      "estado": "APLICADA",
+      "sha256": "0eedc8ccdd7023034377e63fcc88a638222e8f18e433d902b16fa0e2c21529d9",
+      "testigo": "to_regclass('public.ingredient_yields_global_specific_uniq') is not null",
+      "prueba": "la 0010 no crea tablas: crea los cuatro índices únicos de ingredient_yields. Ese es el primero de los cuatro"
+    },
+    "0011_inventory.sql": {
+      "estado": "APLICADA",
+      "sha256": "44c07dc9fa04935448265e2793f025e032b376b76a6fb2ad1536d2d75dcac972",
+      "testigo": "to_regclass('public.inventory_lots') is not null",
+      "prueba": "la tabla inventory_lots de la despensa"
+    },
+    "0012_consumption_shortfall.sql": {
+      "estado": "APLICADA",
+      "sha256": "0e8dec3b4157e336f230a70d5c887c7f8dfae3d2f3dda491d40eb0b368c7ddce",
+      "testigo": "to_regclass('public.consumption_shortfalls') is not null",
+      "prueba": "la tabla consumption_shortfalls"
+    },
+    "0013_stock_intelligence.sql": {
+      "estado": "APLICADA",
+      "sha256": "75dbe5c1e8e3f6664bd8d8b4dcf33753771e86eef561e24b43296bae5a03d7d3",
+      "testigo": "to_regclass('public.stock_targets') is not null",
+      "prueba": "la tabla stock_targets"
+    },
+    "0014_procurement.sql": {
+      "estado": "APLICADA",
+      "sha256": "000f29a5743fc7fd3b561df4bb9b2733eb7521a97bb016d41e441e618e8ac935",
+      "testigo": "to_regclass('public.suppliers') is not null",
+      "prueba": "la tabla suppliers"
+    },
+    "0015_batch_prep.sql": {
+      "estado": "APLICADA",
+      "sha256": "c26f3ae09bdfc50cbc7920eb73c568d394d9fbab1a7b6fd8249589d2f8deecb3",
+      "testigo": "to_regclass('public.household_equipment') is not null",
+      "prueba": "la tabla household_equipment"
+    },
+    "0016_freezing_rules.sql": {
+      "estado": "APLICADA",
+      "sha256": "a44691d4864a1cdd68139d08db5cef963fd984d0e4c59e5958b7f564db7ef3bd",
+      "testigo": "exists (select 1 from public.storage_safety_rules where source like 'USDA FSIS%')",
+      "prueba": "la 0016 es una migración de DATOS: no crea ni un objeto. Su huella son las reglas por categoría con la fuente USDA FSIS citada"
+    },
+    "0017_random_without_pgcrypto.sql": {
+      "estado": "APLICADA",
+      "sha256": "57c04125981ac327084d620d16dfada029a8ba7fa0ffbd444b35c71ecf4ce5d5",
+      "testigo": "exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'ensure_lot_token' and p.prosrc not like '%gen_random_bytes%')",
+      "prueba": "la 0015 ya traía ensure_lot_token, con gen_random_bytes de pgcrypto. La 0017 es justamente sacarle esa dependencia: el testigo es la AUSENCIA de esa llamada en el cuerpo"
+    },
+    "0018_substitution_choices.sql": {
+      "estado": "APLICADA",
+      "sha256": "f868f5f2c8b7ada73baee1004c736f654ed8351f9823088579b9bd8832f5ec68",
+      "testigo": "to_regclass('public.meal_substitution_choices') is not null",
+      "prueba": "la tabla meal_substitution_choices"
+    },
+    "0019_gate_fixes_ledger.sql": {
+      "estado": "APLICADA",
+      "sha256": "b4e3025b507af68dbe707f12753ebfedf196822af016b0bbf862a8c2b89ce8e2",
+      "testigo": "exists (select 1 from pg_trigger where tgname = 'meal_assignments_protect_served')",
+      "prueba": "la 0019 reemplaza funciones que ya existían; lo único nuevo con nombre propio es el trigger que protege las asignaciones servidas"
+    },
+    "0020_gate_scope_and_basis.sql": {
+      "estado": "APLICADA",
+      "sha256": "489e7f37e21a3e383a8e6fafe766df1dafaf9049a765371dca76734bb741c288",
+      "testigo": "to_regclass('public.ingredient_basis_conversions') is not null",
+      "prueba": "la tabla ingredient_basis_conversions"
+    },
+    "0021_gate_netting_basis.sql": {
+      "estado": "APLICADA",
+      "sha256": "9451867c2fc48f4c2027fbb557f3e5f7dab2bbada3c07e160afc9b519a3c8fdf",
+      "testigo": "exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'shopping_items_suggestion_uniq' and indexdef like '%purchase_basis%')",
+      "prueba": "el índice ya existía con ESE nombre desde la 0009: la 0021 lo ensancha. El testigo mira la definición, no el nombre"
+    },
+    "0022_consume_product_identity.sql": {
+      "estado": "APLICADA",
+      "sha256": "b25657ea399d79cb4a1fb7fe9a29969adf253d5d2008ae0d1d5dde020f28c513",
+      "testigo": "exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'consume_planned_meal' and p.prosrc like '%product_id%')",
+      "prueba": "consume_planned_meal existe desde la 0012; la 0022 le mete la identidad de producto"
+    },
+    "0023_confirm_consume_serialization.sql": {
+      "estado": "APLICADA",
+      "sha256": "a13a60e34532a4024d303e55a44abedaf462708cbc92d9831fefd8c089bf384f",
+      "testigo": "exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'confirm_meal_assignment' and p.prosrc like '%for update of a%')",
+      "prueba": "confirm_meal_assignment existe desde la 0008; la 0023 le agrega el candado de fila que serializa los dos RPC"
+    },
+    "0024_demo_family_function.sql": {
+      "estado": "APLICADA",
+      "sha256": "d591e64b593d53973c2a1d422348f10b87548c86c51885c411fa8dd9cbf831ca",
+      "testigo": "exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'seed_demo_family_profiles')",
+      "prueba": "la función seed_demo_family_profiles, que antes vivía solo en el seed (el defecto que dio origen a este gate)"
+    },
+    "0025_unknown_never_normal.sql": {
+      "estado": "APLICADA",
+      "sha256": "e47ee86c28966c7055b3f87b80bc7235fbe8b44ec65cbb14a1cdc386cba4b62d",
+      "testigo": "exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'member_serving_projections' and column_name = 'unverifiable_constraints')",
+      "prueba": "la columna unverifiable_constraints: el límite que no se pudo verificar se DECLARA"
+    },
+    "0026_health_documents.sql": {
+      "estado": "APLICADA",
+      "sha256": "bcaeba23f2988dc4ce6adad0ca1edde06a9863a05cbc948f7381d36b6666432a",
+      "testigo": "to_regclass('public.medical_data_grants') is not null",
+      "prueba": "la tabla medical_data_grants"
+    },
+    "0027_clinical_rules.sql": {
+      "estado": "APLICADA",
+      "sha256": "31e7d6a4ef48cb3817a0b326aa0a8fe54f7fc792cf5d5748cf001b16039d02ca",
+      "testigo": "to_regclass('public.member_conditions') is not null",
+      "prueba": "la tabla member_conditions"
+    },
+    "0028_fix_encoding.sql": {
+      "estado": "APLICADA",
+      "sha256": "8d9b868f9138818e9dc0234ac503444b1db22997c8542ae4e484af11cb3de5d1",
+      "testigo": "exists (select 1 from public.biomarker_definitions where display_name = 'Albúmina')",
+      "prueba": "uno de los cinco nombres de biomarcador que llegaron al remoto con el acento roto. Contra la base REAL discrimina: antes de la 0028 el remoto tenia el nombre mutilado y la igualdad daba falso.",
+      "solo_en_produccion": true,
+      "nota": "La 0028 no se puede probar en local y no es un descuido: repara un dano que nunca estuvo en el repo. La 0026 siempre trajo 'Albumina' bien escrito (0026:79); lo que llego roto al remoto lo rompio el canal de entrega (clip de Windows reescribiendo el UTF-8). Replayar la cadena en PGlite deja el texto sano desde la 0026, asi que aca el testigo nace verdadero. Por eso la prueba que se le exige es la otra: verdadero ANTES y DESPUES, o sea que en local de verdad no cambia nada."
+    },
+    "0029_nutrition_source.sql": {
+      "estado": "APLICADA",
+      "sha256": "c52a1c56ebb21162b776efeeb2d141aa54a07722999c3338d0c272cda1f4974b",
+      "testigo": "to_regtype('public.clinical_nutrition_source') is not null",
+      "prueba": "el tipo clinical_nutrition_source"
+    },
+    "0030_clinical_shopping_impact.sql": {
+      "estado": "APLICADA",
+      "sha256": "00bcd9a8b6928d5c30d86a63b3a535b4a4895ff4b8227b8279b9d86c190ef2c4",
+      "testigo": "exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'apply_clinical_shopping_delta')",
+      "prueba": "la función apply_clinical_shopping_delta"
+    },
+    "0031_yield_factor_bounds.sql": {
+      "estado": "APLICADA",
+      "sha256": "5d96f3a824ed92ef77832286d86cbc8d9334443856287429d9b3de4f24a083e6",
+      "testigo": "exists (select 1 from pg_constraint where conname = 'meal_slot_components_yield_factor_check' and pg_get_constraintdef(oid) ~ '<= ?[(]?5')",
+      "prueba": "el check existe desde la 0003 con la cota en 2; la 0031 la sube a 5. El testigo mira la cota, no el nombre"
+    },
+    "0032_pressure_cooker_capability.sql": {
+      "estado": "APLICADA",
+      "sha256": "392d23f904c0956a18f077e1ae651f7fe99a8f08fcae31a82115be7b0953575a",
+      "testigo": "exists (select 1 from public.equipment_capabilities where code = 'PRESSURE_COOKER')",
+      "prueba": "la fila PRESSURE_COOKER: la migración entera es ese insert"
+    },
+    "0033_cerrar_salto_entre_hogares.sql": {
+      "estado": "APLICADA",
+      "sha256": "fc37714d1224088736d03bb4889dcfcaa0f1d4ac11d2d9f11b5829e4c3facb1d",
+      "testigo": "exists (select 1 from pg_trigger where tgname = 'members_identity_frozen')",
+      "prueba": "el trigger que congela la identidad del integrante (DEFECTO 1 de la auditoría post-11.5)"
+    },
+    "0034_storage_medico_lectura_y_borrado.sql": {
+      "estado": "APLICADA",
+      "sha256": "d54eb59e40f8e1e9fa0e021d6b19b506df6fa1c81533b4c5b8f8b87ca57541b4",
+      "testigo": "exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'app' and p.proname = 'medical_path_member')",
+      "prueba": "las políticas de storage no sirven de testigo: en PGlite ese bloque se salta entero porque no existe el schema storage. app.medical_path_member sí se crea siempre, y es de esta migración"
+    },
+    "0035_porcion_sin_evaluar.sql": {
+      "estado": "APLICADA",
+      "sha256": "1a6feafd7892ee119a505abd95733038871130d3db6b9068b85d684fef87fcb4",
+      "testigo": "exists (select 1 from pg_trigger where tgname = 'member_serving_projections_clinical_default')",
+      "prueba": "el trigger que impide que una porción confirmada nazca con clinical_status en NULL (UNKNOWN nunca es NORMAL)"
+    },
+    "0037_invitacion_no_cruza_hogares.sql": {
+      "estado": "APLICADA",
+      "sha256": "6715b3bfcb0b18fd5dab094c43a44c2fc6c4ca744b766da9d475532dbddee85f",
+      "testigo": "exists (select 1 from pg_trigger where tgname = 'invitations_member_same_household')",
+      "prueba": "el trigger que ata la invitación al hogar del que invita"
+    },
+    "0036_foodlog_plan_vs_reality.sql": {
+      "estado": "PENDIENTE",
+      "sha256": "8081a08995f3de8f5dbe113339a1699bfc422efd87c245aa122c1e93015ccab2",
+      "testigo": "to_regclass('public.meal_serving_records') is not null",
+      "prueba": "la tabla meal_serving_records del servido"
+    },
+    "0038_foodlog_intake.sql": {
+      "estado": "PENDIENTE",
+      "sha256": "b54d3cd9eae17f25e30223284ecb7267956b10ecc9afdcc6152f4f760cc05f26",
+      "testigo": "to_regclass('public.intake_log_items') is not null",
+      "prueba": "la tabla intake_log_items del eje ACTUAL_CONSUMED"
+    },
+    "0039_permisos_plan_y_cocina.sql": {
+      "estado": "PENDIENTE",
+      "sha256": null,
+      "testigo": "exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'app' and p.proname = 'can_edit_plan')",
+      "prueba": "las politicas RLS no sirven de testigo -son veinte y pueden cambiar de nombre-; app.can_edit_plan es de esta migracion y no existe en ninguna anterior, aunque la columna can_edit_plan viva desde la 0001",
+      "nota": "sha256 en null a proposito: la migracion todavia se esta escribiendo y su contenido cambia. Que no tenga checksum no cambia en nada lo que produccion tiene puesto -no la tiene-, y el dia que se aplique el script le escribe el checksum de lo que se aplico."
+    },
+    "0040_adaptive_reviews.sql": {
+      "estado": "PENDIENTE",
+      "sha256": null,
+      "testigo": "to_regclass('public.adaptive_nutrition_reviews') is not null",
+      "prueba": "la tabla adaptive_nutrition_reviews, que solo nace aca",
+      "nota": "sha256 en null a proposito: la migracion todavia se esta escribiendo. Ver la nota de la 0039."
+    }
+  }
+}

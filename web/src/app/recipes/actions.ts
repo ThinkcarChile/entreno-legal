@@ -8,6 +8,7 @@ import { calculateMealNutrition } from "@/domain/recipes/nutrition";
 import { recipeDraftSchema, type RecipeDraftInput } from "@/domain/recipes/schemas";
 import { loadRecipeDetail } from "./queries";
 import { DataAccessError } from "@/lib/supabase/unwrap";
+import { loadCurrentMembership } from "@/app/family/current-household";
 
 export interface ActionResult {
   ok: boolean;
@@ -23,14 +24,9 @@ async function currentMembership() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/recipes");
 
-  const { data: membership, error: err1Membership } = await supabase
-    .from("household_members")
-    .select("id, household_id")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .limit(1)
-    .maybeSingle();
-  if (err1Membership) throw new DataAccessError("hogar del usuario", err1Membership);
+  // Mismo criterio que la portada (F-1): la receta se crea EN un hogar y ese
+  // hogar no puede cambiar entre una carga y la siguiente.
+  const membership = await loadCurrentMembership(supabase, user.id);
 
   return { supabase, membership };
 }
@@ -49,7 +45,7 @@ export async function createRecipe(input: RecipeDraftInput): Promise<ActionResul
   }
 
   const { data: versionId, error } = await supabase.rpc("create_meal_template", {
-    p_household_id: membership.household_id,
+    p_household_id: membership.householdId,
     p_name: draft.name,
     p_kind: draft.kind,
     p_meal_types: draft.mealTypes,
@@ -217,7 +213,7 @@ export async function duplicateRecipe(templateId: string): Promise<ActionResult>
 
   const { data, error } = await supabase.rpc("duplicate_meal_template", {
     p_template_id: templateId,
-    p_household_id: membership.household_id,
+    p_household_id: membership.householdId,
     p_name: null,
   });
   if (error || !data) {

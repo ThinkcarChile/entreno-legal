@@ -25,8 +25,16 @@ export default async function LoginPage({ searchParams }: Props) {
           <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-fixed text-on-primary-fixed">
             <Icon name="family_restroom" className="text-[32px]" />
           </span>
+          {/*
+            Este h1 es la PRIMERA marca que lee cualquiera, y durante un sprint
+            entero dijo una marca distinta a la del manifiesto: en el cajón de
+            Android aparecía un nombre y al tocarlo se abría otro. Nadie lo caza
+            leyendo código, porque cada archivo por separado se ve bien.
+            La marca vieja quedó prohibida en todo el árbol y lo vigila
+            pwa-coherencia.test.ts ("la marca muerta no vive en ninguna parte").
+          */}
           <h1 className="mt-md font-headline-lg-mobile text-headline-lg-mobile text-primary">
-            Mesa Familiar
+            NutriFamilia
           </h1>
           <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
             Inicia sesión o crea tu cuenta.

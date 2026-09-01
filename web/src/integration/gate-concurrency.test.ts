@@ -453,7 +453,7 @@ describe("gate final §2/§15", () => {
         enPublic,
         `public.${nombre} dejó de delegar en app.${nombre}: si escribe su propio camino, ` +
           `no pasa por el candado y esta prueba no lo vería`,
-      ).toMatch(new RegExp(`app\.${nombre}`, "i"));
+      ).toMatch(new RegExp(`app[.]${nombre}`, "i"));
       // Y el envoltorio NO puede traerse el acto de vuelta: si tiene su propio
       // recorrido de asignaciones, ya no es un envoltorio.
       expect(

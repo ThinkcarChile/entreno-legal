@@ -12,6 +12,7 @@ import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
+import { soloLoQueProduccionTiene } from "./estado-produccion";
 
 /**
  * PostgreSQL de verdad (compilado a WASM) para las pruebas de integración.
@@ -24,7 +25,17 @@ import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 
 const ROOT = path.resolve(__dirname, "../../..");
 
-const MIGRACIONES = [
+/**
+ * LA CADENA COMPLETA del repo, en orden de aplicación.
+ *
+ * Ojo con lo que esta lista significa y lo que NO: es lo que el repo sabe
+ * construir, no lo que producción tiene puesto. Las dos cosas se separaron el
+ * día en que el gate de paridad dio por bueno un `.from()` contra una tabla de
+ * la 0036 — una migración que está acá y que producción no tiene. Quién tiene
+ * qué lo declara `supabase/estado-produccion.json`, y de ahí sale
+ * `MIGRACIONES_DE_PRODUCCION`.
+ */
+export const MIGRACIONES = [
   "supabase/migrations/0001_family.sql",
   "supabase/migrations/0002_catalog.sql",
   "supabase/migrations/0003_recipes.sql",
@@ -96,6 +107,19 @@ const MIGRACIONES = [
   // cero. Las dos van juntas o no va ninguna.
   "supabase/migrations/0038_foodlog_intake.sql",
 ];
+
+/**
+ * La MISMA cadena recortada a lo que el Supabase de verdad tiene aplicado hoy.
+ *
+ * Se calcula tarde (no al importar el módulo) a propósito: leer y auditar el
+ * libro cuesta 38 lecturas de archivo, y los treinta y tantos archivos de
+ * integración que solo quieren la base completa no tienen por qué pagarlas.
+ * Quien la llama y no puede saber el estado de producción recibe una excepción
+ * con nombre y apellido, jamás una lista a medias.
+ */
+export function migracionesDeProduccion(): string[] {
+  return soloLoQueProduccionTiene(MIGRACIONES);
+}
 
 // Fixtures de DEMO: datos, jamás schema. Todo objeto que la app referencia
 // vive en MIGRACIONES (gate final §3; lo vigila gate-schema-parity.test.ts).
@@ -184,36 +208,68 @@ export interface Harness {
  */
 const CACHE_DIR = path.join(ROOT, "web", "node_modules", ".cache", "pglite-harness");
 
-function claveDeCache(conSeeds: boolean): string {
+function claveDeCache(migraciones: readonly string[], conSeeds: boolean): string {
   const partes = [
-    "v1",
+    // v2: la clave dejó de ser sólo (migraciones + seeds) porque ahora hay DOS
+    // cadenas distintas —la completa y la de producción— y una caché que no las
+    // distinga serviría el schema equivocado sin decir ni una palabra.
+    "v2",
     ENTORNO_SUPABASE,
-    ...MIGRACIONES.map((m) => `${m}\n${resolverMigracion(m)}`),
+    ...migraciones.map((m) => `${m}\n${resolverMigracion(m)}`),
     ...(conSeeds ? SEEDS.map((s) => `${s}\n${readFileSync(path.join(ROOT, s), "utf8")}`) : []),
   ];
   return createHash("sha256").update(partes.join(" ")).digest("hex").slice(0, 32);
 }
 
 /** Construye la base desde cero: migraciones en orden y, si toca, los seeds. */
-async function construir(conSeeds: boolean): Promise<PGlite> {
+async function construir(migraciones: readonly string[], conSeeds: boolean): Promise<PGlite> {
   const db = await PGlite.create({ extensions: { pg_trgm, pgcrypto } });
   await db.exec("create extension if not exists pg_trgm; create extension if not exists pgcrypto;");
   await db.exec(ENTORNO_SUPABASE);
-  for (const archivo of MIGRACIONES) await db.exec(resolverMigracion(archivo));
+  for (const archivo of migraciones) await db.exec(resolverMigracion(archivo));
   if (conSeeds) {
     for (const archivo of SEEDS) await db.exec(readFileSync(path.join(ROOT, archivo), "utf8"));
   }
   return db;
 }
 
-async function abrirBase(conSeeds: boolean): Promise<PGlite> {
+/**
+ * Aplica la cadena migración por migración, avisando ANTES y DESPUÉS de cada
+ * una. Sin caché: el punto es justamente ver los estados intermedios.
+ *
+ * Existe para una sola cosa: probar que los testigos de
+ * `supabase/estado-produccion.json` DISCRIMINAN. Un testigo que ya era
+ * verdadero antes de su migración daría por aplicada en producción una
+ * migración que no lo está, y volveríamos al mismo falso verde por otra puerta.
+ */
+export async function recorrerCadena(
+  migraciones: readonly string[],
+  paso: (db: PGlite, archivo: string, momento: "antes" | "despues") => Promise<void>,
+): Promise<void> {
+  const db = await PGlite.create({ extensions: { pg_trgm, pgcrypto } });
+  try {
+    await db.exec(
+      "create extension if not exists pg_trgm; create extension if not exists pgcrypto;",
+    );
+    await db.exec(ENTORNO_SUPABASE);
+    for (const archivo of migraciones) {
+      await paso(db, archivo, "antes");
+      await db.exec(resolverMigracion(archivo));
+      await paso(db, archivo, "despues");
+    }
+  } finally {
+    await db.close();
+  }
+}
+
+async function abrirBase(migraciones: readonly string[], conSeeds: boolean): Promise<PGlite> {
   let archivo: string;
   try {
-    archivo = path.join(CACHE_DIR, `${claveDeCache(conSeeds)}.tar.gz`);
+    archivo = path.join(CACHE_DIR, `${claveDeCache(migraciones, conSeeds)}.tar.gz`);
   } catch {
     // Si no se puede ni calcular la clave (una migración que falta, por
     // ejemplo), que reviente el camino normal con su mensaje, no la caché.
-    return construir(conSeeds);
+    return construir(migraciones, conSeeds);
   }
 
   if (existsSync(archivo)) {
@@ -233,7 +289,7 @@ async function abrirBase(conSeeds: boolean): Promise<PGlite> {
     }
   }
 
-  const db = await construir(conSeeds);
+  const db = await construir(migraciones, conSeeds);
   try {
     const volcado = await db.dumpDataDir("gzip");
     mkdirSync(CACHE_DIR, { recursive: true });
@@ -255,9 +311,23 @@ export async function levantarBase(
      * que Supabase puede reproducir. Los seeds son fixtures de demo, no schema.
      */
     conSeeds?: boolean;
+    /**
+     * `true` levanta la base con SOLO las migraciones que producción tiene
+     * puestas, según `supabase/estado-produccion.json`.
+     *
+     * Es lo que le faltaba al gate de paridad: comparar la app contra la cadena
+     * completa del repo responde "¿esto anda si aplicamos todo?", que no era la
+     * pregunta. La pregunta es "¿esto anda HOY, contra la base que atiende a la
+     * familia?", y esa se contesta solo con lo que está aplicado.
+     *
+     * Si el estado de producción no se puede saber, esto revienta con
+     * `EstadoDeProduccionDesconocido` en vez de devolver una base a medias.
+     */
+    soloProduccion?: boolean;
   } = {},
 ): Promise<Harness> {
-  const db = await abrirBase(opciones.conSeeds !== false);
+  const cadena = opciones.soloProduccion === true ? migracionesDeProduccion() : MIGRACIONES;
+  const db = await abrirBase(cadena, opciones.conSeeds !== false);
 
   const filas = async <T,>(sql: string, params: unknown[] = []) =>
     (await db.query<T>(sql, params)).rows;

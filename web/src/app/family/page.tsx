@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { DataAccessError } from "@/lib/supabase/unwrap";
 import { parseRow, parseRows, uuid } from "@/lib/supabase/rows";
+import { loadCurrentMembership } from "./current-household";
 import { signOut } from "@/app/login/actions";
 import { AppShell, ShellAction } from "@/components/AppShell";
 import { KitchenShortcuts } from "@/components/KitchenShortcuts";
@@ -69,14 +69,10 @@ export default async function FamilyPage({ searchParams }: Props) {
     redirect("/login?next=/family");
   }
 
-  const { data: membership, error: membershipError } = await supabase
-    .from("household_members")
-    .select("household_id, households(name)")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .limit(1)
-    .maybeSingle();
-  if (membershipError) throw new DataAccessError("hogar del usuario", membershipError);
+  // La portada es el punto de entrada más caro de equivocar: es lo primero que
+  // se abre y desde acá se navega a todo lo demás. Elegir el hogar es una sola
+  // regla y vive en `current-household` (defecto F-1).
+  const membership = await loadCurrentMembership(supabase, user.id, "households ( name )");
 
   if (!membership) {
     return (
@@ -118,9 +114,24 @@ export default async function FamilyPage({ searchParams }: Props) {
     );
   }
 
-  const householdName =
-    parseRow(z.object({ households: oneHogar }), membership, "hogar").households?.name ??
-    "Mi hogar";
+  // El nombre del hogar NO se rellena con un genérico. El embed
+  // `households ( name )` solo puede volver nulo si `households_select`
+  // (0001:258) dejó de ver la fila, y esa política es
+  // `app.is_household_member(id)` = "tiene membresía ACTIVA acá" (0001:117-123),
+  // que es exactamente lo que `loadCurrentMembership` acaba de comprobar con
+  // `.eq("is_active", true)`. Y `name` es NOT NULL desde 0001:13, así que
+  // tampoco existe el hogar sin nombre. Un nulo acá no es "todavía no le pusiste
+  // nombre": es que la base dejó de cumplir lo que promete. Escribir
+  // "Mi hogar" le mostraría a la familia un nombre inventado como si fuera el
+  // suyo, que es un desconocido disfrazado de dato normal.
+  const hogar = parseRow(z.object({ households: oneHogar }), membership.row, "hogar").households;
+  if (!hogar) {
+    throw new Error(
+      "Tu membresía existe pero la fila de tu hogar no llegó. No es un hogar sin " +
+        "nombre: es un permiso de la base que dejó de calzar con la membresía.",
+    );
+  }
+  const householdName = hogar.name;
 
   const { data: members, error: membersError } = await supabase
     .from("household_members")
@@ -132,7 +143,7 @@ export default async function FamilyPage({ searchParams }: Props) {
          household_roles ( code, name )
        )`,
     )
-    .eq("household_id", membership.household_id)
+    .eq("household_id", membership.householdId)
     .order("created_at");
 
   // Una lista vacía por error de consulta se ve igual que un hogar sin gente:
@@ -202,7 +213,7 @@ export default async function FamilyPage({ searchParams }: Props) {
         )}
       </Section>
 
-      <DemoFamilyButton householdId={membership.household_id} />
+      <DemoFamilyButton householdId={membership.householdId} />
 
       <Section
         title="Invitar integrante"
@@ -215,7 +226,7 @@ export default async function FamilyPage({ searchParams }: Props) {
             className="scroll-mt-32 space-y-sm p-md"
             id="invitar"
           >
-            <input type="hidden" name="householdId" value={membership.household_id} />
+            <input type="hidden" name="householdId" value={membership.householdId} />
             <label className="block">
               <span className={ETIQUETA}>
                 Correo <span className="font-normal text-on-surface-variant">(opcional)</span>

@@ -17,7 +17,7 @@ import {
   setMealParticipants,
   unconfirmMeal,
 } from "./actions";
-import { consumePlannedMeal } from "@/app/pantry/actions";
+import { servirLoPlanificado } from "./servir-actions";
 
 /**
  * El tablero de la semana. Mobile-first: siete tarjetas de día, una debajo de la
@@ -121,6 +121,15 @@ export function WeekBoard({
 
   return (
     <div className="space-y-md">
+      {/* La otra mitad del día. Servir saca la comida a la mesa; lo que se comió
+          de verdad lo dice una persona, y eso vive en /comi. Sin esta puerta la
+          pantalla solo se alcanza escribiendo la dirección a mano. */}
+      <div className="flex justify-end">
+        <Link href="/comi" className={ENLACE}>
+          Anotar lo que se comió
+        </Link>
+      </div>
+
       {message && (
         <p className="flex items-start gap-sm rounded-2xl bg-primary-fixed px-md py-sm font-body-sm text-body-sm text-on-primary-fixed">
           <Icon name="check_circle" className="mt-0.5 shrink-0 text-[18px]" />
@@ -312,14 +321,24 @@ export function WeekBoard({
                             <Link href={`/plan/comida/${asignacion.id}`} className={ENLACE}>
                               Ver lo guardado
                             </Link>
+                            {/* Este botón decía "Comimos lo planificado" y desde
+                                la 0036 eso es MENTIRA: servir dejó de declarar
+                                consumo, así que lo único que hace es sacar la
+                                comida a la mesa y descontar la despensa. Quién
+                                comió qué lo dice una persona, en /comi. */}
                             {asignacion.status === "CONFIRMED" && (
                               <ButtonOutline
                                 disabled={pending}
-                                onClick={() => run(() => consumePlannedMeal(asignacion.id))}
+                                onClick={() => run(() => servirLoPlanificado(asignacion.id))}
                               >
                                 <Icon name="restaurant" className="text-[18px]" />
-                                Comimos lo planificado
+                                Servir lo planificado
                               </ButtonOutline>
+                            )}
+                            {asignacion.status === "SERVED" && (
+                              <Link href="/comi" className={ENLACE}>
+                                Anotar lo que se comió
+                              </Link>
                             )}
                             <button
                               type="button"

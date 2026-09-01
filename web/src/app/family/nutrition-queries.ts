@@ -9,6 +9,7 @@ import type {
 import type { MealType } from "@/domain/recipes/types";
 import { DataAccessError } from "@/lib/supabase/unwrap";
 import { dateString, nullableNumeric, parseMaybeRow, parseRows, uuid } from "@/lib/supabase/rows";
+import { loadCurrentMembership } from "./current-household";
 import { z } from "zod";
 
 /**
@@ -264,20 +265,11 @@ export async function loadHouseholdMembers(
 
   let hogar = householdId ?? null;
   if (!hogar) {
-    const { data: me, error: err1Me } = await db
-      .from("household_members")
-      .select("id, household_id")
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      // Determinista para quien pertenece a más de un hogar: siempre el más
-      // antiguo, no el que el planificador de la base quiera devolver hoy.
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    if (err1Me) throw new DataAccessError("integrante del usuario", err1Me);
-    if (!me) return { householdId: null, members: [] };
-    hogar = parseMaybeRow(z.object({ household_id: uuid }), me, "integrante del usuario")!
-      .household_id;
+    // La elección determinista vive en `current-household`, no acá: es la misma
+    // regla que necesitan la portada, el catálogo y el recetario.
+    const membership = await loadCurrentMembership(db, user.id);
+    if (!membership) return { householdId: null, members: [] };
+    hogar = membership.householdId;
   }
 
   const { data, error: err1Data } = await db

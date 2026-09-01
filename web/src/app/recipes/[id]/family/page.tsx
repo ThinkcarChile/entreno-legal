@@ -26,6 +26,7 @@ import type { TargetSet } from "@/domain/nutrition/types";
 import type { AcceptedSubstitution, AvailableAlternative } from "@/domain/portions/optimizer";
 import { DataAccessError } from "@/lib/supabase/unwrap";
 import { loadDailyOverride, loadHouseholdProfiles } from "@/app/family/nutrition-queries";
+import { loadCurrentMembership } from "@/app/family/current-household";
 import { loadAlternativesWithFacts, loadRecipeDetail } from "../../queries";
 
 export const dynamic = "force-dynamic";
@@ -72,7 +73,20 @@ export default async function FamilyServingsPage({ params, searchParams }: Props
   const recipe = await loadRecipeDetail(supabase, id, v);
   if (!recipe) notFound();
 
-  const profiles = await loadHouseholdProfiles(supabase);
+  // El hogar se resuelve UNA vez y todo lo demás se ancla a ese id: los perfiles
+  // y la zona horaria tienen que salir de la misma casa. Antes la zona horaria
+  // se leía con un `households ... limit(1)` sin filtro ni orden, así que a
+  // alguien de dos casas le podía tocar el huso de la otra y la "excepción del
+  // día" se aplicaba al día equivocado (F-1).
+  //
+  // Se pregunta con `loadCurrentMembership` y no con `loadHouseholdMembers`
+  // porque acá lo único que falta es el ID del hogar: `loadHouseholdMembers`
+  // agrega un `auth.getUser()` y la lista completa de integrantes que
+  // `loadHouseholdProfiles` vuelve a pedir dos líneas más abajo. Eran dos
+  // viajes de red repetidos en cada render de un Server Component, justo lo que
+  // `loadCurrentMembership` recibe el `userId` para evitar.
+  const membership = await loadCurrentMembership(supabase, user.id);
+  const profiles = membership ? await loadHouseholdProfiles(supabase, membership.householdId) : [];
 
   const components: PortionComponent[] = recipe.components.map((c) => ({
     id: c.id,
@@ -143,13 +157,24 @@ export default async function FamilyServingsPage({ params, searchParams }: Props
   }
 
   // --- Excepción del día, en la zona horaria del hogar (§15) ---
-  const { data: household, error: householdError } = await supabase
-    .from("households")
-    .select("timezone")
-    .limit(1)
-    .maybeSingle();
-  if (householdError) throw new DataAccessError("zona horaria del hogar", householdError);
-  const hoy = effectiveDate(new Date(), household?.timezone ?? "America/Santiago");
+  // Anclada al MISMO hogar del que salieron los perfiles, nunca a "un hogar
+  // cualquiera": sin hogar no hay a quién preguntarle el huso y no se consulta.
+  let timeZone = "America/Santiago";
+  if (membership) {
+    const { data: household, error: householdError } = await supabase
+      .from("households")
+      .select("timezone")
+      .eq("id", membership.householdId)
+      .maybeSingle();
+    if (householdError) throw new DataAccessError("zona horaria del hogar", householdError);
+    // El `??` acá no tapa un desconocido: `households.timezone` es NOT NULL con
+    // default 'America/Santiago' desde 0001, así que el único caso en que no
+    // llega valor es que la fila del hogar no sea visible — y ahí el default de
+    // la base es exactamente esta misma cadena. Un error de consulta ya reventó
+    // arriba; esto no es un error disfrazado de vacío.
+    timeZone = household?.timezone ?? timeZone;
+  }
+  const hoy = effectiveDate(new Date(), timeZone);
 
   const overrides = new Map<string, TargetSet | null>();
   for (const profile of profiles) {

@@ -1,4 +1,4 @@
-# Mesa Familiar — aplicación web
+# NutriFamilia — aplicación web
 
 [Plataforma Familiar Inteligente de Alimentación](../docs/sprint-0/README.md). Arquitectura: [BASELINE 1.0](../docs/architecture/BASELINE.md).
 

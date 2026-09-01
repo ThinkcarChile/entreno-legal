@@ -139,12 +139,30 @@ describe("aceptación idempotente (§22) y máquina de estados (§13)", () => {
   let orden: string;
 
   it("crear con dedupe_key dos veces = UNA orden (el doble clic no duplica)", async () => {
+    // LAS FECHAS SE DERIVAN DEL DÍA CIVIL, NO SE ESCRIBEN A MANO.
+    //
+    // Acá decía "2026-08-26" y "2026-08-28", y el 1 de septiembre de 2026 el
+    // test empezó a fallar solo: `create_procurement_order` rechaza —con toda
+    // la razón— una fecha de pedido que ya pasó ("la sugerencia quedó
+    // desactualizada: recarga la página"). Como esta prueba es la que CREA la
+    // orden que usan las cuatro siguientes, se llevó a las cinco por delante y
+    // el síntoma que quedó a la vista fue un "no autorizado" que no tenía nada
+    // que ver.
+    //
+    // El test de al lado ya lo hacía bien (`current_date - 2` para probar el
+    // rechazo). Una fecha fija en un test que valida "no está en el pasado" es
+    // una bomba con la mecha prendida el día que se escribe.
+    const dias = (await h.comoAdmin(() =>
+      h.fila<{ manana: string; pasado: string }>(
+        "select (current_date + 1)::text as manana, (current_date + 3)::text as pasado",
+      ),
+    ))!;
     const args = [
       hogarA.householdId,
       proveedorA,
-      "2026-08-26",
-      "2026-08-28",
-      "PO:test:pollo:2026-08-26",
+      dias.manana,
+      dias.pasado,
+      `PO:test:pollo:${dias.manana}`,
       "purchase-schedule/1.0.0",
       itemsPollo(),
     ];

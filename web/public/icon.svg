@@ -1,6 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#2f7d4f"/>
-  <circle cx="32" cy="30" r="14" fill="none" stroke="#fafaf6" stroke-width="4"/>
-  <circle cx="32" cy="30" r="5" fill="#fafaf6"/>
-  <path d="M14 46h36" stroke="#fafaf6" stroke-width="4" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="NutriFamilia">
+  <!--
+    Marca NutriFamilia: el plato visto desde arriba sobre el mantel.
+    Los colores son los tokens del kit (color primary #3a684d y background
+    #fff8f3 en globals.css). Antes decía #2f7d4f, un verde que ya no existe en
+    ninguna pantalla: el icono instalado quedaba de otro color que la app
+    abierta. Si cambia el token del kit, cambia acá también y vuelve a correr
+    scripts/generar-iconos.mjs, que saca los PNG de este archivo.
+  -->
+  <rect width="64" height="64" rx="14" fill="#3a684d"/>
+  <circle cx="32" cy="30" r="14" fill="none" stroke="#fff8f3" stroke-width="4"/>
+  <circle cx="32" cy="30" r="5" fill="#fff8f3"/>
+  <path d="M14 46h36" stroke="#fff8f3" stroke-width="4" stroke-linecap="round"/>
 </svg>

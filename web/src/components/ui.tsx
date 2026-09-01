@@ -284,3 +284,100 @@ export function Flotante({ tono, children }: { tono: "ok" | "error"; children: R
     </p>
   );
 }
+
+/**
+ * Clases de un campo de formulario del kit. Vivían copiadas como `const FIELD`
+ * dentro de cada tablero, así que el alto de toque se corregía en un lado y no
+ * en los otros. Se exporta la cadena —y no solo el componente— porque hay
+ * campos (los `select` con `optgroup`) que necesitan el estilo sin la
+ * envoltura.
+ */
+export const CAMPO =
+  "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-md py-sm font-body-md text-body-md text-on-surface";
+
+/**
+ * Chip que se puede elegir. No es un `Chip` con `onClick` pegado: un chip
+ * comunica ESTADO y este comunica ELECCIÓN, así que lleva `aria-pressed` y
+ * área de toque de botón. Nació para "¿cuánto comió?", donde la respuesta se
+ * da con el pulgar y sin escribir nada.
+ */
+export function ToggleChip({
+  children,
+  activo,
+  onClick,
+  disabled,
+  title,
+}: {
+  children: React.ReactNode;
+  activo: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+  title?: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={activo}
+      title={title}
+      disabled={disabled}
+      onClick={onClick}
+      className={`inline-flex min-h-[36px] items-center gap-1 rounded-full border px-3 py-1.5 font-label-md text-label-md transition-transform active:scale-95 disabled:opacity-40 ${
+        activo
+          ? "border-primary bg-primary text-on-primary font-semibold"
+          : "border-outline-variant bg-surface-container-lowest text-on-surface-variant"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * Campo de texto con su etiqueta pegada. La etiqueta es un `<label>` de
+ * verdad y no un párrafo encima: un motivo de corrección que no se puede
+ * enfocar desde el lector de pantalla es un campo que esa persona no puede
+ * llenar, y corregir es la operación más usada de la pantalla de consumo.
+ */
+export function TextField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  hint,
+  multiline = false,
+  disabled,
+  inputMode,
+}: {
+  label: string;
+  value: string;
+  onChange: (valor: string) => void;
+  placeholder?: string;
+  hint?: string;
+  multiline?: boolean;
+  disabled?: boolean;
+  inputMode?: "text" | "decimal";
+}) {
+  const comunes = {
+    value,
+    placeholder,
+    disabled,
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      onChange(e.target.value),
+    className: CAMPO,
+  };
+  return (
+    <label className="block">
+      <span className="font-body-sm text-body-sm text-on-surface-variant">{label}</span>
+      <span className="mt-1 block">
+        {multiline ? (
+          <textarea {...comunes} rows={2} />
+        ) : (
+          <input {...comunes} inputMode={inputMode} />
+        )}
+      </span>
+      {hint && (
+        <span className="mt-1 block font-body-sm text-body-sm text-outline">{hint}</span>
+      )}
+    </label>
+  );
+}

@@ -43,7 +43,10 @@ export default async function InvitePage({ params }: Props) {
             Invitación al hogar
           </h1>
           <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-            Te invitaron a unirte a un hogar en Mesa Familiar.
+            {/* Esta línea la lee alguien que todavía no conoce la app: si la
+                marca de acá no es la del manifiesto, la invitación parece de
+                otro producto. Lo vigila pwa-coherencia.test.ts. */}
+            Te invitaron a unirte a un hogar en NutriFamilia.
           </p>
         </div>
 

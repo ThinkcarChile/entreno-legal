@@ -42,9 +42,15 @@ export default async function MemberPage({ params }: Props) {
   } = await supabase.auth.getUser();
   if (!user) redirect(`/login?next=/family/${memberId}`);
 
+  // El `household_id` viene en la MISMA consulta que trae al integrante: acá
+  // había una segunda consulta idéntica metida dentro del `.eq("id", …)` de más
+  // abajo, con un `?? ""` de remate. Ese relleno no era "sin hogar": contra una
+  // columna uuid es un 22P02, y un integrante siempre tiene hogar
+  // (`household_id` es NOT NULL desde 0001). Si el integrante no aparece, la
+  // pantalla es un 404, no un hogar cualquiera.
   const { data: member, error: err1Member } = await supabase
     .from("household_members")
-    .select("id, display_name")
+    .select("id, display_name, household_id")
     .eq("id", memberId)
     .maybeSingle();
   if (err1Member) throw new DataAccessError("integrante", err1Member);
@@ -55,7 +61,7 @@ export default async function MemberPage({ params }: Props) {
   const { data: household, error: householdError } = await supabase
     .from("households")
     .select("timezone")
-    .eq("id", (await supabase.from("household_members").select("household_id").eq("id", memberId).maybeSingle()).data?.household_id ?? "")
+    .eq("id", member.household_id)
     .maybeSingle();
   if (householdError) throw new DataAccessError("zona horaria del hogar", householdError);
   const hoy = effectiveDate(new Date(), household?.timezone ?? "America/Santiago");

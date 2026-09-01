@@ -6,7 +6,7 @@ import {
   type NutritionCompleteness,
   type NutritionValues,
 } from "@/domain/catalog/types";
-import { GOAL_TYPES, type GoalType, type TargetSet } from "@/domain/nutrition/types";
+import { GOAL_TYPES, type TargetSet } from "@/domain/nutrition/types";
 import type { EventEffect } from "@/domain/nutrition/events";
 import { rollingBalance, type DayIntake, type RollingBalance } from "./rolling";
 import { reviewAdaptiveNutrition } from "./engine";
