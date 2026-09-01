@@ -197,6 +197,23 @@ export function emparejarLibroConDisco(entradas, archivosEnDisco) {
     }
     rutaPorClave.set(clave, candidatos[0]);
   }
+
+  // Y la punta contraria, la que el lector llama `sinDeclarar`: un archivo en el
+  // disco cuyo número no declara nadie. El script NO puede inventarle la entrada
+  // —no hay cómo adivinar qué testigo distingue esa migración—, así que
+  // preguntarle a la base y anotar la respuesta escribiría un libro que el
+  // lector rechaza en el acto: el gate manda a correr el script, el script
+  // escribe, y el gate vuelve a mandar a correrlo. Se dice acá, con el nombre.
+  const declarados = new Set(entradas.map(([clave]) => numeroDeMigracion(clave)));
+  for (const archivo of archivosEnDisco) {
+    const numero = numeroDeMigracion(archivo);
+    if (numero === null || declarados.has(numero)) continue;
+    problemas.push(
+      `${archivo}: está en supabase/migrations y el libro no declara el número ` +
+        `${numero}. Agrégale su entrada a mano (estado, sha256, testigo, prueba): ` +
+        `el testigo hay que pensarlo, no se deduce del archivo.`,
+    );
+  }
   return { rutaPorClave, problemas };
 }
 
@@ -338,6 +355,40 @@ export function clasificarFilas(filas, entradas) {
     );
   }
   return { real, mudos };
+}
+
+/**
+ * Escribe en las entradas del libro lo que la base contestó.
+ *
+ * Pura (muta las entradas que recibe y nada más) y exportada porque acá vive el
+ * SEGUNDO lugar donde el nombre del archivo importa: el checksum de una recién
+ * aplicada se calcula sobre el archivo del DISCO —el que `emparejarLibroConDisco`
+ * resolvió por número— y NO sobre la clave del libro, que puede traer el sufijo
+ * viejo. Emparejar por número arriba y volver a leer por la clave acá dejaba el
+ * mismo renombre reventando el camino `--escribir`, que es justo el que anota.
+ * El test la corre con una clave y un archivo de nombre distinto: leer por la
+ * clave no encuentra nada.
+ *
+ * Sin ruta no se inventa: si una migración llegó hasta acá sin pareja en el
+ * disco, es un error de este script y se dice entero en vez de anotar a medias.
+ */
+export function anotarEnElLibro(desacuerdos, rutaPorClave, dirMigraciones = DIR_MIGRACIONES) {
+  for (const { archivo, entrada, enLaBase } of desacuerdos) {
+    entrada.estado = enLaBase ? "APLICADA" : "PENDIENTE";
+    if (!enLaBase || entrada.sha256 !== null) continue;
+    const enDisco = rutaPorClave.get(archivo);
+    if (enDisco === undefined) {
+      throw new Error(
+        `${archivo}: se iba a congelar su checksum sin saber qué archivo del ` +
+          `disco le corresponde. No se anota nada.`,
+      );
+    }
+    // Recién aplicada: el checksum de lo que quedó puesto es el del archivo que
+    // hay ahora. De acá en adelante queda congelado y el libro lo vigila.
+    entrada.sha256 = createHash("sha256")
+      .update(readFileSync(path.join(dirMigraciones, enDisco)))
+      .digest("hex");
+  }
 }
 
 function hoyISO(d = new Date()) {
@@ -501,18 +552,7 @@ async function principal() {
     return desacuerdos.length === 0 ? 0 : 2;
   }
 
-  for (const { archivo, entrada, enLaBase } of desacuerdos) {
-    entrada.estado = enLaBase ? "APLICADA" : "PENDIENTE";
-    if (enLaBase && entrada.sha256 === null) {
-      // Recién aplicada: el checksum de lo que quedó puesto es el del archivo
-      // que hay ahora — el del DISCO, resuelto por número, no la clave del
-      // libro, que puede traer el sufijo viejo. De acá en adelante queda
-      // congelado y el libro lo vigila.
-      entrada.sha256 = createHash("sha256")
-        .update(readFileSync(path.join(DIR_MIGRACIONES, rutaPorClave.get(archivo))))
-        .digest("hex");
-    }
-  }
+  anotarEnElLibro(desacuerdos, rutaPorClave);
 
   const hoy = new Date();
   const vence = new Date(hoy.getTime() + DIAS_DE_VIGENCIA * 24 * 60 * 60 * 1000);

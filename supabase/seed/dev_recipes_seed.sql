@@ -51,8 +51,16 @@ begin
     values (v_ing, 'RAW', 'G', 23, 2.1, 3.7, 0.5, 2.8, 46, 521, 'DEV_SEED', src, 'demo');
   end if;
 
-  insert into public.ingredients (canonical_name, display_name, category_id)
-  values ('limon', 'Limón', (cats->>'FRUITS')::uuid)
+  -- Porción comestible 0,45: del limón se usa el JUGO, y la cáscara con el
+  -- bagazo se botan delante de uno. Sin este factor el ShoppingEngine no podía
+  -- convertir a cantidad de compra y las recetas que lo declaran quedaban sin
+  -- resolver; peor, la nutrición sumaba el 100 % del peso de la fruta entera.
+  --
+  -- El número no es una comodidad: es el MISMO que ya declara `limon de pica`
+  -- en el catálogo de la biblioteca, y calza con lo que la propia receta del
+  -- pie de limón dejó escrito al corregirse (320 g de fruta → 120 ml de jugo).
+  insert into public.ingredients (canonical_name, display_name, category_id, edible_portion_factor)
+  values ('limon', 'Limón', (cats->>'FRUITS')::uuid, 0.45)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
     insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit,

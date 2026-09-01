@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
  * persona veía una casa hoy y la otra mañana, con el stock, el plan y las
  * porciones de la familia equivocada.
  *
- * La propiedad se vigila en dos redes, y LAS DOS miran la cadena de llamadas
+ * La propiedad se vigila en tres redes, y TODAS miran la cadena de llamadas
  * COMPLETA de cada consulta (parseada contando paréntesis y saltando cadenas
  * de texto), nunca una ventana de texto alrededor del `.from(`:
  *
@@ -26,6 +26,12 @@ import { describe, expect, it } from "vitest";
  *  `.order(...)`, anclada por clave primaria, o anclada por el índice único
  *  (household_id, user_id) de la migración 0001.
  *
+ *  Red 0 — el guardián no adivina. Si la consulta no se deja leer entera —
+ *  porque el constructor se guarda en una variable para extenderlo en otra
+ *  sentencia, o porque filtra con `.match({...})` / `.or(...)` / `.filter(...)`,
+ *  que este analizador no interpreta — el veredicto es DESCONOCIDO, y un
+ *  desconocido no se aprueba: se rechaza y se pide reescribir la consulta.
+ *
  * Historia que obligó a parsear de verdad: la versión anterior recortaba la
  * "cadena" hasta el primer `;` después del `.from(`. Dentro de un
  * `Promise.all([...])` ese `;` cierra la sentencia ENTERA, así que la ventana
@@ -34,10 +40,20 @@ import { describe, expect, it } from "vitest";
  * `.eq("id", x)` le PRESTABA el ancla a la consulta de al lado. Las tres
  * formas que encontró el crítico viven abajo como fixtures permanentes.
  *
- * Límite declarado: el parser sigue UNA cadena fluida. Una consulta armada en
- * dos sentencias (`let q = db.from(...); q = q.eq(...)`) no se puede analizar
- * así; hoy no existe esa forma en el árbol y si aparece hay que traerla a la
- * cadena fluida o al dueño.
+ * Historia de la red 0: la versión anterior DECLARABA en este comentario que
+ * el parser sigue una sola cadena fluida y que la forma partida en dos
+ * sentencias (`let q = db.from(...); q = q.eq(...)`) "hoy no existe en el
+ * árbol". Un límite declarado y no exigido es un agujero con documentación: la
+ * forma partida pasaba en verde, porque el trozo visible no trae ni el
+ * `.limit(1)` ni el ancla. Hoy las 24 consultas de hogares del árbol son
+ * `= await <cliente>.from(...)` — la cadena se consume donde se escribe —, así
+ * que exigirlo no marca a nadie de más; y `Promise.all([...])`, que es el
+ * estilo de la casa, sigue pasando porque ahí la consulta también se consume
+ * en el lugar.
+ *
+ * También se leen las comillas simples y los backticks del nombre de la tabla
+ * y de la columna: un guardián que solo entiende `"households"` vigila el
+ * formateador, no la base de datos.
  */
 
 /* ------------------------------------------------------------------------- *
@@ -100,6 +116,62 @@ function saltarArgumentos(texto: string, i: number): number {
   return i;
 }
 
+/** Camina a la IZQUIERDA sobre espacio en blanco desde `i`. */
+function blancoAtras(texto: string, i: number): number {
+  while (i > 0 && /\s/.test(texto.charAt(i - 1))) i -= 1;
+  return i;
+}
+
+/**
+ * Desde el índice de un `)`, devuelve el índice del `(` que lo abre, contando
+ * hacia atrás. Se usa solo para saltar la llamada de un receptor
+ * (`(await createClient()).from(...)`), donde no hay literales de texto con
+ * paréntesis; si se descuadra devuelve 0 y la lectura queda "no guardada",
+ * que es el lado indulgente.
+ */
+function saltarArgumentosAtras(texto: string, i: number): number {
+  let nivel = 0;
+  while (i >= 0) {
+    if (texto[i] === ")") nivel += 1;
+    else if (texto[i] === "(") {
+      nivel -= 1;
+      if (nivel === 0) return i;
+    }
+    i -= 1;
+  }
+  return 0;
+}
+
+/** Lo que significa que el constructor de la consulta se escapa de aquí. */
+const ESCAPA = /(=>|=|\breturn)\s*$/;
+
+/**
+ * ¿La cadena se GUARDA en vez de consumirse acá? Camina a la izquierda por el
+ * receptor (`db`, `supabase`, `this.db`, `(await cliente()).`) hasta su
+ * identificador más a la izquierda y mira el token anterior: un `=`, un `=>` o
+ * un `return` significan que el constructor viaja a otra sentencia y que lo
+ * que este analizador ve es media consulta. `await db.from(...)` y
+ * `Promise.all([db.from(...)])` no son eso: ahí la consulta muere en el lugar.
+ */
+function seGuardaElConstructor(texto: string, desde: number): boolean {
+  let i = desde;
+  for (;;) {
+    i = blancoAtras(texto, i);
+    if (i > 0 && texto[i - 1] === ")") {
+      i = saltarArgumentosAtras(texto, i - 1);
+      continue;
+    }
+    const m = /[A-Za-z_$][\w$]*$/.exec(texto.slice(0, i));
+    if (!m) return false;
+    const j = blancoAtras(texto, m.index);
+    if (j > 0 && texto[j - 1] === ".") {
+      i = j - 1;
+      continue;
+    }
+    return ESCAPA.test(texto.slice(0, j));
+  }
+}
+
 /**
  * Extrae UNA cadena fluida completa a partir del `.from(` que empieza en
  * `desde`: consume sus argumentos balanceados y sigue mientras venga
@@ -124,9 +196,12 @@ interface CadenaDeHogar {
   tabla: "households" | "household_members";
   cadena: string;
   linea: number;
+  /** El constructor viaja a otra sentencia: lo que se ve es media consulta. */
+  guardada: boolean;
 }
 
-const INICIO = /\.from\(\s*"(households|household_members)"\s*\)/g;
+/** Cualquier comilla: el guardián vigila la base de datos, no al formateador. */
+const INICIO = /\.from\(\s*["'`](households|household_members)["'`]\s*\)/g;
 
 /** Todas las cadenas fluidas del texto que parten de una tabla de hogares. */
 function cadenasDeHogar(texto: string): CadenaDeHogar[] {
@@ -136,6 +211,7 @@ function cadenasDeHogar(texto: string): CadenaDeHogar[] {
       tabla: m[1] as CadenaDeHogar["tabla"],
       cadena: extraerCadena(texto, m.index),
       linea: texto.slice(0, m.index).split("\n").length,
+      guardada: seGuardaElConstructor(texto, m.index),
     });
   }
   return out;
@@ -147,7 +223,7 @@ function cadenasDeHogar(texto: string): CadenaDeHogar[] {
  * paréntesis adentro), no con un `[^)]*`.
  */
 function valorDeEq(cadena: string, columna: string): string | null {
-  const inicio = new RegExp(String.raw`\.eq\(\s*"${columna}"\s*,`).exec(cadena);
+  const inicio = new RegExp(String.raw`\.eq\(\s*["'\`]${columna}["'\`]\s*,`).exec(cadena);
   if (!inicio) return null;
   const desde = inicio.index + inicio[0].length;
   const fin = saltarArgumentos(cadena, desde);
@@ -199,6 +275,13 @@ const UNA_FILA = /\.maybeSingle\(\)|\.single\(\)|\.limit\(\s*1\s*\)/;
 const ORDENADA = /\.order\(/;
 
 /**
+ * Filtros que este analizador NO sabe leer: `.match({ user_id: u })` esconde
+ * un `.eq` dentro de un objeto, y `.or(...)` / `.filter(...)` reciben SQL en
+ * texto. Frente a ellos el veredicto no es "está bien", es "no sé".
+ */
+const FILTRO_OPACO = /\.(?:match|or|filter)\(/;
+
+/**
  * Red 2: devuelve el motivo por el que la cadena es una moneda al aire, o
  * `null` si es determinista. Una lectura de una sola fila es determinista si
  * trae `.order(...)`, si está anclada por clave primaria (`.eq("id", …)` con
@@ -206,7 +289,32 @@ const ORDENADA = /\.order\(/;
  * (household_id, user_id) de `household_members`.
  */
 function motivoSinAnclar(c: CadenaDeHogar): string | null {
-  if (!UNA_FILA.test(c.cadena) || ORDENADA.test(c.cadena)) return null;
+  // Red 0 antes que nada: si el constructor se guarda, el `.limit(1)` y el
+  // ancla viven en OTRA sentencia y `UNA_FILA` daría un verde falso.
+  if (c.guardada) {
+    return (
+      `guarda el constructor de la consulta a "${c.tabla}" en una variable ` +
+      `para extenderlo en otra sentencia: así este guardián solo ve media ` +
+      `consulta y no puede decir si es determinista. Escríbela como UNA ` +
+      `cadena que se consuma donde se declara (\`await db.from(...)...\`).`
+    );
+  }
+
+  if (!UNA_FILA.test(c.cadena)) return null;
+
+  // El filtro opaco se revisa ANTES del `.order(`: un `.match({ user_id: u })`
+  // ordenado sería determinista para la red 2 y ADEMÁS invisible para la red 1,
+  // o sea el desempate del dueño copiado sin que nadie lo vea.
+  const opaco = FILTRO_OPACO.exec(c.cadena);
+  if (opaco) {
+    return (
+      `lee una sola fila de "${c.tabla}" filtrando con \`${opaco[0]}…)\`, que ` +
+      `este guardián no sabe leer: el veredicto sería un "no sé", y un "no sé" ` +
+      `no es un "está bien". Escribe el filtro con .eq(...) o llévala al dueño.`
+    );
+  }
+
+  if (ORDENADA.test(c.cadena)) return null;
 
   const porId = valorDeEq(c.cadena, "id");
   if (porId !== null) return motivoAnclaMala(porId);
@@ -315,6 +423,63 @@ describe("el analizador ve la cadena completa, no una ventana de texto", () => {
     // Determinista (red 2 calla) pero copia la regla del dueño (red 1 acusa).
     expect(infraccionesRed2(texto)).toEqual([]);
     expect(cadenasDeHogar(texto).some(eligeHogarDesdeElUsuario)).toBe(true);
+  });
+
+  it("la consulta partida en dos sentencias NO pasa por no tener .limit(1)", () => {
+    // El agujero que el comentario viejo solo DECLARABA: el trozo visible no
+    // trae ni el `.limit(1)` ni el ancla, así que la red 2 lo dejaba pasar.
+    const texto = `
+      const q = db.from("households").select("timezone");
+      const { data } = await q.limit(1).maybeSingle();
+    `;
+    const inf = infraccionesRed2(texto);
+    expect(inf).toHaveLength(1);
+    expect(inf[0]).toContain("guarda el constructor");
+  });
+
+  it("await y Promise.all NO cuentan como guardar el constructor", () => {
+    const sueltas = `
+      const { data } = await supabase
+        .from("households").select("timezone").eq("id", hogarId).maybeSingle();
+    `;
+    const enArreglo = `
+      const [hogar] = await Promise.all([
+        db.from("households").select("timezone").eq("id", hogarId).maybeSingle(),
+      ]);
+    `;
+    expect(cadenasDeHogar(sueltas)[0]!.guardada).toBe(false);
+    expect(cadenasDeHogar(enArreglo)[0]!.guardada).toBe(false);
+    expect(infraccionesRed2(sueltas)).toEqual([]);
+    expect(infraccionesRed2(enArreglo)).toEqual([]);
+  });
+
+  it('.match({ user_id }) se rechaza como "no sé", no se aprueba en silencio', () => {
+    // Ordenada y limitada: la red 2 la daría por determinista y la red 1 no ve
+    // el `user_id` escondido en el objeto. El desempate del dueño, copiado.
+    const texto = `
+      const { data } = await db
+        .from("household_members")
+        .select("household_id")
+        .match({ user_id: user.id, is_active: true })
+        .order("created_at")
+        .limit(1)
+        .maybeSingle();
+    `;
+    const inf = infraccionesRed2(texto);
+    expect(inf).toHaveLength(1);
+    expect(inf[0]).toContain(".match(");
+  });
+
+  it("el nombre de la tabla y de la columna se leen con cualquier comilla", () => {
+    const pelada = `db.from('households').select('timezone').limit(1).maybeSingle();`;
+    expect(infraccionesRed2(pelada)).toHaveLength(1);
+
+    const anclada = `db.from('households').select('t').eq('id', hogarId).maybeSingle();`;
+    expect(infraccionesRed2(anclada)).toEqual([]);
+
+    const dueno = `db.from('household_members').select('household_id')
+      .eq('user_id', user.id).order('created_at').limit(1).maybeSingle();`;
+    expect(cadenasDeHogar(dueno).some(eligeHogarDesdeElUsuario)).toBe(true);
   });
 
   it("el parser no se descuadra con paréntesis dentro de los argumentos", () => {

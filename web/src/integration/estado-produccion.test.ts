@@ -1,7 +1,20 @@
-import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import {
+  appendFileSync,
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
-import type { PGlite } from "@electric-sql/pglite";
+import { pathToFileURL } from "node:url";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { PGlite } from "@electric-sql/pglite";
 import { MIGRACIONES, recorrerCadena } from "./harness";
 import {
   archivosDeMigracion,
@@ -9,6 +22,7 @@ import {
   cargarLibroDeProduccion,
   consultaDelTestigo,
   esAusenciaDelObjeto,
+  LibroSchema,
   motivoDeVigenciaInvalida,
   numeroDeMigracion,
   respuestaDelTestigo,
@@ -17,7 +31,50 @@ import {
   VIGENCIA_MAXIMA_EN_DIAS,
 } from "./estado-produccion";
 
-const SCRIPT = path.resolve(__dirname, "../../../scripts/verificar-estado-produccion.mjs");
+const RAIZ = path.resolve(__dirname, "../../..");
+const SCRIPT = path.join(RAIZ, "scripts", "verificar-estado-produccion.mjs");
+const DIR_MIGRACIONES = path.join(RAIZ, "supabase", "migrations");
+const LIBRO = path.join(RAIZ, "supabase", "estado-produccion.json");
+
+/** Lo que el escritor del libro exporta, y que estos tests EJECUTAN. */
+interface EntradaCruda {
+  estado?: unknown;
+  sha256?: unknown;
+  testigo?: unknown;
+  prueba?: unknown;
+  solo_en_produccion?: unknown;
+}
+
+interface ModuloDelEscritor {
+  DIAS_DE_VIGENCIA: number;
+  numeroDeMigracion: (nombre: string) => string | null;
+  emparejarLibroConDisco: (
+    entradas: [string, EntradaCruda][],
+    archivosEnDisco: string[],
+  ) => { rutaPorClave: Map<string, string>; problemas: string[] };
+  validarFormaDelLibro: (crudo: unknown) => string[];
+  sqlDeTodosLosTestigos: (entradas: [string, { testigo: string }][]) => string;
+  clasificarFilas: (
+    filas: { archivo: string; presente: unknown }[],
+    entradas: [string, { testigo: string }][],
+  ) => { real: Map<string, boolean>; mudos: string[] };
+  anotarEnElLibro: (
+    desacuerdos: { archivo: string; entrada: EntradaCruda; enLaBase: boolean }[],
+    rutaPorClave: Map<string, string>,
+    dirMigraciones?: string,
+  ) => void;
+  literal: (s: unknown) => string;
+}
+
+/**
+ * El escritor se IMPORTA, no se lee.
+ *
+ * Todo lo que este archivo afirma del `.mjs` —el emparejamiento por número, la
+ * validación de la forma del libro, el SQL de los testigos, la clasificación de
+ * las filas— se afirma corriéndolo. Importarlo no dispara nada: el script mira
+ * `process.argv[1]` y sólo corre `principal()` cuando lo invocan directo.
+ */
+const escritor = (await import(pathToFileURL(SCRIPT).href)) as ModuloDelEscritor;
 
 /**
  * EL LIBRO DE PRODUCCIÓN SE PRUEBA A SÍ MISMO.
@@ -182,73 +239,184 @@ describe("el método con el que se supo decide cuánto vale lo que dice el libro
   it("el script escribe la vigencia que este módulo acepta", () => {
     // Dos números que tienen que ser el mismo y viven en archivos distintos: el
     // script anota `caduca_el` y este módulo lo audita. Si se separan, el script
-    // escribe libros que el gate rechaza en el acto.
-    const fuente = readFileSync(SCRIPT, "utf8");
-    const declarado = /const DIAS_DE_VIGENCIA = (\d+);/.exec(fuente)?.[1];
-    expect(declarado).toBeDefined();
-    expect(Number(declarado)).toBe(VIGENCIA_MAXIMA_EN_DIAS.TESTIGOS_EN_VIVO);
+    // escribe libros que el gate rechaza en el acto. Se comparan los VALORES
+    // importados, no el texto de una declaración: `const DIAS_DE_VIGENCIA = 90`
+    // escrito de cualquier otra forma —un `export const` con salto de línea, una
+    // suma, un cálculo— dejaba al regex sin encontrar nada.
+    expect(escritor.DIAS_DE_VIGENCIA).toBe(VIGENCIA_MAXIMA_EN_DIAS.TESTIGOS_EN_VIVO);
   });
 });
 
 /**
- * EL SCRIPT ES LA OTRA MITAD DE ESTE MECANISMO y no lo corre ningún test: pide
- * un token de la Management API y habla con el Supabase de verdad. Lo que sí se
- * puede sostener desde acá son las tres promesas suyas que, si se rompen, dejan
- * al libro diciendo cosas que nadie comprobó. Se leen del texto del archivo a
- * propósito: importarlo lo ejecutaría.
+ * EL SQL QUE EL ESCRITOR LE MANDA A PRODUCCIÓN, CORRIDO CONTRA UN POSTGRES.
+ *
+ * Acá vivían dos guardias de texto, y los dos vigilaban la ORTOGRAFÍA del último
+ * bug en vez de la propiedad:
+ *
+ *   · "no convierte el NULL en no aplicada" prohibía la cadena
+ *     `coalesce(v_resultado`. El MISMO aplastamiento escrito en el select de
+ *     afuera —`coalesce(pg_temp.testigo_presente(t.expresion), false)`— pasaba
+ *     limpio, con el defecto entero vivo.
+ *   · "atrapa exactamente los mismos SQLSTATE" leía el bloque `exception` con
+ *     `/exception\s+when([\s\S]*?)then/`, que por no-codicioso se queda con el
+ *     PRIMER handler. Agregarle un `when others then return false;` convertía
+ *     cualquier error de Postgres en "todavía no aplicada" —justo lo que ese
+ *     test decía impedir— sin que el regex se enterara.
+ *
+ * Lo que sigue no reconoce formas: genera el SQL con `sqlDeTodosLosTestigos()`,
+ * lo CORRE contra PGlite con testigos de laboratorio y mira qué contesta. Un
+ * aplastamiento del NULL, escrito donde sea, devuelve `false` donde el test
+ * exige `null`; un `when others` de más devuelve `false` donde el test exige que
+ * la consulta reviente.
  */
+describe("el SQL de los testigos, ejecutado", () => {
+  let db!: PGlite;
+
+  beforeAll(() => {
+    db = new PGlite();
+  }, 60_000);
+
+  afterAll(async () => {
+    await db.close();
+  });
+
+  /**
+   * Un testigo de laboratorio por cada condición de ausencia, elegido para
+   * disparar EXACTAMENTE ese SQLSTATE. La igualdad de claves de abajo es la que
+   * impide que alguien agregue una sexta condición sin testigo que la ejercite.
+   */
+  const TESTIGOS_DE_LABORATORIO: Readonly<Record<string, string>> = {
+    undefined_table: "exists(select 1 from tabla_que_no_existe)",
+    undefined_function: "funcion_que_no_existe()",
+    undefined_column: "columna_que_no_existe",
+    undefined_object: "null::tipo_que_no_existe is null",
+    invalid_schema_name: "esquema_inexistente.f()",
+  };
+
+  /** Errores que NO son "el objeto no existe": tienen que tumbar la corrida. */
+  const ERRORES_DE_VERDAD: Readonly<Record<string, string>> = {
+    "22012": "(1/0) = 1", // division_by_zero
+    "22P02": "'no soy un numero'::int = 1", // invalid_text_representation
+  };
+
+  const filasDe = async (entradas: [string, { testigo: string }][]) => {
+    const resultados = await db.exec(escritor.sqlDeTodosLosTestigos(entradas));
+    const ultimo = resultados[resultados.length - 1];
+    return (ultimo?.rows ?? []) as unknown as { archivo: string; presente: unknown }[];
+  };
+
+  it("hay un testigo de laboratorio por cada condición de ausencia declarada", () => {
+    expect(Object.keys(TESTIGOS_DE_LABORATORIO).sort()).toEqual(
+      Object.keys(AUSENCIA_DEL_OBJETO).sort(),
+    );
+  });
+
+  it("cada testigo de laboratorio dispara el SQLSTATE que el módulo le atribuye", async () => {
+    /**
+     * Antes de exigirle nada al script, se comprueba que la tabla de códigos de
+     * ESTE módulo dice la verdad: que `undefined_object` es de veras 42704 y no
+     * un número copiado a mano. Sin esto, el test de abajo podría estar verde
+     * midiendo contra una tabla equivocada.
+     */
+    for (const [condicion, testigo] of Object.entries(TESTIGOS_DE_LABORATORIO)) {
+      let codigo: unknown = "(no reventó)";
+      try {
+        await db.query(consultaDelTestigo(testigo));
+      } catch (e) {
+        codigo = (e as { code?: unknown }).code;
+        expect(esAusenciaDelObjeto(e), `${condicion}: ${testigo}`).toBe(true);
+      }
+      expect(codigo, `${condicion}: ${testigo}`).toBe(AUSENCIA_DEL_OBJETO[condicion]);
+    }
+  }, 60_000);
+
+  it("una ausencia del objeto vuelve como FALSE, que es el dato 'todavía no aplicada'", async () => {
+    const entradas: [string, { testigo: string }][] = Object.entries(TESTIGOS_DE_LABORATORIO)
+      .map(([condicion, testigo]): [string, { testigo: string }] => [`${condicion}.sql`, { testigo }])
+      .sort(([a], [b]) => a.localeCompare(b));
+    const filas = await filasDe(entradas);
+    expect(filas.map((f) => [f.archivo, f.presente])).toEqual(
+      entradas.map(([archivo]) => [archivo, false]),
+    );
+  }, 60_000);
+
+  it("un error que NO es ausencia tumba la corrida en vez de volver como FALSE", async () => {
+    /**
+     * Ésta es la propiedad que el regex del bloque `exception` no vigilaba. Un
+     * `when others then return false;` haría que una división por cero se anote
+     * como "producción no tiene esta migración": un error convertido en dato, en
+     * la dirección que degrada APLICADA a PENDIENTE y deja al gate levantando
+     * una base a la que le faltan objetos que producción sí tiene.
+     */
+    const codigosDeAusencia = new Set(Object.values(AUSENCIA_DEL_OBJETO));
+    for (const [codigo, testigo] of Object.entries(ERRORES_DE_VERDAD)) {
+      // Que el caso siga siendo un caso: si algún día alguien mete 22012 en la
+      // lista de ausencias, este test tiene que gritar, no acomodarse.
+      expect(codigosDeAusencia.has(codigo), `${codigo} no puede ser una ausencia`).toBe(false);
+      await expect(filasDe([["x.sql", { testigo }]])).rejects.toThrow();
+    }
+  }, 60_000);
+
+  it("el NULL del testigo sube como NULL, no aplastado a 'no aplicada'", async () => {
+    /**
+     * El `coalesce` iba en la dirección cómoda y por eso es tan fácil de volver
+     * a escribir: convierte "el testigo no supo contestar" en el dato
+     * "producción no la tiene". Se prueba mirando lo que la base DEVUELVE, así
+     * que da lo mismo dónde se escriba el aplastamiento —dentro de la función,
+     * en el select de afuera, en un `case`—: si aplasta, acá aparece `false`.
+     *
+     * El `coalesce` explícito en el TESTIGO de una entrada del libro no está
+     * prohibido: ahí lo escribe alguien que justifica en `prueba` por qué ese
+     * NULL sí es una ausencia. Lo que no puede es vivir en el motor.
+     */
+    const entradas: [string, { testigo: string }][] = [
+      ["a_null.sql", { testigo: "true and null" }],
+      ["b_falso.sql", { testigo: "1 = 2" }],
+      ["c_verdadero.sql", { testigo: "1 = 1" }],
+    ];
+    const filas = await filasDe(entradas);
+    expect(filas.map((f) => [f.archivo, f.presente])).toEqual([
+      ["a_null.sql", null],
+      ["b_falso.sql", false],
+      ["c_verdadero.sql", true],
+    ]);
+
+    // Y lo que el script HACE con ese NULL: no lo anota. Va a `mudos`, y con
+    // mudos la corrida se detiene sin escribir el libro.
+    const { real, mudos } = escritor.clasificarFilas(filas, entradas);
+    expect(mudos).toHaveLength(1);
+    expect(mudos[0]).toContain("a_null.sql");
+    expect(mudos[0]).toContain("NULL");
+    expect([...real.entries()].sort()).toEqual([
+      ["b_falso.sql", false],
+      ["c_verdadero.sql", true],
+    ]);
+  }, 60_000);
+
+  it("un testigo con comilla simple no rompe la sentencia", async () => {
+    // `literal()` es lo único que separa un testigo del libro de una inyección
+    // en la sentencia que se le manda a producción.
+    const filas = await filasDe([["q.sql", { testigo: "'a''b' = 'a''b'" }]]);
+    expect(filas).toEqual([{ archivo: "q.sql", presente: true }]);
+  }, 60_000);
+});
+
 describe("el script que le pregunta a la base", () => {
   /**
-   * Se le sacan los comentarios antes de mirarlo. Si no, estos tests se
-   * autoengañan de la forma más tonta: el comentario que explica POR QUÉ el
-   * `coalesce` y el `process.exit()` ya no están los vuelve a "encontrar" en el
-   * archivo, y el rojo aparece con el arreglo puesto. Se mira lo que el script
-   * HACE, no lo que cuenta.
+   * Lo único que queda leyéndose como texto, y con una razón: la propiedad es
+   * la AUSENCIA de una llamada en TODO el archivo —incluidos los caminos que
+   * sólo se distinguen con un socket abierto contra api.supabase.com, que
+   * ningún test puede montar acá—. Los códigos de salida sí se comprueban
+   * corriendo el script de verdad, más abajo.
+   *
+   * Se le sacan los comentarios antes de mirarlo: si no, el comentario que
+   * explica POR QUÉ `process.exit()` ya no está lo vuelve a "encontrar" en el
+   * archivo y el rojo aparece con el arreglo puesto.
    */
   const fuente = readFileSync(SCRIPT, "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, " ") // comentario de bloque JS
     .replace(/^[ \t]*\/\/.*$/gm, " ") // comentario de línea JS
     .replace(/^[ \t]*--.*$/gm, " "); // comentario de línea SQL, dentro del template
-
-  it("atrapa exactamente los mismos SQLSTATE de ausencia que este módulo", () => {
-    /**
-     * `esAusenciaDelObjeto` clasifica por CÓDIGO (PGlite devuelve `error.code`)
-     * y el script por NOMBRE DE CONDICIÓN (plpgsql no entiende otra cosa). Son
-     * dos escrituras de la misma lista en dos archivos, y ya se desincronizaron
-     * una vez de la peor manera: el comentario decía cuántas eran y la lista
-     * tenía otra cantidad. Un nombre de más acá es un error de verdad tragado
-     * como "todavía no aplicada"; uno de menos tumba la corrida por algo que ES
-     * la respuesta esperada.
-     */
-    const bloque = /exception\s+when([\s\S]*?)then/.exec(fuente)?.[1];
-    expect(bloque).toBeDefined();
-    const enElScript = bloque!
-      .split(/\s+or\s+/)
-      .map((n) => n.trim())
-      .filter((n) => n.length > 0)
-      .sort();
-    expect(enElScript).toEqual(Object.keys(AUSENCIA_DEL_OBJETO).sort());
-  });
-
-  it("no convierte el NULL del testigo en 'no aplicada'", () => {
-    /**
-     * Vivía un `coalesce(v_resultado, false)` en la función de pg_temp. Va en la
-     * dirección segura y por eso es tan cómodo, pero convierte "el testigo no
-     * supo contestar" en el dato "producción no la tiene": el script anotaría
-     * PENDIENTE una migración aplicada y el gate levantaría una base a la que le
-     * faltan objetos que en producción sí están.
-     *
-     * El `coalesce` explícito NO está prohibido en un testigo del libro —ahí lo
-     * escribe alguien que puede justificar en `prueba` por qué ese NULL sí es
-     * una ausencia—. Lo que no puede es vivir en el motor, aplicándose a todos
-     * los testigos por igual y sin que nadie lo justifique.
-     */
-    expect(fuente).not.toMatch(/coalesce\s*\(\s*v_resultado/i);
-    expect(fuente).toMatch(/return v_resultado;/);
-    // Y del lado JS, la misma regla: nada de `presente === true` como forma de
-    // leer la respuesta. El booleano se exige, no se asume.
-    expect(fuente).toMatch(/typeof f\.presente === "boolean"/);
-  });
 
   it("no corta el proceso con process.exit()", () => {
     /**
@@ -259,8 +427,8 @@ describe("el script que le pregunta a la base", () => {
      * script veía 127 en vez del 1 ("no se pudo saber") o el 2 ("hay
      * desacuerdos"), y un código que no significa nada no se puede encadenar.
      */
-    expect(fuente).not.toMatch(/process\.exit\s*\(/);
-    expect(fuente).toMatch(/process\.exitCode\s*=/);
+    expect(fuente).not.toMatch(/process\s*(?:\.\s*exit\b|\[\s*["'`]exit)/);
+    expect(fuente).toMatch(/process\s*\.\s*exitCode\s*=/);
   });
 });
 
@@ -293,6 +461,435 @@ describe("el número es el contrato, no el sufijo", () => {
     expect(numeroDeMigracion("weekly_planning.sql")).toBeNull();
     expect(numeroDeMigracion("007_corto.sql")).toBeNull();
   });
+
+  it("el LECTOR y el ESCRITOR leen el mismo número del mismo nombre", () => {
+    /**
+     * Dos implementaciones de la misma regla en dos lenguajes. La correspondencia
+     * no la sostiene un comentario: se corren las dos sobre los mismos nombres,
+     * incluidos los bordes (sin número, tres dígitos, sin guión bajo, con ruta,
+     * con separador de Windows).
+     */
+    const nombres = [
+      "0001_family.sql",
+      "supabase/migrations/0040_adaptive_reviews.sql",
+      "supabase\\migrations\\0040_revisiones_adaptativas.sql",
+      "0040_lo_que_sea.sql",
+      "9999_no_existe.sql",
+      "sin_numero.sql",
+      "007_corto.sql",
+      "00401_cinco_digitos.sql",
+      "0001-guion.sql",
+      "",
+    ];
+    for (const nombre of nombres) {
+      expect(escritor.numeroDeMigracion(nombre), nombre).toBe(numeroDeMigracion(nombre));
+    }
+  });
+});
+
+/**
+ * EL ESCRITOR EMPAREJA LIBRO Y DISCO POR NÚMERO, IGUAL QUE EL LECTOR.
+ *
+ * El arreglo del renombre quedó una vuelta entera puesto sólo en el lector: el
+ * `.mjs` seguía emparejando por NOMBRE COMPLETO. Y el `.mjs` es el único
+ * ESCRITOR del libro y el remedio al que apuntan todos los mensajes de error del
+ * lector, así que un renombre de sufijo dejaba el gate diciendo "corre el
+ * script" y el script negándose a correr —encima acusando "las migraciones
+ * aplicadas están CONGELADAS" por una PENDIENTE que jamás se aplicó—.
+ *
+ * Se ejercita la función pura, y más abajo el script entero contra un árbol
+ * simulado.
+ */
+describe("el escritor empareja libro y disco por número", () => {
+  const entrada = (estado: string): EntradaCruda => ({
+    estado,
+    sha256: null,
+    testigo: "true",
+    prueba: "de laboratorio",
+  });
+
+  it("un renombre de sufijo empareja igual, y apunta al archivo del DISCO", () => {
+    const { rutaPorClave, problemas } = escritor.emparejarLibroConDisco(
+      [
+        ["0001_family.sql", entrada("APLICADA")],
+        ["0040_adaptive_reviews.sql", entrada("PENDIENTE")],
+      ],
+      ["0001_family.sql", "0040_revisiones_adaptativas.sql"],
+    );
+    expect(problemas).toEqual([]);
+    expect(rutaPorClave.get("0001_family.sql")).toBe("0001_family.sql");
+    // Lo que importa: la ruta es la del DISCO, no la clave del libro. De ahí
+    // sale el sha256 que `--escribir` congela.
+    expect(rutaPorClave.get("0040_adaptive_reviews.sql")).toBe("0040_revisiones_adaptativas.sql");
+  });
+
+  it("dos archivos con el mismo número es error ruidoso, no una elección al azar", () => {
+    const { rutaPorClave, problemas } = escritor.emparejarLibroConDisco(
+      [["0040_adaptive_reviews.sql", entrada("APLICADA")]],
+      ["0040_adaptive_reviews.sql", "0040_revisiones_adaptativas.sql"],
+    );
+    expect(problemas).toHaveLength(1);
+    expect(problemas[0]).toContain("0040");
+    expect(problemas[0]).toContain("0040_revisiones_adaptativas.sql");
+    // Y sobre todo: NO se eligió ninguno de los dos.
+    expect(rutaPorClave.has("0040_adaptive_reviews.sql")).toBe(false);
+  });
+
+  it("un número sin archivo se acusa según lo que el libro declara, no siempre como congelada", () => {
+    /**
+     * El mensaje importa tanto como el rojo. Acusar "las migraciones aplicadas
+     * están CONGELADAS: producción y el repo dejaron de ser lo mismo" por una
+     * PENDIENTE con sha256 null y jamás aplicada es un rojo que enseña a
+     * ignorar los rojos.
+     */
+    const pendiente = escritor.emparejarLibroConDisco(
+      [["0040_adaptive_reviews.sql", entrada("PENDIENTE")]],
+      [],
+    ).problemas;
+    expect(pendiente).toHaveLength(1);
+    expect(pendiente[0]).toContain("0040");
+    expect(pendiente[0]).not.toMatch(/CONGELAD/i);
+    expect(pendiente[0]).not.toMatch(/producción la tiene/i);
+
+    const aplicada = escritor.emparejarLibroConDisco(
+      [["0036_meal_serving.sql", entrada("APLICADA")]],
+      [],
+    ).problemas;
+    expect(aplicada).toHaveLength(1);
+    expect(aplicada[0]).toMatch(/APLICADA/);
+    expect(aplicada[0]).toMatch(/historial/i);
+  });
+
+  it("un archivo del disco que el libro no declara también detiene al escritor", () => {
+    /**
+     * La punta contraria del emparejamiento, y la que cierra el círculo: el
+     * lector rechaza un libro al que le falta una migración del disco y manda a
+     * correr el script. Si el script preguntara igual y anotara, escribiría un
+     * libro que el lector vuelve a rechazar por lo mismo — el gate manda a
+     * correr, el script escribe, el gate manda a correr. El script no puede
+     * inventar el testigo, así que lo dice y se detiene.
+     */
+    const { problemas } = escritor.emparejarLibroConDisco(
+      [["0001_family.sql", entrada("APLICADA")]],
+      ["0001_family.sql", "0041_recien_escrita.sql"],
+    );
+    expect(problemas).toHaveLength(1);
+    expect(problemas[0]).toContain("0041_recien_escrita.sql");
+    expect(problemas[0]).toMatch(/testigo/i);
+  });
+
+  it("una clave del libro sin NNNN_ se declara, no se adivina", () => {
+    const { rutaPorClave, problemas } = escritor.emparejarLibroConDisco(
+      [["sin_numero.sql", entrada("PENDIENTE")]],
+      ["sin_numero.sql"],
+    );
+    expect(problemas).toHaveLength(1);
+    expect(problemas[0]).toContain("sin_numero.sql");
+    expect(rutaPorClave.size).toBe(0);
+  });
+
+  it("al ANOTAR, el checksum sale del archivo del disco y no de la clave del libro", () => {
+    /**
+     * El segundo lugar donde el nombre importa, y el que quedó abierto una vuelta
+     * más: `--escribir` congela el sha256 de una recién aplicada. Emparejar por
+     * número arriba y volver a leer por la clave acá deja el mismo renombre
+     * reventando justo en el camino que anota.
+     *
+     * Se le da una clave (el sufijo viejo) y un archivo de disco con OTRO nombre.
+     * Leer por la clave no encuentra nada.
+     */
+    const dir = mkdtempSync(path.join(os.tmpdir(), "anotar-"));
+    try {
+      const contenido = "-- la 0040, con el sufijo nuevo\nselect 1;\n";
+      writeFileSync(path.join(dir, "0040_revisiones_adaptativas.sql"), contenido);
+      const entradaPendiente: EntradaCruda = {
+        estado: "PENDIENTE",
+        sha256: null,
+        testigo: "true",
+        prueba: "de laboratorio",
+      };
+      const yaCongelada: EntradaCruda = {
+        estado: "PENDIENTE",
+        sha256: "b".repeat(64),
+        testigo: "true",
+        prueba: "de laboratorio",
+      };
+      escritor.anotarEnElLibro(
+        [
+          { archivo: "0040_adaptive_reviews.sql", entrada: entradaPendiente, enLaBase: true },
+          { archivo: "0040_adaptive_reviews.sql", entrada: yaCongelada, enLaBase: false },
+        ],
+        new Map([["0040_adaptive_reviews.sql", "0040_revisiones_adaptativas.sql"]]),
+        dir,
+      );
+      expect(entradaPendiente.estado).toBe("APLICADA");
+      expect(entradaPendiente.sha256).toBe(
+        createHash("sha256").update(readFileSync(path.join(dir, "0040_revisiones_adaptativas.sql"))).digest("hex"),
+      );
+      // Y una que la base dice que NO tiene: se degrada a PENDIENTE y su
+      // checksum congelado no se toca.
+      expect(yaCongelada.estado).toBe("PENDIENTE");
+      expect(yaCongelada.sha256).toBe("b".repeat(64));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("no congela un checksum a ciegas cuando no sabe qué archivo es", () => {
+    const entrada: EntradaCruda = {
+      estado: "PENDIENTE",
+      sha256: null,
+      testigo: "true",
+      prueba: "de laboratorio",
+    };
+    expect(() =>
+      escritor.anotarEnElLibro(
+        [{ archivo: "0040_adaptive_reviews.sql", entrada, enLaBase: true }],
+        new Map(),
+      ),
+    ).toThrow(/0040_adaptive_reviews\.sql/);
+  });
+
+  it("el libro y las migraciones de verdad emparejan sin un solo problema", () => {
+    const libro = JSON.parse(readFileSync(LIBRO, "utf8")) as {
+      migraciones: Record<string, EntradaCruda>;
+    };
+    const { rutaPorClave, problemas } = escritor.emparejarLibroConDisco(
+      Object.entries(libro.migraciones),
+      archivosDeMigracion(),
+    );
+    expect(problemas).toEqual([]);
+    expect([...rutaPorClave.values()].sort()).toEqual(archivosDeMigracion());
+  });
+});
+
+/**
+ * LA FORMA DEL LIBRO SE AUDITA EN LAS DOS PUNTAS, Y CON EL MISMO CONTRATO.
+ *
+ * El lector valida con Zod; el escritor no validaba nada. Una entrada sin
+ * `testigo` llegaba a `literal()` como el texto "undefined", Postgres tiraba
+ * 42703 (undefined_column), el bloque `exception` lo atrapaba como ausencia y el
+ * libro malformado salía anotado como el DATO "producción no la tiene" — con
+ * `--escribir`, degradando una APLICADA a PENDIENTE. ERROR != VACÍO también en
+ * la entrada.
+ *
+ * El escritor no puede importar el Zod del lector: corre con `node` pelado,
+ * fuera del toolchain de `web/`. Así que replica el contrato en JS puro, y que
+ * los dos no se separen se sostiene acá: los MISMOS libros pasan por los DOS
+ * validadores y tienen que recibir el MISMO veredicto.
+ */
+describe("la forma del libro: escritor y lector dicen lo mismo", () => {
+  const entradaSana = {
+    estado: "APLICADA",
+    sha256: "a".repeat(64),
+    testigo: "true",
+    prueba: "por qué ese testigo y no otro",
+  };
+  const libroSano = {
+    proyecto: "entreno-legal",
+    verificado_el: "2026-01-01",
+    caduca_el: "2026-04-01",
+    metodo: "TESTIGOS_EN_VIVO",
+    migraciones: { "0001_family.sql": entradaSana },
+  };
+  const con = (cambio: Record<string, unknown>) => ({ ...libroSano, ...cambio });
+  const conEntrada = (cambio: Record<string, unknown>) =>
+    con({ migraciones: { "0001_family.sql": { ...entradaSana, ...cambio } } });
+  const sinCampo = (campo: string) => {
+    const e: Record<string, unknown> = { ...entradaSana };
+    delete e[campo];
+    return con({ migraciones: { "0001_family.sql": e } });
+  };
+
+  const CASOS: [string, unknown, boolean][] = [
+    ["el libro sano", libroSano, true],
+    ["sha256 null en una pendiente", conEntrada({ estado: "PENDIENTE", sha256: null }), true],
+    ["solo_en_produccion booleano", conEntrada({ solo_en_produccion: true }), true],
+    ["migraciones vacío", con({ migraciones: {} }), true],
+    ["sin testigo", sinCampo("testigo"), false],
+    ["testigo vacío", conEntrada({ testigo: "" }), false],
+    ["testigo que no es texto", conEntrada({ testigo: 7 }), false],
+    ["sin prueba", sinCampo("prueba"), false],
+    ["prueba vacía", conEntrada({ prueba: "" }), false],
+    ["sin estado", sinCampo("estado"), false],
+    ["estado inventado", conEntrada({ estado: "QUIZÁS" }), false],
+    ["sin sha256", sinCampo("sha256"), false],
+    ["sha256 que no es hexadecimal", conEntrada({ sha256: "no-es-un-sha" }), false],
+    ["sha256 corto", conEntrada({ sha256: "abc123" }), false],
+    ["solo_en_produccion que no es booleano", conEntrada({ solo_en_produccion: "sí" }), false],
+    ["una entrada que es null", con({ migraciones: { "0001_family.sql": null } }), false],
+    ["una entrada que es texto", con({ migraciones: { "0001_family.sql": "APLICADA" } }), false],
+    ["migraciones que es un arreglo", con({ migraciones: [entradaSana] }), false],
+    ["sin migraciones", con({ migraciones: undefined }), false],
+    ["metodo inventado", con({ metodo: "RECUERDO" }), false],
+    ["fecha al revés", con({ verificado_el: "01-01-2026" }), false],
+    ["caduca_el que no es fecha", con({ caduca_el: "pronto" }), false],
+    ["proyecto vacío", con({ proyecto: "" }), false],
+    ["el libro es un arreglo", [libroSano], false],
+    ["el libro es null", null, false],
+    ["el libro es un número", 7, false],
+  ];
+
+  for (const [nombre, libro, valido] of CASOS) {
+    it(`${nombre}: ${valido ? "lo aceptan los dos" : "lo rechazan los dos"}`, () => {
+      const problemasDelEscritor = escritor.validarFormaDelLibro(libro);
+      const veredictoDelLector = LibroSchema.safeParse(libro).success;
+      // El veredicto del lector, primero: si esto se cae, el que cambió es el
+      // contrato, y el escritor tiene que seguirlo.
+      expect(veredictoDelLector, `lector · ${nombre}`).toBe(valido);
+      expect(problemasDelEscritor.length === 0, `escritor · ${nombre}`).toBe(valido);
+    });
+  }
+
+  it("el libro de verdad pasa por los dos validadores", () => {
+    const crudo: unknown = JSON.parse(readFileSync(LIBRO, "utf8"));
+    expect(escritor.validarFormaDelLibro(crudo)).toEqual([]);
+    expect(LibroSchema.safeParse(crudo).success).toBe(true);
+  });
+});
+
+/**
+ * EL SCRIPT ENTERO, CORRIDO CONTRA UN ÁRBOL SIMULADO.
+ *
+ * Las funciones puras de arriba prueban las piezas; esto prueba que están
+ * enchufadas. Se copia el script y `supabase/` a un directorio temporal, se le
+ * hace al árbol la avería exacta que el crítico reprodujo, y se corre `node` de
+ * verdad mirando el CÓDIGO DE SALIDA y lo que imprime. Ninguno de estos caminos
+ * llega a la red: todos cortan antes del `fetch`.
+ */
+describe("el script corrido de verdad contra un árbol simulado", () => {
+  let arbol = "";
+
+  beforeAll(() => {
+    arbol = mkdtempSync(path.join(os.tmpdir(), "libro-produccion-"));
+    mkdirSync(path.join(arbol, "scripts"), { recursive: true });
+    mkdirSync(path.join(arbol, "supabase", "migrations"), { recursive: true });
+    copyFileSync(SCRIPT, path.join(arbol, "scripts", path.basename(SCRIPT)));
+    for (const sql of archivosDeMigracion()) {
+      copyFileSync(path.join(DIR_MIGRACIONES, sql), path.join(arbol, "supabase", "migrations", sql));
+    }
+    copyFileSync(LIBRO, path.join(arbol, "supabase", "estado-produccion.json"));
+  });
+
+  afterAll(() => {
+    rmSync(arbol, { recursive: true, force: true });
+  });
+
+  const correr = () =>
+    spawnSync(process.execPath, [path.join(arbol, "scripts", path.basename(SCRIPT))], {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        // Token y URL sintéticos: con forma válida para que el script pase los
+        // dos primeros cortes, y sin que ningún camino de estos llegue al fetch.
+        SUPABASE_ACCESS_TOKEN: "sbp_de_laboratorio",
+        NEXT_PUBLIC_SUPABASE_URL: "https://proyectodelaboratorio.supabase.co",
+      },
+    });
+
+  const libroDelArbol = () => path.join(arbol, "supabase", "estado-produccion.json");
+  const restaurarLibro = () => copyFileSync(LIBRO, libroDelArbol());
+
+  it("un renombre de sufijo NO lo detiene, y el checksum se calcula contra el disco", () => {
+    /**
+     * La reproducción del crítico, al pie: renombrar el sufijo de una migración
+     * dejaba al lector en verde y al escritor negándose a correr. Para que el
+     * script se detenga ANTES de la red sin que el renombre sea la causa, se le
+     * ensucia OTRA migración: si el emparejamiento por número funciona, la única
+     * queja es la de esa otra; si volviera a emparejar por nombre completo, la
+     * queja sería sobre la renombrada.
+     */
+    const viejo = path.join(arbol, "supabase", "migrations", "0001_family.sql");
+    const nuevo = path.join(arbol, "supabase", "migrations", "0001_familia_renombrada.sql");
+    const sucia = path.join(arbol, "supabase", "migrations", "0002_catalog.sql");
+    const original = readFileSync(sucia);
+    renameSync(viejo, nuevo);
+    appendFileSync(sucia, "\n-- una edición que no debió existir\n");
+    try {
+      const r = correr();
+      expect(r.status, r.stderr).toBe(1); // 1 = "no se pudo saber"; 127 sería libuv
+      expect(r.stderr).toContain("0002_catalog.sql");
+      expect(r.stderr).toMatch(/CONGELADAS/);
+      // Ni una palabra sobre la renombrada: emparejó por número.
+      expect(r.stderr).not.toContain("0001_family.sql");
+      expect(r.stderr).not.toContain("0001_familia_renombrada.sql");
+      expect(r.stdout).not.toContain("Preguntándole");
+    } finally {
+      writeFileSync(sucia, original);
+      renameSync(nuevo, viejo);
+    }
+  }, 60_000);
+
+  it("dos archivos con el mismo número lo detienen, sin adivinar cuál", () => {
+    const clon = path.join(arbol, "supabase", "migrations", "0001_familia_clonada.sql");
+    copyFileSync(path.join(arbol, "supabase", "migrations", "0001_family.sql"), clon);
+    try {
+      const r = correr();
+      expect(r.status, r.stderr).toBe(1);
+      expect(r.stderr).toContain("0001_familia_clonada.sql");
+      expect(r.stdout).not.toContain("Preguntándole");
+    } finally {
+      rmSync(clon, { force: true });
+    }
+  }, 60_000);
+
+  it("una migración que el libro no declara NO se arregla corriendo el script", () => {
+    /**
+     * El lector, cuando encuentra una migración del disco sin entrada, ofrecía
+     * "o deja que la escriba el script". Acá se comprueba qué pasa de verdad si
+     * alguien le hace caso: el script tampoco puede inventar el testigo, así que
+     * se detiene con el mismo reclamo. Ésa es la razón por la que el remedio del
+     * lector ahora dice "a mano" — y se sostiene corriéndolo, no leyéndolo.
+     */
+    const nueva = path.join(arbol, "supabase", "migrations", "0041_recien_escrita.sql");
+    writeFileSync(nueva, "-- todavía nadie le escribió un testigo\nselect 1;\n");
+    try {
+      const r = correr();
+      expect(r.status, r.stderr).toBe(1);
+      expect(r.stderr).toContain("0041_recien_escrita.sql");
+      expect(r.stderr).toMatch(/testigo/i);
+      expect(r.stdout).not.toContain("Preguntándole");
+    } finally {
+      rmSync(nueva, { force: true });
+    }
+  }, 60_000);
+
+  it("un libro malformado lo detiene ANTES de generar una sola sentencia", () => {
+    /**
+     * Sin esto, la entrada sin `testigo` llegaba a la base como el texto
+     * "undefined", volvía como 42703 disfrazado de ausencia, y con `--escribir`
+     * se anotaba "producción no la tiene". Un libro roto no es un dato.
+     */
+    const libro = JSON.parse(readFileSync(libroDelArbol(), "utf8")) as {
+      migraciones: Record<string, Record<string, unknown>>;
+    };
+    const clave = Object.keys(libro.migraciones)[0]!;
+    delete libro.migraciones[clave]!.testigo;
+    writeFileSync(libroDelArbol(), JSON.stringify(libro, null, 2));
+    try {
+      const r = correr();
+      expect(r.status, r.stderr).toBe(1);
+      expect(r.stderr).toContain("testigo");
+      expect(r.stderr).toContain(clave);
+      expect(r.stdout).not.toContain("Preguntándole");
+      // Y no tocó el libro: sigue siendo el que se escribió recién.
+      const despues = JSON.parse(readFileSync(libroDelArbol(), "utf8")) as {
+        migraciones: Record<string, Record<string, unknown>>;
+      };
+      expect(despues.migraciones[clave]!.testigo).toBeUndefined();
+    } finally {
+      restaurarLibro();
+    }
+  }, 60_000);
+
+  it("sin token no supone nada: se detiene diciendo que no se puede saber", () => {
+    const r = spawnSync(process.execPath, [path.join(arbol, "scripts", path.basename(SCRIPT))], {
+      encoding: "utf8",
+      env: { ...process.env, SUPABASE_ACCESS_TOKEN: "", NEXT_PUBLIC_SUPABASE_URL: "" },
+    });
+    expect(r.status, r.stderr).toBe(1);
+    expect(r.stderr).toMatch(/token/i);
+  }, 60_000);
 });
 
 describe("un testigo que no contesta no es un testigo que dice que no", () => {

@@ -1,6 +1,9 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+// El matcher se IMPORTA, no se lee del texto del archivo: ver el bloque de
+// abajo ("los archivos de la PWA no pasan por el middleware de sesión").
+import { config as configDelMiddleware } from "@/middleware";
 
 /**
  * GUARDIÁN: la app instalada y la app abierta tienen que ser la misma.
@@ -173,24 +176,72 @@ describe("iconos instalables", () => {
  * archivos salen del disco pase lo que pase con la base.
  *
  * Se EVALÚA el matcher (son expresiones regulares), no se hace grep: un grep se
- * conforma con la ruta escrita dentro de un comentario. Y se evalúa el array
+ * conforma con la ruta escrita dentro de un comentario. Y se evalúa el arreglo
  * ENTERO: Next corre el middleware si CUALQUIER entrada calza, así que leer
- * solo la primera —como hacía la versión anterior de este guardián— dejaba
- * pasar en verde un matcher al que le agregaran "/sw.js" como segunda entrada,
- * que es exactamente el modo de falla que este bloque existe para impedir.
+ * solo la primera dejaba pasar en verde un matcher al que le agregaran "/sw.js"
+ * como segunda entrada, que es exactamente el modo de falla que este bloque
+ * existe para impedir.
+ *
+ * Y el arreglo se saca IMPORTANDO el módulo, no leyendo su texto. La versión
+ * anterior lo recortaba con `/matcher:\s*\[([\s\S]*?)\]/`, que corta en el
+ * primer `]`: bastaba una regla con clase de caracteres ("/informes/[0-9]+")
+ * para que todas las entradas siguientes —un "/sw.js" al final, por ejemplo—
+ * quedaran fuera del barrido sin poner nada en rojo. Mismo defecto de clase que
+ * leer solo la primera cadena, un nivel más arriba. Lo que corre Next es el
+ * arreglo del módulo; es ese el que hay que mirar.
  */
 describe("los archivos de la PWA no pasan por el middleware de sesión", () => {
-  const middleware = readFileSync(path.join(RAIZ_WEB, "src", "middleware.ts"), "utf8");
-  const arreglo = /matcher:\s*\[([\s\S]*?)\]/.exec(middleware)?.[1];
-  const patrones = [...(arreglo ?? "").matchAll(/"((?:[^"\\]|\\.)*)"/g)].map(
-    (m) => m[1] as string,
-  );
+  /**
+   * Cada entrada del matcher, tal como Next la va a evaluar.
+   *
+   * El tipo declarado dice `string[]`, pero Next también acepta objetos
+   * `{ source, has, missing }`, así que acá se mira el valor de verdad: una
+   * entrada con una forma que este guardián no sabe leer es UNKNOWN y se
+   * declara cayendo, nunca saltándosela — saltarse una entrada es justo cómo
+   * "/sw.js" vuelve al middleware sin que nadie se entere.
+   */
+  function fuentesDelMatcher(matcher: unknown): string[] {
+    expect(Array.isArray(matcher), "config.matcher dejó de ser un arreglo").toBe(true);
+    return (matcher as unknown[]).map((entrada) => {
+      if (typeof entrada === "string") return entrada;
+      const fuente = (entrada as { source?: unknown } | null)?.source;
+      expect(
+        typeof fuente,
+        `entrada del matcher con forma desconocida: ${JSON.stringify(entrada)}`,
+      ).toBe("string");
+      return fuente as string;
+    });
+  }
 
-  it("el matcher se puede leer del archivo, entero", () => {
-    // Si alguien cambia la forma de declararlo, el guardián deja de vigilar en
-    // silencio. Mejor que se caiga y alguien lo mire.
-    expect(arreglo, "no se encontró el matcher en middleware.ts").toBeTruthy();
+  const patrones = fuentesDelMatcher(configDelMiddleware.matcher);
+
+  it("el matcher se puede leer del módulo, entero", () => {
     expect(patrones.length, "el matcher quedó sin ninguna regla").toBeGreaterThan(0);
+    // El texto del archivo se mira solo para una cosa: que la cantidad de
+    // reglas que Next va a correr sea la misma que hay escrita. Si alguien
+    // arma el arreglo con un `.concat()` o una variable importada, el módulo
+    // igual dice la verdad y esto avisa que el archivo ya no se lee de un
+    // vistazo.
+    const enElTexto = readFileSync(path.join(RAIZ_WEB, "src", "middleware.ts"), "utf8");
+    expect(
+      enElTexto,
+      "middleware.ts dejó de declarar su matcher como un arreglo literal",
+    ).toContain("matcher: [");
+  });
+
+  it("cada regla del matcher es una que este guardián sabe evaluar", () => {
+    // Acá las reglas se prueban con `new RegExp`, que es como Next evalúa los
+    // patrones tipo `/((?!x).*)`. Pero el matcher también acepta parámetros de
+    // path-to-regexp (`/informes/:id`), que como RegExp significan otra cosa:
+    // si aparece uno, este guardián estaría midiendo un matcher distinto al
+    // que corre en producción. UNKNOWN se declara.
+    for (const patron of patrones) {
+      expect(
+        /:[A-Za-z]/.test(patron),
+        `${patron} usa parámetros de path-to-regexp y acá se evalúan como RegExp: el guardián mediría otra cosa que Next`,
+      ).toBe(false);
+      expect(() => new RegExp(`^${patron}$`), `${patron} no compila como RegExp`).not.toThrow();
+    }
   });
 
   const rutasDeArchivo = [

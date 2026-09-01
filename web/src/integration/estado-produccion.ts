@@ -327,8 +327,15 @@ export function cargarLibroDeProduccion(): LibroProduccion {
       `Hay ${sinDeclarar.length} migración(es) en supabase/migrations sin entrada en el ` +
         `libro, así que nadie sabe si producción las tiene:\n` +
         sinDeclarar.map((f) => `  · ${f}`).join("\n"),
-      `  Agrega su entrada (estado, sha256, testigo, prueba) en\n` +
-        `  supabase/estado-produccion.json, o deja que la escriba el script:\n${CORRER_EL_SCRIPT}`,
+      // OJO con lo que este remedio promete. Acá decía "o deja que la escriba
+      // el script", y el script NO la escribe: no hay forma de deducir del
+      // archivo qué testigo distingue esa migración, así que se detiene con el
+      // mismo reclamo. Mandar al remedio equivocado es cómo un rojo correcto
+      // termina enseñando a ignorar los rojos.
+      `  Agrégale su entrada A MANO en supabase/estado-produccion.json: estado,\n` +
+        `  sha256, testigo y prueba. El script no la inventa —el testigo hay que\n` +
+        `  pensarlo— y se detiene igual que acá hasta que exista. Recién con la\n` +
+        `  entrada puesta:\n${CORRER_EL_SCRIPT}`,
     );
   }
   const fantasmas = [...declaradasPorNumero.values()]

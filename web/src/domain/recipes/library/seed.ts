@@ -130,12 +130,24 @@ function sqlIngrediente(i: LibraryIngredient): string {
       // Solo se escriben los nutrientes CONOCIDOS. Los que no aparecen quedan
       // NULL en la base, que es como se dice "no lo sé" (§14).
       const presentes = campos.filter(([, v]) => v !== undefined);
-      const nombres = presentes.map(([k]) => k).join(", ");
-      const valores = presentes.map(([, v]) => String(v)).join(", ");
+      // NINGUN nutriente conocido es un caso REAL, y esta plantilla lo emitia
+      // como SQL roto: `(..., basis_unit, , source_type)` — una columna vacia
+      // que Postgres rechaza con "syntax error at or near ,".
+      //
+      // Pasa cuando el alimento NO SE COME: el maiz morado de la chicha se
+      // hierve y se bota, la hoja de te se infusiona y se retira. La ficha
+      // correcta ahi es una SIN macros —lo declara `nutritionUnknownReason`— y
+      // el generador tiene que saber escribirla: las columnas de nutriente
+      // quedan NULL, que es exactamente como se dice "no se sabe".
+      const columnas = presentes.length === 0 ? "" : presentes.map(([k]) => k).join(", ") + ", ";
+      const valores =
+        presentes.length === 0 ? "" : presentes.map(([, v]) => String(v)).join(", ") + ", ";
       return (
-        `    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, ${nombres},\n` +
-        `      source_type, source_name, notes)\n` +
-        `    values (v_ing, '${n.basis}', '${n.basisUnit}', ${valores}, 'DEV_SEED', src, ${texto(n.notes)});`
+        `    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, ${columnas}
+` +
+        `      source_type, source_name, notes)
+` +
+        `    values (v_ing, '${n.basis}', '${n.basisUnit}', ${valores}'DEV_SEED', src, ${texto(n.notes)});`
       );
     })
     .join("\n");

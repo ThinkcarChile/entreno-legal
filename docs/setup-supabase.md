@@ -51,8 +51,24 @@ alfabética— es la secuencia que ejercitan las pruebas.
 >
 > Ningún `for` sobre `supabase/migrations/*.sql` ni ningún `Sort-Object Name` te
 > va a dar esa secuencia: te dan la alfabética, que ninguna prueba ejercita.
-> Contra el Supabase de hoy no se nota (la 0037 ya está aplicada); contra una
-> base recién creada o restaurada, sí.
+>
+> **Y eso es exactamente lo que es: no probada, ni más ni menos.** Hoy las dos
+> secuencias dejan el MISMO esquema —se aplicaron las dos cadenas completas
+> contra un PostgreSQL de verdad y las dos quedaron verdes—, porque la 0036 y la
+> 0037 no comparten un solo objeto: la 0036 crea las tablas de porciones
+> servidas, la 0037 sólo toca `accept_invitation`. El orden del arnés no está
+> para que la cadena no reviente hoy: está porque es de **procedencia**
+> —producción tiene puesta la 0037 y no la 0036, que es de lo que vive
+> `supabase/estado-produccion.json`— y porque es la secuencia que ejercitan las
+> pruebas. El día que dos migraciones sí compartan un objeto, la alfabética deja
+> de ser una secuencia no probada y pasa a ser una rota, y nada va a avisar.
+>
+> Con los **seeds** el mismo atajo ya había mordido, y ahí sí se notaba:
+> `scripts/db-test.sh` los aplicaba por glob, o sea `dev_recipes_biblioteca.sql`
+> antes que `dev_recipes_seed.sql` —«biblioteca» < «seed»—, y la biblioteca anida
+> recetas que aquel publica. El job `db` de CI moría ahí, en cada push. Ese
+> script ahora deriva las dos secuencias de las listas `MIGRACIONES` y `SEEDS`
+> del arnés, y se planta si no puede leerlas.
 
 **No es una lista de la que puedas cortar un pedazo.** Cada migración asume el
 esquema que dejó la anterior, y la app usa tablas y funciones de casi todas: si
@@ -77,6 +93,11 @@ el repo y producción se separaron sin que nadie lo notara.
 archivo tal cual por la Management API, con guardián de codificación y checksum.
 Nació de un incidente real: el portapapeles de Windows reescribió el UTF-8 y
 llegaron acentos rotos a una base clínica (eso es lo que arregla la 0028).
+
+`scripts/db-test.sh` —el job `db` de CI, que levanta un PostgreSQL efímero y
+corre los tests SQL— lee la **misma** lista del arnés, y `--imprimir-orden` la
+muestra sin tocar nada. No es un cuarto dueño: es otro lector del mismo. Si no
+puede leerla, se planta.
 
 1. Crea un token en <https://supabase.com/dashboard/account/tokens>
    («Generate new token», nómbralo por ejemplo `claude-code-migraciones`).

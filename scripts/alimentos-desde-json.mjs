@@ -65,8 +65,29 @@ for (const a of alimentos) {
   if (!a.nutrition?.length) { errores.push(`${a.canonicalName}: sin ninguna ficha nutricional`); continue; }
 
   for (const n of a.nutrition) {
+    // UNA FICHA SIN MACROS PUEDE SER LA RESPUESTA CORRECTA, Y ESTE GUARDIÁN LO
+    // NEGABA.
+    //
+    // El caso que lo destapó: la chicha morada declara 150 g de maíz morado
+    // SECO. Ese maíz se hierve y se BOTA — lo que se toma es el agua teñida.
+    // Cargarle los macros del grano seco le sumaría medio kilo de almidón a una
+    // bebida que es agua con azúcar, y ese número viajaría hasta el motor
+    // clínico. Lo mismo con el té y la hierba luisa: la hoja se infusiona y se
+    // retira.
+    //
+    // La nutricionista lo había resuelto BIEN, omitiendo los macros y
+    // explicando por qué, y este guardián la rechazaba por "no servir para
+    // nada". Servía: decía "no se sabe", que es la respuesta verdadera.
+    //
+    // Ahora la ausencia se puede DECLARAR con `nutritionUnknownReason`. Sigue
+    // sin poder ser un descuido: hay que escribir la razón, y sin ella el
+    // rechazo es el de siempre. Es la misma regla del proyecto de siempre —
+    // UNKNOWN se declara, jamás se infiere— aplicada al guardián que la vigila.
+    const declaradoDesconocido =
+      typeof a.nutritionUnknownReason === "string" && a.nutritionUnknownReason.trim().length >= 20;
+    if (n.energyKcal === undefined && n.proteinG === undefined && declaradoDesconocido) continue;
     if (n.energyKcal === undefined && n.proteinG === undefined) {
-      errores.push(`${a.canonicalName} (${n.basis}): sin energía ni proteína, la ficha no sirve para nada`);
+      errores.push(`${a.canonicalName} (${n.basis}): sin energía ni proteína y sin \`nutritionUnknownReason\` que lo explique. Si de verdad no se come (se infusiona y se descarta), decláralo; si no, complétala`);
     }
   }
   ocupados.add(a.canonicalName);

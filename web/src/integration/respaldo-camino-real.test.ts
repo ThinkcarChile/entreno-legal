@@ -27,7 +27,8 @@
  * le habla a producción pero no le escribe una fila.
  */
 
-import { readFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { readFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -116,6 +117,14 @@ interface Resultado {
   huboReenlace?: boolean;
   tablasOk?: number;
   huerfanos?: number;
+  /** Lo que el ARCHIVO declara. No es lo mismo que lo que se escribió. */
+  filas?: number;
+  /** Lo que ESTE camino escribió de verdad: sale del plan, igual que las tablas. */
+  filasCargadas: number;
+  /** Lo que el archivo trae y este camino NO escribió, nombrado una por una. */
+  tablasFueraDelPlan: { tabla: string; filas: number }[];
+  esquemaComparadas: number;
+  esquemaNoComparadas: string[];
 }
 
 interface Lib {
@@ -147,6 +156,13 @@ interface Lib {
 }
 
 interface Nucleo {
+  comprobarPermisoDeReplicacion(ejecutor: Ejecutor): Promise<{
+    permitido: boolean;
+    motivo: string | null;
+    detalle: Fila | null;
+    restablecido?: boolean;
+    motivoRestablecer?: string | null;
+  }>;
   ejecutorEnSeco(real: Ejecutor): Ejecutor & { sentencias: string[] };
   planDeCarga(entrada: {
     orden: string[];
@@ -833,4 +849,504 @@ describe("el respaldo no se guarda en cualquier parte", () => {
   it("una carpeta local cualquiera sí sirve", () => {
     expect(lib.motivoParaNoGuardarAca(path.join("D:", "respaldos-mesa-familiar"))).toBeNull();
   });
+});
+
+// ===========================================================================
+// 11. LA SESIÓN NO QUEDA CON LOS DISPARADORES APAGADOS
+// ===========================================================================
+
+/**
+ * Lo que se vigila acá es la PROPIEDAD, no la ortografía.
+ *
+ * Durante una ronda entera el comentario de la sonda decía «sube el parámetro,
+ * lo lee de vuelta y lo devuelve a `origin`» y el runbook lo repetía. Nadie lo
+ * devolvía: `SQL_SONDA_REPLICACION` era el preámbulo más un `select`. El único
+ * reset del motor iba por `escribir`, DESPUÉS de cargar, así que en `--en-seco`
+ * —el modo que se corre contra producción prometiendo no escribirle una fila—
+ * el envoltorio lo interceptaba y jamás se enviaba.
+ *
+ * Por eso ninguna de estas pruebas mira el texto del SQL ni la lista de
+ * sentencias interceptadas: le PREGUNTAN a la base en qué quedó
+ * `session_replication_role`. Un reset escrito de otra forma pasa igual; un
+ * reset que no ocurre no pasa de ninguna forma.
+ */
+describe("session_replication_role vuelve a origin, y se comprueba preguntándole a la base", () => {
+  async function rolDeReplicacion(): Promise<string> {
+    const filas = await delDestino<{ v: string }>(
+      "select current_setting('session_replication_role') as v",
+    );
+    return filas[0]!.v;
+  }
+
+  it("la sonda sola lo deja en origin (y declara que lo restableció)", async () => {
+    const ejecutor = lib.ejecutorPglite(destino!.db, "destino de la sonda");
+    const sonda = await nucleo.comprobarPermisoDeReplicacion(ejecutor);
+
+    expect(sonda.permitido).toBe(true);
+    expect(sonda.restablecido).toBe(true);
+    expect(await rolDeReplicacion()).toBe("origin");
+  }, 60_000);
+
+  it("aunque la sonda falle, la sesión igual vuelve a origin", async () => {
+    // El `finally` es el punto: si el reset colgara del camino feliz, un destino
+    // que contesta cualquier cosa dejaría la sesión en `replica` para siempre.
+    const real = lib.ejecutorPglite(destino!.db, "destino que contesta mal");
+    const raro: Ejecutor = {
+      nombre: real.nombre,
+      async ejecutar(sql) {
+        if (sql.includes("as replicacion")) {
+          // Se deja que el SET del preámbulo SÍ corra (para que la sesión quede
+          // efectivamente en `replica`) y recién después se contesta basura.
+          await real.ejecutar(sql);
+          return [];
+        }
+        return real.ejecutar(sql);
+      },
+      escribir: (sql) => real.escribir(sql),
+    };
+
+    const sonda = await nucleo.comprobarPermisoDeReplicacion(raro);
+    expect(sonda.permitido).toBe(false);
+    expect(sonda.restablecido).toBe(true);
+    expect(await rolDeReplicacion()).toBe("origin");
+  }, 60_000);
+
+  it("en modo EN SECO la sesión no queda pegada en replica", async () => {
+    // La sonda viaja por `ejecutar`, que el envoltorio en seco deja pasar a
+    // propósito: en seco el SET a `replica` SÍ llega al destino. Si el reset
+    // fuera una escritura, este modo sería justo el que deja producción con
+    // todos los disparadores apagados.
+    const seco = nucleo.ejecutorEnSeco(lib.ejecutorPglite(destino!.db, "destino en seco"));
+    await nucleo.restaurar({
+      respaldo,
+      ejecutor: seco,
+      modo: "real",
+      base: destino,
+      seco: true,
+      aplicarPendientes: false,
+      log: () => {},
+    });
+
+    // Y se comprueba contra la BASE, no contra `seco.sentencias`: ese arreglo es
+    // justamente el que se tragaba el reset sin mandarlo.
+    expect(await rolDeReplicacion()).toBe("origin");
+  }, 180_000);
+
+  it("después de una restauración real tampoco queda pegada", async () => {
+    await nucleo.restaurar({
+      respaldo,
+      ejecutor: lib.ejecutorPglite(destino!.db),
+      modo: "real",
+      base: destino,
+      seco: false,
+      aplicarPendientes: false,
+      log: () => {},
+    });
+    expect(await rolDeReplicacion()).toBe("origin");
+  }, 180_000);
+});
+
+// ===========================================================================
+// 12. LOS NÚMEROS DEL VEREDICTO SALEN DE LO QUE DE VERDAD SE MIRÓ
+// ===========================================================================
+
+describe("lo no comparado y lo no escrito se declaran, no se suman al verde", () => {
+  it("el conteo del esquema cuenta las comparadas, no las de la cabecera", async () => {
+    const resultado = await nucleo.restaurar({
+      respaldo,
+      ejecutor: lib.ejecutorPglite(destino!.db),
+      modo: "real",
+      base: destino,
+      seco: false,
+      aplicarPendientes: false,
+      log: () => {},
+    });
+
+    const enCabecera = respaldo.cabecera.esquema.tablas;
+    const dePublic = enCabecera.filter((t) => (t.esquema ?? "public") === "public");
+    const fueraDePublic = enCabecera.filter((t) => (t.esquema ?? "public") !== "public");
+
+    // La cifra que se anunciaba: `tablasCabecera.length`, que incluye auth.users.
+    expect(fueraDePublic.length).toBeGreaterThan(0);
+    expect(resultado.esquemaComparadas).toBe(dePublic.length);
+    expect(resultado.esquemaComparadas).not.toBe(enCabecera.length);
+    expect(resultado.esquemaNoComparadas).toContain("auth.users");
+  }, 180_000);
+
+  it("en modo real las filas anunciadas son las escritas, y auth.users se nombra aparte", async () => {
+    const resultado = await nucleo.restaurar({
+      respaldo,
+      ejecutor: lib.ejecutorPglite(destino!.db),
+      modo: "real",
+      base: destino,
+      seco: false,
+      aplicarPendientes: false,
+      log: () => {},
+    });
+
+    const enElPlan = new Set(resultado.plan.map((p) => p.tabla));
+    expect(enElPlan.has("users")).toBe(false); // el camino real NO restaura cuentas
+
+    // Las dos cifras del veredicto salen del MISMO plan.
+    const sumaDelPlan = resultado.plan.reduce((a, p) => a + p.filas.length, 0);
+    expect(resultado.filasCargadas).toBe(sumaDelPlan);
+
+    // Y son MENOS que las del archivo, por las cuentas que nadie escribió.
+    const bloqueUsuarios = respaldo.tablas.find((t) => t.nombre === "users")!;
+    expect(bloqueUsuarios.filas).toBeGreaterThan(0);
+    expect(respaldo.cierre.filas).toBe(sumaDelPlan + bloqueUsuarios.filas);
+    expect(resultado.filasCargadas).toBeLessThan(respaldo.cierre.filas);
+
+    // Lo que quedó fuera no desaparece: se nombra con su cuenta de filas.
+    expect(resultado.tablasFueraDelPlan).toEqual([
+      { tabla: "auth.users", filas: bloqueUsuarios.filas },
+    ]);
+  }, 180_000);
+
+  it("en el ensayo, donde SÍ se restauran las cuentas, no queda nada fuera", async () => {
+    const desechable = await lib.baseConMigraciones(CADENA);
+    try {
+      const resultado = await nucleo.restaurar({
+        respaldo,
+        ejecutor: lib.ejecutorPglite(desechable.db),
+        modo: "ensayo",
+        base: desechable,
+        seco: false,
+        aplicarPendientes: false,
+        log: () => {},
+      });
+      expect(resultado.tablasFueraDelPlan).toEqual([]);
+      expect(resultado.filasCargadas).toBe(respaldo.cierre.filas);
+
+      // Y en el modo ensayo la sesión tampoco queda con los disparadores
+      // apagados: se le pregunta a la base que se acaba de usar.
+      const r = (await desechable.db.exec(
+        "select current_setting('session_replication_role') as v",
+      )) as { rows: { v: string }[] }[];
+      expect(r[r.length - 1]!.rows[0]!.v).toBe("origin");
+    } finally {
+      await desechable.db.close();
+    }
+  }, 300_000);
+});
+
+// ===========================================================================
+// 13. EL PUNTO DE ENTRADA DEVUELVE EL CÓDIGO QUE ELIGIÓ
+// ===========================================================================
+
+/**
+ * `scripts/respaldo.mjs` es el paso 2 del runbook de desastre y lo que agenda la
+ * tarea programada. El runbook promete: «termina con código distinto de cero
+ * cuando algo sale mal». Eso es una promesa sobre el CÓDIGO DE SALIDA, y sólo se
+ * comprueba corriendo el script y mirando el código de salida.
+ *
+ * Qué se rompía. `process.exit()` con un socket de `fetch` todavía abierto hace
+ * reventar libuv en Windows («Assertion failed: !(handle->flags &
+ * UV_HANDLE_CLOSING)») y el proceso se va con 127: el camino de ÉXITO de
+ * `--sin-ensayo` reportaba falla. Y la cura a medias tampoco servía: con
+ * `morir()` lanzando desde el tope de un módulo ESM, la excepción salía sin que
+ * nadie la atrapara y Node imprimía la pila entera DESPUÉS de «EL RESPALDO SE
+ * ESCRIBIÓ PERO NO SE PUDO RESTAURAR» —el mensaje más importante del sistema
+ * sepultado bajo un volcado.
+ *
+ * Cómo se comprueba sin tocar producción: un preload levanta un Management API
+ * de mentira en 127.0.0.1 y desvía `fetch` hacia allá. El socket es REAL —undici
+ * de verdad, keep-alive de verdad—, que es justo lo que `process.exit()` deja a
+ * medio cerrar. Verificado por mutación: reponiendo `process.exit(0)` en el
+ * camino de éxito, esta corrida devuelve 127 y escupe la assertion de libuv.
+ */
+describe("respaldo.mjs devuelve el código de salida que dice devolver", () => {
+  const RAIZ_REPO = path.resolve(__dirname, "../../..");
+  let taller = "";
+  let stubOk = "";
+  let stubRoto = "";
+
+  /** El Management API de mentira. `roto` decide si el inventario llega mal. */
+  function preload(roto: boolean): string {
+    return `
+import http from "node:http";
+
+const TABLAS = [{
+  nombre: "hogares",
+  pk: ["id"],
+  columnas: [
+    { nombre: "id", tipo: "uuid", derivada: false, identidad: false, obligatoria: true, con_default: true },
+    { nombre: "nombre", tipo: "text", derivada: false, identidad: false, obligatoria: true, con_default: false },
+  ],
+}];
+
+const ESQUEMA = {
+  servidor: "PostgreSQL de mentira",
+  base: "postgres",
+  momento: "2026-09-01T00:00:00.000000",
+  tablas: TABLAS,
+  fks: [],
+};
+
+function responder(sql) {
+  if (sql.includes("'servidor', version()")) return [{ esquema: ESQUEMA }];
+  if (sql.includes("as inventario")) {
+    return [{ inventario: { buckets: [], objetos: ${roto ? '"no es un arreglo"' : "[]"} } }];
+  }
+  if (sql.includes("as datos")) return [{ datos: { hogares: [], users: [] } }];
+  return null;
+}
+
+const servidor = http.createServer((req, res) => {
+  let cuerpo = "";
+  req.on("data", (c) => (cuerpo += c));
+  req.on("end", () => {
+    let sql = "";
+    try { sql = JSON.parse(cuerpo).query ?? ""; } catch { /* cuerpo ilegible */ }
+    const salida = responder(sql);
+    res.writeHead(salida === null ? 500 : 200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(salida === null ? { message: "consulta no prevista" } : salida));
+  });
+});
+
+await new Promise((listo) => servidor.listen(0, "127.0.0.1", listo));
+const puerto = servidor.address().port;
+servidor.unref();
+
+const fetchReal = globalThis.fetch;
+globalThis.fetch = (recurso, init) => {
+  const u = new URL(String(recurso));
+  if (u.hostname === "api.supabase.com") {
+    return fetchReal("http://127.0.0.1:" + puerto + u.pathname, init);
+  }
+  return fetchReal(recurso, init);
+};
+`;
+  }
+
+  beforeAll(() => {
+    taller = mkdtempSync(path.join(os.tmpdir(), "respaldo-salida-"));
+    stubOk = path.join(taller, "api-falsa.mjs");
+    stubRoto = path.join(taller, "api-falsa-rota.mjs");
+    writeFileSync(stubOk, preload(false), "utf8");
+    writeFileSync(stubRoto, preload(true), "utf8");
+  });
+
+  afterAll(() => {
+    if (taller) rmSync(taller, { recursive: true, force: true });
+  });
+
+  function correr(stub: string, banderas: string[]) {
+    const salida = path.join(taller, `salida-${Math.random().toString(36).slice(2)}`);
+    mkdirSync(salida, { recursive: true });
+    const r = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        pathToFileURL(stub).href,
+        path.join(RAIZ_SCRIPTS, "respaldo.mjs"),
+        "--salida",
+        salida,
+        ...banderas,
+      ],
+      {
+        cwd: RAIZ_REPO,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          // Fijos y falsos: este script NUNCA habla con el proyecto real acá.
+          SUPABASE_ACCESS_TOKEN: "sbp_estonoesuntokendeverdad",
+          NEXT_PUBLIC_SUPABASE_URL: "https://proyectofalso.supabase.co",
+        },
+      },
+    );
+    return { ...r, texto: `${r.stdout ?? ""}${r.stderr ?? ""}` };
+  }
+
+  /** Lo que jamás puede acompañar a un mensaje del respaldo. */
+  function sinVolcado(texto: string) {
+    expect(texto).not.toContain("Assertion failed");
+    expect(texto).not.toContain("UV_HANDLE_CLOSING");
+    expect(texto).not.toContain("SalidaLimpia:");
+    expect(texto).not.toContain("at ModuleJob.run");
+  }
+
+  it("camino de ÉXITO: 0, y ni una línea de volcado", () => {
+    const r = correr(stubOk, ["--sin-ensayo"]);
+    expect(r.texto).toContain("Respaldo escrito:");
+    sinVolcado(r.texto);
+    expect(r.status).toBe(0);
+  }, 120_000);
+
+  it("camino de ERROR después de los fetch: 1, con el motivo y sin volcado", () => {
+    const r = correr(stubRoto, ["--sin-ensayo"]);
+    // El inventario dice haberse leído y no trae la lista: se muere a propósito.
+    expect(r.texto).toContain("no trae la lista de objetos que dice haber leído");
+    sinVolcado(r.texto);
+    expect(r.status).toBe(1);
+  }, 120_000);
+
+  it("respaldo-restaurar.mjs también: sus errores de argumentos salen sin pila", () => {
+    // La cabecera de ese archivo prometía «se sale por `process.exitCode`, NUNCA
+    // por `process.exit`» mientras llamaba a `morir()` en el tope del módulo:
+    // `SalidaLimpia` salía sin que nadie la atrapara y el usuario recibía su
+    // mensaje de uso con la pila de Node encima.
+    const restaurar = path.join(RAIZ_SCRIPTS, "respaldo-restaurar.mjs");
+    const correrRestaurar = (extra: string[]) =>
+      spawnSync(process.execPath, [restaurar, ...extra], { cwd: RAIZ_REPO, encoding: "utf8" });
+
+    const sinArchivo = correrRestaurar([]);
+    const textoUso = `${sinArchivo.stdout ?? ""}${sinArchivo.stderr ?? ""}`;
+    expect(textoUso).toContain("Uso: node scripts/respaldo-restaurar.mjs");
+    sinVolcado(textoUso);
+    expect(sinArchivo.status).toBe(1);
+
+    const destinoRaro = correrRestaurar(["algo.ndjson", "--destino", "marte"]);
+    const textoDestino = `${destinoRaro.stdout ?? ""}${destinoRaro.stderr ?? ""}`;
+    expect(textoDestino).toContain("--destino sólo acepta");
+    sinVolcado(textoDestino);
+    expect(destinoRaro.status).toBe(1);
+  }, 120_000);
+
+  it("el ensayo que falla: 1, y el mensaje grande queda al final, limpio", () => {
+    // El respaldo de mentira declara la tabla `hogares`, que no existe en la
+    // cadena de migraciones: el ensayo aborta y el padre tiene que decirlo.
+    const r = correr(stubOk, []);
+    expect(r.texto).toContain("EL RESPALDO SE ESCRIBIÓ PERO NO SE PUDO RESTAURAR.");
+    sinVolcado(r.texto);
+    expect(r.status).toBe(1);
+    // Y ese mensaje es lo ÚLTIMO que se ve: nada lo sepulta.
+    const lineas = r.texto.trimEnd().split(String.fromCharCode(10));
+    expect(lineas[lineas.length - 1]).toContain("hasta entender por qué falló el ensayo");
+  }, 300_000);
+});
+
+// ===========================================================================
+// 14. EL VEREDICTO IMPRESO, MEDIDO EN LA CORRIDA DE VERDAD
+// ===========================================================================
+
+/**
+ * La línea que una persona lee a las tres de la mañana es
+ * `RESTAURACIÓN OK: N filas en M tablas`, y esa línea la imprime el CLI, no el
+ * motor. Vigilar sólo el número que devuelve el motor sería vigilar un lugar por
+ * el que el defecto ya pasó: la versión rota tomaba las FILAS de `cierre.filas`
+ * (el total del ARCHIVO, con `auth.users` adentro) y las TABLAS del plan (sin
+ * `auth.users`), o sea dos universos distintos en la misma frase, y sumaba al
+ * verde filas que nadie escribió.
+ *
+ * Acá se corre `respaldo-restaurar.mjs --destino supabase --si-estoy-seguro` de
+ * punta a punta: un preload levanta un Management API de mentira que por dentro
+ * es un Postgres de verdad (PGlite con la misma cadena de migraciones) y desvía
+ * `fetch` hacia él. Producción no se toca; el camino sí es el completo, con su
+ * reenlace de cuentas, su borrado, su insert y su veredicto impreso.
+ */
+describe("el CLI del camino real no anuncia filas que no escribió", () => {
+  const RAIZ_REPO = path.resolve(__dirname, "../../..");
+  let taller = "";
+  let stub = "";
+
+  const SEMBRAR_CUENTAS =
+    "insert into auth.users (id, email, created_at) values " +
+    `('${ANA_NUEVA}', 'ana@casa.cl', '2026-08-01T09:00:00Z'), ` +
+    `('${BETO_NUEVO}', 'beto@casa.cl', '2026-08-01T09:01:00Z');`;
+
+  beforeAll(() => {
+    taller = mkdtempSync(path.join(os.tmpdir(), "respaldo-cli-real-"));
+    stub = path.join(taller, "api-sobre-pglite.mjs");
+    writeFileSync(
+      stub,
+      `
+import http from "node:http";
+import { pathToFileURL } from "node:url";
+
+const lib = await import(pathToFileURL(process.env.RUTA_LIB).href);
+const base = await lib.baseConMigraciones(JSON.parse(process.env.CADENA));
+await base.db.exec(process.env.SEMBRAR);
+const ejecutor = lib.ejecutorPglite(base.db);
+
+const servidor = http.createServer((req, res) => {
+  let cuerpo = "";
+  req.on("data", (c) => (cuerpo += c));
+  req.on("end", async () => {
+    let sql = "";
+    try { sql = JSON.parse(cuerpo).query ?? ""; } catch { /* cuerpo ilegible */ }
+    try {
+      const filas = await ejecutor.ejecutar(sql);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(filas));
+    } catch (e) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ message: String(e && e.message ? e.message : e) }));
+    }
+  });
+});
+
+await new Promise((listo) => servidor.listen(0, "127.0.0.1", listo));
+const puerto = servidor.address().port;
+servidor.unref();
+
+const fetchReal = globalThis.fetch;
+globalThis.fetch = (recurso, init) => {
+  const u = new URL(String(recurso));
+  if (u.hostname === "api.supabase.com") {
+    return fetchReal("http://127.0.0.1:" + puerto + u.pathname, init);
+  }
+  return fetchReal(recurso, init);
+};
+`,
+      "utf8",
+    );
+  });
+
+  afterAll(() => {
+    if (taller) rmSync(taller, { recursive: true, force: true });
+  });
+
+  it("anuncia las filas del plan, y nombra aparte las que el archivo trae y nadie escribió", () => {
+    const r = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        pathToFileURL(stub).href,
+        path.join(RAIZ_SCRIPTS, "respaldo-restaurar.mjs"),
+        rutaRespaldo,
+        "--destino",
+        "supabase",
+        "--si-estoy-seguro",
+        "--sobrescribir",
+      ],
+      {
+        cwd: RAIZ_REPO,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          RUTA_LIB: path.join(RAIZ_SCRIPTS, "respaldo-lib.mjs"),
+          CADENA: JSON.stringify(CADENA),
+          SEMBRAR: SEMBRAR_CUENTAS,
+          // El ref calza con el del respaldo para no mezclar avisos; el token es
+          // falso y `fetch` nunca sale de 127.0.0.1.
+          SUPABASE_ACCESS_TOKEN: "sbp_estonoesuntokendeverdad",
+          NEXT_PUBLIC_SUPABASE_URL: "https://proyectodeprueba.supabase.co",
+        },
+      },
+    );
+    const texto = `${r.stdout ?? ""}${r.stderr ?? ""}`;
+    expect(r.status).toBe(0);
+
+    // Las cuentas del respaldo NO se escriben: se reenlazan.
+    const usuarios = respaldo.tablas.find((t) => t.nombre === "users")!;
+    const escritas = respaldo.cierre.filas - usuarios.filas;
+    expect(usuarios.filas).toBeGreaterThan(0);
+
+    const veredicto = texto.match(/RESTAURACIÓN OK: (\d+) filas en (\d+) tablas/);
+    expect(veredicto).not.toBeNull();
+    expect(Number(veredicto![1])).toBe(escritas);
+    // Y NO el total del archivo, que es lo que se anunciaba antes.
+    expect(Number(veredicto![1])).not.toBe(respaldo.cierre.filas);
+    expect(Number(veredicto![2])).toBe(respaldo.cierre.tablas - 1);
+
+    // Lo que quedó fuera se nombra con su cifra, en vez de desaparecer.
+    expect(texto).toContain(`auth.users: ${usuarios.filas} fila(s) en el archivo, 0 escritas.`);
+
+    // Y el conteo del esquema tampoco suma la tabla que nunca comparó.
+    const comparadas = texto.match(/Esquema del destino compatible: (\d+) tablas comprobadas/);
+    expect(comparadas).not.toBeNull();
+    expect(Number(comparadas![1])).toBe(respaldo.cierre.tablas - 1);
+    expect(texto).toContain("Fuera de la comparación");
+  }, 600_000);
 });

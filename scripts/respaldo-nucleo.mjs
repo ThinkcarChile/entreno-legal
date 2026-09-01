@@ -22,6 +22,7 @@ import {
   TABLAS_CLINICAS,
   SQL_ESQUEMA,
   SQL_SONDA_REPLICACION,
+  SQL_RESET_REPLICACION,
   PREAMBULO_CARGA,
   columnasGuardadas,
   exigirArreglo,
@@ -177,17 +178,43 @@ export function planDeCarga({ orden, esquemaRespaldo, porNombre, columnasDeUsuar
  *
  * La sonda no escribe una sola fila, así que es segura de correr contra
  * producción. Corre ANTES del primer `delete`.
+ *
+ * Y DEVUELVE LA SESIÓN A `origin`, siempre, en un `finally`. Durante una ronda
+ * entera el comentario afirmaba que lo hacía y nadie lo hacía: la sonda subía
+ * `session_replication_role` a `replica` y ahí lo dejaba. El único reset del
+ * motor viaja por `escribir` y va DESPUÉS de cargar, así que en `--en-seco` —el
+ * modo que se corre contra producción prometiendo no escribirle una fila— el
+ * envoltorio en seco lo interceptaba y jamás se enviaba: la sesión quedaba con
+ * todos los disparadores apagados, incluidos los de seguridad de las 0033, 0035
+ * y 0037. Si la Management API reusa o no esa conexión es justamente lo que
+ * nadie midió: es UNKNOWN, y un UNKNOWN no se deja apoyado en un comentario.
+ *
+ * El reset va por `ejecutar` a propósito (ver `SQL_RESET_REPLICACION`), y si
+ * falla se DECLARA en `restablecido`/`motivoRestablecer` en vez de suponerse.
  */
 export async function comprobarPermisoDeReplicacion(ejecutor) {
+  let veredicto;
   try {
-    return interpretarSonda(await ejecutor.ejecutar(SQL_SONDA_REPLICACION));
+    veredicto = interpretarSonda(await ejecutor.ejecutar(SQL_SONDA_REPLICACION));
   } catch (e) {
-    return {
+    veredicto = {
       permitido: false,
       motivo: `el destino rechazó el SET: ${e instanceof Error ? e.message : String(e)}`,
       detalle: null,
     };
+  } finally {
+    try {
+      await ejecutor.ejecutar(SQL_RESET_REPLICACION);
+      veredicto = { ...veredicto, restablecido: true, motivoRestablecer: null };
+    } catch (e) {
+      veredicto = {
+        ...veredicto,
+        restablecido: false,
+        motivoRestablecer: e instanceof Error ? e.message : String(e),
+      };
+    }
   }
+  return veredicto;
 }
 
 const AYUDA_SIN_PERMISO = [
@@ -309,14 +336,27 @@ export async function restaurar({
   const tablasDestino = new Map(esquemaDestino.tablas.map((t) => [t.nombre, t]));
   const faltantes = [];
   const bloqueos = [];
+  // Lo comparado y lo saltado se cuentan por separado. `tablasCabecera.length`
+  // incluía `auth.users`, que este bucle salta en la línea de abajo: la corrida
+  // anunciaba «83 tablas comprobadas» habiendo comparado 82. Lo que no se
+  // comparó se declara no comparado; jamás se suma al verde.
+  const comparadas = [];
+  const noComparadas = [];
 
   for (const t of tablasCabecera) {
-    if ((t.esquema ?? "public") !== "public") continue;
+    const esquemaTabla = t.esquema ?? "public";
+    if (esquemaTabla !== "public") {
+      // `SQL_ESQUEMA` sólo lee `public`, así que no hay contra qué comparar
+      // `auth.users`. Eso no la hace comprobada: la hace NO comprobada.
+      noComparadas.push(`${esquemaTabla}.${t.nombre}`);
+      continue;
+    }
     const destino = tablasDestino.get(t.nombre);
     if (!destino) {
       faltantes.push(`falta la tabla ${t.nombre}`);
       continue;
     }
+    comparadas.push(t.nombre);
     const colsDestino = new Map(destino.columnas.map((c) => [c.nombre, c]));
     for (const c of t.columnas) {
       const d = colsDestino.get(c.nombre);
@@ -388,7 +428,12 @@ export async function restaurar({
     );
   }
 
-  log(`Esquema del destino compatible: ${tablasCabecera.length} tablas comprobadas.`);
+  log(`Esquema del destino compatible: ${comparadas.length} tablas comprobadas.`);
+  if (noComparadas.length > 0) {
+    log(
+      `  Fuera de la comparación (el esquema del destino sólo se lee de public): ${noComparadas.join(", ")}.`,
+    );
+  }
 
   // --- 4. ¿El destino ya tiene datos? --------------------------------------
   const nombresPublic = tablasCabecera
@@ -417,6 +462,16 @@ export async function restaurar({
     `Puede apagar la integridad referencial para cargar: sí (rol ${sonda.detalle?.rol ?? "?"}` +
       `, superusuario ${sonda.detalle?.superusuario ?? "?"}).`,
   );
+  // La sonda subió `session_replication_role` a `replica` para poder mirarlo. Si
+  // no se pudo devolver a `origin`, la sesión quedó con los disparadores
+  // apagados y eso se DICE: nadie tiene que deducirlo de un comentario.
+  if (sonda.restablecido !== true) {
+    avisos.push(
+      "La sonda no pudo devolver session_replication_role a origin" +
+        `${sonda.motivoRestablecer ? `: ${sonda.motivoRestablecer}` : ""}. ` +
+        "Si esta conexión se reusa, las sentencias siguientes corren con los disparadores apagados.",
+    );
+  }
 
   // --- 6. Identidades: a quién apunta cada household_members.user_id --------
   //
@@ -532,14 +587,31 @@ export async function restaurar({
 
   // El `replica` va en el preámbulo de CADA sentencia porque la Management API
   // no promete que dos llamadas caigan en la misma conexión. Éste es el cierre
-  // simétrico: por sí solo no alcanza, y por eso no se confía en él.
+  // simétrico de la CARGA: va por `escribir` a propósito, porque pertenece al
+  // tramo que el modo en seco no ejecuta y sí declara en su lista de sentencias.
+  // El de la SONDA es otro y va por `ejecutar` (ver `comprobarPermisoDeReplicacion`):
+  // ese sí tiene que ocurrir en seco, porque la sonda sí se envía en seco.
   try {
-    await ejecutor.escribir("set session_replication_role = origin;");
+    await ejecutor.escribir(SQL_RESET_REPLICACION);
   } catch (e) {
     avisos.push(`No se pudo devolver session_replication_role a origin: ${e}`);
   }
 
   log(`  ${plan.length} tablas ${seco ? "planificadas" : "restauradas"}.`);
+
+  // La aritmética del veredicto, calculada donde se sabe la verdad.
+  //
+  // `cierre.filas` es el total del ARCHIVO e incluye `auth.users`, que en modo
+  // real NO se restaura a propósito (las cuentas las crea Supabase Auth). Decir
+  // «RESTAURACIÓN OK: <cierre.filas> filas en <plan.length> tablas» sumaba al
+  // verde filas que nadie escribió, con las dos cifras sacadas de universos
+  // distintos. Acá las filas salen del MISMO plan que las tablas, y lo que
+  // quedó fuera se nombra en vez de desaparecer.
+  const filasCargadas = plan.reduce((total, paso) => total + paso.filas.length, 0);
+  const enElPlan = new Set(plan.map((p) => p.tabla));
+  const tablasFueraDelPlan = tablas
+    .filter((b) => !enElPlan.has(b.nombre))
+    .map((b) => ({ tabla: `${b.esquema ?? "public"}.${b.nombre}`, filas: b.filas }));
 
   if (seco) {
     // Nada se escribió, así que releer el destino compararía el respaldo contra
@@ -562,6 +634,10 @@ export async function restaurar({
       seco: true,
       conDatos,
       cuentasDestino,
+      filasCargadas,
+      tablasFueraDelPlan,
+      esquemaComparadas: comparadas.length,
+      esquemaNoComparadas: noComparadas,
     };
   }
 
@@ -783,6 +859,13 @@ export async function restaurar({
     tablasOk,
     fksComprobadas,
     huerfanos: huerfanosTotales,
+    // `filas` es lo que el ARCHIVO declara; `filasCargadas` es lo que este
+    // camino escribió de verdad. En modo real no son el mismo número y no se
+    // pueden intercambiar: quien anuncie un OK tiene que usar el segundo.
     filas: cierre.filas,
+    filasCargadas,
+    tablasFueraDelPlan,
+    esquemaComparadas: comparadas.length,
+    esquemaNoComparadas: noComparadas,
   };
 }

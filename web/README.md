@@ -13,7 +13,7 @@ npm install
 npm run dev
 ```
 
-Migraciones: aplicar `../supabase/migrations/*.sql` al proyecto Supabase (SQL editor o `supabase db push`). RLS queda activa en todas las tablas; la creación de hogar y la aceptación de invitaciones van por funciones `security definer` (`create_household`, `accept_invitation`).
+Migraciones: **no se aplican por nombre de archivo**. El orden real vive en la lista `MIGRACIONES` de `src/integration/harness.ts` —la misma secuencia que ejercitan las pruebas— y quien la lee y la aplica es `scripts/poner-al-dia.mjs`; el paso a paso está en [Activar Supabase](../docs/setup-supabase.md). Este repo **no usa la CLI de Supabase** (no hay `supabase/config.toml`, y `supabase db push` nunca corrió acá): todo va por la Management API, con `scripts/aplicar-migracion.mjs` de brazo. RLS queda activa en todas las tablas; la creación de hogar y la aceptación de invitaciones van por funciones `security definer` (`create_household`, `accept_invitation`).
 
 ## Checks
 
@@ -23,7 +23,9 @@ npm run lint && npm run typecheck && npm test && npm run build
 
 ## Tests de base de datos
 
-`scripts/db-test.sh` levanta un PostgreSQL local efímero, aplica `supabase/migrations/*.sql` + los seeds de desarrollo y ejecuta todos los `supabase/tests/rls_*.sql`. Corre también en CI (job `db`) y funciona en Linux y en Windows/Git Bash (allá con socket Unix, acá con TCP en loopback).
+`scripts/db-test.sh` levanta un PostgreSQL local efímero, aplica la cadena **en el orden que declara `MIGRACIONES` en `src/integration/harness.ts`** más los seeds en el orden de `SEEDS`, y ejecuta todos los `supabase/tests/rls_*.sql`. Corre también en CI (job `db`) y funciona en Linux y en Windows/Git Bash (allá con socket Unix, acá con TCP en loopback).
+
+Las dos secuencias salen de esas listas y de ningún otro lado: si no puede leerlas se planta, porque un orden de repuesto deducido del nombre de archivo daría verde sobre una base que no es la que prueban los tests. `scripts/db-test.sh --imprimir-orden` la imprime sin tocar nada, y `orden-de-migraciones.test.ts` compara esa salida contra el arnés ejecutando el script de verdad.
 
 Qué cubren:
 

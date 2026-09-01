@@ -165,8 +165,21 @@ es un archivo.
 | El **camino real** completo: reenlace de cuentas, borrado, insert, relectura, hashes y huérfanos | El test corre `respaldo-nucleo.mjs` en `modo: "real"`, `seco: false`, escribiendo de verdad contra un Postgres desechable | Automatizado |
 | Que una tabla reenlazada que vuelve distinta se caza | El test la ensucia a propósito entre el insert y la verificación | Automatizado |
 | Que el destino permite `set session_replication_role` | El motor **lo pregunta** antes de borrar nada; `--en-seco` lo pregunta contra producción | Comprobado en producción el 2026-09-01: rol `postgres`, `is_superuser = off`, y el SET **sí** toma efecto |
+| Que la sesión no queda con los disparadores apagados | Cuatro pruebas que **le preguntan a la base** en qué quedó `session_replication_role` después de la sonda, del modo en seco y de la carga real | Automatizado |
 | Que producción recibe este respaldo (esquema, cuentas) | `--destino supabase --en-seco` | Comprobado, y repetible sin riesgo |
+| Que `respaldo.mjs` devuelve el código de salida que promete | Tres corridas del script de verdad contra un Management API de mentira en `127.0.0.1` (socket real): éxito → 0, error → 1, ensayo fallido → 1, y ni un volcado en la salida | Automatizado |
+| Que el veredicto impreso del camino real no cuenta filas que nadie escribió | El CLI completo (`--destino supabase --si-estoy-seguro`) corrido contra un Postgres de verdad detrás del Management API de mentira; se parsea la línea `RESTAURACIÓN OK` | Automatizado |
 | Que la **base viva** aguanta la escritura de verdad | Nada lo prueba | **NO PROBADO** — ver abajo |
+
+**Cómo leer los números del veredicto.** `RESTAURACIÓN OK: N filas en M tablas`
+cuenta lo que **se escribió**, no lo que trae el archivo. En el camino real esas
+dos cosas no coinciden: `auth.users` viaja en el respaldo y **no** se restaura
+—las cuentas las crea Supabase Auth y el respaldo sólo las reenlaza por correo—,
+así que el CLI la nombra aparte («N fila(s) en el archivo, 0 escritas»). Lo mismo
+con `Esquema del destino compatible: M tablas comprobadas`: son las de `public`,
+las únicas contra las que hubo algo que comparar, y las que quedaron fuera se
+listan en la línea siguiente. Antes ambas cifras sumaban lo no comparado y lo no
+escrito al verde.
 
 ### Lo que sigue sin probarse, y por qué no se va a probar
 
@@ -192,10 +205,27 @@ por construcción**. La Management API de Supabase corre como `postgres`, que
 `is_superuser = off`. Si ese SET no estuviera permitido, la carga abortaría en
 la primera tabla — el día del desastre, con la base ya borrada.
 
-Por eso el motor lo **pregunta** (sube el parámetro, lo lee de vuelta y lo
-devuelve a `origin`) antes del primer `delete`, y no asume que sí. Leerlo de
-vuelta importa: un SET que no falla y tampoco toma efecto sería el peor de los
-casos, porque la carga entraría con las llaves foráneas vivas.
+Por eso el motor lo **pregunta** (sube el parámetro y lo lee de vuelta) antes del
+primer `delete`, y no asume que sí. Leerlo de vuelta importa: un SET que no falla
+y tampoco toma efecto sería el peor de los casos, porque la carga entraría con
+las llaves foráneas vivas.
+
+Y después de mirarlo, **devuelve la sesión a `origin`**, siempre, en el `finally`
+de `comprobarPermisoDeReplicacion`. Ese `finally` no es adorno: durante una ronda
+entera este párrafo y el comentario del código afirmaban que se devolvía y nadie
+lo devolvía. La sonda dejaba la sesión en `replica`, también en `--en-seco` —el
+modo que se corre contra producción prometiendo no escribirle una fila—, porque
+el único reset del motor viajaba por la ruta de escritura y el envoltorio en seco
+la intercepta. Si esa conexión se reusa, lo que sigue corre con **todos** los
+disparadores apagados, incluidos los de seguridad de las migraciones 0033, 0035 y
+0037. Si se reusa o no es justamente lo que nadie midió: es un desconocido, y un
+desconocido no se deja apoyado en un comentario.
+
+Lo comprueban cuatro pruebas de `respaldo-camino-real.test.ts` que **le preguntan
+a la base** en qué quedó `session_replication_role` — no miran el texto del SQL ni
+la lista de sentencias interceptadas, que es justo el arreglo que se tragaba el
+reset sin mandarlo. Si el reset se pierde, o vuelve a irse por la ruta de
+escritura, la prueba del modo en seco se pone roja.
 
 ### Por qué se cargan los datos con las FK apagadas
 
@@ -318,6 +348,20 @@ Dos cosas que no son opcionales:
   semanas es peor que no tener ninguno: crees que estás cubierto. El script
   termina con código distinto de cero cuando algo sale mal, y siempre ensaya la
   restauración antes de darse por bueno.
+
+  Esa promesa es sobre el **código de salida**, así que se comprueba corriendo el
+  script y mirando el código de salida: `respaldo-camino-real.test.ts` levanta un
+  Management API de mentira en `127.0.0.1`, desvía `fetch` hacia allá y corre
+  `respaldo.mjs` de verdad en tres caminos —éxito, error después de los `fetch` y
+  ensayo fallido— exigiendo 0, 1 y 1. El socket es real, que es lo que importa:
+  `process.exit()` con un socket de `fetch` abierto hace reventar libuv en Windows
+  («Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)») y el proceso se va
+  con 127 — un respaldo bueno reportado como falla. Por eso ningún script de
+  respaldo llama a `process.exit`: `morir()` lanza `SalidaLimpia` y el punto de
+  entrada la convierte en `process.exitCode`, igual que `aplicar-migracion.mjs`.
+  Lanzar desde el tope del módulo tampoco sirve: la excepción sale sin que nadie
+  la atrape y Node sepulta el mensaje bajo la pila. Las pruebas exigen además que
+  la salida no traiga ni un volcado.
 - **Borra los viejos a mano, con criterio.** Todavía no hay rotación automática.
   Cada archivo son ~750 KiB con datos clínicos adentro: no se acumulan «por si
   acaso» en cualquier carpeta.
@@ -370,13 +414,19 @@ Dicho acá para que nadie se confíe de más:
 
 ## Archivos
 
-- `scripts/respaldo.mjs` — saca el respaldo y lo ensaya.
+- `scripts/respaldo.mjs` — saca el respaldo y lo ensaya. Toda la corrida vive
+  dentro de `principal()` y el `catch` de abajo traduce `SalidaLimpia` a
+  `process.exitCode`: ni él ni ningún otro script de respaldo llama a
+  `process.exit`.
 - `scripts/respaldo-restaurar.mjs` — **sólo la línea de comandos**: argumentos,
   destinos, mensajes y código de salida.
 - `scripts/respaldo-nucleo.mjs` — **el motor**: borra, inserta, verifica hashes
   y cuenta huérfanos. No sabe nada de `argv` y no llama a `process.exit`. Está
   separado justamente para que una prueba pueda correr el camino real completo.
 - `scripts/respaldo-lib.mjs` — lo compartido: credenciales, expresiones de
-  lectura y escritura, armado del archivo, hashes, guardas de destino.
+  lectura y escritura, armado del archivo, hashes, guardas de destino,
+  `morir()`/`SalidaLimpia`.
 - `web/src/integration/respaldo-camino-real.test.ts` — la red de seguridad:
-  34 pruebas, incluida la del camino real escribiendo de verdad.
+  46 pruebas, incluidas la del camino real escribiendo de verdad, las de los
+  códigos de salida y las que le preguntan a la base por
+  `session_replication_role`.

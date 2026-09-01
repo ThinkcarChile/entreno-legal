@@ -148,6 +148,12 @@ const FILTRADOS_O_REFINADOS = new Set([
   "cognac",
   "esencia de vainilla",
   "maicena",
+  // Los vinagres entran por la misma puerta que el vino: son ese vino filtrado
+  // y fermentado una segunda vez. El sólido quedó atrás dos veces.
+  "vinagre",
+  "vinagre blanco",
+  "vinagre tinto",
+  "vinagre de arroz",
 ]);
 
 export function ceroEsDefendible(

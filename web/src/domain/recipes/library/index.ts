@@ -14,6 +14,8 @@ export { LOTE_D } from "./lote-d";
 export { LOTE_E } from "./lote-e";
 export { LOTE_F } from "./lote-f";
 export { LOTE_G } from "./lote-g";
+export { LOTE_H } from "./lote-h";
+export { LOTE_I } from "./lote-i";
 export { generarSeedSQL, cantidadNormalizada } from "./seed";
 
 import { INGREDIENTES_EXISTENTES, INGREDIENTES_NUEVOS } from "./catalog";
@@ -24,10 +26,12 @@ import { LOTE_D } from "./lote-d";
 import { LOTE_E } from "./lote-e";
 import { LOTE_F } from "./lote-f";
 import { LOTE_G } from "./lote-g";
+import { LOTE_H } from "./lote-h";
+import { LOTE_I } from "./lote-i";
 import type { LibraryRecipe } from "./types";
 
 /** Toda la biblioteca chilena publicada hasta ahora. Los lotes B, C… se suman acá. */
-export const BIBLIOTECA: LibraryRecipe[] = [...LOTE_A, ...LOTE_B, ...LOTE_C, ...LOTE_D, ...LOTE_E, ...LOTE_F, ...LOTE_G];
+export const BIBLIOTECA: LibraryRecipe[] = [...LOTE_A, ...LOTE_B, ...LOTE_C, ...LOTE_D, ...LOTE_E, ...LOTE_F, ...LOTE_G, ...LOTE_H, ...LOTE_I];
 
 /** Nombres canónicos que la biblioteca puede referenciar sin inventar identidades. */
 export const IDENTIDADES_VALIDAS: ReadonlySet<string> = new Set([

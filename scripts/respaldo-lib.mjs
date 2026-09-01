@@ -332,10 +332,19 @@ export const PREAMBULO_CARGA =
  * este problema. Por eso la sonda existe y por eso corre contra el destino de
  * verdad.
  *
- * No escribe una sola fila: sube el parámetro, lo lee de vuelta y lo devuelve a
- * `origin`. Lo lee de vuelta a propósito — un SET que no toma efecto y no falla
- * sería el peor de los dos casos: la carga entraría con las llaves foráneas
- * VIVAS y reventaría a mitad, con la base ya borrada.
+ * No escribe una sola fila: sube el parámetro y lo lee de vuelta. Lo lee de
+ * vuelta a propósito — un SET que no toma efecto y no falla sería el peor de los
+ * dos casos: la carga entraría con las llaves foráneas VIVAS y reventaría a
+ * mitad, con la base ya borrada.
+ *
+ * DEVOLVER el parámetro a `origin` NO es parte de esta constante y no puede
+ * serlo: si la última sentencia de la tanda fuera un `set`, la respuesta que
+ * `interpretarSonda` tiene que leer dejaría de venir. El que lo devuelve es
+ * `comprobarPermisoDeReplicacion` (respaldo-nucleo.mjs) en un `finally`, con
+ * `SQL_RESET_REPLICACION`, y declara si no pudo. Este comentario decía que la
+ * sonda lo devolvía y era falso: la sonda dejaba la sesión en `replica`, también
+ * en `--en-seco`, donde el único reset del motor viaja por `escribir` y el
+ * envoltorio en seco lo intercepta sin mandarlo.
  */
 export const SQL_SONDA_REPLICACION = `
   ${PREAMBULO_CARGA}
@@ -343,6 +352,16 @@ export const SQL_SONDA_REPLICACION = `
          current_setting('is_superuser') as superusuario,
          current_setting('session_replication_role') as replicacion;
 `;
+
+/**
+ * Devuelve la sesión a su estado normal después de la sonda o de la carga.
+ *
+ * Va SIEMPRE por `ejecutar` (no por `escribir`): no toca una fila, y el
+ * envoltorio en seco intercepta las escrituras. Si esto fuera una escritura, el
+ * modo que se vende como «no escribe una fila en producción» sería justamente el
+ * que deja la sesión con TODOS los disparadores apagados.
+ */
+export const SQL_RESET_REPLICACION = "set session_replication_role = origin;";
 
 /** Interpreta la respuesta de `SQL_SONDA_REPLICACION`. Pura, para poder probarla. */
 export function interpretarSonda(filas) {

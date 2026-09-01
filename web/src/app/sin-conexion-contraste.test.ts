@@ -28,6 +28,12 @@ import { describe, expect, it } from "vitest";
  *    bajaba de 9 a 8 y nada se ponía rojo. Ahora el bloque se parte por `;` (la
  *    última declaración se lee igual, con o sin cierre) y además se afirma QUÉ
  *    selectores se midieron, para que la cobertura no pueda caer callada.
+ *
+ * Y como los dos agujeros anteriores fueron lo mismo —una declaración real que
+ * el parser no veía y nadie extrañaba—, ahora el parser se vigila a sí mismo:
+ * se cuentan las declaraciones `color:` que hay ESCRITAS en el CSS y tienen que
+ * ser exactamente las que se midieron, y se prohíben los bloques anidados
+ * (@media y compañía), que este parser plano se comería enteros en silencio.
  */
 
 const RAIZ_WEB = path.resolve(__dirname, "..", "..");
@@ -163,6 +169,32 @@ const conColor = Object.entries(reglas)
 describe("la pantalla de sin conexión se puede leer", () => {
   it("el archivo trae sus estilos en línea (si no, no hay nada que medir)", () => {
     expect(estilos, "sin-conexion.html perdió su bloque <style>").toBeTruthy();
+  });
+
+  it("el parser vio TODAS las declaraciones de color que hay escritas", () => {
+    // La propiedad de fondo de este guardián no es "el regex de turno anda":
+    // es que ninguna declaración de color quede fuera del barrido. Se cuentan
+    // las que están ESCRITAS en el CSS (una propiedad `color`, no
+    // `background-color` ni una variable) y tienen que ser tantas como las
+    // parseadas. Así caen de una vez el `;` que falta, un bloque que el parser
+    // se comió y un selector repetido cuyo segundo `color` quedaría tapado.
+    const escritas = [...(estilos ?? "").matchAll(/(?:^|[;{])\s*color\s*:/g)].length;
+    expect(
+      conColor.length,
+      `el CSS declara ${escritas} colores de texto y el parser leyó ${conColor.length}: hay declaraciones que este guardián no está mirando`,
+    ).toBe(escritas);
+  });
+
+  it("el CSS es plano: no hay bloques anidados que el parser se comería enteros", () => {
+    // `reglasDelCss` parte por llaves sin contarlas. Una regla adentro de un
+    // @media desaparecería del barrido —incluidos sus `background:`, que es de
+    // donde salen los fondos— sin que nada se ponga rojo. Si algún día hace
+    // falta una consulta de medios acá, primero hay que enseñarle a leerla al
+    // parser; mientras tanto, que se caiga.
+    expect(
+      (estilos ?? "").match(/@[a-z-]+/g) ?? [],
+      "apareció una regla @ en sin-conexion.html y este parser es plano: no la sabe leer",
+    ).toEqual([]);
   });
 
   it("la estructura que asume PINTA_DETRAS es la del HTML real", () => {

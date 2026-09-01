@@ -22,7 +22,7 @@
 -- rendimiento del arroz (2,5) rebota contra el check viejo.
 
 -- ---------------------------------------------------------------------------
--- Alimentos nuevos (150)
+-- Alimentos nuevos (211)
 -- ---------------------------------------------------------------------------
 
 do $$
@@ -40,7 +40,7 @@ begin
   values ('pollo trutro entero con piel', 'Pollo, trutro entero (con piel)', (cats->>'POULTRY')::uuid, 0.7)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 172, 17.3, 0, 11.2, 3.2, 82, 230, 'DEV_SEED', src, 'porción comestible; el trutro comprado incluye hueso');
   end if;
@@ -49,7 +49,7 @@ begin
   values ('carne molida de vacuno', 'Carne molida de vacuno', (cats->>'MEAT')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 215, 18.6, 0, 15.4, 6, 66, 270, 'DEV_SEED', src, null);
   end if;
@@ -58,7 +58,7 @@ begin
   values ('vacuno posta negra', 'Vacuno posta negra', (cats->>'MEAT')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 143, 21, 0, 6.2, 2.4, 58, 320, 'DEV_SEED', src, null);
   end if;
@@ -67,7 +67,7 @@ begin
   values ('vacuno asiento picana', 'Vacuno asiento (bistec)', (cats->>'MEAT')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 155, 21.5, 0, 7.4, 2.9, 55, 315, 'DEV_SEED', src, null);
   end if;
@@ -76,7 +76,7 @@ begin
   values ('reineta', 'Reineta', (cats->>'FISH')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 96, 18.5, 0, 2.3, 0.6, 85, 310, 'DEV_SEED', src, null);
   end if;
@@ -85,7 +85,7 @@ begin
   values ('atun en conserva al agua', 'Atún en conserva (al agua)', (cats->>'FISH')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'DRAINED', 'G', 116, 25.5, 0, 0.8, 0.2, 320, 240, 'DEV_SEED', src, null);
   end if;
@@ -94,7 +94,7 @@ begin
   values ('porotos secos', 'Porotos (secos)', (cats->>'LEGUMES')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 333, 21.6, 60, 1.2, 15.2, 12, 1400, 400, 'DEV_SEED', src, 'en seco; el rendimiento al remojar y cocer va en ingredient_yields');
   end if;
@@ -103,7 +103,7 @@ begin
   values ('porotos granados frescos', 'Porotos granados (frescos)', (cats->>'LEGUMES')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 133, 9, 23.7, 0.6, 7, 540, 'DEV_SEED', src, null);
   end if;
@@ -112,7 +112,7 @@ begin
   values ('garbanzos secos', 'Garbanzos (secos)', (cats->>'LEGUMES')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 364, 19.3, 60.7, 6, 17.4, 24, 875, 366, 'DEV_SEED', src, null);
   end if;
@@ -121,7 +121,7 @@ begin
   values ('arvejas frescas', 'Arvejas (frescas)', (cats->>'LEGUMES')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 81, 5.4, 14.5, 0.4, 5.1, 244, 'DEV_SEED', src, null);
   end if;
@@ -130,7 +130,7 @@ begin
   values ('zapallo camote', 'Zapallo camote', (cats->>'VEGETABLES')::uuid, 0.75)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 34, 1, 8, 0.1, 1.5, 340, 'DEV_SEED', src, null);
   end if;
@@ -139,7 +139,7 @@ begin
   values ('choclo en grano', 'Choclo (grano)', (cats->>'VEGETABLES')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 96, 3.4, 21, 1.5, 2.7, 270, 'DEV_SEED', src, null);
   end if;
@@ -148,7 +148,7 @@ begin
   values ('poroto verde', 'Poroto verde', (cats->>'VEGETABLES')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 31, 1.8, 7, 0.1, 2.7, 211, 'DEV_SEED', src, null);
   end if;
@@ -157,7 +157,7 @@ begin
   values ('zapallo italiano', 'Zapallo italiano', (cats->>'VEGETABLES')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 17, 1.2, 3.1, 0.3, 1, 261, 'DEV_SEED', src, null);
   end if;
@@ -166,7 +166,7 @@ begin
   values ('pimiento rojo', 'Pimiento rojo', (cats->>'VEGETABLES')::uuid, 0.82)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 31, 1, 6, 0.3, 2.1, 211, 'DEV_SEED', src, null);
   end if;
@@ -175,7 +175,7 @@ begin
   values ('ajo', 'Ajo', (cats->>'VEGETABLES')::uuid, 0.87)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 149, 6.4, 33, 0.5, 2.1, 401, 'DEV_SEED', src, null);
   end if;
@@ -184,7 +184,7 @@ begin
   values ('perejil fresco', 'Perejil', (cats->>'VEGETABLES')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 36, 3, 6.3, 0.8, 3.3, 'DEV_SEED', src, null);
   end if;
@@ -193,7 +193,7 @@ begin
   values ('aceite vegetal', 'Aceite vegetal', (cats->>'FATS_OILS')::uuid, 'VOLUME')
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'ML', 828, 0, 0, 92, 10.5, 0, 'DEV_SEED', src, 'por 100 ml');
   end if;
@@ -202,7 +202,7 @@ begin
   values ('harina de trigo', 'Harina de trigo', (cats->>'GRAINS')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 364, 10.3, 76.3, 1, 2.7, 2, 107, 'DEV_SEED', src, null);
   end if;
@@ -211,7 +211,7 @@ begin
   values ('leche liquida entera', 'Leche entera', (cats->>'DAIRY')::uuid, 'VOLUME')
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'ML', 61, 3.2, 4.8, 3.3, 1.9, 43, 150, 93, 'DEV_SEED', src, 'por 100 ml');
   end if;
@@ -220,7 +220,7 @@ begin
   values ('quesillo', 'Quesillo', (cats->>'DAIRY')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 98, 11, 3.4, 4.3, 2.7, 364, 104, 159, 'DEV_SEED', src, null);
   end if;
@@ -229,7 +229,7 @@ begin
   values ('azucar granulada', 'Azúcar', (cats->>'GRAINS')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, sugars_g, sodium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, sugars_g, sodium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 387, 0, 100, 0, 100, 1, 'DEV_SEED', src, null);
   end if;
@@ -238,7 +238,7 @@ begin
   values ('sal', 'Sal', (cats->>'FATS_OILS')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, sodium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, sodium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 0, 0, 0, 0, 38758, 'DEV_SEED', src, 'condimento: se modela por el sodio, jamás como fuente energética (§10)');
   end if;
@@ -247,7 +247,7 @@ begin
   values ('aji de color', 'Ají de color', (cats->>'VEGETABLES')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 282, 14.1, 54, 13, 34.9, 68, 2280, 'DEV_SEED', src, null);
   end if;
@@ -256,7 +256,7 @@ begin
   values ('comino molido', 'Comino', (cats->>'VEGETABLES')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 375, 17.8, 44.2, 22.3, 10.5, 'DEV_SEED', src, null);
   end if;
@@ -265,7 +265,7 @@ begin
   values ('oregano seco', 'Orégano', (cats->>'VEGETABLES')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 265, 9, 68.9, 4.3, 42.5, 'DEV_SEED', src, null);
   end if;
@@ -274,7 +274,7 @@ begin
   values ('canela molida', 'Canela', (cats->>'VEGETABLES')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 247, 4, 80.6, 1.2, 53.1, 'DEV_SEED', src, null);
   end if;
@@ -283,7 +283,7 @@ begin
   values ('albahaca fresca', 'Albahaca', (cats->>'VEGETABLES')::uuid)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 23, 3.2, 2.6, 0.6, 1.6, 'DEV_SEED', src, null);
   end if;
@@ -292,7 +292,7 @@ begin
   values ('pan rallado', 'Pan rallado', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 390, 13, 72, 5.3, 4.5, 6, 1.2, 750, 200, 160, 'DEV_SEED', src, 'DEV_SEED, valor de referencia: pan rallado seco de trigo tipo bolsa, se usa tal cual sale del envase. El sodio es el dato critico: el pan rallado industrial trae sal y varia harto entre marcas (rango razonable 550-950 mg/100 g), asi que 750 es un punto medio, no un valor de etiqueta. Potasio y fosforo son los propios del trigo, no de aditivos; usarlos solo como orden de magnitud.');
   end if;
@@ -301,7 +301,7 @@ begin
   values ('mantequilla', 'Mantequilla', (cats->>'DAIRY')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 730, 0.8, 0.5, 81, 0, 51, 450, 24, 24, 'DEV_SEED', src, 'DEV_SEED, valor de referencia: mantequilla de 80-82% materia grasa. La fibra es 0 real (grasa lactea, no tiene). El sodio corresponde a mantequilla CON SAL, que es lo que se vende y se usa en el pure de la casa; si el hogar usa mantequilla sin sal el valor real baja a ~10 mg/100 g, o sea este 450 sobreestima a proposito antes que subestimar. Los azucares (lactosa residual, ~0,06 g) se omiten por ser ruido.');
   end if;
@@ -310,7 +310,7 @@ begin
   values ('salsa de tomate envasada', 'Salsa de tomate envasada', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 35, 1.4, 7, 0.3, 1.5, 4.5, 380, 380, 30, 'DEV_SEED', src, 'DEV_SEED, valor de referencia: salsa de tomate lista tipo tetra/lata, ya concentrada y con sal y azucar agregados. Justamente por eso NO se puede modelar como tomate crudo: el sodio pasa de ~5 mg a varios cientos. El rango real entre marcas chilenas es amplio (sodio 250-600 mg/100 g, azucares 3-7 g), asi que estos son valores medios de referencia. El potasio viene concentrado del tomate y es alto para el volumen que aporta: relevante para restriccion renal.');
   end if;
@@ -319,7 +319,7 @@ begin
   values ('longaniza', 'Longaniza', (cats->>'MEAT')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 330, 15, 1.5, 29, 10.5, 1000, 230, 170, 'DEV_SEED', src, 'DEV_SEED, valor de referencia: longaniza de cerdo cruda, con su tripa (se come, por eso porcion comestible 1,0). Es un embutido: el sodio (sal de curado + condimento) esta en el orden de 900-1200 mg/100 g segun productor y NO se parece a ningun corte de cerdo fresco. El fosforo incluye el de los fosfatos que se usan como aditivo, por eso es mas alto que en carne fresca y el numero es aproximado. La fibra se omite: los condimentos aportan algo pero no hay base para cuantificarlo. Al cocer en la olla suelta grasa al caldo, que igual se consume en ''porotos con longaniza''.');
   end if;
@@ -328,7 +328,7 @@ begin
   values ('mayonesa', 'Mayonesa', (cats->>'FATS_OILS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 680, 1, 1.5, 75, 0, 6, 620, 'DEV_SEED', src, 'DEV_SEED, valor de referencia: mayonesa entera (no light ni sin colesterol). La fibra es 0 real. Ojo con la unidad practica: una cucharada rasa son ~12 g, o sea ~82 kcal, y la porcion tipica de hamburguesa suele ser mas de una. Potasio y fosforo se OMITEN: son bajos pero no tengo base para un numero, y en mayonesa no son el dato que decide nada. El sodio si importa y varia 500-800 mg/100 g entre marcas.');
   end if;
@@ -337,7 +337,7 @@ begin
   values ('congrio', 'Congrio', (cats->>'FISH')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 95, 19, 0, 2, 0, 80, 370, 200, 'DEV_SEED', src, 'DEV_SEED, valor de referencia: FILETE de congrio crudo, sin cabeza ni espinazo (por eso porcion comestible 1,0). Si el hogar compra el pescado entero para el caldillo, ese descuento hay que hacerlo aparte: esta ficha no lo cubre. Carbohidratos y fibra son 0 real (pescado). Es mas graso que la merluza (~2 g vs ~1 g) pero sigue siendo pescado magro; la grasa saturada se omite porque en pescado el reparto de acidos grasos varia demasiado para sostener un numero. El potasio y el fosforo son los tipicos de pescado blanco y son relevantes para restriccion renal.');
   end if;
@@ -346,7 +346,7 @@ begin
   values ('chuleta de cerdo', 'Chuleta de cerdo', (cats->>'MEAT')::uuid, 'MASS', 0.8)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 200, 19, 0, 13, 0, 4.7, 55, 330, 190, 'DEV_SEED', src, 'DEV_SEED, valor de referencia: chuleta de cerdo cruda, carne magra CON su grasa de borde, valores por 100 g de parte comestible (no de bandeja). El factor 0,8 corresponde al hueso: de 1 kg de bandeja quedan ~800 g de carne. Es un promedio del corte tipico de supermercado; si viene mas gruesa o con menos hueso el factor sube, y si el hogar recorta la grasa del borde la energia y la grasa bajan bastante (podria quedar cerca de 145 kcal y 6 g de grasa). Carbohidratos y fibra son 0 real.');
   end if;
@@ -355,7 +355,7 @@ begin
   values ('manteca de cerdo', 'Manteca de cerdo', (cats->>'FATS_OILS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 900, 0, 0, 100, 0, 0, 39, 0, 'DEV_SEED', src, 'DEV_SEED, valor de referencia: manteca de cerdo refinada. Es grasa pura: proteina, carbohidratos, azucares y fibra son 0 REAL, no huecos. El sodio 0 tambien es real en manteca refinada sin sal; si el hogar usa manteca casera o salada eso ya no aplica. La grasa saturada (~39%) es el dato que importa: es menos saturada que la mantequilla pero va dentro de la masa y no se puede quitar. Potasio y fosforo se omiten (trazas sin base).');
   end if;
@@ -364,7 +364,7 @@ begin
   values ('polvos de hornear', 'Polvos de hornear', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 55, 0, 28, 0, 0, 10000, 'DEV_SEED', src, 'DEV_SEED, valor de referencia: polvos de hornear tipo doble accion (bicarbonato de sodio + sal acida + almidon). El sodio es enorme por gramo: del orden de 10.000 mg/100 g, o sea ~500 mg de sodio por cucharadita de 5 g. Se usan pocos gramos por masa, pero ese sodio TIENE que entrar en la cuenta del plato. Los carbohidratos son casi todo almidon de relleno y aportan poca energia. FOSFORO OMITIDO A PROPOSITO: segun la sal acida que use la marca (fosfato monocalcico vs pirofosfato vs cremor tartaro) el fosforo va desde casi nada hasta varios miles de mg/100 g, y escribir un numero bajo seria peligroso para alguien con restriccion renal. POTASIO TAMBIEN OMITIDO: las formulas con cremor tartaro (bitartrato de potasio) traen mucho potasio y las otras casi nada. Ambos huecos hay que cerrarlos leyendo la etiqueta de la marca que se use.');
   end if;
@@ -373,7 +373,7 @@ begin
   values ('betarraga', 'Betarraga', (cats->>'VEGETABLES')::uuid, 'MASS', 0.8)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 43, 1.6, 9.6, 0.2, 2.8, 6.8, 78, 325, 40, 'DEV_SEED', src, 'DEV_SEED, valor de referencia: betarraga cruda entera, como se compra en la feria. El factor 0,8 cubre cascara y rabillo, que se botan despues de cocer (de 1 kg comprado quedan ~800 g para la ensalada). Es de las verduras con mas azucar natural (~6,8 g/100 g), por eso los carbohidratos son altos para ser hortaliza. El sodio es naturalmente mas alto que en otras verduras. El potasio es relevante para restriccion renal, y ojo: al cocerla ENTERA con cascara casi no se pierde potasio al agua, a diferencia de la papa pelada y picada.');
   end if;
@@ -382,7 +382,7 @@ begin
   values ('apio', 'Apio', (cats->>'VEGETABLES')::uuid, 'MASS', 0.75)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 16, 0.7, 3, 0.2, 1.6, 1.3, 80, 260, 24, 'DEV_SEED', src, 'Valor de REFERENCIA (DEV_SEED), no proviene de la tabla del INTA. Apio crudo, tallo limpio. El sodio del apio es naturalmente alto para ser verdura y varia harto segun suelo y riego: tomalo como orden de magnitud. Grasa saturada omitida: la grasa total es minima y no tengo base para desglosarla. Factor de porcion comestible 0.75 estimado sobre mata entera, botando base dura y hojas machucadas.');
   end if;
@@ -391,7 +391,7 @@ begin
   values ('repollo', 'Repollo', (cats->>'VEGETABLES')::uuid, 'MASS', 0.8)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 25, 1.3, 5.8, 0.1, 2.5, 3.2, 18, 170, 26, 'DEV_SEED', src, 'Valor de REFERENCIA (DEV_SEED), no proviene de la tabla del INTA. Repollo blanco crudo, hoja limpia. Grasa saturada omitida por grasa total despreciable y sin base para desglose. Factor de porcion comestible 0.80 estimado sobre cabeza entera, descontando tronco central y hojas externas.');
   end if;
@@ -400,7 +400,7 @@ begin
   values ('queso mantecoso', 'Queso mantecoso', (cats->>'DAIRY')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 350, 24, 1.5, 27, 0, 17, 600, 90, 450, 'DEV_SEED', src, 'Valor de REFERENCIA (DEV_SEED), no proviene de la tabla del INTA. Queso mantecoso chileno tipo trozo o laminado, tal como viene del envase. El sodio depende del salado de cada marca y puede moverse entre ~450 y ~800 mg/100 g: usalo como referencia, no como dato de etiqueta. El fosforo es alto (queso madurado con sales de fundido o cuajo) y es dato relevante para restriccion renal, pero es estimado. Azucares omitidos: la lactosa residual varia y no la puedo sostener. Fibra 0 es real: el queso no tiene fibra.');
   end if;
@@ -409,7 +409,7 @@ begin
   values ('arvejas partidas secas', 'Arvejas partidas secas', (cats->>'LEGUMES')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 341, 24.5, 60, 1.2, 25, 8, 15, 980, 370, 'DEV_SEED', src, 'Valor de REFERENCIA (DEV_SEED), no proviene de la tabla del INTA. Peso en SECO, antes de remojo y coccion (a este peso se le aplica el yieldFactor de legumbre seca). Potasio y fosforo son altos, como en toda legumbre seca, y son datos sensibles para restriccion renal: son estimados de referencia, no medidos. Grasa saturada omitida: la grasa total es baja y no tengo base para desglosarla.');
   end if;
@@ -418,7 +418,7 @@ begin
   values ('costillar de cerdo', 'Costillar de cerdo', (cats->>'MEAT')::uuid, 'MASS', 0.7)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 275, 17.5, 0, 23, 0, 8.5, 75, 270, 175, 'DEV_SEED', src, 'Valor de REFERENCIA (DEV_SEED), no proviene de la tabla del INTA. Corresponde a la carne cruda del costillar, SIN hueso, con su capa de grasa (asi se come). La energia y la grasa dependen mucho de cuanto tocino traiga la pieza: entre costillar magro y costillar graso la diferencia real puede ser de 80 a 100 kcal/100 g. Carbohidratos 0 y fibra 0 son ceros reales: la carne no aporta ninguno de los dos. Factor de porcion comestible 0.70 estimado por el hueso; varia segun si es costillar entero o punta de ganso.');
   end if;
@@ -427,7 +427,7 @@ begin
   values ('aceitunas', 'Aceitunas', (cats->>'VEGETABLES')::uuid, 'MASS', 0.82)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'DRAINED', 'G', 145, 1, 4, 14, 3, 2, 1100, 'DEV_SEED', src, 'Valor de REFERENCIA (DEV_SEED), no proviene de la tabla del INTA. Aceituna de mesa escurrida de su salmuera (sin el liquido), con cuesco. El SODIO es el numero mas fragil de esta ficha: entre aceituna negra y verde, y entre marcas, va de ~700 a ~1600 mg/100 g. Esta cifra sirve para saber que la aceituna es un alimento muy salado, NO para calcular una dieta hiposodica fina. Potasio y fosforo omitidos a proposito: la salmuera y el lavado los alteran y no tengo base para sostenerlos. Azucares omitidos (la fermentacion consume el poco que hay y no lo puedo cuantificar). Factor de porcion comestible 0.82 estimado por el cuesco, que no se come.');
   end if;
@@ -436,7 +436,7 @@ begin
   values ('pasas', 'Pasas', (cats->>'FRUITS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 299, 3.1, 79, 0.5, 3.7, 59, 11, 750, 100, 'DEV_SEED', src, 'Valor de REFERENCIA (DEV_SEED), no proviene de la tabla del INTA. Pasa sin semilla tal como viene de la bolsa, sin remojar. Ojo clinico: el potasio es MUY alto porque es uva deshidratada (concentra ~4 veces); es dato de referencia estimado, no medido, pero la magnitud es real y importa en restriccion renal. Grasa saturada omitida: la grasa total es despreciable y no tengo base para desglosarla.');
   end if;
@@ -445,7 +445,7 @@ begin
   values ('manjar', 'Manjar', (cats->>'DAIRY')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 320, 6.8, 56, 7.5, 0, 53, 4.7, 130, 250, 160, 'DEV_SEED', src, 'Valor de REFERENCIA (DEV_SEED), no proviene de la tabla del INTA. Manjar de tarro o pote, listo para comer. NO es leche: es leche y azucar concentrados, por eso casi todo el carbohidrato es azucar agregada y la energia por 100 g triplica a la de un lacteo liquido. Fibra 0 es real. Potasio y fosforo vienen del lacteo concentrado y son estimados: sirven para ordenar magnitudes, no para calculo renal fino. Existe manjar reposteria y manjar light con perfiles bien distintos; esta ficha es del manjar tradicional.');
   end if;
@@ -454,7 +454,7 @@ begin
   values ('mermelada', 'Mermelada', (cats->>'FRUITS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, sugars_g,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, sugars_g, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 260, 0.4, 65, 0.1, 60, 'DEV_SEED', src, 'Valor de REFERENCIA (DEV_SEED), no proviene de la tabla del INTA. Mermelada tradicional de pote (fruta con azucar agregada), consumida tal cual. NO es fruta: casi todo su carbohidrato es azucar y no aporta lo que aporta la fruta fresca. Fibra OMITIDA a proposito: depende del porcentaje de fruta de cada marca (va de ~30% a ~50%) y de si esta colada, asi que no la puedo sostener; ausente = desconocido, no cero. Sodio, potasio y fosforo tambien omitidos por la misma razon. Las versiones light o sin azucar anadida tienen la mitad o menos de la energia: esta ficha NO sirve para ellas.');
   end if;
@@ -463,7 +463,7 @@ begin
   values ('aji verde', 'Ají verde fresco', (cats->>'VEGETABLES')::uuid, 'MASS', 0.8)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 40, 2, 9.5, 0.2, 1.5, 7, 340, 46, 'DEV_SEED', src, 'DEV_SEED, valor de referencia (no INTA). Valores por 100 g de ají verde crudo en porción comestible (sin cabito, venas ni semillas); el ediblePortionFactor 0,80 convierte el ají entero comprado a lo que realmente se come. Azúcares y grasa saturada se omiten: varían mucho entre variedades chilenas (cristal, verde de feria) y no hay base para sostener un número. Perfil típico de ají picante verde fresco.');
   end if;
@@ -472,7 +472,7 @@ begin
   values ('choritos', 'Choritos (con concha)', (cats->>'FISH')::uuid, 'MASS', 0.3)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 86, 11.9, 3.7, 2.2, 0, 0.4, 286, 320, 197, 'DEV_SEED', src, 'DEV_SEED, valor de referencia (no INTA). IMPORTANTE: los valores son por 100 g de CARNE de chorito cruda (porción comestible), no por 100 g de producto con concha; para pasar del kilo de feria a carne usa el ediblePortionFactor 0,30 (rendimiento típico 25-35% del peso vivo, varía harto según talla y temporada). Los carbohidratos son glucógeno propio del molusco. Fibra 0 es un cero real (alimento de origen animal). Azúcares se omiten: no aplican como dato sostenible aquí.');
   end if;
@@ -481,7 +481,7 @@ begin
   values ('choclo fresco entero', 'Choclo fresco, mazorca entera', (cats->>'VEGETABLES')::uuid, 'MASS', 0.33)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 95, 3.3, 20, 1.3, 2.5, 0.2, 15, 270, 90, 'DEV_SEED', src, 'DEV_SEED, valor de referencia (no INTA). Los valores son por 100 g de GRANO crudo desgranado (porción comestible); el ediblePortionFactor 0,33 convierte la mazorca entera comprada con chala y coronta al grano que sí se come (rendimiento aproximado 30-36%). Perfil ajustado a choclo chileno tipo choclero, más amiláceo y menos dulce que el maíz dulce; por lo mismo se OMITEN los azúcares: el rango entre variedades es demasiado amplio para sostener un número.');
   end if;
@@ -490,7 +490,7 @@ begin
   values ('guatitas', 'Guatitas', (cats->>'MEAT')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 85, 12.1, 0, 3.7, 0, 1.3, 66, 67, 66, 'DEV_SEED', src, 'DEV_SEED, valor de referencia (no INTA). Mondongo/panza de vacuno cruda, ya limpia como se compra en la carnicería; se come entera, por eso ediblePortionFactor = 1 (cero real, no un relleno). Carbohidratos 0 y fibra 0 son ceros reales de una víscera muscular. Ojo clínico: buena parte de la proteína es colágeno (valor biológico menor que un corte magro) y las guatitas son altas en colesterol, dato que este esquema no tiene campo para registrar; el potasio y el fósforo son bajos comparados con carne de músculo.');
   end if;
@@ -499,7 +499,7 @@ begin
   values ('naranja', 'Naranja', (cats->>'FRUITS')::uuid, 'MASS', 0.72)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'EDIBLE_PORTION', 'G', 47, 0.9, 11.8, 0.1, 2.4, 9.4, 0, 181, 14, 'DEV_SEED', src, 'DEV_SEED, valor de referencia (no INTA). Valores por 100 g de PULPA de naranja cruda (base EDIBLE_PORTION); el ediblePortionFactor 0,72 convierte pulpa a naranja de compra con cáscara y semillas (rendimiento típico 70-75%). El sodio 0 es un cero real: la fruta fresca no aporta sodio. Grasa saturada se omite por ser traza sin base sólida. Si la receta ocupa jugo o ralladura, ojo: el jugo colado pierde casi toda la fibra y la ralladura es cáscara, que esta ficha no describe.');
   end if;
@@ -508,7 +508,7 @@ begin
   values ('alitas de pollo', 'Alitas de pollo', (cats->>'POULTRY')::uuid, 'MASS', 0.54)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 222, 18.3, 0, 16, 4.5, 82, 178, 148, 'DEV_SEED', src, 'DEV_SEED, valor de referencia (no INTA). Por 100 g de porcion comestible cruda: carne CON piel, sin hueso ni punta. Carbohidratos 0 es real (la carne no aporta). El factor 0,54 asume ala entera con punta y es una estimacion de referencia: el hueso pesa cerca del 45% del ala cruda. Hierro, zinc y colesterol no se declaran por falta de base.');
   end if;
@@ -517,7 +517,7 @@ begin
   values ('vacuno asado de tira', 'Asado de tira de vacuno', (cats->>'MEAT')::uuid, 'MASS', 0.7)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 290, 17.5, 0, 24.5, 10.5, 60, 270, 160, 'DEV_SEED', src, 'DEV_SEED, valor de referencia (no INTA). Por 100 g de carne cruda separada del hueso, con su grasa (corte graso por definicion). Carbohidratos 0 es real. El factor 0,70 es una estimacion para el asado de tira chileno cortado transversal a la costilla; varia harto segun el grosor del corte y el carnicero. Hierro, zinc y colesterol no se declaran.');
   end if;
@@ -526,7 +526,7 @@ begin
   values ('almejas', 'Almejas', (cats->>'FISH')::uuid, 'MASS', 0.3)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 74, 12.8, 2.6, 1, 56, 314, 169, 'DEV_SEED', src, 'DEV_SEED, valor de referencia (no INTA). Por 100 g de carne cruda SIN concha. Los carbohidratos (glucogeno) son reales en moluscos, no son un relleno. El factor 0,30 es estimacion: la concha se lleva cerca del 70% del peso de compra y cambia con el tamano y la especie. Ojo: el sodio del agua de mar retenida puede subir bastante el valor real; el yodo, hierro y colesterol no se declaran por falta de base.');
   end if;
@@ -535,7 +535,7 @@ begin
   values ('malaya de cerdo', 'Malaya de cerdo', (cats->>'MEAT')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 240, 18, 0, 18.5, 6.5, 65, 300, 180, 'DEV_SEED', src, 'DEV_SEED, valor de referencia (no INTA). Por 100 g de pano crudo sin hueso, con su grasa entreverada. Carbohidratos 0 es real. Corte de grasa intermedia: mas graso que la pulpa magra, bastante menos que la panceta o tocino. Colesterol, hierro y tiamina no se declaran.');
   end if;
@@ -544,7 +544,7 @@ begin
   values ('cuero de cerdo', 'Cuero de cerdo', (cats->>'MEAT')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, saturated_fat_g, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 230, 24, 0, 15, 5.5, 'DEV_SEED', src, 'DEV_SEED, valor de referencia (no INTA). Por 100 g de cuero crudo, raspado y sin pelos, con la capa de grasa adherida que trae normalmente. Carbohidratos 0 es real. La proteina es casi toda colageno: cuenta como proteina en gramos, pero es de bajo valor biologico (sin triptofano), asi que no debe leerse como equivalente a la de la carne. Sodio, potasio y fosforo se OMITEN a proposito: el tejido conectivo tiene un perfil mineral muy distinto al del musculo y no hay base para ponerle numero. La grasa real cambia mucho segun cuanto tocino deje pegado el carnicero.');
   end if;
@@ -553,7 +553,7 @@ begin
   values ('cochayuyo', 'Cochayuyo seco', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 220, 11, 56, 0.8, 45, 2800, 4000, 'DEV_SEED', src, 'DEV_SEED, valor de referencia (no INTA). Por 100 g de alga SECA tal como se compra en madeja, no hidratada. Casi todo el carbohidrato son alginatos y fibra soluble poco digeribles, asi que la energia calculada por Atwater SOBREESTIMA la energia realmente disponible; tomar los 220 kcal como techo, no como dato. Sodio y potasio se declaran porque son altos de verdad y esconderlos seria peor que aproximarlos, pero son ordenes de magnitud: en algas pardas el sodio va de ~2000 a ~4000 mg y el potasio de ~3000 a ~8000 mg por 100 g seco segun la zona de recoleccion, el lavado y el secado. ALERTA CLINICA: por potasio y por yodo este alimento NO es apto para restriccion renal ni tiroidea sin dato verificado. El yodo no cabe en este esquema pero es muy alto (rango de miles de microgramos por 100 g). Fosforo, azucares y grasa saturada se omiten por falta de base.');
   end if;
@@ -562,7 +562,7 @@ begin
   values ('chancaca', 'Chancaca', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, sugars_g,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, sugars_g, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 380, 0.5, 96, 0.1, 92, 'DEV_SEED', src, 'DEV_SEED, valor de referencia (no INTA). Por 100 g de pan o tableta de chancaca tal como se compra. Practicamente todo es sacarosa mas algo de glucosa y fructosa del jugo de cana; la diferencia entre carbohidratos y azucares es humedad residual y trazas, no fibra. La grasa 0,1 g es traza real, no un cero de relleno. Sodio, potasio, calcio y hierro se OMITEN: la chancaca si trae minerales del jugo de cana, pero varian tanto de productor a productor (el potasio reportado va de ~100 a ~1000 mg por 100 g) que cualquier numero aqui seria inventado. Para efectos clinicos tratar como azucar: carga glicemica alta.');
   end if;
@@ -571,7 +571,7 @@ begin
   values ('huesillos', 'Huesillos (duraznos deshidratados)', (cats->>'FRUITS')::uuid, 'MASS', 0.7)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 239, 3.6, 61, 0.8, 8.2, 42, 7, 1590, 155, 'DEV_SEED', src, 'DEV_SEED, valor de referencia (no INTA). Por 100 g de PULPA deshidratada (sin carozo); el factor 0,70 convierte el peso de compra del huesillo entero a pulpa. Ese 0,70 es estimacion: en huesillos chicos el carozo pesa proporcionalmente mas y el factor puede caer a ~0,65. ALERTA CLINICA: el potasio es alto de verdad (fruta deshidratada, concentra ~5 veces), relevante para restriccion renal. Si viene sulfitado (lo habitual), contiene SO2, dato que este esquema no captura pero importa para asmaticos. No se declara rendimiento de remojo: cuanta agua toma depende del tiempo y la temperatura y es desconocido.');
   end if;
@@ -580,7 +580,7 @@ begin
   values ('mote de trigo', 'Mote de trigo pelado', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 340, 11, 72, 1.5, 5.5, 250, 200, 'DEV_SEED', src, 'DEV_SEED, valor de referencia (no INTA). Por 100 g de grano SECO tal como se compra, antes de remojar o hervir. Perfil de trigo al que se le saco la cascara con ceniza o soda: por eso la fibra, el potasio y el fosforo quedan bajo los del trigo integral (fibra ~12 g, fosforo ~330 mg) y sobre los del arroz blanco; el grado de pelado cambia harto estos tres valores, tomarlos como referencia. Sodio se OMITE (el grano seco no aporta, pero el agua de coccion y la sal si, y ese dato lo pone la receta, no el alimento). Azucares y grasa saturada se omiten por falta de base. Sin yieldFactor: el rendimiento al remojo y hervor es desconocido. Contiene gluten.');
   end if;
@@ -589,7 +589,7 @@ begin
   values ('romero seco', 'Romero seco', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 331, 4.9, 64.1, 15.2, 42.6, 7.4, 50, 955, 70, 'DEV_SEED', src, 'DEV_SEED, valor de referencia de hierba seca de tarro. Se usa en 1-2 g por receta, asi que su aporte al plato es marginal. No se declara azucar: la hierba seca no tiene azucar libre relevante y no tengo dato para sostener una cifra.');
   end if;
@@ -598,7 +598,7 @@ begin
   values ('coliflor', 'Coliflor', (cats->>'VEGETABLES')::uuid, 'MASS', 0.6)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 25, 1.9, 5, 0.3, 2, 1.9, 30, 299, 44, 'DEV_SEED', src, 'DEV_SEED. Valores por 100 g de florete crudo limpio. El factor 0,60 es la conversion desde la cabeza entera con hojas y tronco: es un promedio de referencia, una cabeza muy hojosa rinde menos.');
   end if;
@@ -607,7 +607,7 @@ begin
   values ('cebollin', 'Cebollín', (cats->>'VEGETABLES')::uuid, 'MASS', 0.8)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 32, 1.8, 7.3, 0.2, 2.6, 2.3, 16, 276, 37, 'DEV_SEED', src, 'DEV_SEED. Referencia de cebollin crudo (tallo blanco + hoja verde util). El 0,80 descuenta raiz y puntas secas del atado.');
   end if;
@@ -616,7 +616,7 @@ begin
   values ('pepino', 'Pepino ensalada', (cats->>'VEGETABLES')::uuid, 'MASS', 0.75)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 15, 0.7, 3.6, 0.1, 0.5, 1.7, 2, 147, 24, 'DEV_SEED', src, 'DEV_SEED. Valores de pepino crudo con parte de la cascara. Factor 0,75 asumiendo pelado parcial mas descarte de puntas; si se usa con cascara completa el factor real sube cerca de 0,95.');
   end if;
@@ -625,7 +625,7 @@ begin
   values ('frutillas', 'Frutillas', (cats->>'FRUITS')::uuid, 'MASS', 0.94)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 32, 0.7, 7.7, 0.3, 2, 4.9, 1, 153, 24, 'DEV_SEED', src, 'DEV_SEED. Referencia de frutilla cruda limpia; el factor descuenta hojitas y cabito.');
   end if;
@@ -634,7 +634,7 @@ begin
   values ('pepinillos en conserva', 'Pepinillos en conserva', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'DRAINED', 'G', 15, 0.5, 3, 0.2, 1, 1.5, 1100, 100, 20, 'DEV_SEED', src, 'DEV_SEED, peso escurrido (el liquido de la conserva no entra). El sodio es el dato clinico que importa y varia MUCHO entre marcas (600 a 1600 mg/100 g): si hay rotulo del envase, ese manda sobre esta ficha. Los pepinillos agridulces suben el azucar por sobre lo declarado aca.');
   end if;
@@ -643,7 +643,7 @@ begin
   values ('crema de leche', 'Crema de leche', (cats->>'DAIRY')::uuid, 'VOLUME', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'ML', 248, 2.4, 3.4, 25, 3.4, 16, 38, 90, 60, 'DEV_SEED', src, 'DEV_SEED por 100 ml, asumiendo crema de cocina de 25% de materia grasa (densidad ~1,0, por eso 100 ml se toma como 100 g). Si la receta usa crema para batir de 35%, corresponde la otra ficha: la diferencia en grasa y calorias es grande.');
   end if;
@@ -652,7 +652,7 @@ begin
   values ('gelatina sin sabor', 'Gelatina sin sabor', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 335, 85.6, 0, 0.1, 0, 0, 196, 16, 'DEV_SEED', src, 'DEV_SEED. Polvo seco. Los ceros son derivables: es proteina animal purificada, no tiene carbohidrato (por lo tanto tampoco azucar) ni fibra. No declaro fosforo porque no tengo un valor que sostener.');
   end if;
@@ -661,7 +661,7 @@ begin
   values ('vino blanco', 'Vino blanco', (cats->>'FRUITS')::uuid, 'VOLUME', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'ML', 82, 0.1, 2.6, 0, 0, 1, 5, 71, 18, 'DEV_SEED', src, 'DEV_SEED por 100 ml de vino blanco seco (11-12% v/v). ATENCION: la base no tiene campo de alcohol, y casi toda la energia declarada (unos 70 de las 82 kcal) viene del etanol, no de los carbohidratos. Es el producto TAL COMO SE COMPRA: en la olla se evapora parte del alcohol, pero cuanto depende del tiempo y de si la olla va tapada, y ese rendimiento no esta declarado en el sistema. Los ceros de grasa y fibra son derivables.');
   end if;
@@ -670,7 +670,7 @@ begin
   values ('tocino', 'Tocino', (cats->>'MEAT')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 400, 12.6, 1, 39, 0, 0.5, 13, 750, 200, 150, 'DEV_SEED', src, 'DEV_SEED, tocino curado crudo tal como se compra. Es un producto curado: el sodio es alto y varia por marca. Al freirse pierde agua y grasa, asi que 100 g crudos NO son 100 g crocantes; ese rendimiento no esta declarado y el motor no debe asumirlo.');
   end if;
@@ -679,7 +679,7 @@ begin
   values ('diguenes', 'Digüeñes', (cats->>'VEGETABLES')::uuid, 'MASS')
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 30, 1, 6.5, 0.2, 1.5, 'DEV_SEED', src, 'DEV_SEED de baja confianza. No hay tabla de composicion disponible para Cyttaria espinosae: estos macronutrientes son una aproximacion por analogia con hongos frescos comestibles de alta humedad (~88% agua) y no deben usarse para calculo clinico. NO declaro micronutrientes (sodio, potasio, fosforo) porque no tengo ninguna base: ausentes = desconocidos. TAMPOCO declaro ediblePortionFactor: se recolecta silvestre con pedunculo y restos de corteza en proporcion muy variable, y prefiero que quede como hueco visible antes que inventar un rendimiento. Ademas es de temporada muy corta y no se consigue en supermercado.');
   end if;
@@ -688,7 +688,7 @@ begin
   values ('camarones pelados', 'Camarones pelados', (cats->>'FISH')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 85, 20.1, 0, 0.5, 0, 0, 0.1, 150, 264, 214, 'DEV_SEED', src, 'DEV_SEED, musculo crudo sin caparazon ni cabeza. OJO CLINICO: los camarones congelados suelen venir glaseados y tratados con tripolifosfato de sodio, lo que puede subir bastante el sodio y el fosforo respecto de lo declarado aca; para dietas renales el rotulo del envase manda. Colesterol relevante (~125 mg/100 g), pero la base no tiene campo para eso.');
   end if;
@@ -697,7 +697,7 @@ begin
   values ('carne de jaiba', 'Carne de jaiba', (cats->>'FISH')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 84, 18, 0, 0.9, 0, 0, 0.2, 300, 320, 220, 'DEV_SEED', src, 'DEV_SEED. Ficha de la CARNE ya desmenuzada, que es como se compra fresca o congelada; no es la jaiba entera con caparazon. La version pasteurizada en tarro trae mas sodio.');
   end if;
@@ -706,7 +706,7 @@ begin
   values ('locos', 'Locos', (cats->>'FISH')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 100, 18, 4.5, 0.8, 0, 0.2, 320, 250, 190, 'DEV_SEED', src, 'DEV_SEED de confianza media: no hay tabla chilena a mano para Concholepas, asi que los valores estan aproximados con el perfil del abalon/loco de la misma familia (molusco magro con glucogeno). Factor 1 porque se compra la carne ya extraida; si alguna vez se registra el loco con concha, esa es OTRA identidad.');
   end if;
@@ -715,7 +715,7 @@ begin
   values ('jibia', 'Jibia', (cats->>'FISH')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 92, 15.6, 3.1, 1.4, 0, 0.4, 100, 246, 220, 'DEV_SEED', src, 'DEV_SEED, filete limpio crudo (sin piel ni pluma), aproximado con el perfil de calamar. La jibia pierde bastante agua en la hora de hervor que pide la receta; ese rendimiento no esta declarado.');
   end if;
@@ -724,7 +724,7 @@ begin
   values ('machas', 'Machas', (cats->>'FISH')::uuid, 'MASS', 0.25)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 74, 12.8, 2.6, 1, 0, 0.2, 250, 300, 170, 'DEV_SEED', src, 'DEV_SEED. Los valores son por 100 g de CARNE limpia; el factor 0,25 convierte desde el peso de compra con concha y es una estimacion de rendimiento de bivalvo (1 kg con concha deja del orden de 250 g de carne), no un dato medido. Si las machas se compran ya congeladas y limpias, el factor a usar es 1 y esta ficha lo sobreestima.');
   end if;
@@ -733,7 +733,7 @@ begin
   values ('camarones', 'Camarones', (cats->>'FISH')::uuid, 'MASS', 0.55)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 85, 20.1, 0, 0.5, 0, 0, 0.1, 150, 264, 214, 'DEV_SEED', src, 'DEV_SEED. Misma composicion que ''camarones pelados'' (es el mismo musculo); lo que cambia es el factor 0,55, que convierte desde el peso comprado con caparazon y cabeza. Si el usuario compra ya pelados, corresponde la otra identidad. Los congelados tratados con fosfatos suben sodio y fosforo.');
   end if;
@@ -742,7 +742,7 @@ begin
   values ('queso parmesano rallado', 'Queso parmesano rallado', (cats->>'DAIRY')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 420, 35.8, 3.2, 28.4, 0, 0.8, 17.8, 1600, 125, 700, 'DEV_SEED', src, 'DEV_SEED. Producto de bolsa. Dato clinico fuerte: sodio y fosforo muy altos por 100 g (relevante para hipertension y restriccion renal), aunque en la receta se usan porciones chicas. El sodio varia entre 1200 y 1800 mg segun marca.');
   end if;
@@ -751,7 +751,7 @@ begin
   values ('cerveza', 'Cerveza', (cats->>'GRAINS')::uuid, 'VOLUME', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'ML', 43, 0.5, 3.6, 0, 0, 0.3, 4, 27, 14, 'DEV_SEED', src, 'DEV_SEED por 100 ml de cerveza rubia tipo lager (~4,5-5% v/v). Como el vino: la mayor parte de la energia viene del alcohol y la base no tiene campo para declararlo. Va en un rebozado, asi que buena parte del alcohol se evapora en la fritura, pero ese rendimiento no esta declarado. Grasa y fibra 0 derivables.');
   end if;
@@ -760,10 +760,10 @@ begin
   values ('quinoa', 'Quínoa', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 368, 14.1, 64.2, 6.1, 7, 0.7, 5, 563, 457, 'DEV_SEED', src, 'DEV_SEED, grano seco crudo (el que se tuesta en seco para el crocante). NO declaro rendimiento crudo-cocido: el sistema no lo tiene y no hay que inferirlo desde la ficha COOKED, que es una medicion aparte.');
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'COOKED', 'G', 120, 4.4, 21.3, 1.9, 2.8, 0.2, 7, 172, 152, 'DEV_SEED', src, 'DEV_SEED, quinoa cocida en agua sin sal. Si se cuece con sal el sodio sube y esta ficha no lo refleja.');
   end if;
@@ -772,7 +772,7 @@ begin
   values ('lisa', 'Lisa', (cats->>'FISH')::uuid, 'MASS', 0.45)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 117, 19.4, 0, 3.8, 0, 0, 1.1, 65, 357, 220, 'DEV_SEED', src, 'DEV_SEED, carne cruda sin cabeza, escamas ni espina. Es un pescado GRASO de estuario: su grasa (~4 g/100 g) es varias veces la de la merluza o la reineta, y estacionalmente puede ser mayor. El factor 0,45 es el rendimiento tipico de un pescado redondo entero y sirve para que el ShoppingEngine convierta el peso de compra.');
   end if;
@@ -781,7 +781,7 @@ begin
   values ('plateada de vacuno', 'Plateada de vacuno', (cats->>'MEAT')::uuid, 'MASS', 0.85)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 250, 18.5, 0, 19.5, 0, 0, 8, 60, 300, 170, 'DEV_SEED', src, 'DEV_SEED, corte crudo con su grasa intramuscular. Es de los cortes mas grasos del vacuno chileno; el factor 0,85 descuenta nervio y grasa dura que se recorta antes de cocinar. La merma de coccion (asado o braseado) no esta declarada.');
   end if;
@@ -790,7 +790,7 @@ begin
   values ('vacuno lomo vetado', 'Lomo vetado', (cats->>'MEAT')::uuid, 'MASS', 0.9)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 260, 19.5, 0, 20, 0, 0, 8.4, 55, 310, 175, 'DEV_SEED', src, 'DEV_SEED, crudo con la grasa infiltrada que caracteriza al corte. Factor 0,90 por el recorte de la grasa del borde.');
   end if;
@@ -799,7 +799,7 @@ begin
   values ('vacuno lomo liso', 'Lomo liso', (cats->>'MEAT')::uuid, 'MASS', 0.9)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 200, 21, 0, 12.5, 0, 0, 5.2, 55, 330, 190, 'DEV_SEED', src, 'DEV_SEED, crudo. Mas magro que el lomo vetado. Factor 0,90 por la tapa de grasa que se saca antes de cocinar.');
   end if;
@@ -808,7 +808,7 @@ begin
   values ('vacuno filete', 'Filete de vacuno', (cats->>'MEAT')::uuid, 'MASS', 0.85)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 160, 21.5, 0, 8, 0, 0, 3.2, 50, 340, 200, 'DEV_SEED', src, 'DEV_SEED, crudo y limpio. Es el corte mas magro del bloque de vacuno. Factor 0,85 por la cadena y la telilla plateada que se retiran al porcionar.');
   end if;
@@ -817,7 +817,7 @@ begin
   values ('vacuno palanca', 'Palanca', (cats->>'MEAT')::uuid, 'MASS', 0.85)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 170, 21, 0, 9.5, 0, 0, 3.8, 60, 320, 190, 'DEV_SEED', src, 'DEV_SEED, crudo. Corte de paleta, magro pero con la vena de tendon al centro; el factor 0,85 la descuenta junto con el recorte de grasa.');
   end if;
@@ -826,7 +826,7 @@ begin
   values ('mostaza', 'Mostaza', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 66, 4, 5.8, 3.3, 3.3, 0.9, 0.2, 1120, 138, 106, 'DEV_SEED', src, 'DEV_SEED, mostaza preparada de frasco. Lo que importa clinicamente es el sodio: ~1100 mg/100 g, y varia entre marcas (la Dijon suele ser mas salada). Las mostazas ''a la antigua'' con miel suben el azucar.');
   end if;
@@ -835,7 +835,7 @@ begin
   values ('vino tinto', 'Vino tinto', (cats->>'FRUITS')::uuid, 'VOLUME', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'ML', 85, 0.1, 2.6, 0, 0, 0.6, 4, 127, 23, 'DEV_SEED', src, 'DEV_SEED por 100 ml de tinto seco (12-13,5% v/v). Igual que el vino blanco: casi toda la energia es alcohol y la base no tiene campo para declararlo. La reduccion de la salsa evapora buena parte del etanol pero concentra el resto; ese rendimiento no esta declarado y la ficha describe el producto envasado.');
   end if;
@@ -844,7 +844,7 @@ begin
   values ('pimienta negra', 'Pimienta negra', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 251, 10.4, 63.9, 3.3, 25.3, 0.6, 1.4, 20, 1329, 158, 'DEV_SEED', src, 'DEV_SEED. Grano y molida son nutricionalmente lo mismo. OJO CATALOGO: esta identidad y ''pimienta negra molida'' estan duplicadas en el lote; deberian quedar como una sola con la otra de alias. En casi todas las recetas se usa 1-2 g (aporte despreciable); la excepcion es el filete a la pimienta, con 8 g de costra.');
   end if;
@@ -853,7 +853,7 @@ begin
   values ('champinon', 'Champiñón fresco', (cats->>'VEGETABLES')::uuid, 'MASS', 0.97)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 22, 3.1, 3.3, 0.3, 1, 2, 5, 318, 86, 'DEV_SEED', src, 'DEV_SEED, identico a ''champinones'': mismo alimento, dos entradas del mismo lote. Valores de champinon blanco fresco crudo; solo se descarta la punta terrosa del tallo.');
   end if;
@@ -862,7 +862,7 @@ begin
   values ('callampa seca', 'Callampas secas', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 296, 9.6, 60, 1, 11.5, 13, 1534, 294, 'DEV_SEED', src, 'DEV_SEED de confianza media: valor de referencia de hongo deshidratado generico, no de una especie chilena identificada. Es el producto SECO tal como se pesa antes de hidratar; por eso el potasio por 100 g se ve enorme (concentracion por perdida de agua), pero en la receta se usan pocos gramos que ademas se hidratan. No declaro azucares: no tengo dato.');
   end if;
@@ -871,7 +871,7 @@ begin
   values ('cognac', 'Cognac', (cats->>'FRUITS')::uuid, 'VOLUME', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'ML', 222, 0, 0, 0, 0, 0, 1, 'DEV_SEED', src, 'DEV_SEED por 100 ml de destilado de 40% v/v. Toda la energia es alcohol: los ceros de carbohidrato, azucar, grasa y fibra SI son derivables (un destilado sin endulzar no los tiene), pero las 222 kcal no aparecen explicadas por ningun macronutriente porque la base no tiene campo de alcohol. En la receta va a la olla y se flambea/reduce, asi que el alcohol residual es menor al declarado.');
   end if;
@@ -880,7 +880,7 @@ begin
   values ('lengua de vaca', 'Lengua de vaca', (cats->>'MEAT')::uuid, 'MASS', 0.7)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 224, 14.9, 3.7, 17.7, 0, 6.4, 69, 315, 130, 'DEV_SEED', src, 'DEV_SEED, lengua cruda ya pelada. Es una viscera grasa: mas grasa que proteina en peso, distinto a cualquier corte magro. El carbohidrato no es cero porque el musculo de la lengua guarda glucogeno. Factor 0,70: se descartan la piel gruesa (se pela despues de cocida) y el nudo de grasa y cartilago de la base. Colesterol alto, sin campo donde declararlo.');
   end if;
@@ -889,7 +889,7 @@ begin
   values ('prieta', 'Prieta', (cats->>'MEAT')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 330, 12, 8, 28, 1, 11, 700, 150, 120, 'DEV_SEED', src, 'DEV_SEED de confianza media: la prieta chilena no tiene formula unica (sangre, grasa, cebolla y a veces arroz o miga), asi que carbohidrato y grasa varian mucho de un carnicero a otro. Embutido comprado hecho, declarado en RAW por consistencia con la longaniza. Aporta MUCHO hierro hemo, pero la base no tiene campo para hierro.');
   end if;
@@ -898,7 +898,7 @@ begin
   values ('filete de cerdo', 'Filete de cerdo (solomillo)', (cats->>'MEAT')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 120, 20.9, 0, 3.5, 0, 0, 1.2, 55, 400, 230, 'DEV_SEED', src, 'DEV_SEED, crudo y limpio. Es el corte de cerdo mas magro que existe: se parece mas a una pechuga de pollo que a la chuleta o al costillar del catalogo.');
   end if;
@@ -907,7 +907,7 @@ begin
   values ('pulpa de cerdo', 'Pulpa de cerdo', (cats->>'MEAT')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 180, 19.5, 0, 11, 0, 0, 4, 60, 340, 200, 'DEV_SEED', src, 'DEV_SEED, carne de cerdo sin hueso cruda, con la grasa que trae de fabrica. Bastante mas grasa que el filete: si la receta cambia uno por otro, la nutricion del plato se mueve de verdad.');
   end if;
@@ -916,7 +916,7 @@ begin
   values ('merquen', 'Merquén', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 280, 12, 50, 12, 30, 2, 1500, 1800, 280, 'DEV_SEED', src, 'DEV_SEED. Aproximado con el perfil de aji seco molido. AVISO: el merquen tradicional lleva SAL en la mezcla (con cilantro tostado), por eso declaro sodio alto; hay merquenes sin sal donde este valor sobreestima mucho. Prefiero errar por exceso en sodio antes que dejar pasar un condimento salado como si no lo fuera, pero si el envase declara sodio, ese manda.');
   end if;
@@ -925,7 +925,7 @@ begin
   values ('pierna de cordero', 'Pierna de cordero', (cats->>'MEAT')::uuid, 'MASS', 0.73)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 200, 18, 0, 14, 0, 0, 6, 65, 300, 175, 'DEV_SEED', src, 'DEV_SEED, carne cruda de pierna con su grasa. El factor 0,73 convierte desde la pieza comprada CON HUESO: es el descuento de hueso, no de grasa. En cordero adulto la grasa puede ser mayor que la declarada.');
   end if;
@@ -934,7 +934,7 @@ begin
   values ('pollo entero con piel', 'Pollo entero con piel', (cats->>'POULTRY')::uuid, 'MASS', 0.68)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 215, 18.6, 0, 15.1, 0, 0, 4.3, 70, 190, 150, 'DEV_SEED', src, 'DEV_SEED, carne cruda CON PIEL (por eso la grasa es alta; sin piel bajaria a la mitad). El factor 0,68 convierte desde el ave entera comprada con esqueleto. Si el pollo viene inyectado con salmuera, el sodio real es varias veces el declarado.');
   end if;
@@ -943,7 +943,7 @@ begin
   values ('arroz integral', 'Arroz integral', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 370, 7.9, 77.2, 2.9, 3.5, 0.8, 0.6, 7, 223, 264, 'DEV_SEED', src, 'DEV_SEED, grano seco crudo. Frente al arroz blanco: mas fibra, mas fosforo y mas potasio (el salvado se conserva), dato que importa en restriccion renal. NO lleva rendimiento crudo-cocido: absorbe mas agua que el blanco, pero no tengo un factor sostenible y copiar el 2,5 del arroz blanco seria inventarlo.');
   end if;
@@ -952,7 +952,7 @@ begin
   values ('pavo molido', 'Pavo molido', (cats->>'POULTRY')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 148, 19.7, 0, 7.7, 0, 0, 2, 70, 250, 200, 'DEV_SEED', src, 'DEV_SEED, molido crudo de mezcla comun (con algo de piel). El pavo molido ''de pechuga'' es bastante mas magro (cerca de 2 g de grasa) y esta ficha lo sobreestimaria. Sin rendimiento crudo-cocido: la merma del disco depende del fuego y del grosor.');
   end if;
@@ -961,7 +961,7 @@ begin
   values ('pavo entero', 'Pavo entero (con hueso y piel)', (cats->>'POULTRY')::uuid, 'MASS', 0.62)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 160, 20.4, 0, 8, 0, 0, 2.3, 65, 250, 180, 'DEV_SEED', src, 'DEV_SEED, carne cruda con piel (mezcla de blanca y negra). El factor 0,62 convierte desde el ave entera de 4,5 kg con esqueleto y cavidad: es una estimacion de rendimiento, no una medicion. AVISO: muchos pavos de supermercado vienen inyectados con salmuera y ahi el sodio real sube fuerte respecto de lo declarado.');
   end if;
@@ -970,7 +970,7 @@ begin
   values ('semillas de sesamo', 'Semillas de sésamo', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 573, 17.7, 23.4, 49.7, 11.8, 0.3, 7, 11, 468, 629, 'DEV_SEED', src, 'DEV_SEED, semilla entera de bolsa, sin tostar ni salar. Fosforo muy alto por 100 g (dato renal), aunque en la costra se reparte entre varias porciones. Alergeno declarable.');
   end if;
@@ -979,7 +979,7 @@ begin
   values ('almendras', 'Almendras', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 579, 21.2, 21.6, 49.9, 12.5, 4.4, 3.8, 1, 733, 481, 'DEV_SEED', src, 'DEV_SEED, almendra cruda sin cascara, sin sal. Si se compran saladas o tostadas con sal, el sodio cambia por completo y esta ficha no sirve. Nota de catalogo: van en GRAINS por falta de una categoria de frutos secos, no porque sean un cereal; potasio y fosforo altos importan en dieta renal. Alergeno declarable.');
   end if;
@@ -988,7 +988,7 @@ begin
   values ('tomates secos', 'Tomates secos', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 258, 14.1, 55.8, 3, 12.3, 37.6, 0.4, 2095, 3427, 356, 'DEV_SEED', src, 'DEV_SEED, tomate deshidratado SECO (no en aceite). Dato clinico fuerte: al sacarle el agua, potasio y sodio quedan concentrados; 3400 mg de potasio y 2100 mg de sodio por 100 g lo hacen un alimento a vigilar en dieta renal e hipertension, aunque la receta use 80 g repartidos. El sodio corresponde al producto SALADO, que es lo habitual; los sin sal tienen mucho menos. Si viene en aceite, la grasa sube mucho y esta ficha no aplica.');
   end if;
@@ -997,7 +997,7 @@ begin
   values ('acelga', 'Acelga', (cats->>'VEGETABLES')::uuid, 'MASS', 0.7)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 19, 1.8, 3.7, 0.2, 1.6, 1.1, 213, 379, 46, 'DEV_SEED', src, 'DEV_SEED, hoja cruda. Ojo con el sodio: la acelga tiene sodio propio alto para ser una verdura (~210 mg/100 g), no es sal agregada. El factor 0,70 descuenta pencas y tallos duros del atado, que en esta receta se botan. NO declaro rendimiento tras blanquear y exprimir: se pierde mucha agua, pero no tengo un dato para sostenerlo y es mejor que quede como desconocido.');
   end if;
@@ -1006,7 +1006,7 @@ begin
   values ('levadura seca', 'Levadura seca', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 325, 40.4, 41.2, 7.6, 26.9, 51, 955, 637, 'DEV_SEED', src, 'DEV_SEED, levadura seca activa de sobre. Los valores por 100 g se ven enormes, pero la receta usa 2 g para 1,1 kg de masa: el aporte nutricional al plato es despreciable. No es lo mismo que el polvo de hornear, que es un quimico y tiene otro perfil (y mucho sodio).');
   end if;
@@ -1015,7 +1015,7 @@ begin
   values ('berenjena', 'Berenjena', (cats->>'VEGETABLES')::uuid, 'MASS', 0.92)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 25, 1, 5.9, 0.2, 3, 3.5, 2, 229, 24, 'DEV_SEED', src, 'DEV_SEED, cruda con cascara. Factor 0,92: solo se despunta. AVISO de coccion: la berenjena absorbe mucho aceite al guisarse, asi que la grasa del plato terminado la pone el aceite, no ella.');
   end if;
@@ -1024,7 +1024,7 @@ begin
   values ('ricotta', 'Ricotta', (cats->>'DAIRY')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 174, 11.3, 3, 13, 0, 0.3, 8.3, 84, 105, 158, 'DEV_SEED', src, 'DEV_SEED, ricotta de leche entera de pote. No es intercambiable con el quesillo chileno: el quesillo tiene menos grasa y mas agua, y el relleno se comporta distinto. Si el pote es ''descremada'', la grasa cae cerca de la mitad.');
   end if;
@@ -1033,7 +1033,7 @@ begin
   values ('jamon de cerdo cocido', 'Jamón de cerdo cocido', (cats->>'MEAT')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 145, 16.6, 2.5, 7, 0, 1.5, 2.5, 1200, 290, 250, 'DEV_SEED', src, 'DEV_SEED, embutido curado y cocido tal como viene del envase (no es carne cruda, por eso la base es AS_PACKAGED). Dos datos clinicos: sodio ~1200 mg/100 g, y fosforo alto porque los jamones industriales llevan FOSFATOS anadidos, que ademas se absorben mucho mejor que el fosforo natural. Relevante en dieta renal e hipertension.');
   end if;
@@ -1042,7 +1042,7 @@ begin
   values ('azucar flor', 'Azúcar flor', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 389, 0, 99.8, 0, 0, 97.8, 2, 'DEV_SEED', src, 'DEV_SEED. Los ceros de proteina, grasa y fibra son derivables: es azucar refinada. El azucar declarado (97,8 g) es algo menor que el carbohidrato total porque el producto de gondola trae ~3% de almidon antiaglomerante, que es justamente lo que la distingue del azucar granulada molida en casa.');
   end if;
@@ -1051,7 +1051,7 @@ begin
   values ('nueces', 'Nueces peladas', (cats->>'FRUITS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 654, 15.2, 13.7, 65.2, 6.7, 2.6, 6.1, 2, 441, 346, 'DEV_SEED', src, 'DEV_SEED, nuez pelada cruda como se compra en Chile (por eso factor 1: la cascara no entra al peso comprado). Grasa mayoritariamente poliinsaturada. Alergeno declarable.');
   end if;
@@ -1060,7 +1060,7 @@ begin
   values ('fruta confitada', 'Fruta confitada', (cats->>'FRUITS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 322, 0.3, 82.7, 0.1, 1.8, 80, 45, 'DEV_SEED', src, 'DEV_SEED. Es fruta cocida en almibar y secada: 80 g de azucar por 100 g, cuatro veces lo de una fruta fresca. NO se puede aproximar con pasas ni con ninguna fruta del catalogo. No declaro potasio ni fosforo: el confitado lava buena parte de los minerales y no tengo un valor que sostener.');
   end if;
@@ -1069,7 +1069,7 @@ begin
   values ('ron', 'Ron', (cats->>'GRAINS')::uuid, 'VOLUME', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'ML', 222, 0, 0, 0, 0, 0, 1, 'DEV_SEED', src, 'DEV_SEED por 100 ml de ron de 40% v/v. Igual que el cognac: las 222 kcal son todas alcohol y la base no tiene campo para declararlo, asi que la ficha muestra energia sin macronutriente que la explique (eso es correcto, no un error de carga). Los ceros si son derivables. En el pan de pascua se usa para remojar la fruta y buena parte queda en la masa: hay alcohol residual, aunque el horno evapore una parte. Categoria GRAINS solo porque el enum no tiene bebidas alcoholicas.');
   end if;
@@ -1078,7 +1078,7 @@ begin
   values ('pisco', 'Pisco', (cats->>'GRAINS')::uuid, 'VOLUME', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'ML', 195, 0, 0, 0, 0, 0, 1, 'DEV_SEED', src, 'DEV_SEED por 100 ml de pisco de 35 grados (el especial, el mas comun de reposteria). Si se usa uno de 40 grados la energia sube a ~222 kcal/100 ml. Toda la energia es alcohol, sin campo donde declararlo; los ceros son derivables. En la masa de hojarasca y en los calzones rotos parte del alcohol se va al horno o a la fritura, pero queda residual.');
   end if;
@@ -1087,7 +1087,7 @@ begin
   values ('maicena', 'Maicena (almidón de maíz)', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 381, 0.3, 91.3, 0.1, 0.9, 0, 9, 3, 13, 'DEV_SEED', src, 'DEV_SEED. Almidon puro: no es harina de trigo, no tiene gluten ni su proteina, y el sistema no puede tratarlas como la misma identidad. El azucar 0 es derivable (almidon sin azucares libres).');
   end if;
@@ -1096,7 +1096,7 @@ begin
   values ('frambuesas', 'Frambuesas', (cats->>'FRUITS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 52, 1.2, 11.9, 0.7, 6.5, 4.4, 1, 151, 29, 'DEV_SEED', src, 'DEV_SEED, fruta cruda. Se come entera, factor 1. Mucha fibra para ser una fruta (6,5 g/100 g) y poca azucar: no es intercambiable con el arandano del catalogo ni en acidez ni en agua. Las congeladas sin azucar mantienen este perfil; las ''en almibar'' no.');
   end if;
@@ -1105,7 +1105,7 @@ begin
   values ('cacao amargo en polvo', 'Cacao amargo en polvo', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 228, 19.6, 57.9, 13.7, 33.2, 1.8, 8.1, 21, 1524, 734, 'DEV_SEED', src, 'DEV_SEED, cacao amargo SIN azucar. Dato clinico: potasio 1500 mg y fosforo 730 mg por 100 g, de los alimentos mas densos del catalogo en ambos; en dieta renal 40 g en una masa no son despreciables. No confundir con el chocolate de cobertura (que lleva manteca de cacao y azucar) ni con las mezclas tipo ''cocoa para leche'', que son casi puro azucar.');
   end if;
@@ -1114,7 +1114,7 @@ begin
   values ('chocolate semiamargo', 'Chocolate semiamargo de cobertura', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 530, 6, 46, 34, 7, 38, 21, 15, 570, 210, 'DEV_SEED', src, 'DEV_SEED, cobertura de ~55-60% de cacao. Alimento distinto del cacao en polvo: aca la manteca de cacao y el azucar mandan. La grasa saturada es alta (21 g/100 g) y en el bano quedan pegados 180 g repartidos entre las unidades, asi que pesa de verdad en la porcion. Si la cobertura es de 70%, el azucar baja y la grasa sube: corresponde la ficha de ''chocolate amargo de reposteria''.');
   end if;
@@ -1123,7 +1123,7 @@ begin
   values ('alcayota', 'Alcayota', (cats->>'VEGETABLES')::uuid, 'MASS', 0.55)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 20, 0.6, 4.5, 0.1, 1, 'DEV_SEED', src, 'DEV_SEED de confianza media. No hay tabla chilena disponible para Cucurbita ficifolia: los macronutrientes estan aproximados con el perfil de zapallo de guarda (fruto muy acuoso y de baja densidad energetica) y son solo referencia. NO declaro micronutrientes: no tengo base para sodio, potasio ni fosforo, y ausentes = desconocidos. El factor 0,55 (se botan cascara dura y semillas) es una estimacion estructural, no una medicion. Nota importante: en el dulce, casi toda la energia del plato final la pone el azucar, no la alcayota.');
   end if;
@@ -1132,7 +1132,7 @@ begin
   values ('membrillo', 'Membrillo', (cats->>'FRUITS')::uuid, 'MASS', 0.75)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'EDIBLE_PORTION', 'G', 57, 0.4, 15.3, 0.1, 1.9, 4, 197, 17, 'DEV_SEED', src, 'DEV_SEED, pulpa limpia cruda (misma convencion que manzana y naranja del catalogo). Factor 0,75 por corazon y semillas. No declaro azucares por separado: el membrillo crudo tiene mucho carbohidrato no azucarado (pectina) y no tengo un reparto que sostener. En el dulce terminado el azucar la pone la receta, no la fruta.');
   end if;
@@ -1141,7 +1141,7 @@ begin
   values ('masa de hojaldre', 'Masa de hojaldre', (cats->>'BREAD')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 551, 7.3, 45.1, 38.1, 1.5, 1, 12, 400, 70, 60, 'DEV_SEED', src, 'DEV_SEED, masa laminada cruda de bandeja. Es harina mas una cantidad grande de materia grasa ya incorporada: no se puede armar sumando harina y mantequilla sueltas sin inventar la proporcion. La saturada depende de si la marca usa mantequilla o margarina; con margarina vegetal hidrogenada puede ser menor pero aparecen grasas trans, que la base no tiene campo para declarar.');
   end if;
@@ -1150,7 +1150,7 @@ begin
   values ('esencia de vainilla', 'Esencia de vainilla', (cats->>'GRAINS')::uuid, 'VOLUME', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'ML', 250, 0.1, 11.2, 0.1, 0, 11.2, 8, 'DEV_SEED', src, 'DEV_SEED por 100 ml, tomando como referencia el extracto de vainilla con alcohol (~35% v/v), donde casi toda la energia es etanol. La esencia artificial sin alcohol tiene mucho menos. En cualquier caso se usan 5-10 ml por receta: el aporte al plato es despreciable y la ficha existe para que el motor no tenga un hueco, no porque el numero mueva la nutricion.');
   end if;
@@ -1159,7 +1159,7 @@ begin
   values ('yema de huevo', 'Yema de huevo', (cats->>'EGGS')::uuid, 'MASS', 0.33)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'EDIBLE_PORTION', 'G', 322, 15.9, 3.6, 26.5, 0, 0.6, 9.6, 48, 109, 390, 'DEV_SEED', src, 'DEV_SEED, yema sola. Referencia practica: una yema de huevo grande pesa unos 17-18 g. Declararla como huevo entero mentiria fuerte, que es justo lo que evalua el motor clinico: la yema concentra TODA la grasa, todo el colesterol (~1085 mg/100 g, sin campo donde declararlo) y casi todo el fosforo del huevo. Fibra 0 derivable.');
   end if;
@@ -1168,7 +1168,7 @@ begin
   values ('clara de huevo', 'Clara de huevo', (cats->>'EGGS')::uuid, 'MASS', 0.6)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'EDIBLE_PORTION', 'G', 52, 10.9, 0.7, 0.2, 0, 0.7, 166, 163, 15, 'DEV_SEED', src, 'DEV_SEED, clara sola cruda. Referencia practica: una clara de huevo grande pesa unos 33 g. Es proteina casi pura, sin grasa ni colesterol; el sodio propio (166 mg/100 g) es mas alto de lo que la gente supone. Fibra 0 derivable.');
   end if;
@@ -1177,7 +1177,7 @@ begin
   values ('semola de trigo', 'Sémola de trigo', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 360, 12.7, 72.8, 1.1, 3.9, 0.2, 1, 186, 136, 'DEV_SEED', src, 'DEV_SEED, semola seca cruda. Contiene gluten. Sin rendimiento declarado: al cocerse en leche absorbe muchisimo liquido y el peso final depende de la receta, no del ingrediente; ademas ahi el aporte lo domina la leche.');
   end if;
@@ -1186,7 +1186,7 @@ begin
   values ('anis en grano', 'Anís en grano', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 337, 17.6, 50, 15.9, 14.6, 0.6, 16, 1441, 440, 'DEV_SEED', src, 'DEV_SEED, semilla seca entera. AVISO de uso: en el flan se infusiona en la leche y se COLA, asi que al plato llega el aroma y casi nada de esta materia; lo declarado es la cantidad usada, no la que se come. El motor va a sobreestimar el aporte real y ese sesgo es conocido y esta del lado seguro (es una especia en cantidad minima).');
   end if;
@@ -1195,7 +1195,7 @@ begin
   values ('coco rallado', 'Coco rallado', (cats->>'FRUITS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 660, 6.9, 23.7, 64.5, 16.3, 7.4, 57.2, 37, 543, 206, 'DEV_SEED', src, 'DEV_SEED, coco rallado deshidratado SIN endulzar. Dato relevante: 57 g de grasa saturada por 100 g, la mas alta del lote; es el 60% del peso de las cocadas, no un adorno. Si el envase dice ''endulzado'', el azucar sube fuerte y esta ficha no aplica.');
   end if;
@@ -1204,7 +1204,7 @@ begin
   values ('pera', 'Pera', (cats->>'FRUITS')::uuid, 'MASS', 0.78)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'EDIBLE_PORTION', 'G', 57, 0.4, 15.2, 0.1, 3.1, 9.8, 1, 116, 12, 'DEV_SEED', src, 'DEV_SEED, pulpa cruda pelada. El factor 0,78 descuenta cascara y corazon, que es lo que pide la receta; si la pera se comiera con cascara el factor real seria cercano a 0,92 y ademas subiria la fibra.');
   end if;
@@ -1213,7 +1213,7 @@ begin
   values ('miel', 'Miel', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 304, 0.3, 82.4, 0, 0.2, 82.1, 4, 52, 4, 'DEV_SEED', src, 'DEV_SEED. Grasa 0 derivable. Es azucar libre en practicamente todo su peso: para efectos del motor clinico no se comporta distinto del azucar, aunque en la miga si aporta humedad y color que el azucar no da. AVISO de seguridad: no dar miel a menores de 1 ano (riesgo de botulismo del lactante).');
   end if;
@@ -1222,7 +1222,7 @@ begin
   values ('jengibre molido', 'Jengibre molido', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 335, 9, 71.6, 4.2, 14.1, 3.4, 2.6, 27, 1320, 168, 'DEV_SEED', src, 'DEV_SEED, especia seca de frasco. No es lo mismo que el jengibre fresco rallado (mucha mas agua): si una receta pide fresco, esta ficha no sirve. Se usa en cantidades de 1-3 g, aporte despreciable al plato.');
   end if;
@@ -1231,7 +1231,7 @@ begin
   values ('clavo de olor molido', 'Clavo de olor molido', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 274, 6, 65.5, 13, 33.9, 2.4, 3.9, 277, 1020, 104, 'DEV_SEED', src, 'DEV_SEED, especia seca de frasco. Se usa en cantidades de un gramo; los valores por 100 g existen para que el motor pueda calcular, no porque muevan la nutricion del queque.');
   end if;
@@ -1240,7 +1240,7 @@ begin
   values ('nuez moscada molida', 'Nuez moscada molida', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 525, 5.8, 49.3, 36.3, 20.8, 28.5, 25.9, 16, 350, 213, 'DEV_SEED', src, 'DEV_SEED, especia seca de frasco. Muy grasa y calorica por 100 g, pero se usa en fracciones de gramo. Pese al nombre no tiene relacion con las nueces ni con su alergia.');
   end if;
@@ -1249,7 +1249,7 @@ begin
   values ('leche condensada', 'Leche condensada', (cats->>'DAIRY')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 321, 7.9, 54.4, 8.7, 0, 54.4, 5.5, 127, 371, 253, 'DEV_SEED', src, 'DEV_SEED, tarro tal como se compra. Se declara en gramos porque asi viene rotulado el envase chileno. Es leche concentrada CON azucar anadida: mas de la mitad de su peso es azucar, cosa que la distingue por completo de la leche evaporada.');
   end if;
@@ -1258,7 +1258,7 @@ begin
   values ('leche evaporada', 'Leche evaporada', (cats->>'DAIRY')::uuid, 'VOLUME', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'ML', 140, 7, 10.5, 7.9, 0, 10.5, 4.8, 110, 320, 210, 'DEV_SEED', src, 'DEV_SEED por 100 ml (densidad ~1,07, algo mayor que la del agua). Es leche a la que se le saco agua, SIN azucar anadida: su azucar es la lactosa propia. No confundir con la condensada, que tiene cinco veces mas azucar.');
   end if;
@@ -1267,7 +1267,7 @@ begin
   values ('galletas de vainilla', 'Galletas de vainilla', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 440, 6, 74, 14, 1.5, 30, 6.5, 300, 80, 80, 'DEV_SEED', src, 'DEV_SEED de confianza media: galleta dulce simple de paquete tipo vainilla o champana. Es un promedio de referencia entre marcas; si el envase trae tabla nutricional, esa manda. Contiene gluten.');
   end if;
@@ -1276,7 +1276,7 @@ begin
   values ('lucuma', 'Lúcuma', (cats->>'FRUITS')::uuid, 'MASS', 0.65)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, 
       source_type, source_name, notes)
     values (v_ing, 'EDIBLE_PORTION', 'G', 99, 1.5, 25, 0.5, 1.3, 'DEV_SEED', src, 'DEV_SEED de confianza media, pulpa fresca limpia. Es una fruta densa: 25 g de carbohidrato por 100 g, mas del doble que la mayoria de las frutas del catalogo. NO declaro micronutrientes: no tengo valores sostenibles de sodio, potasio ni fosforo para lucuma y ausentes = desconocidos. El factor 0,65 descuenta cascara y el cuesco grande, y es una estimacion. Si lo que se compra es pure congelado endulzado, corresponde la OTRA ficha: su azucar no es esta.');
   end if;
@@ -1285,7 +1285,7 @@ begin
   values ('pure de lucuma endulzado', 'Puré de lúcuma endulzado', (cats->>'FRUITS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 160, 1.2, 38, 0.4, 1, 25, 'DEV_SEED', src, 'DEV_SEED de confianza media. Producto congelado con azucar anadida: el azucar depende de la marca (puede ir de 15 a 30 g/100 g), por eso el valor es referencial y el rotulo manda. Se declara aparte de la lucuma fresca justamente porque declararlo como fruta le esconderia el azucar agregada al motor clinico. No declaro micronutrientes: sin base.');
   end if;
@@ -1294,7 +1294,7 @@ begin
   values ('galletas de vino', 'Galletas de vino', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 430, 7.5, 76, 11, 2, 20, 5, 350, 100, 90, 'DEV_SEED', src, 'DEV_SEED de confianza media: galleta seca dulce de paquete, promedio de referencia entre marcas (el rotulo manda si existe). Pese al nombre no lleva alcohol. Contiene gluten.');
   end if;
@@ -1303,7 +1303,7 @@ begin
   values ('crema para batir', 'Crema para batir', (cats->>'DAIRY')::uuid, 'VOLUME', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'ML', 337, 2.1, 2.9, 36, 0, 2.9, 22.5, 38, 75, 60, 'DEV_SEED', src, 'DEV_SEED por 100 ml de crema de ~35% de materia grasa, que es la que monta (envase de 200 ml). Es un alimento distinto de la ''crema de leche'' de cocina (25%): un tercio mas de grasa y de saturada. La leche del catalogo NO la reemplaza. Ojo: las cremas vegetales para batir tienen otro perfil de grasa y no aplican a esta ficha.');
   end if;
@@ -1312,7 +1312,7 @@ begin
   values ('chocolate amargo de reposteria', 'Chocolate amargo de repostería', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 560, 7, 48, 38, 9, 32, 23, 15, 650, 280, 'DEV_SEED', src, 'DEV_SEED, chocolate de reposteria de ~65-70% de cacao. Producto distinto del cacao amargo en polvo (aca hay manteca de cacao y azucar) y algo mas concentrado que la cobertura semiamarga de 55%: mas cacao, menos azucar, mas grasa. Potasio alto para dieta renal.');
   end if;
@@ -1321,7 +1321,7 @@ begin
   values ('duraznos en conserva', 'Duraznos en conserva', (cats->>'FRUITS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'DRAINED', 'G', 74, 0.5, 20, 0.1, 1.3, 18, 6, 100, 12, 'DEV_SEED', src, 'DEV_SEED, fruta ESCURRIDA de conserva en almibar (el liquido se bota y no entra en la nutricion). Vienen sin cuesco, por eso factor 1. Si la conserva es ''al jugo'' o ''light'', el azucar baja cerca de un tercio.');
   end if;
@@ -1330,7 +1330,7 @@ begin
   values ('guindas en conserva', 'Guindas en conserva', (cats->>'FRUITS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'DRAINED', 'G', 85, 0.7, 22, 0.2, 1.4, 20, 3, 130, 15, 'DEV_SEED', src, 'DEV_SEED, guinda ESCURRIDA de conserva en almibar, descarozada. AVISO: la guinda marrasquino (la roja confitada de coctel) es otro producto, con casi el doble de azucar y colorante; esta ficha no la representa. El almibar que se separa para mojar el bizcocho no esta contado aca: si la receta lo usa, ese azucar entra por otro lado.');
   end if;
@@ -1339,7 +1339,7 @@ begin
   values ('helado de vainilla', 'Helado de vainilla', (cats->>'DAIRY')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 207, 3.5, 23.6, 11, 0.7, 21.2, 6.8, 80, 199, 105, 'DEV_SEED', src, 'DEV_SEED, helado de crema comun. Se declara en GRAMOS a proposito y no en bolas: la bola varia demasiado entre cuchara y cuchara (de 40 a 80 g), y esa variacion arruinaria el calculo de la porcion.');
   end if;
@@ -1348,7 +1348,7 @@ begin
   values ('mani tostado', 'Maní tostado', (cats->>'LEGUMES')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 587, 24.4, 21.5, 49.7, 8, 4.2, 6.9, 658, 376, 'DEV_SEED', src, 'DEV_SEED, mani tostado y pelado, listo para picar. NO declaro sodio: el mani de bolsa puede venir sin sal (cerca de 5 mg/100 g) o salado (300 a 600 mg/100 g) y no se cual compra el usuario; ausente = desconocido, que es mejor que inventar un valor en un nutriente que se vigila. Si el envase trae rotulo, ese manda. Alergeno declarable y de los mas serios.');
   end if;
@@ -1357,7 +1357,7 @@ begin
   values ('harina de almendras', 'Harina de almendras', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 610, 21.4, 21.4, 53.6, 10.7, 3.6, 4, 1, 700, 460, 'DEV_SEED', src, 'DEV_SEED, almendra blanqueada molida. Pese al nombre no es una harina de cereal: no tiene gluten ni almidon, y no se puede reemplazar por harina de trigo ni en estructura ni en nutricion. Alergeno declarable (frutos secos). Nota de catalogo: va en GRAINS solo porque el enum no tiene una categoria de frutos secos.');
   end if;
@@ -1366,7 +1366,7 @@ begin
   values ('ostiones', 'Ostiones', (cats->>'FISH')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 69, 12.1, 3.2, 0.5, 0, 0.1, 392, 205, 338, 'DEV_SEED', src, 'DEV_SEED, carne desconchada cruda. Los moluscos si traen glucogeno, por eso el carbohidrato no es cero. El sodio es propio del marisco (agua de mar), no agregado; los congelados pueden traer mas. Fibra 0 derivable.');
   end if;
@@ -1375,7 +1375,7 @@ begin
   values ('ravioles frescos', 'Ravioles frescos', (cats->>'GRAINS')::uuid, 'MASS', 1)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'AS_PACKAGED', 'G', 270, 10.5, 38, 7.5, 2, 2, 3.5, 450, 130, 130, 'DEV_SEED', src, 'DEV_SEED de confianza media: producto de bandeja, crudo, con relleno tipo ricotta. El relleno cambia todo (carne, espinaca-ricotta, queso), asi que estos valores son un promedio de referencia para que el atajo no quede como hueco; si hay rotulo, el rotulo manda. Al hervirse absorben agua y el peso sube, pero ese rendimiento no esta declarado.');
   end if;
@@ -1384,9 +1384,558 @@ begin
   values ('limon de pica', 'Limón de Pica', (cats->>'FRUITS')::uuid, 'MASS', 0.45)
   on conflict do nothing returning id into v_ing;
   if v_ing is not null then
-    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg,
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
       source_type, source_name, notes)
     values (v_ing, 'RAW', 'G', 30, 0.7, 10.5, 0.2, 2.8, 1.7, 2, 102, 18, 'DEV_SEED', src, 'DEV_SEED, aproximado con el perfil de lima acida (Citrus aurantiifolia), que es la especie del limon de Pica; es una variedad distinta del limon comun: mucho mas chica, mas aromatica y con mas cascara en proporcion. El factor 0,45 es la pulpa sin cascara ni semillas. AVISO para el ShoppingEngine: si la receta mide JUGO, el rendimiento real es aun menor (del orden de 30-35% del peso de la fruta), asi que este factor puede quedar corto para comprar.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('charqui', 'Charqui de vacuno', (cats->>'MEAT')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 340, 55, 0, 13, 0, 0, 5, 2000, 1000, 500, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para carne de vacuno magra secada y salada. Carbohidratos, azucares y fibra en 0 por derivacion (carne sin agregados). El sodio es el dato mas variable: depende del salado y de si se desala antes de cocinar; 2000 mg es un orden de magnitud, no una medicion. Potasio y fosforo estimados por concentracion del vacuno crudo al secarse (~3x).');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('mote de maiz', 'Mote de maíz', (cats->>'GRAINS')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 350, 8, 74, 1.5, 7, 250, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para grano de maiz pelado seco, tal como se compra y se declara en las recetas. Azucares y sodio se omiten: no hay dato sostenible. El potasio es estimacion del maiz seco; el pelado con cal o ceniza lo altera y no esta medido.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('chuno', 'Chuño', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 330, 2, 80, 0.3, 2, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para papa deshidratada andina seca, tal como se compra. Muy almidonosa y pobre en proteina porque el proceso de congelado y lavado arrastra solubles. Potasio OMITIDO a proposito: el mismo lavado que le quita proteina le quita potasio en una magnitud que cambia mucho entre chuño negro y tunta blanca; dar un numero aqui seria enganar al motor renal. Azucares y sodio tambien sin dato.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('chuchoca', 'Chuchoca', (cats->>'GRAINS')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 355, 8, 76, 2, 6, 250, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para harina gruesa de maiz cocido y secado, en seco tal como se compra. Azucares y sodio omitidos por falta de dato. Potasio estimado desde el maiz seco.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('carne de soya', 'Carne de soya texturizada', (cats->>'LEGUMES')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, phosphorus_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 330, 50, 30, 1.5, 18, 2000, 700, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para proteina de soya texturizada deshidratada, en seco tal como se compra (hidratada multiplica su peso ~2,5x). Potasio y fosforo altos y clinicamente relevantes: la harina de soya desgrasada de la que sale concentra ambos; los valores son orden de magnitud. Azucares sin dato. Sodio omitido: el producto simple viene sin sal, pero las versiones saborizadas si la traen y no se puede sostener un numero unico.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('osobuco de vacuno', 'Osobuco de vacuno', (cats->>'MEAT')::uuid, 'MASS', 0.75)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 150, 21, 0, 7, 0, 0, 3, 65, 330, 190, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de carne cruda de la rueda (porcion comestible), no del corte con hueso. Carbohidratos, azucares y fibra en 0 por derivacion. Factor de porcion comestible 0,75: el hueso central y la medula son alrededor de un cuarto del peso comprado; varia con el grosor de la rueda.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('vacuno tapapecho', 'Tapapecho de vacuno', (cats->>'MEAT')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 210, 19, 0, 15, 0, 0, 6, 65, 300, 175, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para corte fibroso de vacuno crudo, sin hueso. Carbohidratos, azucares y fibra en 0 por derivacion. La grasa es el valor mas variable segun cuanto se recorte la capa exterior.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('ciruelas secas', 'Ciruelas secas sin carozo', (cats->>'FRUITS')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 240, 2.2, 64, 0.4, 7, 38, 730, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para ciruela deshidratada descarozada, tal como se compra. Potasio alto y bien establecido en fruta deshidratada: relevante para restriccion renal. Sodio omitido.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('laurel seco', 'Hoja de laurel seca', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 313, 7.6, 75, 8.4, 26, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para hoja seca tal como se compra. OJO de uso: en el plato la hoja se retira antes de servir, asi que el aporte real a la porcion es cercano a cero aunque la ficha describa la hoja. Micronutrientes omitidos: se usa en 1-2 g por olla y no hay dato sostenible.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('alcachofa', 'Alcachofa', (cats->>'VEGETABLES')::uuid, 'MASS', 0.35)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 47, 3.3, 10.5, 0.2, 5.4, 370, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de porcion comestible cruda (corazon y fondos). Factor 0,35: hojas duras, pelusa y tallo son la mayor parte del peso comprado; es el rango habitual de la alcachofa entera, no una medicion. Azucares y sodio omitidos.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('pernil de cerdo', 'Pernil de cerdo', (cats->>'MEAT')::uuid, 'MASS', 0.75)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 210, 19, 0, 15, 0, 0, 5, 55, 350, 200, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de carne cruda con su grasa (porcion comestible), no de la pieza con hueso. Carbohidratos, azucares y fibra en 0 por derivacion. Factor 0,75 por hueso y cuero; si se come el cuero el factor real sube y esta ficha lo subestima.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('harina de trigo integral', 'Harina de trigo integral', (cats->>'GRAINS')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, phosphorus_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 340, 13, 72, 2.5, 11, 360, 350, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para harina de trigo integral cruda. La fibra y el fosforo del salvado son justamente lo que la separa de la harina blanca. Azucares y sodio omitidos.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('pan de molde', 'Pan de molde', (cats->>'BREAD')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 265, 8, 49, 3.5, 2.5, 5, 480, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de pan envasado (rebanada tipica ~25 g). Sodio relevante y propio del pan industrial chileno, pero varia por marca y por la norma de reduccion de sodio. Grasa saturada omitida: depende de la materia grasa que use cada marca.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('chirimoya', 'Chirimoya', (cats->>'FRUITS')::uuid, 'MASS', 0.68)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'EDIBLE_PORTION', 'G', 75, 1.6, 18, 0.7, 3, 13, 290, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de pulpa sin cascara ni pepas. Factor 0,68: cascara y pepas rondan un tercio del peso de la fruta entera comprada.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('mango', 'Mango', (cats->>'FRUITS')::uuid, 'MASS', 0.65)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'EDIBLE_PORTION', 'G', 60, 0.8, 15, 0.4, 1.6, 14, 168, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de pulpa pelada y sin cuesco. Factor 0,65 (cascara + cuesco); varia con la variedad.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('pina', 'Piña', (cats->>'FRUITS')::uuid, 'MASS', 0.5)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'EDIBLE_PORTION', 'G', 50, 0.5, 13, 0.1, 1.4, 10, 109, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de pulpa. Factor 0,5: cascara, corona y corazon son cerca de la mitad del peso comprado, por eso la compra pesa el doble que la receta.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('maracuya', 'Maracuyá', (cats->>'FRUITS')::uuid, 'MASS', 0.5)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'EDIBLE_PORTION', 'G', 97, 2.2, 23, 0.7, 10, 11, 348, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de pulpa con pepas (asi se usa). La fibra alta viene de las pepas: si se cuela, esta ficha sobreestima. Factor 0,5 por la cascara dura.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('hierba luisa', 'Hierba luisa', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 'DEV_SEED', src, 'Ficha DEV_SEED SIN nutrientes a proposito. Las hojas se infusionan y se retiran: lo que se toma es el agua, no la hoja. Cargar los macros de la hoja fresca le sumaria a una limonada calorias y fibra que nadie consume, y no existe dato sostenible del aporte real de la infusion. Ausente = DESCONOCIDO, que es la lectura correcta aca.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('te negro', 'Té negro', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 'DEV_SEED', src, 'Ficha DEV_SEED SIN nutrientes a proposito. La hoja seca se infusiona y se descarta; sus calorias y macros no pasan al liquido en proporcion conocida. Poner los valores de la hoja seca inflaria el te helado, y poner 0 afirmaria algo que nadie midio. Ausente = DESCONOCIDO.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('maiz morado seco', 'Maíz morado seco', (cats->>'GRAINS')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 'DEV_SEED', src, 'Ficha DEV_SEED SIN nutrientes a proposito. El grano se hierve y se cuela: NO se come. Sus macros de grano seco (almidon) no corresponden a la chicha; el aporte real de la coccion no esta medido. Ausente = DESCONOCIDO.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('canela en rama', 'Canela en rama', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 247, 4, 81, 1.2, 53, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para corteza de canela seca tal como se compra. OJO de uso: la rama se hierve y se retira, asi que el aporte real a la bebida es cercano a cero aunque la ficha describa la corteza. Micronutrientes omitidos.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('pasta de aji amarillo', 'Pasta de ají amarillo', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 90, 1.5, 10, 4, 2, 800, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para pasta envasada en frasco (aji + aceite + sal + conservantes). Todo aca varia fuerte por marca: la grasa depende de cuanto aceite trae y el sodio de la sal de conserva; 800 mg es orden de magnitud, no medicion. Azucares y potasio omitidos.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('pasta de rocoto', 'Pasta de rocoto', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 80, 1.5, 9, 3.5, 2, 900, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para pasta envasada. Mismo caveat que el aji amarillo: grasa y sodio dependen de la marca. Se usa en cantidades chicas (5-15 g), asi que el error absoluto por porcion es bajo. Azucares y potasio omitidos.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('salsa de soya', 'Salsa de soya', (cats->>'VEGETABLES')::uuid, 'VOLUME', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, sodium_mg, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'ML', 60, 6, 6, 0.1, 5700, 200, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 ml de salsa de soya comun (no reducida en sodio). El sodio es el dato que importa para el motor clinico: del orden de 5.500-6.000 mg/100 ml, o sea ~900 mg en una cucharada. Las versiones bajas en sodio caen a la mitad y NO estan cubiertas por esta ficha. Azucares y fibra omitidos.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('vinagre tinto', 'Vinagre tinto', (cats->>'FRUITS')::uuid, 'VOLUME', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'ML', 19, 0, 0.3, 0, 0, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 ml. Proteina, grasa y fibra en 0 por derivacion. Azucares no se declaran en 0 (queda azucar residual del vino, sin medicion). Sodio omitido.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('aceite de sesamo', 'Aceite de sésamo', (cats->>'FATS_OILS')::uuid, 'VOLUME', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'ML', 815, 0, 0, 92, 0, 0, 13, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 ml (100 ml de aceite pesan ~92 g). Proteina, carbohidratos, azucares y fibra en 0 por derivacion: el aceite es grasa pura. Saturada ~14% del total, tipica del sesamo. Sodio y potasio omitidos.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('masa de wantan', 'Masa de wantán (láminas)', (cats->>'BREAD')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 290, 10, 58, 1.5, 2, 450, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para laminas de masa cruda envasadas (harina, agua, huevo, sal). El sodio viene de la sal de la masa y varia por marca. Azucares omitidos.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('masa para arrollado primavera', 'Masa para arrollado primavera', (cats->>'BREAD')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 290, 8, 62, 1, 2, 600, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para laminas grandes y delgadas envasadas. Mas delgadas y con menos huevo que el wantan, por eso menos proteina y grasa. Sodio variable por marca. Azucares omitidos.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('pasta de aji panca', 'Pasta de ají panca', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 85, 1.5, 11, 3, 3, 800, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para pasta envasada de aji rojo seco. Igual que las otras pastas peruanas: grasa y sodio dependen de la marca, el numero es orden de magnitud. Azucares y potasio omitidos.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('vinagre', 'Vinagre', (cats->>'VEGETABLES')::uuid, 'VOLUME', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'ML', 18, 0, 0.3, 0, 0, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 ml de vinagre corriente de casa. Proteina, grasa y fibra en 0 por derivacion. Azucares y sodio omitidos.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('jengibre fresco', 'Jengibre fresco', (cats->>'VEGETABLES')::uuid, 'MASS', 0.85)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 80, 1.8, 18, 0.8, 2, 415, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de rizoma pelado. Factor 0,85 por la cascara delgada. Azucares y sodio omitidos. Se usa en gramos chicos, el impacto por porcion es menor.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('espinaca', 'Espinaca', (cats->>'VEGETABLES')::uuid, 'MASS', 0.85)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 23, 2.9, 3.6, 0.4, 2.2, 79, 558, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de hoja cruda limpia. Potasio alto y bien establecido en hoja verde: dato clave para restriccion renal (y baja al hervir y botar el agua, cosa que esta ficha en RAW no refleja). Factor 0,85 por tallos gruesos y merma, como la acelga.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('gyozas de pollo congeladas', 'Gyozas de pollo congeladas', (cats->>'GRAINS')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 200, 9, 25, 7, 1.5, 550, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para producto congelado envasado (masa + relleno de pollo y verduras). Es el alimento mas dependiente de marca de este lote: si la etiqueta del producto real esta a mano, esos valores mandan sobre esta ficha. Saturada y azucares omitidos.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('fideos de arroz', 'Fideos de arroz', (cats->>'GRAINS')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 360, 6, 82, 0.5, 1.5, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de fideo seco. Sodio omitido: algunas marcas agregan sal a la masa y otras no. Azucares sin dato. El rendimiento seco a hidratado no se declara porque no hay medicion propia.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('galletas de soda', 'Galletas de soda', (cats->>'GRAINS')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, saturated_fat_g, sodium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 430, 9, 71, 12, 2.5, 3, 4, 850, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para galleta de soda envasada. Sodio alto y propio del producto (sal en masa y en superficie); varia por marca. Usada como espesante en salsas, el aporte por porcion es chico pero el sodio suma.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('pasta de huacatay', 'Pasta de huacatay', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 'DEV_SEED', src, 'Ficha DEV_SEED SIN nutrientes: pasta de hierba envasada de nicho, sin composicion documentada que se pueda sostener ni siquiera como referencia. Se usa en cantidades minimas (5-10 g por olla) y es componente opcional. Preferimos el hueco declarado antes que inventar macros; ausente = DESCONOCIDO.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('atun fresco', 'Atún fresco', (cats->>'FISH')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, potassium_mg, phosphorus_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 110, 24, 0, 1, 0, 0, 40, 400, 250, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para filete de atun crudo magro (tipo aleta amarilla). Carbohidratos, azucares y fibra en 0 por derivacion. Ficha distinta de la del atun en conserva DRAINED: alli el sodio es varias veces mayor por la salmuera.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('arroz arborio', 'Arroz arborio', (cats->>'GRAINS')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 350, 7, 78, 0.6, 1.4, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de grano crudo. Sodio, azucares y potasio omitidos. Sin rendimiento crudo a cocido: el del arroz largo no le corresponde y el propio no esta medido.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('rocoto', 'Rocoto', (cats->>'VEGETABLES')::uuid, 'MASS', 0.75)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 30, 1.5, 6.5, 0.3, 1.5, 300, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de pared carnosa, sin pepas ni venas. Factor 0,75: se bota el corazon con pepas y venas. Azucares y sodio omitidos.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('platano macho', 'Plátano macho (de freír)', (cats->>'FRUITS')::uuid, 'MASS', 0.65)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'EDIBLE_PORTION', 'G', 122, 1.3, 32, 0.4, 2.3, 15, 499, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de pulpa pelada cruda. Mas almidon y menos azucar que el platano de postre; el azucar sube fuerte con la maduracion, asi que 15 g es un punto medio, no un valor fijo. Factor 0,65 por la cascara gruesa. Potasio alto, relevante para restriccion renal.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('yuca', 'Yuca', (cats->>'VEGETABLES')::uuid, 'MASS', 0.78)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 160, 1.4, 38, 0.3, 1.8, 271, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de raiz pelada cruda. Factor 0,78 por cascara gruesa y fibra central que se botan. Azucares y sodio omitidos.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('maiz chulpe', 'Maíz chulpe (para cancha)', (cats->>'GRAINS')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 360, 9, 74, 4, 7, 290, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de grano seco envasado, antes de tostar. Al tostarse en aceite la energia por porcion sube por la grasa absorbida, que esta ficha NO incluye (va en el paso de la receta). Azucares y sodio omitidos.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('nabo', 'Nabo', (cats->>'VEGETABLES')::uuid, 'MASS', 0.85)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 28, 0.9, 6.4, 0.1, 1.8, 3.8, 191, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de raiz pelada cruda. Factor 0,85 por cascara y hojas. Sodio omitido (el encurtido le agrega el suyo, que va en la receta, no aca).');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('vinagre blanco', 'Vinagre blanco', (cats->>'GRAINS')::uuid, 'VOLUME', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'ML', 18, 0, 0, 0, 0, 0, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 ml. Los ceros aca SI son derivables: el vinagre destilado es agua y acido acetico, sin proteina, grasa, fibra ni azucar. La energia proviene del acido acetico. Sodio omitido.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('queso crema', 'Queso crema', (cats->>'DAIRY')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, sugars_g, saturated_fat_g, sodium_mg, potassium_mg, phosphorus_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 345, 6, 4, 34, 3, 20, 320, 130, 105, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para queso crema entero envasado. Las versiones light bajan la grasa a menos de la mitad y NO estan cubiertas por esta ficha. Fosforo y sodio relevantes para el motor renal; ambos varian con las sales fundentes de cada marca.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('papo choy', 'Papo choy (pak choi)', (cats->>'VEGETABLES')::uuid, 'MASS', 0.85)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 13, 1.5, 2.2, 0.2, 1, 65, 252, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de hoja y penca limpias, crudas. Factor 0,85 por la base dura y las hojas exteriores que se descartan. Azucares omitidos.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('salsa hoisin', 'Salsa hoisin', (cats->>'LEGUMES')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, sodium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 220, 3.3, 44, 3.4, 2.8, 30, 1600, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para salsa envasada de poroto de soya fermentado. Los dos datos que el motor tiene que ver son el azucar (~30 g/100 g) y el sodio (~1.600 mg/100 g): dulce y salada a la vez. Varia por marca.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('tausi', 'Tausi (poroto negro fermentado)', (cats->>'LEGUMES')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 215, 18, 22, 6, 8, 6000, 600, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para poroto de soya negro fermentado y salado, envasado. El sodio es el punto de esta ficha: del orden de 6.000 mg/100 g, o sea ~1.200 mg en los 20 g de una receta para 4. Es orden de magnitud, no medicion, pero el motor renal necesita verlo como sal, no como poroto.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('pina en conserva', 'Piña en conserva', (cats->>'FRUITS')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'DRAINED', 'G', 60, 0.4, 15, 0.1, 0.8, 14, 100, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de fruta escurrida. El azucar es el valor mas variable: en jugo natural queda cerca de este numero, en almibar pesado sube bastante. Sodio omitido.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('alga wakame seca', 'Alga wakame seca', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 190, 15, 45, 3, 30, 6000, 5000, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de alga SECA (hidratada multiplica su peso ~10x, o sea 5 g secos rinden ~50 g en el plato). Sodio y potasio son ordenes de magnitud, no mediciones: en algas secas ambos son altisimos y varian mucho por origen y por si se remoja y se bota el agua. Para restriccion renal, tratar esta ficha como una alerta, no como un valor exacto.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('calamar', 'Calamar', (cats->>'FISH')::uuid, 'MASS', 0.75)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, phosphorus_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 92, 15.6, 3.1, 1.4, 0, 44, 246, 220, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de manto y tentaculos limpios, crudos. Fibra en 0 por derivacion. Factor 0,75: pluma, piel y visceras se botan; si se compra ya limpio el factor real es 1 y esta ficha subestima el rendimiento.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('brotes de soya', 'Brotes de soya (diente de dragón)', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 30, 3, 5.9, 0.2, 1.8, 149, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de brote fresco limpio, tal como se vende. Corresponde al brote que se vende como diente de dragon en Chile (germinado de poroto mungo o soya segun proveedor). Azucares y sodio omitidos.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('cebolla morada', 'Cebolla morada', (cats->>'VEGETABLES')::uuid, 'MASS', 0.9)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sugars_g, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 40, 1.1, 9.3, 0.1, 1.7, 4.2, 146, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de bulbo pelado crudo. Factor 0,9, el mismo criterio de la cebolla comun del catalogo (cascara y extremos). Nutricionalmente casi identica a la cebolla comun; se mantiene como identidad propia porque da nombre a un plato.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('alga nori', 'Alga nori', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 190, 40, 40, 3.5, 30, 600, 2400, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de lamina seca (una lamina de sushi pesa ~3 g, asi que el aporte por porcion es chico). Proteina muy alta en peso seco. Sodio y potasio son ordenes de magnitud; el nori sazonado con sal y aceite tiene bastante mas sodio y no lo cubre esta ficha.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('vinagre de arroz', 'Vinagre de arroz', (cats->>'GRAINS')::uuid, 'VOLUME', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'ML', 20, 0, 0.4, 0, 0, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 ml de vinagre de arroz SIN sazonar. Proteina, grasa y fibra en 0 por derivacion. OJO: el vinagre de arroz sazonado (para sushi) trae azucar y sal agregadas y sus valores son otros; azucares y sodio quedan ausentes aca porque no se pueden sostener para ambas versiones.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('arroz grano corto', 'Arroz grano corto (sushi)', (cats->>'GRAINS')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 350, 6.5, 79, 0.6, 1, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de grano crudo. Sodio, azucares y potasio omitidos. Sin rendimiento crudo a cocido declarado: el 2,5 del arroz largo no le corresponde y el propio no esta medido.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('kanikama', 'Kanikama (surimi)', (cats->>'FISH')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, sugars_g, sodium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 95, 8, 14, 0.5, 5, 700, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para producto listo para comer, tal como sale del paquete. A diferencia del pescado, trae carbohidratos y azucar por el almidon y el sazonado, y bastante sodio: por eso no se puede tratar como pescado blanco. Varia por marca. Fibra y potasio omitidos.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('panko', 'Panko', (cats->>'GRAINS')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, sodium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 370, 12, 74, 3, 3, 350, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de hojuela seca envasada. Es mas liviano en volumen que el pan rallado fino (una taza pesa menos), pero por 100 g la composicion es parecida. La grasa del apanado frito NO esta aca: va en el paso de la receta. Azucares omitidos.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('aji seco en hojuelas', 'Ají seco en hojuelas', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, fiber_g, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 320, 12, 57, 17, 27, 1900, 'DEV_SEED', src, 'Valor de referencia DEV_SEED por 100 g de aji seco molido grueso, sin sal y sin ahumar (a diferencia del merken). Sodio OMITIDO a proposito: el producto no lleva sal agregada, pero tampoco hay dato del sodio propio del aji seco y un 0 seria una afirmacion sin respaldo. Potasio alto por concentracion al secarse; es orden de magnitud.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('menta fresca', 'Menta fresca', (cats->>'VEGETABLES')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, 
+      source_type, source_name, notes)
+    values (v_ing, 'RAW', 'G', 'DEV_SEED', src, 'Ficha DEV_SEED SIN nutrientes a proposito, mismo criterio que la hierba luisa: hoja que se infusiona y se retira. Si mas adelante se usa menta picada dentro de un plato (no infusionada), corresponde una ficha con dato real, no este registro.');
+  end if;
+
+  insert into public.ingredients (canonical_name, display_name, category_id, default_measurement_type, edible_portion_factor)
+  values ('pulpa de maracuya', 'Pulpa de maracuyá', (cats->>'FRUITS')::uuid, 'MASS', 1)
+  on conflict do nothing returning id into v_ing;
+  if v_ing is not null then
+    insert into public.nutrition_facts (ingredient_id, weight_basis, basis_unit, energy_kcal, protein_g, carbohydrates_g, fat_g, sugars_g, potassium_mg, 
+      source_type, source_name, notes)
+    values (v_ing, 'AS_PACKAGED', 'G', 70, 0.8, 17, 0.2, 13, 280, 'DEV_SEED', src, 'Valor de referencia DEV_SEED para pulpa colada envasada o congelada, sin azucar agregada. Fibra OMITIDA a proposito: al colar se van las pepas y cuanta fibra queda depende del producto; la fruta entera (10 g/100 g) no aplica aca. Si la marca trae azucar agregada estos numeros suben.');
   end if;
 end $$;
 
@@ -1592,7 +2141,7 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- Las 282 recetas de la biblioteca
+-- Las 449 recetas de la biblioteca
 -- ---------------------------------------------------------------------------
 
 do $$
@@ -8969,5 +9518,4178 @@ begin
   perform pg_temp.paso(v_v, 6, 'Hornea a 150 °C hasta que las conchas tengan pie y no se muevan al empujarlas de lado. Déjalas enfriar sobre el papel antes de despegarlas: en caliente se quedan pegadas y se rompen.', 15, 150, null, null, null);
   perform pg_temp.paso(v_v, 7, 'Calienta la crema, échala sobre el chocolate picado, espera un minuto y revuelve desde el centro hacia afuera hasta que quede lisa. Déjala tomar cuerpo antes de rellenar.', 10, null, null, null, null);
   perform pg_temp.paso(v_v, 8, 'Une las conchas de a dos con una punta de ganache y déjalas en frío. Al día siguiente la concha se humedece por dentro con el relleno y recién ahí están en su punto; recién armadas están crocantes y todavía no saben a macarrón.', 8, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Garbanzos con arroz
+  v_v := pg_temp.receta('Garbanzos con arroz', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 97, 'Garbanzos guisados con el arroz cocido adentro, en la misma olla: el grano suelta almidón en el caldo y el plato queda cremoso, no caldoso. Rinde mucho con poco.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'garbanzos secos', 'RAW', 300, 'G', 'BOILED', false, 1, 2.4, 'MAIN', 'ADJUSTABLE', 250, 400, 'en seco; remojo obligatorio de la noche anterior', null, null);
+  perform pg_temp.alt(s, 'porotos secos', 'EXCELLENT', null, 1);
+  perform pg_temp.alt(s, 'lentejas', 'GOOD', 'no necesitan remojo y cuecen en la mitad del tiempo', 1);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 150, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 100, 200, 'se cuece dentro del guiso, no aparte: es lo que lo hace cremoso', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 200, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 150, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'aji de color', 'AS_PACKAGED', 3, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'comino molido', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, false);
+  perform pg_temp.comp(s, 'perejil fresco', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Remoja los garbanzos en abundante agua fría la noche anterior y bota esa agua.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuécelos en agua nueva, sin sal, hasta que estén blandos por dentro.', 60, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'En vez de la olla común: cuece los garbanzos remojados en la olla a presión, contando desde que la válvula suena.', 25, null, 'PRESSURE_COOKER', 'Sin olla a presión: los 60 minutos del paso anterior, reponiendo agua caliente si baja el nivel.', null);
+  perform pg_temp.paso(v_v, 4, 'Mientras los garbanzos hierven, sofríe la cebolla, la zanahoria y el ajo con el aceite, el ají de color y el comino.', 10, null, null, null, 1);
+  perform pg_temp.paso(v_v, 5, 'Junta el sofrito con los garbanzos y unas tres tazas de su agua de cocción. Agrega el arroz y cuece a fuego suave, revolviendo de vez en cuando, hasta que el arroz esté a punto y el guiso quede cremoso.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Sala al final, apaga y sirve con perejil picado.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Porotos con mote
+  v_v := pg_temp.receta('Porotos con mote', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 100, 'Porotos guisados con zapallo y mote de trigo en vez de riendas: el mote aguanta entero y no se pasa. La cuarta forma del poroto de olla chileno.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'porotos secos', 'RAW', 350, 'G', 'BOILED', false, 1, 2.4, 'MAIN', 'ADJUSTABLE', 300, 450, 'en seco; el remojo de la noche anterior no es opcional', null, null);
+  perform pg_temp.alt(s, 'garbanzos secos', 'GOOD', 'mismo remojo y tiempos parecidos; cambia el sabor del caldo', 1);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'mote de trigo', 'RAW', 200, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 250, 'en seco; se cuece aparte y entra al final', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'zapallo camote', 'RAW', 300, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'aji de color', 'AS_PACKAGED', 4, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'comino molido', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'oregano seco', 'AS_PACKAGED', 1, 'G', null, true, 4, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 6, 'G', null, false, 5, null, 'SEASONING', 'ADJUSTABLE', 0, 7, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Remoja los porotos en abundante agua fría la noche anterior y bota esa agua.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuécelos en agua nueva, sin sal, hasta que estén blandos.', 60, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'En vez de la olla común: cuece los porotos remojados en la olla a presión, contando desde que la válvula suena.', 25, null, 'PRESSURE_COOKER', 'Sin olla a presión: los 60 minutos del paso anterior, agregando agua caliente si baja el nivel.', null);
+  perform pg_temp.paso(v_v, 4, 'Mientras tanto, cuece el mote de trigo aparte en agua hirviendo hasta que esté blando pero entero, y escúrrelo.', 30, null, null, null, 1);
+  perform pg_temp.paso(v_v, 5, 'También mientras los porotos hierven, sofríe la cebolla y el ajo con el aceite, el ají de color, el comino y el orégano.', 8, null, null, null, 1);
+  perform pg_temp.paso(v_v, 6, 'Suma el sofrito y el zapallo a los porotos y cocina hasta que el zapallo se deshaga y el caldo espese.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Agrega el mote escurrido, dale un hervor para que tome el gusto y sala recién al final.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Ensalada de porotos granados
+  v_v := pg_temp.receta('Ensalada de porotos granados', 'SALAD', array['LUNCH', 'DINNER']::public.meal_type[], 4, 40, 'Porotos granados cocidos y enfriados, aliñados con cebolla, tomate y cilantro. Acá el granado es el cuerpo de la ensalada, no un acompañamiento del choclo.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'porotos granados frescos', 'RAW', 600, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 750, 'ya desgranados', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'tomate', 'RAW', 200, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', 'RAW', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, 'en pluma fina, amortiguada', null, null);
+  perform pg_temp.comp(s, 'aji verde', 'RAW', 20, 'G', 'RAW', true, 3, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'aceite de oliva', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 40, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'limon', 'RAW', 40, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 5, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 5, null, false);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 10, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.alt(s, 'albahaca fresca', 'GOOD', 'la versión de verano con albahaca, como los granados calientes', null);
+  perform pg_temp.paso(v_v, 1, 'Cuece los porotos granados en agua hirviendo sin sal hasta que estén blandos pero enteros.', 25, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Escúrrelos y déjalos enfriar extendidos en una fuente para que no se sigan cociendo.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Mientras se enfrían, corta la cebolla en pluma fina y pásala por agua caliente un minuto para amortiguarla; escúrrela bien.', 5, null, null, null, 1);
+  perform pg_temp.paso(v_v, 4, 'Junta porotos, tomate en cubos, cebolla y ají verde si lo usas. Aliña con aceite, jugo de limón y sal, y termina con el cilantro picado.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Hamburguesas de lentejas
+  v_v := pg_temp.receta('Hamburguesas de lentejas', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 44, 'Hamburguesas de lentejas cocidas molidas con sofrito, huevo y pan rallado, doradas a la sartén. Salida directa para las lentejas que sobraron del guiso.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'lentejas', 'COOKED', 500, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 600, 'ya cocidas y muy bien escurridas; sirven las que sobraron del guiso', null, null);
+  perform pg_temp.alt(s, 'garbanzos secos', 'GOOD', 'cocidos y molidos quedan tipo falafel; 210 g secos rinden los 500 g cocidos', 0.42);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 3, null, true);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 55, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'liga la masa', 'unidad', 1);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 4, null, true);
+  perform pg_temp.comp(s, 'pan rallado', 'AS_PACKAGED', 60, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 40, 80, 'va entero en la masa, no es apanado', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'comino molido', 'AS_PACKAGED', 2, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'oregano seco', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'merquen', 'AS_PACKAGED', 2, 'G', null, true, 4, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 5, null, 'SEASONING', 'ADJUSTABLE', 0, 5, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, 'repartido entre el sofrito y el dorado', null, null);
+  perform pg_temp.paso(v_v, 1, 'Sofríe la cebolla picada fina con el ajo en una cucharada del aceite, hasta que esté transparente.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Muele las lentejas escurridas con un tenedor o prensapapas, dejando textura: no tiene que quedar puré liso.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'En vez del tenedor: dale unos pulsos cortos en la procesadora, cuidando que no llegue a pasta.', 2, null, 'FOOD_PROCESSOR', 'Sin procesadora: tenedor o prensapapas, como el paso anterior.', null);
+  perform pg_temp.paso(v_v, 4, 'Mezcla las lentejas con el sofrito, el huevo, el pan rallado, el comino, el orégano, el merquén y la sal. Deja reposar la masa unos diez minutos para que el pan hidrate.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Con las manos mojadas forma 8 hamburguesas parejas, apretándolas bien.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Dóralas en la sartén con el resto del aceite, 4 a 5 minutos por lado, sin moverlas hasta que hagan costra.', 10, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Hamburguesas de carne de soya
+  v_v := pg_temp.receta('Hamburguesas de carne de soya', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 51, 'Hamburguesas de soya texturizada hidratada, ligadas con huevo y pan rallado y doradas a la sartén. La misma masa, boleada, sirve de albóndigas para una salsa de tomate.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'carne de soya', 'AS_PACKAGED', 120, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 150, 'seca; hidratada triplica su peso', null, null);
+  perform pg_temp.alt(s, 'lentejas', 'GOOD', 'cocidas, molidas y bien escurridas; el sistema recalcula la nutrición desde cero', null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 3, null, true);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 110, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'la soya se desarma más que la carne: necesita doble liga', 'unidad', 2);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 4, null, true);
+  perform pg_temp.comp(s, 'pan rallado', 'AS_PACKAGED', 80, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 60, 100, 'va entero en la masa', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'comino molido', 'AS_PACKAGED', 2, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'oregano seco', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'aji de color', 'AS_PACKAGED', 2, 'G', null, true, 4, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 5, null, 'SEASONING', 'ADJUSTABLE', 0, 5, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 30, 'repartido entre el sofrito y el dorado', null, null);
+  perform pg_temp.paso(v_v, 1, 'Remoja la carne de soya en agua caliente hasta que esponje, unos quince minutos, y estrújala muy bien con las manos: el agua que quede adentro desarma la masa.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Mientras se hidrata, sofríe la cebolla picada fina con el ajo en una cucharada del aceite.', 6, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Mezcla la soya estrujada con el sofrito, los huevos, el pan rallado y los aliños, y deja reposar la masa unos minutos para que el pan hidrate.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Forma 8 hamburguesas apretándolas bien con las manos mojadas.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Dóralas en la sartén con el resto del aceite a fuego medio, sin moverlas hasta que hagan costra, y dales vuelta una sola vez.', 12, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Cazuela de cerdo
+  v_v := pg_temp.receta('Cazuela de cerdo', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 87, 'La tercera cazuela de la casa: pulpa de cerdo en trozos con papa, zapallo, choclo y el puñado de arroz en el caldo. Más rápida que la de vacuno y más contundente que la de ave.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pulpa de cerdo', 'RAW', 700, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 550, 900, null, null, null);
+  perform pg_temp.alt(s, 'costillar de cerdo', 'EXCELLENT', 'con hueso: hay que comprar más peso para la misma carne, pero el caldo sale más sabroso', 1.3);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 600, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 800, 'entera o en mitades grandes, como en toda cazuela', null, null);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 60, 'G', 'BOILED', false, 2, 2.5, 'MAIN', 'ADJUSTABLE', null, null, 'el puñado de arroz que va dentro del caldo', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'zapallo camote', 'RAW', 400, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'choclo en grano', 'RAW', 200, 'G', 'BOILED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 150, 'G', 'BOILED', false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'poroto verde', 'RAW', 100, 'G', 'BOILED', true, 4, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', 'STEWED', false, 5, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 4, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 5, 20, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, true);
+  perform pg_temp.comp(s, 'aji de color', 'AS_PACKAGED', 2, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'oregano seco', 'AS_PACKAGED', 1, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, false);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 10, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Sella el cerdo en trozos grandes con el aceite hasta que tome color por todos lados.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Agrega la cebolla picada, el ají de color y el orégano, y revuelve hasta que la cebolla esté transparente.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Cubre con agua caliente, unos dos litros, y hierve suave con la olla semitapada hasta que la carne ceda al tenedor.', 35, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En vez de la olla común: cocina la carne sellada en la olla a presión, contando desde que la válvula suena.', 15, null, 'PRESSURE_COOKER', 'Sin olla a presión: los 35 minutos de hervor suave del paso anterior.', null);
+  perform pg_temp.paso(v_v, 5, 'Incorpora la papa, el zapallo, la zanahoria y el choclo, y cuece hasta que la papa se pase con el tenedor.', 20, null, null, null, 1);
+  perform pg_temp.paso(v_v, 6, 'Agrega el arroz y el poroto verde en los últimos minutos.', 12, null, null, null, 1);
+  perform pg_temp.paso(v_v, 7, 'Sala al final y espolvorea cilantro al servir.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Cazuela de albóndigas
+  v_v := pg_temp.receta('Cazuela de albóndigas', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 62, 'Cazuela donde la proteína va en albóndigas de carne molida que se cuecen dentro del caldo con papa, zapallo y arroz. Sin presas que trozar: se come con cuchara de principio a fin.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'carne molida de vacuno', 'RAW', 500, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 600, 'para las albóndigas', null, null);
+  perform pg_temp.alt(s, 'pavo molido', 'EXCELLENT', 'más magro; la albóndiga queda más clara y suave', 1);
+  s := pg_temp.slot(v_v, 'BASE', 2, null, true);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 55, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'liga las albóndigas', 'unidad', 1);
+  perform pg_temp.comp(s, 'pan rallado', 'AS_PACKAGED', 40, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 30, 60, 'va dentro de la albóndiga', null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 3, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 600, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 800, 'en mitades grandes', null, null);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 60, 'G', 'BOILED', false, 2, 2.5, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 4, null, true);
+  perform pg_temp.comp(s, 'zapallo camote', 'RAW', 300, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 150, 'G', 'BOILED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', 'STEWED', false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 5, 20, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 6, null, true);
+  perform pg_temp.comp(s, 'aji de color', 'AS_PACKAGED', 3, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'comino molido', 'AS_PACKAGED', 1, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 7, null, false);
+  perform pg_temp.comp(s, 'perejil fresco', 'RAW', 10, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Pica la cebolla fina, la zanahoria en rodelas, el zapallo en cubos y las papas en mitades grandes.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Mezcla la carne molida con el huevo, el pan rallado, el comino, una pizca de la sal y la mitad del perejil picado. Bolea albóndigas del tamaño de una nuez grande, unas 16.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Sofríe la cebolla con el aceite y el ají de color en la olla.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Agrega unos dos litros de agua caliente, la papa y la zanahoria, y hierve suave.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Suma el zapallo y el arroz y, cuando vuelva a hervir, desliza las albóndigas de a una para que no se peguen.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Cuece a fuego suave, sin revolver bruscamente para que las albóndigas no se rompan, hasta que floten firmes y la papa esté blanda.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Sala al final y sirve con el resto del perejil.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Cazuela de ave nogada
+  v_v := pg_temp.receta('Cazuela de ave nogada', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 77, 'La cazuela de pollo de siempre, terminada con nuez molida disuelta en su propio caldo: la nogada le da cuerpo, color y una untuosidad que la cazuela corriente no tiene. Receta de campo colchagüino.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pollo trutro entero con piel', 'RAW', 900, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 700, 1200, 'peso con hueso; la porción comestible la aplica el catálogo', null, null);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'GOOD', 'sin hueso: menos peso para la misma carne, pero el caldo sale menos sabroso', 0.75);
+  s := pg_temp.slot(v_v, 'SAUCE', 2, null, true);
+  perform pg_temp.comp(s, 'nueces', 'AS_PACKAGED', 110, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 90, 130, 'molidas hasta pasta: son las que dan el color madera y la cremosidad, no un adorno encima', null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 3, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 600, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 800, null, null, null);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 60, 'G', 'BOILED', false, 2, 2.5, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 4, null, true);
+  perform pg_temp.comp(s, 'zapallo camote', 'RAW', 400, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'choclo en grano', 'RAW', 200, 'G', 'BOILED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 150, 'G', 'BOILED', false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', 'STEWED', false, 4, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 5, 20, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 6, null, true);
+  perform pg_temp.comp(s, 'aji de color', 'AS_PACKAGED', 2, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Dora los trutros en la olla con el aceite, por ambos lados, hasta que tomen color.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Agrega la cebolla picada y el ají de color, y revuelve hasta que la cebolla esté transparente.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Cubre con agua caliente, unos dos litros, y hierve suave con la olla semitapada.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Incorpora la papa, el zapallo, la zanahoria y el choclo, y sigue hirviendo hasta que la papa se pase con el tenedor.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 5, 'Agrega el arroz en los últimos minutos.', 12, null, null, null, 1);
+  perform pg_temp.paso(v_v, 6, 'Muele las nueces en el mortero hasta polvo grueso, disuélvelas en un cucharón del caldo caliente y devuélvelas a la olla. Dale unos minutos de hervor suave: el caldo toma color y cuerpo.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'En vez del mortero: muele las nueces en la licuadora con el cucharón de caldo y devuélvelas a la olla.', 2, null, 'BLENDER', 'Sin licuadora: mortero, o nueces picadas muy fino con cuchillo, como el paso anterior.', null);
+  perform pg_temp.paso(v_v, 8, 'Sala al final y sirve con cilantro.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Valdiviano
+  v_v := pg_temp.receta('Valdiviano', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 60, 'Sopa histórica del sur: charqui desalado y deshilachado sobre una base de mucha cebolla dorada, con papas y un huevo pochado por plato. El toque de jugo de naranja al servir es parte de la tradición.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'charqui', 'AS_PACKAGED', 150, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 200, 'se desala en el paso 1; aun desalado sigue aportando sal al caldo', null, null);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 220, 'G', 'POACHED', false, 2, null, 'MAIN', 'ADJUSTABLE', 110, 220, 'uno por plato, pochado en el mismo caldo', 'unidad', 4);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 300, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 400, 'en pluma y abundante: es la base del plato', null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 3, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 600, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 800, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'naranja', 'EDIBLE_PORTION', 150, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, 'peso de pulpa: da el chorrito de jugo por plato de la versión tradicional', null, null);
+  perform pg_temp.comp(s, 'aji de color', 'AS_PACKAGED', 3, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'oregano seco', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 4, 'poca y al final: el charqui manda', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 5, 20, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, false);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 10, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Desala el charqui: cúbrelo con agua caliente diez minutos y bota esa agua; si al probarlo sigue muy salado, repite con agua nueva. Después deshiláchalo fino con las manos.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Sofríe la cebolla en pluma con el aceite hasta que dore bien: ese dorado es la base del sabor del valdiviano.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Agrega el charqui deshilachado, el ají de color y el orégano, y revuelve un par de minutos.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Suma un litro y medio de agua caliente y las papas en cubos grandes, y hierve suave hasta que la papa esté blanda.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Baja el fuego a hervor apenas visible y casca los huevos de a uno sobre el caldo, sin revolver, hasta que la clara cuaje y la yema quede blanda.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Prueba antes de salar —el charqui ya aporta lo suyo—. Sirve con cilantro y, si sigues la tradición, un chorrito de jugo de naranja exprimido sobre cada plato.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Pataska
+  v_v := pg_temp.receta('Pataska', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 132, 'Sopa espesa del norte andino sobre mote de maíz reventado en flor, con cerdo y charqui. Plato de fiesta y de madrugada fría en Tarapacá; la olla a presión le baja el mote de hora y media a cuarenta minutos.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'mote de maiz', 'RAW', 300, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 250, 400, 'en seco; remojado desde la noche anterior', null, null);
+  perform pg_temp.comp(s, 'papa', 'RAW', 500, 'G', 'BOILED', false, 2, null, 'MAIN', 'ADJUSTABLE', 400, 700, null, null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 2, null, true);
+  perform pg_temp.comp(s, 'pulpa de cerdo', 'RAW', 400, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 500, null, null, null);
+  perform pg_temp.comp(s, 'charqui', 'AS_PACKAGED', 100, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', 60, 150, 'se desala en su paso; aun desalado aporta sal al caldo', null, null);
+  perform pg_temp.alt(s, 'pierna de cordero', 'GOOD', 'en cubos y deshuesada reemplaza al cerdo; versión más cercana a la andina original', null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'aji de color', 'AS_PACKAGED', 3, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'comino molido', 'AS_PACKAGED', 2, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'oregano seco', 'AS_PACKAGED', 2, 'G', null, true, 4, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 5, null, 'SEASONING', 'ADJUSTABLE', 0, 4, 'poca y al final: el charqui manda', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 5, 20, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, false);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 10, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Remoja el mote de maíz en abundante agua fría desde la noche anterior y bota esa agua.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece el mote en agua nueva, con la olla semitapada, hasta que los granos revienten en flor y estén tiernos.', 90, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'En vez de la olla común: cuece el mote remojado en la olla a presión, contando desde que la válvula suena.', 40, null, 'PRESSURE_COOKER', 'Sin olla a presión: los 90 minutos del paso anterior, reponiendo agua caliente si baja el nivel.', null);
+  perform pg_temp.paso(v_v, 4, 'Mientras el mote hierve, desala el charqui en agua caliente diez minutos, bota esa agua y deshiláchalo.', 10, null, null, null, 1);
+  perform pg_temp.paso(v_v, 5, 'También mientras tanto, sofríe la cebolla, el ajo, el ají de color, el comino y el orégano con el aceite, y dora ahí mismo el cerdo en cubos.', 12, null, null, null, 1);
+  perform pg_temp.paso(v_v, 6, 'Junta el sofrito con el cerdo y el charqui a la olla del mote con su caldo. Agrega las papas en cubos y cuece hasta que la papa esté blanda y el caldo espese.', 25, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Prueba, sala solo si falta y sirve con cilantro.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Chairo
+  v_v := pg_temp.receta('Chairo', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 95, 'Sopa altiplánica de vacuno donde el chuño remojado y martajado es el que da el cuerpo y la identidad: espesa el caldo con un sabor terroso que ninguna papa fresca imita. Lleva además mote de trigo, papas y verduras.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno posta negra', 'RAW', 400, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 550, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'chuno', 'AS_PACKAGED', 100, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 80, 150, 'seco; remojado desde la noche anterior. Es el que espesa y define el plato', null, null);
+  perform pg_temp.comp(s, 'papa', 'RAW', 400, 'G', 'BOILED', false, 2, null, 'MAIN', 'ADJUSTABLE', 300, 500, null, null, null);
+  perform pg_temp.comp(s, 'mote de trigo', 'RAW', 100, 'G', 'BOILED', false, 3, null, 'MAIN', 'ADJUSTABLE', 80, 150, 'en seco; se cuece aparte', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 100, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'arvejas frescas', 'RAW', 100, 'G', 'BOILED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', 'STEWED', false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'oregano seco', 'AS_PACKAGED', 2, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 5, 20, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, false);
+  perform pg_temp.comp(s, 'perejil fresco', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'La noche anterior deja el chuño remojando en agua fría. Antes de cocinar, bota el agua y cámbiala una vez más: el remojo es tiempo pasivo, no de cocina.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Sofríe la cebolla, el ajo y el orégano con el aceite en la olla, y sella ahí mismo la carne en cubos.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Agrega unos dos litros de agua caliente y cuece a fuego suave hasta que la carne ablande.', 45, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En vez de la olla común: cocina la carne sellada en la olla a presión, contando desde que la válvula suena.', 20, null, 'PRESSURE_COOKER', 'Sin olla a presión: los 45 minutos de fuego suave del paso anterior.', null);
+  perform pg_temp.paso(v_v, 5, 'Mientras tanto, cuece el mote de trigo aparte hasta que esté blando, y escúrrelo.', 30, null, null, null, 1);
+  perform pg_temp.paso(v_v, 6, 'Estruja el chuño remojado, mártajalo grueso con la mano o el prensapapas y súmalo al caldo junto con las papas, la zanahoria y las arvejas. Cuece hasta que la papa esté blanda: el chuño va espesando el caldo.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Agrega el mote escurrido, dale un hervor, sala y sirve con perejil.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Calapurca
+  v_v := pg_temp.receta('Calapurca', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 132, 'Sopa espesa nortina de mote de maíz con dos carnes, papa y ají, plato de fiesta en Tarapacá y Arica. En el altiplano se termina echando piedras volcánicas al rojo dentro de la olla; en una cocina de casa el mismo hervor final se logra a fuego fuerte y las piedras quedan como dato de origen, no como instrucción.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'mote de maiz', 'RAW', 300, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 250, 400, 'en seco; remojado desde la noche anterior', null, null);
+  perform pg_temp.comp(s, 'papa', 'RAW', 400, 'G', 'BOILED', false, 2, null, 'MAIN', 'ADJUSTABLE', 300, 600, null, null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 2, null, true);
+  perform pg_temp.comp(s, 'pollo trutro entero con piel', 'RAW', 500, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 700, 'peso con hueso', null, null);
+  perform pg_temp.comp(s, 'vacuno posta negra', 'RAW', 300, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', 200, 400, 'la calapurca tradicional mezcla varias carnes', null, null);
+  perform pg_temp.alt(s, 'pierna de cordero', 'GOOD', 'reemplaza al vacuno; versión más cercana a la andina, que usa cordero o llama', null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'aji de color', 'AS_PACKAGED', 4, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'merquen', 'AS_PACKAGED', 3, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, 'el picor final que en el norte pone el ají', null, null);
+  perform pg_temp.comp(s, 'comino molido', 'AS_PACKAGED', 1, 'G', null, true, 4, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'oregano seco', 'AS_PACKAGED', 2, 'G', null, true, 5, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 6, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 5, 20, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Remoja el mote de maíz en abundante agua fría desde la noche anterior y bota esa agua.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece el mote en agua nueva, semitapado, hasta que los granos revienten en flor.', 90, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'En vez de la olla común: cuece el mote remojado en la olla a presión, contando desde que la válvula suena.', 40, null, 'PRESSURE_COOKER', 'Sin olla a presión: los 90 minutos del paso anterior, reponiendo agua caliente si baja el nivel.', null);
+  perform pg_temp.paso(v_v, 4, 'Mientras el mote hierve, dora en otra olla los trutros y la posta en cubos con el aceite; agrega la cebolla, el ajo, el ají de color, el comino y el orégano, cubre con agua caliente y cuece suave hasta que las carnes ablanden.', 50, null, null, null, 1);
+  perform pg_temp.paso(v_v, 5, 'Junta las carnes con su caldo a la olla del mote. Agrega las papas en cubos y cuece hasta que la papa esté blanda y el caldo espese con el almidón del maíz.', 25, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Sala al final y ajusta el picor con el merquén.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Papas con chuchoca
+  v_v := pg_temp.receta('Papas con chuchoca', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 53, 'Guiso sureño de papas en caldo espesado con chuchoca espolvoreada en lluvia. Barato, rinde y llena; con longaniza en rodelas pasa de guarnición a plato completo.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 800, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 600, 1000, null, null, null);
+  perform pg_temp.comp(s, 'chuchoca', 'AS_PACKAGED', 100, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 80, 130, 'espesa el caldo y define el plato', null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 2, null, false);
+  perform pg_temp.comp(s, 'longaniza', 'RAW', 200, 'G', 'STEWED', true, 1, null, 'MAIN', 'OPTIONAL', null, null, 'opcional: convierte la guarnición en plato de fondo', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'aji de color', 'AS_PACKAGED', 4, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'comino molido', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'oregano seco', 'AS_PACKAGED', 1, 'G', null, true, 4, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 5, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Sofríe la cebolla y el ajo con el aceite, el ají de color, el comino y el orégano. Si usas longaniza, dórala ahí mismo en rodelas.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Agrega las papas en cubos grandes y agua caliente hasta cubrirlas apenas. Hierve suave hasta que empiecen a ablandar.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Espolvorea la chuchoca en lluvia sobre el caldo, revolviendo para que no se apelotone.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Cuece a fuego suave, revolviendo de a poco desde el fondo, hasta que la chuchoca espese y la papa esté blanda.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Sala al final y sirve caliente.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Charquicán de cochayuyo
+  v_v := pg_temp.receta('Charquicán de cochayuyo', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 66, 'El charquicán costero sin carne: cochayuyo remojado y cocido en lugar del vacuno, y un ligue de choclo molido en leche que junta el guiso. No es el mismo plato con menos carne, es otro guiso.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'cochayuyo', 'AS_PACKAGED', 60, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 40, 80, 'seco; remojado y cocido multiplica su volumen', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'choclo en grano', 'RAW', 200, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'molido en la leche: es el ligue del guiso', null, null);
+  perform pg_temp.comp(s, 'zapallo camote', 'RAW', 400, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'poroto verde', 'RAW', 100, 'G', 'BOILED', true, 3, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'STEWED', false, 4, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 3, null, true);
+  perform pg_temp.comp(s, 'leche liquida entera', 'AS_PACKAGED', 150, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 200, 'para moler el choclo', null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 4, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 600, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 800, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'aji de color', 'AS_PACKAGED', 3, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'comino molido', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Remoja el cochayuyo picado en agua caliente hasta que pierda la rigidez, unos veinte minutos, y escúrrelo.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuécelo en agua nueva hasta que esté blando al morderlo, y escúrrelo de nuevo.', 20, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Mientras tanto, sofríe la cebolla, el ajo, el ají de color y el comino con el aceite; agrega la papa y el zapallo en cubos con agua caliente hasta media altura y cocina tapado.', 20, null, null, null, 1);
+  perform pg_temp.paso(v_v, 4, 'Muele el choclo con la leche en el mortero o con el prensapapas hasta dejar una pasta gruesa.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'En vez de moler a mano: licúa el choclo con la leche hasta una crema con textura.', 2, null, 'BLENDER', 'Sin licuadora: mortero o prensapapas, como el paso anterior.', null);
+  perform pg_temp.paso(v_v, 6, 'Suma al guiso el cochayuyo cocido, el poroto verde y el choclo molido en leche. Cocina revolviendo hasta que espese y ligue.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Muele grueso con la cuchara —el charquicán queda desparejo, no puré liso— y sala al final.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Guiso de verduras
+  v_v := pg_temp.receta('Guiso de verduras', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 61, 'Guiso de olla con lo que da la estación: papa, zapallo italiano, zanahoria, choclo y arvejas sobre una base de tomate. Si le cuajas huevos encima, queda plato de fondo sin carne.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 400, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 600, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'zapallo italiano', 'RAW', 300, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 200, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'choclo en grano', 'RAW', 200, 'G', 'STEWED', false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'arvejas frescas', 'RAW', 150, 'G', 'STEWED', false, 4, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'tomate', 'RAW', 300, 'G', 'STEWED', false, 5, null, 'MAIN', 'ADJUSTABLE', null, null, 'deshecho es la base del jugo', null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'STEWED', false, 6, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 100, 'G', 'STEWED', true, 7, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.alt(s, 'acelga', 'GOOD', 'en hojas picadas, agregada en los últimos minutos', null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 3, null, false);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 220, 'G', 'POACHED', true, 1, null, 'MAIN', 'OPTIONAL', null, null, 'cuajados sobre el guiso, uno por persona; lo convierten en plato de fondo', 'unidad', 4);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'oregano seco', 'AS_PACKAGED', 1, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 30, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Sofríe la cebolla, el ajo y el pimiento con el aceite y el orégano hasta que la cebolla esté transparente.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Agrega el tomate picado y deja que se deshaga revolviendo de vez en cuando.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Suma la papa y la zanahoria con agua caliente hasta media altura, tapa y cocina a fuego medio.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Agrega el zapallo italiano, el choclo y las arvejas, y cocina destapado hasta que todo esté tierno y el jugo espese.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Si usas los huevos, cáscalos sobre el guiso, tapa y deja que la clara cuaje con la yema blanda.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Sala al final y sirve caliente.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Crema de verduras
+  v_v := pg_temp.receta('Crema de verduras', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 56, 'Crema licuada de varias verduras —zapallo, zanahoria, papa, apio y zapallo italiano— terminada con leche. A diferencia de la crema de zapallo, acá ninguna verdura manda sola.');
+  s := pg_temp.slot(v_v, 'VEGETABLE', 1, null, true);
+  perform pg_temp.comp(s, 'zapallo camote', 'RAW', 400, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 200, 'G', 'BOILED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zapallo italiano', 'RAW', 200, 'G', 'BOILED', false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'apio', 'RAW', 100, 'G', 'BOILED', true, 4, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', 'STEWED', false, 5, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 300, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 400, 'da el cuerpo de la crema', null, null);
+  s := pg_temp.slot(v_v, 'BASE', 3, null, true);
+  perform pg_temp.comp(s, 'leche liquida entera', 'AS_PACKAGED', 200, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 300, null, null, null);
+  perform pg_temp.alt(s, 'crema de leche', 'GOOD', 'más untuosa; con la mitad basta', 0.5);
+  s := pg_temp.slot(v_v, 'FAT', 4, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 5, 20, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, true);
+  perform pg_temp.comp(s, 'nuez moscada molida', 'AS_PACKAGED', 1, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 5, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Sofríe la cebolla y el apio con el aceite en la olla hasta que ablanden.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Agrega el resto de las verduras en cubos y agua caliente hasta apenas cubrirlas. Cuece tapado hasta que todo esté blando.', 25, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Muele las verduras con el prensapapas dentro de la olla, con parte del líquido, hasta dejar una crema pareja.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En vez del prensapapas: licúa por tandas llenando la licuadora solo hasta la mitad —caliente salta— y devuelve todo a la olla.', 4, null, 'BLENDER', 'Sin licuadora: prensapapas o cedazo, como el paso anterior.', null);
+  perform pg_temp.paso(v_v, 5, 'Devuelve la crema al fuego con la leche, calienta sin que hierva y ajusta el espesor con el líquido de cocción reservado. Sala y termina con la nuez moscada.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Crema de zapallo italiano y albahaca
+  v_v := pg_temp.receta('Crema de zapallo italiano y albahaca', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 45, 'Crema verde y liviana de zapallo italiano, ligada con un poco de papa y perfumada con albahaca fresca. Nada que ver con la crema de zapallo camote: otro alimento, otro color y la mitad del tiempo de cocción.');
+  s := pg_temp.slot(v_v, 'VEGETABLE', 1, null, true);
+  perform pg_temp.comp(s, 'zapallo italiano', 'RAW', 800, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 600, 1000, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 200, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 300, 'es la que le da cuerpo a la crema', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'albahaca fresca', 'RAW', 12, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, 'no es adorno: define el plato junto con el zapallo italiano', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  perform pg_temp.comp(s, 'pimienta negra', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 4, null, true);
+  perform pg_temp.comp(s, 'leche liquida entera', 'AS_PACKAGED', 150, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 250, null, null, null);
+  perform pg_temp.alt(s, 'crema de leche', 'GOOD', 'queda más untuosa; con menos cantidad basta', 0.6);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite de oliva', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 20, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Sofríe la cebolla picada con el aceite en la olla hasta que esté transparente.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Agrega el zapallo italiano en rodajas y la papa en cubos, cubre apenas con agua caliente y hierve tapado hasta que la papa se pase con el tenedor.', 18, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Retira del fuego, suma la albahaca y muele con prensapapas o pasando la sopa por cedazo hasta dejarla lisa.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En vez de moler a mano: licúa la sopa con la albahaca hasta que quede lisa y devuélvela a la olla.', 3, null, 'BLENDER', 'Sin licuadora: muele con prensapapas o cedazo como dice el paso anterior; queda más rústica pero igual de rica.', null);
+  perform pg_temp.paso(v_v, 5, 'Devuelve la crema al fuego suave, agrega la leche, calienta sin que hierva y sala al final. Sirve con pimienta molida al gusto.', 4, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Crema de arvejas
+  v_v := pg_temp.receta('Crema de arvejas', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 42, 'Crema de arveja fresca con un toque de papa y cebolla, lista en media hora. No es la sopa de arvejas partidas: esa parte de legumbre seca y toma más de una hora; esta es arveja verde, dulce y rápida.');
+  s := pg_temp.slot(v_v, 'VEGETABLE', 1, null, true);
+  perform pg_temp.comp(s, 'arvejas frescas', 'RAW', 600, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 750, 'ya desgranadas', null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 120, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 150, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 250, 'da cuerpo sin tapar el gusto de la arveja', null, null);
+  s := pg_temp.slot(v_v, 'BASE', 3, null, true);
+  perform pg_temp.comp(s, 'leche liquida entera', 'AS_PACKAGED', 150, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 250, null, null, null);
+  perform pg_temp.alt(s, 'crema de leche', 'GOOD', 'más untuosa; con menos cantidad basta', 0.6);
+  s := pg_temp.slot(v_v, 'FAT', 4, null, true);
+  perform pg_temp.comp(s, 'aceite de oliva', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 20, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, true);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, false);
+  perform pg_temp.comp(s, 'perejil fresco', 'RAW', 6, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Sofríe la cebolla picada con el aceite hasta que se ablande sin dorarse.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Agrega las arvejas y la papa en cubos, cubre apenas con agua caliente y hierve tapado hasta que la papa esté blanda.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Retira del fuego y muele con prensapapas o pasando la sopa por cedazo hasta dejarla lisa.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En vez de moler a mano: licúa la sopa hasta que quede lisa y devuélvela a la olla.', 3, null, 'BLENDER', 'Sin licuadora: muele con prensapapas o cedazo como dice el paso anterior.', null);
+  perform pg_temp.paso(v_v, 5, 'Vuelve al fuego suave, agrega la leche, calienta sin hervir y sala. Sirve con perejil picado.', 4, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Crema de choritos
+  v_v := pg_temp.receta('Crema de choritos', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 55, 'Crema costera hecha con el caldo de los propios choritos, ligada con papa y terminada con crema y choritos enteros. El sabor sale del vapor de las conchas, no de un cubito.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'choritos', 'RAW', 1000, 'G', 'STEAMED', false, 1, null, 'MAIN', 'ADJUSTABLE', 800, 1400, 'peso con concha; la porción comestible la aplica el catálogo', null, null);
+  perform pg_temp.alt(s, 'almejas', 'GOOD', 'mismo procedimiento; el caldo queda más suave', 1);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 250, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 180, 350, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 4, null, true);
+  perform pg_temp.comp(s, 'vino blanco', 'AS_PACKAGED', 100, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 50, 150, 'para abrir los choritos al vapor; el alcohol se evapora', null, null);
+  perform pg_temp.comp(s, 'crema de leche', 'AS_PACKAGED', 100, 'ML', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 60, 150, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 20, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 6, null, true);
+  perform pg_temp.comp(s, 'aji de color', 'AS_PACKAGED', 2, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 5, 'poca: el caldo de los choritos ya viene salado', null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 7, null, false);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Lava los choritos, sácales las barbas y ábrelos al vapor con el vino blanco en la olla tapada. Descarta los que sigan cerrados, saca la carne de las conchas y cuela el caldo.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'En la misma olla limpia, sofríe la cebolla con el aceite y el ají de color hasta que se ablande.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Agrega la papa en cubos, el caldo colado y agua hasta cubrir; hierve hasta que la papa esté blanda.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Suma la mitad de la carne de los choritos y muele todo con prensapapas hasta dejar la crema pareja.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'En vez de moler a mano: licúa la sopa con la mitad de los choritos hasta que quede lisa y devuélvela a la olla.', 3, null, 'BLENDER', 'Sin licuadora: muele con prensapapas como dice el paso anterior; queda más rústica.', null);
+  perform pg_temp.paso(v_v, 6, 'Vuelve al fuego suave, agrega la crema y los choritos restantes enteros, calienta sin hervir, prueba y sala. Sirve con cilantro picado.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Sopa de mariscos con pan y leche
+  v_v := pg_temp.receta('Sopa de mariscos con pan y leche', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 45, 'Sopa de choritos, almejas y camarones espesada a la antigua: con marraqueta remojada en leche y molida dentro del caldo. Esa ligazón de pan y leche es lo que la separa de la paila marina y de los caldillos, que son de caldo claro.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'choritos', 'RAW', 600, 'G', 'STEAMED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 800, 'peso con concha', null, null);
+  perform pg_temp.comp(s, 'almejas', 'RAW', 400, 'G', 'STEAMED', false, 2, null, 'MAIN', 'ADJUSTABLE', 300, 600, 'peso con concha', null, null);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 150, 'G', 'POACHED', false, 3, null, 'MAIN', 'ADJUSTABLE', 100, 250, null, null, null);
+  perform pg_temp.alt(s, 'camarones', 'GOOD', 'con caparazón y cabeza hay que comprar casi el doble para la misma colita', 1.8);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'pan marraqueta', 'EDIBLE_PORTION', 100, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 70, 140, 'la miga remojada es la ligazón que define esta sopa', null, null);
+  s := pg_temp.slot(v_v, 'BASE', 3, null, true);
+  perform pg_temp.comp(s, 'leche liquida entera', 'AS_PACKAGED', 300, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 400, null, null, null);
+  perform pg_temp.comp(s, 'vino blanco', 'AS_PACKAGED', 100, 'ML', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 50, 150, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 4, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'aji de color', 'AS_PACKAGED', 3, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 5, 'poca: los mariscos aportan lo suyo', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 20, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 7, null, false);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Saca la corteza a la marraqueta y remoja la miga en la leche.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Sofríe la cebolla con el aceite, el ajo y el ají de color hasta que esté transparente.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Agrega choritos y almejas lavados con el vino blanco, tapa y deja que se abran con el vapor. Descarta los cerrados, saca la carne de la mayoría de las conchas y devuelve el caldo colado a la olla con una taza de agua caliente.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Muele el pan remojado con un tenedor hasta hacer una papilla y súmala al caldo, revolviendo a fuego suave hasta que la sopa espese.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Incorpora la carne de los mariscos y los camarones y cocina apenas, sin hervor fuerte, hasta que los camarones cambien de color.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Prueba, sala si hace falta y sirve con cilantro picado.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Carne al jugo
+  v_v := pg_temp.receta('Carne al jugo', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 102, 'Trozos de posta guisados tapados a fuego muy bajo, casi sin agua: el jugo del plato es el que suelta la propia carne con la cebolla. El corte y la cantidad de líquido se ajustan a gusto de la casa; va servido sobre arroz.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno posta negra', 'RAW', 800, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 600, 1000, null, null, null);
+  perform pg_temp.alt(s, 'vacuno asiento picana', 'EXCELLENT', 'el corte es a gusto de la casa; el asiento queda más jugoso', 1);
+  perform pg_temp.alt(s, 'plateada de vacuno', 'GOOD', 'más grasa y más tiempo de olla; conviene alargar la cocción hasta que ceda', 1);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 250, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'es la que suelta el jugo junto con la carne', null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 150, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 3, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'laurel seco', 'AS_PACKAGED', 1, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'comino molido', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 6, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 7, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Sella la carne en trozos grandes con el aceite, a fuego fuerte, hasta que tome color por todos lados.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Agrega la cebolla, la zanahoria, el ajo, el laurel y el comino, y revuelve hasta que la cebolla empiece a ablandarse.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Suma medio vaso de agua caliente, tapa y cocina a fuego muy bajo hasta que la carne ceda al tenedor. El jugo lo pone la carne con la cebolla: si te gusta con más caldito, agrega agua de a poco; si lo quieres concentrado, destapa al final.', 70, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En vez de la olla tapada a fuego bajo: cierra la olla a presión y cocina 30 minutos desde que la válvula empieza a sonar, con el mismo medio vaso de agua.', 30, null, 'PRESSURE_COOKER', 'Sin olla a presión: sigue el paso anterior tal cual; este paso se salta.', null);
+  perform pg_temp.paso(v_v, 5, 'Cuece el arroz aparte mientras la carne termina.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 6, 'Sala al final y sirve la carne con su jugo sobre el arroz.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Carne a la cerveza
+  v_v := pg_temp.receta('Carne a la cerveza', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 89, 'Bistecs de posta cocidos lento en cerveza con harta cebolla, hasta que la salsa se reduce dulce y oscura. A diferencia del estofado, acá el único líquido es la cerveza y las papas van cocidas aparte, no dentro de la olla.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno posta negra', 'RAW', 800, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 600, 1000, null, null, null);
+  perform pg_temp.alt(s, 'vacuno lomo vetado', 'GOOD', 'más graso y más blando; necesita menos tiempo de olla', 1);
+  s := pg_temp.slot(v_v, 'BASE', 2, null, true);
+  perform pg_temp.comp(s, 'cerveza', 'AS_PACKAGED', 350, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 250, 500, 'el único líquido de la olla; el alcohol se evapora en la cocción larga', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 300, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 150, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 4, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 800, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 500, 1000, 'cocidas aparte para acompañar', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'laurel seco', 'AS_PACKAGED', 1, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimienta negra', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 6, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 7, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Sella los bistecs con el aceite a fuego fuerte, por ambos lados, y resérvalos.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'En la misma olla, sofríe la cebolla en pluma con la zanahoria y el ajo hasta que la cebolla se dore en los bordes.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Devuelve la carne, agrega la cerveza, el laurel y la pimienta, tapa y cocina a fuego bajo hasta que la carne esté blanda.', 50, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Cuece las papas peladas en agua con sal mientras la carne se guisa.', 25, null, null, null, 1);
+  perform pg_temp.paso(v_v, 5, 'Destapa la olla y deja reducir la salsa a fuego medio hasta que espese y se oscurezca.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Sala al final y sirve la carne con la salsa de cebolla encima y las papas al lado.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Estofado de carne
+  v_v := pg_temp.receta('Estofado de carne', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 106, 'Guiso de olla completo: carne en cubos con tomate, vino tinto, papas y arvejas cocidas dentro del mismo caldo. Todo sale de la misma olla, con el caldo apenas espesado por la papa.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno posta negra', 'RAW', 700, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 550, 900, null, null, null);
+  perform pg_temp.alt(s, 'vacuno asado de tira', 'GOOD', 'con hueso hay que comprar más peso; el caldo queda más sustancioso', 1.4);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 600, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 800, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 200, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'arvejas frescas', 'RAW', 200, 'G', 'STEWED', true, 2, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'tomate', 'RAW', 200, 'G', 'STEWED', false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 200, 'G', 'STEWED', false, 4, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 4, null, true);
+  perform pg_temp.comp(s, 'vino tinto', 'AS_PACKAGED', 100, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 50, 150, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'laurel seco', 'AS_PACKAGED', 1, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'comino molido', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'aji de color', 'AS_PACKAGED', 3, 'G', null, true, 4, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 6, 'G', null, false, 5, null, 'SEASONING', 'ADJUSTABLE', 0, 7, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Sella la carne en cubos con el aceite hasta que tome color por todos lados.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Agrega cebolla, zanahoria y ajo con el ají de color, el comino y el laurel; sofríe hasta que la cebolla se ablande.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Suma el tomate picado y el vino tinto, y deja que hierva un par de minutos para que evapore el alcohol.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Cubre apenas con agua caliente, tapa y cocina a fuego bajo hasta que la carne empiece a ceder.', 45, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'En vez de la olla común: cierra la olla a presión y cocina 20 minutos desde que suena la válvula, antes de agregar las papas.', 20, null, 'PRESSURE_COOKER', 'Sin olla a presión: sigue el paso anterior tal cual; este paso se salta.', null);
+  perform pg_temp.paso(v_v, 6, 'Agrega las papas en cubos grandes y las arvejas, y cuece destapado hasta que la papa esté blanda y el caldo tome cuerpo.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Sala al final y sirve en plato hondo con su caldo.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Estofado de osobuco
+  v_v := pg_temp.receta('Estofado de osobuco', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 170, 'Osobuco guisado lento con tomate, vino tinto y verduras hasta que la carne se despega sola del hueso y la médula enriquece el caldo. Plato de olla larga para el fin de semana.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'osobuco de vacuno', 'RAW', 1400, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 1000, 1800, 'ruedas con hueso; la porción comestible la aplica el catálogo', null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 600, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 800, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 200, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 200, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'apio', 'RAW', 100, 'G', 'STEWED', true, 3, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'tomate', 'RAW', 200, 'G', 'STEWED', false, 4, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 4, null, true);
+  perform pg_temp.comp(s, 'vino tinto', 'AS_PACKAGED', 150, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 200, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 10, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'laurel seco', 'AS_PACKAGED', 1, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'oregano seco', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 6, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 7, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 7, null, false);
+  perform pg_temp.comp(s, 'perejil fresco', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Sella las ruedas de osobuco con el aceite, dorándolas bien por ambas caras, y resérvalas.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'En la misma olla, sofríe cebolla, zanahoria, apio y ajo con el laurel y el orégano hasta que las verduras se ablanden.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Agrega el tomate picado y el vino tinto, y deja hervir un par de minutos para evaporar el alcohol.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Devuelve el osobuco, cubre con agua caliente hasta la mitad de las ruedas, tapa y cocina a fuego muy bajo, dándolas vuelta a mitad de camino, hasta que la carne se despegue del hueso.', 100, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'En vez de la olla común: cierra la olla a presión y cocina 45 minutos desde que suena la válvula.', 45, null, 'PRESSURE_COOKER', 'Sin olla a presión: sigue el paso anterior tal cual; este paso se salta.', null);
+  perform pg_temp.paso(v_v, 6, 'Agrega las papas en cubos grandes y cuece destapado hasta que estén blandas y el caldo espese.', 25, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Sala al final y sirve cada rueda con su hueso, el caldo y perejil picado.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Carne desmechada en olla a presión
+  v_v := pg_temp.receta('Carne desmechada en olla a presión', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 215, 'Tapapecho entero cocido sobre una cama de cebolla, zanahoria y pimiento, y luego deshilachado dentro de su propio jugo. Está pensada para la olla a presión, pero sale igual en olla común con tres horas de fuego bajo. No es la carne mechada de posta al jugo: acá el corte es tapapecho y la gracia es deshilacharlo.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno tapapecho', 'RAW', 1000, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 800, 1300, 'la pieza entera; se deshilacha al final', null, null);
+  perform pg_temp.alt(s, 'vacuno posta negra', 'GOOD', 'más magra y menos fibrosa: se deshilacha menos y queda más seca', 0.9);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 250, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 200, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 150, 'G', 'STEWED', false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 10, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'aji de color', 'AS_PACKAGED', 3, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'comino molido', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'oregano seco', 'AS_PACKAGED', 1, 'G', null, true, 4, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'laurel seco', 'AS_PACKAGED', 1, 'G', null, true, 5, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 6, 'G', null, false, 6, null, 'SEASONING', 'ADJUSTABLE', 0, 7, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 4, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Sella el tapapecho entero con el aceite, dorándolo por todos sus lados.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Retira la carne, arma en el fondo de la olla la cama de cebolla, zanahoria, pimiento y ajo con el ají de color, el comino, el orégano y el laurel; acomoda la carne encima y agrega agua caliente hasta cubrir un tercio de la pieza.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Tapa y cocina a fuego muy bajo, dando vuelta la pieza cada hora, hasta que se deshaga al apretarla con un tenedor.', 180, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En vez de las 3 horas a fuego bajo: cierra la olla a presión y cocina 60 minutos desde que la válvula empieza a sonar; deja que pierda presión sola antes de abrir.', 60, null, 'PRESSURE_COOKER', 'Sin olla a presión: sigue el paso anterior tal cual; este paso se salta.', null);
+  perform pg_temp.paso(v_v, 5, 'Saca la carne, deshiláchala con dos tenedores y devuélvela a la olla con las verduras y el jugo. Sala al final y revuelve.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Picante de guatitas
+  v_v := pg_temp.receta('Picante de guatitas', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 144, 'Guatitas guisadas y ligadas con marraqueta remojada en leche y queso mantecoso, con un toque de merquén. No son las guatitas a la jardinera de caldo claro: el picante es cremoso y va espesado con pan.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'guatitas', 'RAW', 1000, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 800, 1200, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 500, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 350, 700, null, null, null);
+  perform pg_temp.comp(s, 'pan marraqueta', 'EDIBLE_PORTION', 120, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 80, 160, 'la miga remojada en leche es la ligazón del picante', null, null);
+  s := pg_temp.slot(v_v, 'BASE', 3, null, true);
+  perform pg_temp.comp(s, 'leche liquida entera', 'AS_PACKAGED', 300, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 400, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 4, null, true);
+  perform pg_temp.comp(s, 'queso mantecoso', 'AS_PACKAGED', 100, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 60, 140, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 5, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 200, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 6, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'aji de color', 'AS_PACKAGED', 4, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'merquen', 'AS_PACKAGED', 2, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, 'el picor se gradúa acá', null, null);
+  perform pg_temp.comp(s, 'comino molido', 'AS_PACKAGED', 1, 'G', null, true, 4, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'oregano seco', 'AS_PACKAGED', 1, 'G', null, true, 5, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 6, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 7, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Limpia bien las guatitas, córtalas en tiras y hiérvelas en abundante agua con un poco de sal hasta que estén blandas al morder.', 90, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'En vez del hervor largo: cierra la olla a presión y cocina las guatitas 30 minutos desde que suena la válvula.', 30, null, 'PRESSURE_COOKER', 'Sin olla a presión: sigue el paso anterior tal cual; este paso se salta.', null);
+  perform pg_temp.paso(v_v, 3, 'Mientras las guatitas hierven, saca la corteza a la marraqueta y remoja la miga en la leche.', 5, null, null, null, 1);
+  perform pg_temp.paso(v_v, 4, 'En otra olla, sofríe la cebolla con el aceite, el ajo, el ají de color, el merquén, el comino y el orégano.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Agrega las guatitas escurridas, las papas en cubos y un par de tazas del caldo de cocción; cuece hasta que la papa esté blanda.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Muele el pan remojado con un tenedor y súmalo con la leche y el queso en cubos; revuelve a fuego suave hasta que el guiso ligue y espese.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Prueba y sala al final.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Pulpa de cerdo con ciruelas
+  v_v := pg_temp.receta('Pulpa de cerdo con ciruelas', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 94, 'Trozos de pulpa de cerdo guisados con vino tinto y ciruelas secas, que se deshacen en la salsa y la dejan agridulce y brillante. Plato de olla para domingo, servido con arroz.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pulpa de cerdo', 'RAW', 900, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 700, 1100, null, null, null);
+  s := pg_temp.slot(v_v, 'FRUIT', 2, null, true);
+  perform pg_temp.comp(s, 'ciruelas secas', 'AS_PACKAGED', 150, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 200, 'sin carozo; se deshacen a medias y endulzan la salsa', null, null);
+  perform pg_temp.alt(s, 'pasas', 'GOOD', 'más chicas y más dulces; con menos basta', 0.7);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 200, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 150, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 4, null, true);
+  perform pg_temp.comp(s, 'vino tinto', 'AS_PACKAGED', 150, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 200, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 5, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 6, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'laurel seco', 'AS_PACKAGED', 1, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimienta negra', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 6, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 7, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 7, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Sella los trozos de cerdo con el aceite a fuego fuerte hasta dorarlos por todos lados.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Agrega la cebolla, la zanahoria y el ajo, y sofríe hasta que la cebolla se ablande.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Suma el vino tinto con el laurel y la pimienta, y deja hervir un par de minutos para evaporar el alcohol.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Cubre apenas con agua caliente, tapa y cocina a fuego bajo hasta que el cerdo esté blando.', 45, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Agrega las ciruelas y cocina destapado hasta que la salsa espese y las ciruelas se deshagan a medias.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Cuece el arroz aparte mientras el guiso termina.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 7, 'Sala al final y sirve el guiso con su salsa sobre el arroz.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Pollo escabechado
+  v_v := pg_temp.receta('Pollo escabechado', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 61, 'Presas de pollo guisadas en vinagre y vino blanco con harta cebolla y zanahoria, para dejar reposar y comer frías o apenas tibias al día siguiente. El vinagre es lo que lo separa del pollo al jugo y del arvejado.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pollo trutro entero con piel', 'RAW', 900, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 700, 1200, 'peso con hueso; la porción comestible la aplica el catálogo', null, null);
+  perform pg_temp.alt(s, 'pollo entero con piel', 'EXCELLENT', 'trozado en presas; mismo procedimiento', 1);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 300, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'en pluma gruesa: es parte del plato, no un aromático', null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 250, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 3, null, true);
+  perform pg_temp.comp(s, 'vinagre tinto', 'AS_PACKAGED', 100, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 60, 130, 'define el escabeche; con menos queda un guiso cualquiera', null, null);
+  perform pg_temp.comp(s, 'vino blanco', 'AS_PACKAGED', 150, 'ML', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 100, 200, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'laurel seco', 'AS_PACKAGED', 1, 'G', null, false, 2, null, 'SEASONING', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimienta negra', 'AS_PACKAGED', 2, 'G', null, false, 3, null, 'SEASONING', 'FIXED', null, null, 'en grano entero, no molida', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite de oliva', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 40, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Dora las presas de pollo con el aceite por ambos lados y resérvalas.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'En la misma olla, sofríe la cebolla en pluma con la zanahoria y el ajo hasta que empiecen a ablandarse.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Devuelve el pollo, agrega el vinagre, el vino blanco, el laurel, la pimienta en grano y medio vaso de agua; tapa y cocina a fuego bajo hasta que el pollo esté cocido y las verduras tiernas. Sala hacia el final.', 30, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Apaga y deja el pollo enfriar dentro de su jugo en la misma olla: el escabeche toma el gusto reposado y se sirve frío o apenas tibio, con las verduras encima.', null, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Guiso de alcachofas y pollo
+  v_v := pg_temp.receta('Guiso de alcachofas y pollo', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 58, 'Fondos de alcachofa en salsa blanca con pollo desmenuzado, un guiso suave de primavera que aprovecha el pollo cocido que ya tienes hecho.');
+  s := pg_temp.slot(v_v, 'VEGETABLE', 1, null, true);
+  perform pg_temp.comp(s, 'alcachofa', 'RAW', 1200, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 900, 1600, 'peso de alcachofas enteras; solo se come el fondo y la base de las hojas', null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 2, null, true);
+  perform pg_temp.comp(s, 'mantequilla', 'AS_PACKAGED', 30, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 20, 40, 'base de la salsa blanca', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 30, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 20, 40, 'liga la salsa', null, null);
+  perform pg_temp.comp(s, 'limon', 'RAW', 30, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', null, null, 'para frotar y cocer las alcachofas sin que se pongan negras', null, null);
+  perform pg_temp.comp(s, 'nuez moscada molida', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 4, null, true);
+  perform pg_temp.comp(s, 'leche liquida entera', 'AS_PACKAGED', 300, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 400, null, null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 5, null, true);
+  perform pg_temp.comp_anidada(s, 'Pollo cocido desmenuzado', 1, 1);
+  perform pg_temp.paso(v_v, 1, 'Limpia las alcachofas hasta dejar el fondo con la base de las hojas, frótalas con limón y cuécelas en agua con sal y el resto del limón hasta que el fondo se pinche fácil.', 25, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Sofríe la cebolla en la mantequilla a fuego suave hasta que esté transparente; espolvorea la harina y cocínala un minuto revolviendo, sin que tome color.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Agrega la leche de a poco, revolviendo para que no queden grumos, hasta tener una salsa lisa. Perfuma con la nuez moscada.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Suma los fondos de alcachofa en cuartos y el pollo desmenuzado, y calienta a fuego suave hasta que el guiso tome cuerpo.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Prueba y sala.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Chapaleles
+  v_v := pg_temp.receta('Chapaleles', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 53, 'Masitas chilotas de papa cocida y harina, hervidas hasta que flotan. No son milcaos: el milcao lleva papa cruda rallada y se fríe; el chapalel parte de puré y se cuece en agua. Acompañan el pulmay o se comen solos con pebre.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 700, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 500, 900, 'se pesa cruda; se cuece y se muele para la masa', null, null);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 250, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 180, 320, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 2, null, false);
+  perform pg_temp.comp(s, 'manteca de cerdo', 'AS_PACKAGED', 20, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', null, null, 'un toque tradicional que ablanda la masa', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Pela y cuece las papas en agua con sal hasta que estén blandas; escúrrelas y muélelas en caliente hasta un puré seco y sin grumos.', 25, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Mezcla el puré tibio con la harina, la sal y la manteca, amasando apenas hasta que la masa se despegue de las manos. Si queda pegajosa, suma harina de a poco.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Forma discos aplastados de un dedo de grosor, del porte de la palma.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Hiérvelos de a tandas en abundante agua con sal: están listos un par de minutos después de que suben a flote. Sácalos con espumadera.', 12, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Pulmay (curanto en olla)
+  v_v := pg_temp.receta('Pulmay (curanto en olla)', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 92, 'El curanto chilote llevado a la olla de la casa: capas de papas, carnes, longaniza y mariscos cocidas al vapor del vino blanco, tapadas con hojas de repollo. Se sirve por capas con el caldo en tacitas, junto a milcaos y chapaleles.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'choritos', 'RAW', 1500, 'G', 'STEAMED', false, 1, null, 'MAIN', 'ADJUSTABLE', 1000, 2000, 'peso con concha', null, null);
+  perform pg_temp.comp(s, 'almejas', 'RAW', 500, 'G', 'STEAMED', false, 2, null, 'MAIN', 'ADJUSTABLE', 300, 700, 'peso con concha', null, null);
+  perform pg_temp.comp(s, 'longaniza', 'RAW', 300, 'G', 'STEWED', false, 3, null, 'MAIN', 'ADJUSTABLE', 200, 400, null, null, null);
+  perform pg_temp.comp(s, 'chuleta de cerdo', 'RAW', 400, 'G', 'STEWED', false, 4, null, 'MAIN', 'ADJUSTABLE', 300, 600, 'peso con hueso', null, null);
+  perform pg_temp.comp(s, 'pollo trutro entero con piel', 'RAW', 600, 'G', 'STEWED', false, 5, null, 'MAIN', 'ADJUSTABLE', 400, 800, 'peso con hueso', null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 800, 'G', 'STEAMED', false, 1, null, 'MAIN', 'ADJUSTABLE', 600, 1000, 'enteras o en mitades grandes, van al fondo', null, null);
+  perform pg_temp.comp_anidada(s, 'Milcao', 0.5, 2);
+  perform pg_temp.comp_anidada(s, 'Chapaleles', 0.5, 3);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'repollo', 'RAW', 300, 'G', 'STEAMED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'hojas enteras para tapar las capas; también se comen', null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 4, null, true);
+  perform pg_temp.comp(s, 'vino blanco', 'AS_PACKAGED', 250, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 350, 'con una taza de agua, es todo el líquido: el resto lo ponen los mariscos', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 5, 'poca: mariscos y longaniza ya aportan sal', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 20, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Dora la longaniza en trozos, las chuletas y los trutros con el aceite en la olla más grande de la casa, y resérvalos.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'En la misma olla, sofríe la cebolla con el ajo un par de minutos.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Arma las capas sin revolver: papas al fondo, encima las carnes doradas, y arriba los choritos y almejas lavados. Agrega el vino blanco con una taza de agua y tapa todo con las hojas de repollo y la tapa de la olla.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Cocina a fuego medio-bajo sin destapar, hasta que las papas estén blandas y los mariscos abiertos. Descarta los que sigan cerrados.', 40, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Sirve por capas en una fuente, con el caldo colado en tacitas para acompañar, junto a los milcaos y chapaleles.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Pernil de cerdo con papas doradas
+  v_v := pg_temp.receta('Pernil de cerdo con papas doradas', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 192, 'Pernil cocido lento en su caldo con verduras y especias, servido en tajadas con papas cocidas en ese mismo caldo y doradas en sartén. Plato de picada, hecho en casa.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pernil de cerdo', 'RAW', 1800, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 1400, 2400, 'peso con hueso y cuero; la porción comestible la aplica el catálogo', null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 900, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 600, 1100, 'se cuecen en el caldo del pernil y se doran después', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'entera o en mitades, para el caldo', null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 150, 'G', 'BOILED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'apio', 'RAW', 80, 'G', 'BOILED', true, 3, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'laurel seco', 'AS_PACKAGED', 1, 'G', null, false, 1, null, 'SEASONING', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimienta negra', 'AS_PACKAGED', 2, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', null, null, 'en grano entero', null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 10, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 8, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 10, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 30, 'para dorar las papas', null, null);
+  perform pg_temp.paso(v_v, 1, 'Pon el pernil en una olla grande cubierto de agua fría con la cebolla, la zanahoria, el apio, el ajo, el laurel, la pimienta en grano y la sal. Lleva a hervor suave y retira la espuma que suba.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cocina tapado a fuego bajo, con el agua apenas temblando, hasta que la carne se despegue del hueso al tirarla con un tenedor.', 150, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'En vez de la olla común: cierra la olla a presión y cocina 50 minutos desde que la válvula empieza a sonar; deja que pierda presión sola antes de abrir.', 50, null, 'PRESSURE_COOKER', 'Sin olla a presión: sigue el paso anterior tal cual; este paso se salta.', null);
+  perform pg_temp.paso(v_v, 4, 'Mientras el pernil termina, saca un par de tazas de su caldo a otra olla y cuece las papas peladas enteras hasta que estén apenas blandas.', 20, null, null, null, 1);
+  perform pg_temp.paso(v_v, 5, 'Escurre las papas, pártelas en mitades y dóralas en sartén con el aceite hasta que hagan costra pareja.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Sirve el pernil en tajadas gruesas con un poco de su jugo y las papas doradas al lado.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Marraqueta casera
+  v_v := pg_temp.receta('Marraqueta casera', 'MEAL', array['TEA', 'BREAKFAST']::public.meal_type[], 2, 55, 'La marraqueta hecha en casa: masa firme de solo harina, agua, levadura y sal, marcada al centro y horneada con vapor para la cáscara crujiente. El trabajo activo es media hora; los leudados corren solos y no están en los tiempos.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 250, 'G', 'BAKED', false, 1, null, 'MAIN', 'FIXED', null, null, 'la masa es una proporción; para más marraquetas se multiplica la receta entera, no la harina sola', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'levadura seca', 'AS_PACKAGED', 3, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 3, 6, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Disuelve la levadura en unos 165 ml de agua tibia —tibia, no caliente, o la matas— y espera a que haga un poco de espuma.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Mezcla la harina con la sal, agrega el agua con levadura y amasa hasta tener una masa lisa y firme, más seca que la de un pan de molde: la marraqueta pide masa dura para que el corte del centro se mantenga.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Tápala con un paño y déjala leudar en un lugar tibio hasta que doble su volumen, una hora a hora y media según el calor de la cocina.', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Divide la masa en cuatro bollos parejos, júntalos de a dos sobre la lata enharinada y presiona a lo largo del centro de cada par con el mango de una cuchara de palo, casi hasta el fondo: esa marca es la que después deja partir la marraqueta con la mano.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Déjalas leudar tapadas sobre la lata unos 45 minutos. Cerca del final, precalienta el horno a 220 °C con una budinera con agua caliente en el piso: el vapor es lo que hace la cáscara crujiente.', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Hornea hasta que estén bien doradas y suenen huecas al golpearlas por abajo. En los últimos minutos abre la puerta un par de veces para soltar el vapor y que la cáscara seque.', 25, 220, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Churrascas
+  v_v := pg_temp.receta('Churrascas', 'MEAL', array['TEA', 'BREAKFAST']::public.meal_type[], 2, 57, 'Pan plano del sur hecho en sartén o plancha, sin horno: masa de harina y manteca, pinchada y tostada por lados hasta quedar con pintas doradas. No es pan amasado: acá no se prende el horno, y la grasa y el leudante se ajustan a lo que haya en la casa.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 250, 'G', 'GRILLED', false, 1, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 2, null, true);
+  perform pg_temp.comp(s, 'manteca de cerdo', 'AS_PACKAGED', 30, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 20, 50, 'derretida y tibia. Con más manteca la churrasca queda más hojaldrada; es comida, no un aceite añadido', null, null);
+  perform pg_temp.alt(s, 'mantequilla', 'GOOD', 'misma churrasca con sabor a mantequilla; se necesita un poco más porque trae agua', 1.2);
+  perform pg_temp.alt(s, 'yogur natural', 'ACCEPTABLE', 'la versión con yogur en vez de manteca: masa más húmeda y un dejo ácido; agrega menos agua al juntar', 3);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'polvos de hornear', 'AS_PACKAGED', 5, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 4, 8, 'el leudante rápido de la versión de todos los días; la variante con levadura va en las alternativas', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 2, 5, null, null, null);
+  perform pg_temp.alt(s, 'levadura seca', 'GOOD', 'en vez de los polvos de hornear: disuélvela en el agua tibia y suma una hora de leudado tapado antes de formar los discos', 0.8);
+  perform pg_temp.paso(v_v, 1, 'Mezcla la harina con los polvos de hornear y la sal. Agrega la manteca derretida tibia y luego agua tibia de a poco —unos 130 ml, la cantidad final depende de la harina— hasta juntar una masa blanda que no se pegue en las manos.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Amasa sobre el mesón hasta que quede lisa.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Tápala con un paño y déjala descansar: no leuda, solo se relaja para poder estirarla sin que se encoja.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Forma bollos, aplástalos con la mano o el uslero a un centímetro de alto y pínchalos por los dos lados con el tenedor para que no se inflen.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Cuécelas en sartén o plancha seca a fuego medio-bajo, por tandas, unos cinco minutos por lado, hasta que estén cocidas por dentro y con pintas doradas por fuera. Si el fuego está fuerte se queman por fuera y quedan crudas al medio.', 18, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Pan de molde integral
+  v_v := pg_temp.receta('Pan de molde integral', 'MEAL', array['BREAKFAST', 'TEA']::public.meal_type[], 2, 67, 'Pan de molde de dos harinas —integral y blanca— para tostadas y sándwiches de la semana. El trabajo activo es media hora: las horas de leudado corren solas y no están en los tiempos.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'harina de trigo integral', 'RAW', 200, 'G', 'BAKED', false, 1, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 100, 'G', 'BAKED', false, 2, null, 'MAIN', 'FIXED', null, null, 'la parte blanca da estructura; cien por ciento integral el pan sale más apretado', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'levadura seca', 'AS_PACKAGED', 5, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 3, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, 'va dentro de la masa: ablanda la miga', null, null);
+  s := pg_temp.slot(v_v, 'SWEETENER', 4, null, false);
+  perform pg_temp.comp(s, 'miel', 'AS_PACKAGED', 15, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', 0, 25, 'alimenta la levadura y redondea el sabor del salvado', null, null);
+  perform pg_temp.alt(s, 'azucar granulada', 'GOOD', 'cumple el mismo papel que la miel en la masa', 1);
+  perform pg_temp.paso(v_v, 1, 'Disuelve la levadura y la miel en unos 210 ml de agua tibia —tibia, no caliente— y espera a que haga espuma.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Junta las dos harinas con la sal, agrega el agua con levadura y el aceite, y amasa hasta que la masa quede lisa y elástica. La masa integral es algo pegajosa: no la corrijas con más harina o el pan sale seco.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Tápala y déjala leudar en un lugar tibio hasta que doble su volumen, una a dos horas según el calor de la cocina.', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Desgasifícala apretándola con la palma, forma un rollo del largo del molde y ponlo con el cierre hacia abajo en un molde de pan aceitado.', 7, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Déjala leudar de nuevo dentro del molde hasta que asome por el borde, alrededor de una hora. Cerca del final, precalienta el horno a 190 °C.', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Hornea hasta que el pan esté dorado y suene hueco al golpearlo por abajo.', 35, 190, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Desmóldalo de inmediato y déjalo enfriar por completo sobre una rejilla antes de cortarlo: tibio se desmiga.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Pan de hamburguesa semi integral
+  v_v := pg_temp.receta('Pan de hamburguesa semi integral', 'MEAL', array['OTHER']::public.meal_type[], 4, 52, 'Los bollos que le faltaban a las hamburguesas caseras: masa enriquecida con leche, huevo y mantequilla, mitad integral, con sésamo encima. Salen cuatro panes parejos; los leudados corren solos y no están en los tiempos.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 160, 'G', 'BAKED', false, 1, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'harina de trigo integral', 'RAW', 80, 'G', 'BAKED', false, 2, null, 'MAIN', 'FIXED', null, null, 'la parte integral: da sabor sin apretar la miga', null, null);
+  perform pg_temp.comp(s, 'leche liquida entera', 'AS_PACKAGED', 140, 'ML', null, false, 3, null, 'MAIN', 'FIXED', null, null, 'tibia; una cucharada queda para pintar los bollos', null, null);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 55, 'G', null, false, 4, null, 'MAIN', 'FIXED', null, null, null, 'unidad', 1);
+  s := pg_temp.slot(v_v, 'FAT', 2, null, true);
+  perform pg_temp.comp(s, 'mantequilla', 'AS_PACKAGED', 25, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'blanda; es comida, no un aceite añadido', null, null);
+  s := pg_temp.slot(v_v, 'SWEETENER', 3, null, true);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 15, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'levadura seca', 'AS_PACKAGED', 4, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 2, 5, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 5, null, false);
+  perform pg_temp.comp(s, 'semillas de sesamo', 'AS_PACKAGED', 8, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Entibia la leche —tibia, no caliente, o matas la levadura—, disuelve la levadura con el azúcar y espera a que haga espuma.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Junta las harinas con la sal, agrega la leche con levadura, el huevo y la mantequilla blanda, y amasa hasta que la masa quede lisa, blanda y apenas pegajosa.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Tápala y déjala leudar en un lugar tibio hasta que doble su volumen, una hora larga.', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Divídela en cuatro bollos parejos, boléalos apretando hacia abajo y aplástalos apenas con la palma sobre la lata con papel: al leudar recuperan la altura.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Déjalos leudar tapados hasta que se vean inflados, unos 45 minutos. Cerca del final, precalienta el horno a 180 °C.', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Píntalos con la cucharada de leche reservada y reparte el sésamo encima.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Hornea hasta que doren parejo por arriba y suenen huecos por abajo. Enfríalos sobre rejilla antes de partirlos.', 18, 180, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Pan de huevo
+  v_v := pg_temp.receta('Pan de huevo', 'MEAL', array['TEA', 'BREAKFAST']::public.meal_type[], 2, 40, 'El pan dulce de la once: bollitos de miga tierna con huevo, mantequilla y polvos de hornear, pintados con leche para el brillo. Es el hermano dulce del pan amasado y no necesita leudar.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 300, 'G', 'BAKED', false, 1, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 110, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'van en la masa; el brillo de arriba se pinta con leche', 'unidad', 2);
+  perform pg_temp.comp(s, 'leche liquida entera', 'AS_PACKAGED', 50, 'ML', null, false, 3, null, 'MAIN', 'FIXED', null, null, 'lo justo para juntar la masa y pintar los bollos', null, null);
+  s := pg_temp.slot(v_v, 'SWEETENER', 2, null, true);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 70, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 50, 90, 'acá el dulce es parte del pan, no un espolvoreo', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'mantequilla', 'AS_PACKAGED', 50, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'blanda; es comida, no un aceite añadido', null, null);
+  perform pg_temp.alt(s, 'manteca de cerdo', 'GOOD', 'la versión antigua: miga un poco más hojaldrada y se necesita algo menos porque no trae agua', 0.8);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'polvos de hornear', 'AS_PACKAGED', 8, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'leudante rápido: por eso este pan no espera', null, null);
+  perform pg_temp.comp(s, 'esencia de vainilla', 'AS_PACKAGED', 3, 'ML', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 1, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 2, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Junta la harina con los polvos de hornear, el azúcar y la sal. Agrega los huevos, la mantequilla blanda y la vainilla, y suma la leche de a poco hasta formar una masa suave que no se pegue. No la amases de más: es masa de polvos, no de levadura, y trabajada en exceso sale dura.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Precalienta el horno mientras la masa descansa tapada.', 10, 180, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Forma bollos del porte de un huevo, aplástalos apenas sobre la lata con papel y píntalos con leche para el brillo.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Hornéalos hasta que la base dore y la superficie tome color parejo.', 20, 180, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Pan de ajo al horno
+  v_v := pg_temp.receta('Pan de ajo al horno', 'MEAL', array['LUNCH', 'DINNER', 'TEA']::public.meal_type[], 4, 19, 'Marraquetas cortadas y untadas con mantequilla de ajo y perejil, doradas al horno. El acompañamiento natural de una crema de zapallo o de cualquier sopa de la casa.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'pan marraqueta', 'EDIBLE_PORTION', 200, 'G', 'BAKED', false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 300, null, 'unidad', 2);
+  s := pg_temp.slot(v_v, 'FAT', 2, null, true);
+  perform pg_temp.comp(s, 'mantequilla', 'AS_PACKAGED', 60, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 40, 80, 'a pomada; es comida, no un aceite añadido', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 12, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 6, 16, null, null, null);
+  perform pg_temp.comp(s, 'perejil fresco', 'RAW', 8, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'oregano seco', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 1, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 2, 'poca: la mantequilla ya trae', null, null);
+  perform pg_temp.paso(v_v, 1, 'Precalienta el horno.', 10, 190, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Mezcla la mantequilla a pomada con el ajo molido fino, el perejil picado, el orégano y la sal.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Corta las marraquetas en rebanadas sin llegar al fondo, para que queden unidas por la base, y unta la mezcla entre corte y corte.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Hornéalas sobre la lata hasta que los bordes doren: destapadas quedan crocantes, envueltas en aluminio quedan blandas por dentro.', 10, 190, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'En vez del horno: dóralas por tandas en la air fryer.', 6, 180, 'AIR_FRYER', 'Sin air fryer: los 10 minutos de horno a 190 °C del paso anterior, que además hace todas las marraquetas de una vez.', null);
+  perform pg_temp.publicar(v_v);
+
+  -- Sopaipillas al horno de zapallo y betarraga
+  v_v := pg_temp.receta('Sopaipillas al horno de zapallo y betarraga', 'MEAL', array['TEA', 'SNACK', 'BREAKFAST']::public.meal_type[], 2, 68, 'Sopaipillas horneadas en vez de fritas: acá el aceite va dentro de la masa y se come entero, no hay baño de fritura. La betarraga cocida se muele junto al zapallo y tiñe la masa de un rosado que en el horno se vuelve tierra.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 250, 'G', 'BAKED', false, 1, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zapallo camote', 'RAW', 150, 'G', 'BOILED', false, 2, null, 'MAIN', 'ADJUSTABLE', 100, 200, 'peso de compra con cáscara y pepas; el catálogo aplica la porción comestible', null, null);
+  perform pg_temp.comp(s, 'betarraga', 'RAW', 100, 'G', 'BOILED', false, 3, null, 'MAIN', 'ADJUSTABLE', 70, 130, 'cocida y molida con el zapallo: da el color y un dulzor suave', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 2, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 35, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 25, 45, 'va DENTRO de la masa y se come completo: en esta versión al horno no hay aceite de sartén que descontar', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'polvos de hornear', 'AS_PACKAGED', 5, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 2, 5, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Pela el zapallo y la betarraga y cuécelos juntos en poca agua hasta que los dos cedan al tenedor. Escúrrelos muy bien: si quedan con agua, la masa pide más harina y las sopaipillas salen duras.', 25, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'En vez de los 25 minutos de olla común: cuécelos en olla a presión hasta que cedan al tenedor.', 10, null, 'PRESSURE_COOKER', 'Sin olla a presión: los 25 minutos de olla común del paso anterior.', null);
+  perform pg_temp.paso(v_v, 3, 'Muélelos en caliente hasta tener un puré parejo y rosado, y déjalo entibiar.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Junta el puré con el aceite, la harina cernida con los polvos de hornear y la sal, y amasa apenas hasta que la masa deje de pegarse. No la trabajes de más.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Uslerea a medio centímetro, corta discos con un vaso o una taza y pínchalos dos o tres veces con el tenedor. Mientras cortas, precalienta el horno a 200 °C.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Hornéalas repartidas en dos latas con papel —en una sola se montan y se cuecen al vapor—, dándolas vuelta y alternando las latas a media cocción, hasta que se inflen un poco y doren en los bordes.', 18, 200, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'En vez del horno: hazlas por tandas en la air fryer, dándolas vuelta a la mitad.', 8, 190, 'AIR_FRYER', 'Sin air fryer: los 18 minutos de horno a 200 °C del paso anterior, que hace las dos latas de una vez.', null);
+  perform pg_temp.publicar(v_v);
+
+  -- Sándwich de lengua con palta
+  v_v := pg_temp.receta('Sándwich de lengua con palta', 'MEAL', array['TEA', 'DINNER']::public.meal_type[], 2, 173, 'Marraqueta con láminas de lengua cocida, palta molida y pebre encima: el sándwich de fuente de soda hecho en casa. Formulación doméstica propia sobre un clásico que las fuentes no publican con cantidades.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'lengua de vaca', 'RAW', 400, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 500, 'la lengua se cuece entera; acá se declara la parte que va al sándwich y el resto queda para otra comida', null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'pan marraqueta', 'EDIBLE_PORTION', 200, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 300, null, 'unidad', 2);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'palta', 'EDIBLE_PORTION', 100, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 60, 140, 'peso de pulpa, sin cuesco ni cáscara; es comida, no un aceite añadido', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'mayonesa', 'AS_PACKAGED', 20, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', 0, 30, null, null, null);
+  perform pg_temp.comp_anidada(s, 'Pebre', 0.5, 2);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, true);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 0, 3, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Cuece la lengua entera en agua con sal, tapada y a fuego suave, hasta que un cuchillo entre sin resistencia por la parte gruesa. Es una cocción larga: unas dos horas y media.', 150, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'En vez de las dos horas y media de olla común: cuécela en olla a presión desde que suena la válvula.', 50, null, 'PRESSURE_COOKER', 'Sin olla a presión: las dos horas y media de olla común del paso anterior, revisando el nivel de agua.', null);
+  perform pg_temp.paso(v_v, 3, 'Pélala en caliente —fría el cuero no suelta— y corta en láminas delgadas lo que va al sándwich.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Muele la palta con la sal y prepara el pebre de la receta anidada si no lo tienes hecho.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Abre las marraquetas, unta la palta en la base, encima las láminas de lengua tibia, y termina con el pebre y la mayonesa si se quiere.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Sándwich de carne mechada
+  v_v := pg_temp.receta('Sándwich de carne mechada', 'MEAL', array['TEA', 'DINNER']::public.meal_type[], 2, 115, 'La carne mechada vuelta sándwich: posta cocida lento hasta deshilacharse, bien jugosa dentro de una marraqueta, con dos armados a elegir: a la italiana con tomate y palta, o con cebolla caramelizada. Es otro plato y otro momento que el guiso publicado.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno posta negra', 'RAW', 450, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 350, 600, null, null, null);
+  perform pg_temp.alt(s, 'plateada de vacuno', 'EXCELLENT', 'más grasa: queda aún más jugosa y demora parecido', 1);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'la del guiso', null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 3, null, false);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 200, 'G', 'PAN_SEARED', true, 1, null, 'MAIN', 'OPTIONAL', 0, 250, 'solo para el armado con cebolla caramelizada', null, null);
+  perform pg_temp.comp(s, 'tomate', 'RAW', 150, 'G', 'RAW', true, 2, null, 'MAIN', 'OPTIONAL', null, null, 'solo para el armado a la italiana', null, null);
+  perform pg_temp.comp(s, 'palta', 'EDIBLE_PORTION', 100, 'G', 'RAW', true, 3, null, 'MAIN', 'OPTIONAL', null, null, 'peso de pulpa; solo para el armado a la italiana', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, 'ayuda a caramelizar la cebolla del armado', null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 5, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'aji de color', 'AS_PACKAGED', 2, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'comino molido', 'AS_PACKAGED', 1, 'G', null, true, 4, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 5, null, 'SEASONING', 'ADJUSTABLE', 0, 5, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 5, null, true);
+  perform pg_temp.comp(s, 'pan marraqueta', 'EDIBLE_PORTION', 200, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 300, null, 'unidad', 2);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 8, 20, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Sella la posta entera con el aceite en una olla, dorándola por todos sus lados.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Agrega la cebolla del guiso con el ajo, el ají de color y el comino, y sofríe hasta que se ablande.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Cubre hasta la mitad con agua caliente y cocina tapado a fuego muy bajo hasta que la carne se deshilache al tenedor.', 90, null, null, null, 1);
+  perform pg_temp.paso(v_v, 4, 'En vez de la hora y media de olla común: cocínala en olla a presión desde que suena la válvula.', 35, null, 'PRESSURE_COOKER', 'Sin olla a presión: los 90 minutos a fuego muy bajo del paso anterior, revisando que no se seque.', null);
+  perform pg_temp.paso(v_v, 5, 'Si vas por el armado con cebolla: mientras la carne se cocina, corta la segunda cebolla en pluma y hazla aparte a fuego bajo con una pizca de sal y el azúcar, revolviendo de vez en cuando hasta que caramelice.', 25, null, null, null, 1);
+  perform pg_temp.paso(v_v, 6, 'Deshilacha la carne con dos tenedores, devuélvela a su jugo y sala probando.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Abre y tuesta apenas las marraquetas, rellénalas con la carne bien jugosa y termina a la italiana —tomate en rodajas y la palta molida con sal— o con la cebolla caramelizada.', 6, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Sándwich Barros Luco
+  v_v := pg_temp.receta('Sándwich Barros Luco', 'MEAL', array['TEA', 'DINNER']::public.meal_type[], 2, 16, 'Churrasco delgado y queso fundido en marraqueta, hecho todo en la misma plancha. El clásico que lleva el nombre del presidente que lo pedía; con jamón en vez de churrasco se convierte en Barros Jarpa.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno lomo liso', 'RAW', 300, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 240, 400, 'churrasco cortado delgado; se lo puedes pedir así al carnicero', null, null);
+  perform pg_temp.comp(s, 'queso mantecoso', 'AS_PACKAGED', 120, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 80, 160, 'en láminas, para que funda con el calor de la carne', null, null);
+  perform pg_temp.alt(s, 'jamon de cerdo cocido', 'GOOD', 'con jamón apenas calentado en la plancha en vez de churrasco, el mismo sándwich es un Barros Jarpa', 0.5);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'pan marraqueta', 'EDIBLE_PORTION', 200, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 300, null, 'unidad', 2);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 10, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 5, 15, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 0, 3, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Si el lomo no viene cortado como churrasco, córtalo en láminas delgadas, casi al sesgo.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Plancha o sartén bien caliente con el aceite: sella los churrascos vuelta y vuelta y sálalos al sacarlos. Delgados, es un minuto por lado.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Baja el fuego, junta los churrascos en dos porciones y cubre cada una con el queso en láminas; tapa la sartén un minuto para que funda.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Tuesta las marraquetas abiertas en la misma plancha.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Arma cada sándwich con la carne y su queso fundido entre las dos tapas, y aprieta un poco antes de servir.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Chacarero
+  v_v := pg_temp.receta('Chacarero', 'MEAL', array['TEA', 'DINNER']::public.meal_type[], 2, 21, 'Churrasco en marraqueta con porotos verdes cocidos, tomate y rodajitas de ají verde: el sándwich chileno que lleva verdura de verdad. Los porotos fríos y crujientes son su seña.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno lomo liso', 'RAW', 300, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 240, 400, 'churrasco delgado', null, null);
+  perform pg_temp.alt(s, 'vacuno lomo vetado', 'EXCELLENT', 'más veteado: churrasco más jugoso', 1);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'poroto verde', 'RAW', 200, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 250, 'la seña del chacarero: cocidos, enfriados y partidos a lo largo', null, null);
+  perform pg_temp.comp(s, 'tomate', 'RAW', 150, 'G', 'RAW', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'aji verde', 'RAW', 15, 'G', 'RAW', true, 3, null, 'MAIN', 'OPTIONAL', 0, 25, 'en rodajitas finas; es lo que pica', null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 3, null, true);
+  perform pg_temp.comp(s, 'pan marraqueta', 'EDIBLE_PORTION', 200, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 300, null, 'unidad', 2);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, false);
+  perform pg_temp.comp(s, 'mayonesa', 'AS_PACKAGED', 20, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', 0, 30, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 10, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 5, 15, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 6, null, true);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 0, 4, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Despunta los porotos verdes, pártelos a lo largo y cuécelos en agua hirviendo con sal hasta que estén tiernos pero todavía crujientes. Pásalos de inmediato a agua fría para fijar el verde, y escúrrelos.', 10, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Mientras se cuecen los porotos, sella los churrascos en la plancha bien caliente con el aceite, vuelta y vuelta, y sálalos.', 5, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Tuesta las marraquetas abiertas en la misma plancha.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Arma: churrasco abajo, un buen puñado de porotos verdes, el tomate en rodajas, el ají verde y la mayonesa si se quiere.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Sándwich de pescado frito
+  v_v := pg_temp.receta('Sándwich de pescado frito', 'MEAL', array['TEA', 'DINNER']::public.meal_type[], 2, 40, 'Marraqueta con pescado frito de rebozado crujiente, lechuga, tomate y mayonesa: el sándwich de caleta. Usa el Pescado frito de la biblioteca a media tanda, y las papas cocidas de esa receta quedan de acompañamiento; los tiempos cuentan esa fritura hecha al momento.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'pan marraqueta', 'EDIBLE_PORTION', 200, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 300, null, 'unidad', 2);
+  s := pg_temp.slot(v_v, 'SALAD', 2, null, true);
+  perform pg_temp.comp(s, 'lechuga', 'RAW', 40, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'tomate', 'RAW', 120, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'mayonesa', 'AS_PACKAGED', 30, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 10, 40, null, null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 5, null, true);
+  perform pg_temp.comp_anidada(s, 'Pescado frito', 0.5, 1);
+  perform pg_temp.paso(v_v, 1, 'Prepara el Pescado frito de la receta anidada a media tanda: alcanza justo para dos marraquetas, y sus papas cocidas quedan de acompañamiento. Deja los filetes escurriendo sobre papel.', 30, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Tuesta las marraquetas abiertas y úntales la mayonesa.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Arma con la lechuga abajo —protege el pan de la humedad—, el pescado recién frito encima y el tomate en rodajas. Sirve al tiro: el rebozado crujiente no espera.', 4, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Rollitos de pan de molde con huevo y jamón
+  v_v := pg_temp.receta('Rollitos de pan de molde con huevo y jamón', 'MEAL', array['TEA', 'SNACK']::public.meal_type[], 2, 26, 'Rebanadas de pan de molde aplanadas, untadas con huevo duro, mayonesa y jamón, y enrolladas en bocados. El clásico de bandeja para una once con visitas.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'pan de molde', 'AS_PACKAGED', 150, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 200, 'unas 6 rebanadas sin orilla', null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 2, null, true);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 110, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 55, 165, null, 'unidad', 2);
+  perform pg_temp.comp(s, 'jamon de cerdo cocido', 'AS_PACKAGED', 60, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 40, 90, null, null, null);
+  perform pg_temp.alt(s, 'atun en conserva al agua', 'GOOD', 'escurrido y desmenuzado en vez del jamón', 1);
+  s := pg_temp.slot(v_v, 'SAUCE', 3, null, true);
+  perform pg_temp.comp(s, 'mayonesa', 'AS_PACKAGED', 40, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 25, 60, null, null, null);
+  perform pg_temp.alt(s, 'palta', 'GOOD', 'molida con unas gotas de limón en vez de la mayonesa; el sistema recalcula la nutrición', null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 1, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 0, 2, 'el jamón y la mayonesa ya traen sodio: probar antes de salar', null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 5, null, false);
+  perform pg_temp.comp(s, 'perejil fresco', 'RAW', 5, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Pon los huevos en agua fría y cuécelos 12 minutos desde que hierve. Enfríalos en agua fría y pélalos.', 15, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Mientras se cuecen, quítale las orillas al pan de molde y aplana cada rebanada con el uslero hasta dejarla delgada y flexible.', 6, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Muele los huevos con la mayonesa y una pizca de sal; pica el jamón fino y mézclalo con el perejil picado.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Unta cada rebanada con la mezcla, enróllala apretada y córtala en dos o tres rodajas. Sírvelas con la unión hacia abajo.', 6, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Canapés de charqui
+  v_v := pg_temp.receta('Canapés de charqui', 'MEAL', array['TEA', 'SNACK']::public.meal_type[], 2, 21, 'Tapitas de pan con mantequilla y charqui tostado y desmenuzado fino, con cebolla amortiguada y un toque de merquén. Bocado salado del campo para la once o el aperitivo.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'pan de molde', 'AS_PACKAGED', 100, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 75, 150, 'unas 4 rebanadas; cada una da 4 canapés', null, null);
+  perform pg_temp.alt(s, 'pan marraqueta', 'GOOD', 'en tapitas tostadas en vez del pan de molde', null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 2, null, true);
+  perform pg_temp.comp(s, 'charqui', 'AS_PACKAGED', 60, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 40, 80, 'ya viene muy salado: la receta no lleva sal agregada', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'mantequilla', 'AS_PACKAGED', 30, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 20, 40, 'blanda, para untar', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 4, null, false);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 40, 'G', 'RAW', true, 1, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, false);
+  perform pg_temp.comp(s, 'limon', 'RAW', 15, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, 'unas gotas sobre el charqui', null, null);
+  perform pg_temp.comp(s, 'merquen', 'AS_PACKAGED', 1, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Tuesta el charqui en una sartén seca a fuego medio, dándolo vuelta, hasta que quede crujiente y quebradizo.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Desmenúzalo con las manos y pícalo fino a cuchillo, casi molido, en hebras chicas.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'En vez de picarlo a cuchillo: dale pulsos de procesadora hasta dejarlo en hebras finas, sin llegar a polvo.', 2, null, 'FOOD_PROCESSOR', 'Pícalo fino a cuchillo como en el paso anterior.', null);
+  perform pg_temp.paso(v_v, 4, 'Deja la cebolla picada fina en agua fría unos minutos para que pierda el filo, y escúrrela bien.', 6, null, null, null, 1);
+  perform pg_temp.paso(v_v, 5, 'Unta el pan con mantequilla, corta cada rebanada en cuatro y reparte el charqui encima. Termina con la cebolla, unas gotas de limón y una pizca de merquén.', 8, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Barras de avena, frutos secos y chocolate
+  v_v := pg_temp.receta('Barras de avena, frutos secos y chocolate', 'MEAL', array['SNACK', 'TEA', 'BREAKFAST']::public.meal_type[], 6, 75, 'Barras horneadas de avena tostada, nueces y almendras ligadas con miel y mantequilla, bañadas en chocolate. Se hacen de una vez y quedan porciones listas para la colación o la once.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'avena tradicional', 'RAW', 180, 'G', 'BAKED', false, 1, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 2, null, true);
+  perform pg_temp.comp(s, 'nueces', 'AS_PACKAGED', 50, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 30, 70, null, null, null);
+  perform pg_temp.comp(s, 'almendras', 'AS_PACKAGED', 50, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 30, 70, null, null, null);
+  perform pg_temp.comp(s, 'mantequilla', 'AS_PACKAGED', 70, 'G', null, false, 3, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  perform pg_temp.alt(s, 'mani tostado', 'GOOD', 'más económico que nueces o almendras; picado grueso', 1);
+  s := pg_temp.slot(v_v, 'FRUIT', 3, null, false);
+  perform pg_temp.comp(s, 'pasas', 'AS_PACKAGED', 40, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SWEETENER', 4, null, true);
+  perform pg_temp.comp(s, 'miel', 'AS_PACKAGED', 90, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'es la que liga la barra: con menos se desarma', null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 5, null, true);
+  perform pg_temp.comp(s, 'chocolate semiamargo', 'AS_PACKAGED', 60, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 40, 80, null, null, null);
+  perform pg_temp.alt(s, 'chocolate amargo de reposteria', 'GOOD', 'baño menos dulce', 1);
+  s := pg_temp.slot(v_v, 'OTHER', 6, null, true);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 1, 'G', null, false, 1, null, 'SEASONING', 'FIXED', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Precalienta el horno y forra un molde cuadrado chico (unos 20 cm) con papel mantequilla.', 8, 170, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Mientras calienta, tuesta la avena, las nueces y las almendras picadas en una sartén seca, revolviendo, hasta que huelan a tostado.', 6, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Derrite la mantequilla con la miel y la sal a fuego bajo, sin que hierva fuerte.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Mezcla todo con las pasas, vuélcalo al molde y presiona firme con el dorso de una cuchara: de la presión depende que la barra no se desarme.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Hornea hasta que los bordes se doren.', 20, 170, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Deja enfriar por completo en el molde antes de desmoldar y corta 6 barras con un cuchillo grande.', 30, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Derrite el chocolate a baño maría y baña las barras en hilos o media capa; deja que endurezca.', 10, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Rollos de canela
+  v_v := pg_temp.receta('Rollos de canela', 'MEAL', array['TEA', 'BREAKFAST']::public.meal_type[], 6, 156, 'Rollos de masa leudada rellenos con mantequilla, azúcar y canela, horneados hasta dorar. Un proyecto de tarde que llena la casa de olor a canela y rinde una bandeja entera.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 500, 'G', 'BAKED', false, 1, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 2, null, true);
+  perform pg_temp.comp(s, 'leche liquida entera', 'AS_PACKAGED', 250, 'ML', null, false, 1, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 55, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'va en la masa', 'unidad', 1);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'levadura seca', 'AS_PACKAGED', 7, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'canela molida', 'AS_PACKAGED', 10, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 6, 14, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 3, null, 'SEASONING', 'FIXED', null, null, 'la masa la necesita', null, null);
+  s := pg_temp.slot(v_v, 'SWEETENER', 4, null, true);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 60, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'para la masa', null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 100, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 70, 120, 'para el relleno: acá el azúcar es el plato', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'mantequilla', 'AS_PACKAGED', 70, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'blanda, para la masa', null, null);
+  perform pg_temp.comp(s, 'mantequilla', 'AS_PACKAGED', 60, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 40, 70, 'blanda, para untar el relleno', null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, false);
+  perform pg_temp.comp(s, 'azucar flor', 'AS_PACKAGED', 40, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', null, null, 'para el glaseado, con unas gotas de leche', null, null);
+  perform pg_temp.alt(s, 'pasas', 'GOOD', 'un punado repartido sobre el relleno antes de enrollar: van encima de la masa, igual que el resto del relleno', null);
+  perform pg_temp.alt(s, 'nueces', 'GOOD', 'picadas por encima en vez del glaseado', null);
+  perform pg_temp.paso(v_v, 1, 'Entibia la leche (que no queme el dedo), disuelve la levadura con una cucharadita del azúcar de la masa y espera a que forme espuma.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Mezcla la harina con el resto del azúcar de la masa y la sal. Agrega la leche con levadura, el huevo y la mantequilla blanda de la masa, y amasa hasta que quede lisa y elástica.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Deja leudar la masa tapada en un lugar tibio hasta que doble su volumen.', 60, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Estira la masa en un rectángulo de medio centímetro, úntala con la mantequilla del relleno y espolvorea el azúcar mezclada con la canela. Enrolla apretado por el lado largo y corta 12 rodajas.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Acomódalas en una fuente enmantequillada dejando espacio entre ellas y deja leudar de nuevo hasta que casi se toquen.', 30, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Precalienta el horno mientras leudan.', 10, 180, null, null, 1);
+  perform pg_temp.paso(v_v, 7, 'Hornéalos hasta que doren por arriba.', 22, 180, null, null, null);
+  perform pg_temp.paso(v_v, 8, 'Si quieres glaseado: mezcla el azúcar flor con unas gotas de leche y píntalos aún tibios.', 4, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Batido de chirimoya, arándanos y avena
+  v_v := pg_temp.receta('Batido de chirimoya, arándanos y avena', 'MEAL', array['BREAKFAST', 'TEA', 'SNACK']::public.meal_type[], 2, 10, 'Batido cremoso de pulpa de chirimoya con arándanos, un puñado de avena y leche fría. Una forma distinta de aprovechar la chirimoya madura en el desayuno o la once.');
+  s := pg_temp.slot(v_v, 'FRUIT', 1, null, true);
+  perform pg_temp.comp(s, 'chirimoya', 'EDIBLE_PORTION', 300, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 400, 'pulpa sin cáscara ni pepas', null, null);
+  perform pg_temp.comp(s, 'arandanos', 'RAW', 100, 'G', 'RAW', false, 2, null, 'MAIN', 'ADJUSTABLE', 60, 150, null, null, null);
+  perform pg_temp.alt(s, 'frutillas', 'GOOD', 'en vez de los arándanos', 1);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'avena tradicional', 'RAW', 30, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 20, 50, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 3, null, true);
+  perform pg_temp.comp(s, 'leche liquida entera', 'AS_PACKAGED', 300, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 250, 400, null, null, null);
+  perform pg_temp.alt(s, 'yogur natural', 'GOOD', 'queda más espeso y ácido; se puede aligerar con un poco de agua fría', null);
+  s := pg_temp.slot(v_v, 'SWEETENER', 4, null, false);
+  perform pg_temp.comp(s, 'miel', 'AS_PACKAGED', 15, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', 0, 25, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Parte la chirimoya, saca la pulpa con cuchara y quítale todas las pepas: son grandes y la licuadora no las muele.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Licúa la pulpa con los arándanos, la avena y la leche fría hasta que quede cremoso y parejo.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Prueba y endulza con miel solo si hace falta. Sírvelo al tiro: la chirimoya se oxida y amarga si espera.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Batido tropical de mango y piña
+  v_v := pg_temp.receta('Batido tropical de mango y piña', 'MEAL', array['BREAKFAST', 'TEA', 'SNACK']::public.meal_type[], 2, 12, 'Batido helado de mango y piña con jugo de naranja y plátano que le da cuerpo. Espeso y bien frutal, para tomar recién hecho.');
+  s := pg_temp.slot(v_v, 'FRUIT', 1, null, true);
+  perform pg_temp.comp(s, 'mango', 'EDIBLE_PORTION', 250, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 180, 350, 'pulpa sin cáscara ni cuesco', null, null);
+  perform pg_temp.comp(s, 'pina', 'EDIBLE_PORTION', 200, 'G', 'RAW', false, 2, null, 'MAIN', 'ADJUSTABLE', 150, 300, 'pulpa pelada, sin el centro duro', null, null);
+  perform pg_temp.comp(s, 'naranja', 'EDIBLE_PORTION', 150, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', 100, 200, 'en jugo, para soltar el batido', null, null);
+  perform pg_temp.comp(s, 'platano', 'EDIBLE_PORTION', 100, 'G', null, true, 4, null, 'MAIN', 'OPTIONAL', null, null, 'le da cuerpo y dulzor sin azúcar agregada', null, null);
+  perform pg_temp.alt(s, 'duraznos en conserva', 'ACCEPTABLE', 'escurridos, cuando no hay mango; cambia el perfil y suma dulzor', null);
+  perform pg_temp.paso(v_v, 1, 'Pela y pica el mango y la piña en trozos, y exprime la naranja.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Licúa la fruta con el jugo de naranja, el plátano y un puñado de hielo hasta que quede espeso y sin grumos.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Sírvelo de inmediato, bien frío.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Jugo verde de pepino, manzana y apio
+  v_v := pg_temp.receta('Jugo verde de pepino, manzana y apio', 'MEAL', array['BREAKFAST', 'SNACK', 'TEA']::public.meal_type[], 2, 13, 'Jugo licuado de pepino, manzana y apio con un toque de limón, servido con hielo. Fresco y nada empalagoso, para partir el día o acompañar la once.');
+  s := pg_temp.slot(v_v, 'VEGETABLE', 1, null, true);
+  perform pg_temp.comp(s, 'pepino', 'RAW', 200, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 300, 'pelado si la cáscara amarga', null, null);
+  perform pg_temp.comp(s, 'apio', 'RAW', 80, 'G', 'RAW', false, 2, null, 'MAIN', 'ADJUSTABLE', 50, 120, null, null, null);
+  s := pg_temp.slot(v_v, 'FRUIT', 2, null, true);
+  perform pg_temp.comp(s, 'manzana', 'EDIBLE_PORTION', 200, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 300, 'verde si se quiere más ácido', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'limon', 'RAW', 30, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 15, 50, 'en jugo', null, null);
+  perform pg_temp.comp(s, 'jengibre molido', 'AS_PACKAGED', 1, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Lava todo. Pica el pepino, la manzana sin pepas y el apio sin hebras grandes, en trozos que la licuadora pueda tomar.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Licúa con 300 ml de agua fría, el jugo de limón, el jengibre y hielo, hasta que quede lo más fino posible.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Sírvelo tal cual, con su pulpa; pásalo por colador solo si la fibra te molesta.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Jugo de betarraga, zanahoria y limón
+  v_v := pg_temp.receta('Jugo de betarraga, zanahoria y limón', 'MEAL', array['BREAKFAST', 'SNACK', 'TEA']::public.meal_type[], 2, 17, 'Jugo de betarraga y zanahoria crudas licuadas con naranja y limón. De color intenso y sabor dulce y terroso, se toma recién hecho y bien frío.');
+  s := pg_temp.slot(v_v, 'VEGETABLE', 1, null, true);
+  perform pg_temp.comp(s, 'betarraga', 'RAW', 150, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 200, 'cruda y pelada; mancha: usar tabla lavable', null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 150, 'G', 'RAW', false, 2, null, 'MAIN', 'ADJUSTABLE', 100, 200, null, null, null);
+  s := pg_temp.slot(v_v, 'FRUIT', 2, null, true);
+  perform pg_temp.comp(s, 'naranja', 'EDIBLE_PORTION', 200, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 300, 'en jugo; suaviza lo terroso de la betarraga', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'limon', 'RAW', 30, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 15, 50, 'en jugo', null, null);
+  perform pg_temp.paso(v_v, 1, 'Pela la betarraga y la zanahoria y pícalas en cubos chicos: crudas son duras y a la licuadora hay que ayudarla. Exprime la naranja y el limón.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Licúa las verduras con los jugos y 400 ml de agua fría, partiendo lento y subiendo, hasta que quede lo más fino que dé la máquina.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Sírvelo con hielo, con su pulpa; cuélalo solo si lo prefieres más líquido.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Limonada de hierba luisa
+  v_v := pg_temp.receta('Limonada de hierba luisa', 'MEAL', array['TEA', 'SNACK']::public.meal_type[], 4, 23, 'Limonada casera perfumada con una infusión corta de hierba luisa, servida con mucho hielo. La misma técnica sirve con menta o albahaca, cambiando la hierba.');
+  s := pg_temp.slot(v_v, 'FRUIT', 1, null, true);
+  perform pg_temp.comp(s, 'limon', 'RAW', 240, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 180, 320, 'en jugo; unos 4 limones', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'hierba luisa', 'RAW', 8, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 5, 12, 'hojas frescas; se infusionan y se retiran', null, null);
+  perform pg_temp.alt(s, 'menta fresca', 'EXCELLENT', 'limonada de menta: misma técnica', 1);
+  perform pg_temp.alt(s, 'albahaca fresca', 'GOOD', 'más herbal; usar hojas sin tallo', 1);
+  perform pg_temp.alt(s, 'jengibre molido', 'ACCEPTABLE', 'media cucharadita disuelta en la infusión: queda más picante', null);
+  s := pg_temp.slot(v_v, 'SWEETENER', 3, null, true);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 70, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 0, 100, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Calienta 250 ml de agua hasta que hierva y apágala.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Lava la hierba luisa, estrújala un poco con las manos para que suelte aroma y déjala reposar en esa agua, tapada, unos 10 minutos. Retírala.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Disuelve el azúcar en la infusión aún tibia.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Exprime los limones y mezcla el jugo con la infusión, 750 ml de agua fría y bastante hielo. Prueba y ajusta azúcar o limón; sirve con una ramita en el vaso.', 6, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Té helado de maracuyá y naranja
+  v_v := pg_temp.receta('Té helado de maracuyá y naranja', 'MEAL', array['TEA', 'SNACK']::public.meal_type[], 4, 26, 'Té negro frío con jugo de naranja y pulpa de maracuyá, servido con mucho hielo. Ácido y aromático, para la once de un día de calor.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'te negro', 'AS_PACKAGED', 4, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'unas 2 bolsitas u hojas sueltas; se infusiona y se retira', null, null);
+  s := pg_temp.slot(v_v, 'FRUIT', 2, null, true);
+  perform pg_temp.comp(s, 'maracuya', 'EDIBLE_PORTION', 120, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 80, 180, 'pulpa con sus pepas; unas 2 a 3 unidades', null, null);
+  perform pg_temp.comp(s, 'naranja', 'EDIBLE_PORTION', 300, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 200, 400, 'en jugo', null, null);
+  s := pg_temp.slot(v_v, 'SWEETENER', 3, null, true);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 60, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 0, 90, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Hierve 500 ml de agua, apágala y deja el té dentro 5 minutos, no más: pasado ese punto amarga. Retíralo.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Disuelve el azúcar en el té caliente y déjalo enfriar.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Mientras enfría, corta las maracuyás y saca la pulpa con cuchara; exprime las naranjas.', 8, null, null, null, 1);
+  perform pg_temp.paso(v_v, 4, 'Mezcla el té frío con el jugo de naranja y la pulpa de maracuyá, y sirve con bastante hielo. Prueba: la maracuyá manda en la acidez.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Chicha morada
+  v_v := pg_temp.receta('Chicha morada', 'MEAL', array['TEA', 'SNACK']::public.meal_type[], 6, 125, 'Refresco peruano de maíz morado hervido con cáscaras de piña y canela, servido frío con jugo de limón y fruta picada. Aprovecha hasta las cáscaras de la piña.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'maiz morado seco', 'AS_PACKAGED', 150, 'G', 'BOILED', false, 1, null, 'MAIN', 'FIXED', null, null, 'se hierve y se cuela: da el color y el sabor, el grano no se come', null, null);
+  s := pg_temp.slot(v_v, 'FRUIT', 2, null, true);
+  perform pg_temp.comp(s, 'pina', 'EDIBLE_PORTION', 200, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 300, 'pulpa en cubitos para servir; la cáscara bien lavada se va a la olla', null, null);
+  perform pg_temp.comp(s, 'manzana', 'EDIBLE_PORTION', 150, 'G', 'RAW', false, 2, null, 'MAIN', 'ADJUSTABLE', 100, 200, 'en cubitos para servir', null, null);
+  perform pg_temp.comp(s, 'limon', 'RAW', 60, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', 40, 90, 'en jugo, siempre al momento de servir', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'canela en rama', 'AS_PACKAGED', 5, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 3, 8, 'se hierve entera y se retira', null, null);
+  s := pg_temp.slot(v_v, 'SWEETENER', 4, null, true);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 90, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 50, 120, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Lava muy bien la piña con escobilla antes de pelarla: la cáscara se va a la olla. Pela, reserva la pulpa en cubitos y pica la manzana igual.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Hierve el maíz morado con las cáscaras de piña y la canela en 2 litros de agua, a fuego medio y con la olla semitapada, hasta que el líquido esté morado oscuro y haya reducido un poco.', 45, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Cuela, descarta el maíz, las cáscaras y la canela, y disuelve el azúcar en el líquido aún caliente.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Deja enfriar por completo; con hielo se apura.', 60, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Al servir, agrega el jugo de limón y los cubitos de piña y manzana. El limón va siempre al final: hervido amarga.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Leche de tigre
+  v_v := pg_temp.receta('Leche de tigre', 'MEAL', array['OTHER']::public.meal_type[], 4, 22, 'El jugo blanco y picante del cebiche, hecho aparte: limón, pescado, cebolla, apio y ají molidos y colados. Es la base que curte los cebiches del lote y el corazón de la salsa acevichada.');
+  s := pg_temp.slot(v_v, 'SAUCE', 1, null, true);
+  perform pg_temp.comp(s, 'limon', 'RAW', 120, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 90, 156, 'jugo colado, que es lo que entra al plato: de unos 320 g de limones salen los 120 g de jugo colado', null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 2, null, true);
+  perform pg_temp.comp(s, 'reineta', 'RAW', 150, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 200, 'recortes o un trozo de filete muy fresco: es lo que le da cuerpo y sabor a mar', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 80, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'apio', 'RAW', 40, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'aji verde', 'RAW', 30, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 15, 50, 'sin pepas si lo quieres más suave', null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 5, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 15, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'jengibre molido', 'AS_PACKAGED', 1, 'G', null, true, 4, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 5, null, 'SEASONING', 'ADJUSTABLE', 0, 5, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Exprime los limones y cuela el jugo. No aprietes las cáscaras hasta el final: amargan.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Pica finísimo el pescado, la cebolla, el apio, el ají y el ajo, y machácalos en un bol con el jugo de limón, el jengibre y un par de cubos de hielo, apretando con cuchara de palo hasta que el líquido se ponga turbio.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'En vez de machacar: licúa el jugo con el pescado, la cebolla, el apio, el ají, el ajo y el hielo unos 30 segundos, sin moler el hielo del todo.', 3, null, 'BLENDER', 'Sin licuadora: el machacado del paso anterior es el método base; queda menos espesa pero igual de sabrosa.', null);
+  perform pg_temp.paso(v_v, 4, 'Cuela apretando bien el bagazo, corrige la sal y agrega el cilantro picado fino al final.', 4, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Lomo saltado
+  v_v := pg_temp.receta('Lomo saltado', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 49, 'Tiras de lomo salteadas a fuego violento con cebolla, tomate, soya y vinagre, mezcladas con papas fritas y servidas con arroz. Preparación casera inspirada en el clásico peruano, no la fórmula de ningún restaurante.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno lomo liso', 'RAW', 600, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 750, 'en tiras gruesas, a favor del largo de la fibra', null, null);
+  perform pg_temp.alt(s, 'vacuno posta negra', 'GOOD', 'más firme que el lomo: córtala más delgada y no la pases de los dos minutos de sellado', 1);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'GOOD', 'la versión pollo saltado; en tiras y bien sellada', 1);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 800, 'G', 'FRIED', false, 1, null, 'MAIN', 'ADJUSTABLE', 600, 1000, 'en bastones, para freír', null, null);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 2, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 250, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'en pluma gruesa: tiene que quedar crocante', null, null);
+  perform pg_temp.comp(s, 'tomate', 'RAW', 300, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, 'en gajos gruesos; entra y sale del wok casi entero', null, null);
+  perform pg_temp.comp(s, 'aji verde', 'RAW', 40, 'G', 'PAN_SEARED', true, 3, null, 'MAIN', 'OPTIONAL', null, null, 'en tiras finas, hace las veces del ají amarillo fresco', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 45, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 30, 60, null, null, null);
+  perform pg_temp.comp(s, 'vinagre tinto', 'AS_PACKAGED', 30, 'ML', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 15, 40, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 40, 'el del salteado: se come entero con el jugo del wok', null, null);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 40, 'ML', null, false, 2, null, 'ADDED_FAT', 'ADJUSTABLE', 25, 60, 'el retenido en las papas fritas. En la olla va mucho más y NO se declara: esto es lo que queda en el bastón', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 6, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 5, null, null, null);
+  perform pg_temp.comp(s, 'pimienta negra', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 7, null, false);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 10, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Cuece el arroz aparte mientras avanzas con el resto.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Corta las papas en bastones, sécalas bien y fríelas en aceite hondo hasta que doren. Escúrrelas sobre papel: de todo el aceite de la olla, en el bastón quedan más o menos los 40 ml declarados.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'En vez de freír en olla: cocina los bastones en la air fryer con una cucharada de aceite, sacudiendo el canasto a la mitad.', 25, 200, 'AIR_FRYER', 'Sin air fryer: la fritura en olla del paso anterior es el método base de este plato.', null);
+  perform pg_temp.paso(v_v, 4, 'Sala y pimienta la carne. Calienta el wok o la sartén más grande que tengas hasta que humee, agrega el aceite del salteado y sella las tiras en dos tandas, dos minutos por tanda, sin moverlas: amontonadas se cuecen en vez de dorarse.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Devuelve toda la carne, agrega la cebolla en pluma gruesa, el ají en tiras y el ajo. Saltea a fuego máximo, moviendo el wok.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Vierte la soya y el vinagre por el borde del wok para que evaporen con fuerza, suma el tomate en gajos y dale una revuelta más: el tomate entra y sale casi entero.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Apaga, mezcla las papas fritas con el jugo del wok y espolvorea cilantro. Sirve de inmediato con el arroz.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Ají de gallina
+  v_v := pg_temp.receta('Ají de gallina', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 56, 'Pechuga deshilachada en una crema de pan, leche y ají amarillo, servida sobre arroz con huevo duro y aceitunas. El guiso frío es además el relleno de empanadas y tequeños.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 600, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 800, null, null, null);
+  perform pg_temp.alt(s, 'pollo trutro entero con piel', 'GOOD', 'más sabor en el caldo; hay que comprar más peso porque lleva hueso y piel', 1.35);
+  s := pg_temp.slot(v_v, 'BASE', 2, null, true);
+  perform pg_temp.comp(s, 'pan marraqueta', 'EDIBLE_PORTION', 100, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 80, 120, 'remojada en la leche: es lo que espesa la crema', null, null);
+  perform pg_temp.comp(s, 'leche liquida entera', 'AS_PACKAGED', 250, 'ML', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 200, 300, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 3, null, true);
+  perform pg_temp.comp(s, 'leche evaporada', 'AS_PACKAGED', 170, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 200, 'le da el cuerpo dulce del guiso peruano; se puede reemplazar por más leche corriente si no hay', null, null);
+  perform pg_temp.comp(s, 'pasta de aji amarillo', 'AS_PACKAGED', 60, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 40, 80, 'define el plato: menos de 40 g y es pollo a la crema', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 4, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 200, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 10, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'queso parmesano rallado', 'AS_PACKAGED', 30, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 20, 40, 'se funde dentro de la crema', null, null);
+  perform pg_temp.comp(s, 'nueces', 'AS_PACKAGED', 30, 'G', null, true, 3, null, 'MAIN', 'OPTIONAL', null, null, 'molidas en la crema, como las pecanas de la receta original', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 30, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 7, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 8, null, false);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 110, 'G', 'BOILED', true, 1, null, 'MAIN', 'OPTIONAL', null, null, 'duro, medio por plato', 'unidad', 2);
+  perform pg_temp.comp(s, 'aceitunas', 'DRAINED', 40, 'G', null, true, 2, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Pon a cocer las pechugas en agua con un poco de sal hasta que estén cocidas por dentro. Guarda el caldo: la crema lo va a pedir.', 20, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Cuece aparte el arroz y los huevos duros.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Remoja la marraqueta desmigada en la leche y muélela con tenedor junto a las nueces picadas finas hasta tener una crema espesa.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Sofríe la cebolla picada fina con el ajo y la pasta de ají amarillo en el aceite, a fuego medio, hasta que la cebolla esté transparente y el ají suelte su aroma.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Agrega la crema de pan y un cucharón del caldo de las pechugas. Cocina revolviendo por el fondo: espesa y se pega.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Deshilacha el pollo con las manos, incorpóralo con la leche evaporada y el parmesano, y da un hervor suave. Corrige la sal.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Sirve sobre el arroz con medio huevo duro y un par de aceitunas por plato.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Causa limeña
+  v_v := pg_temp.receta('Causa limeña', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 85, 'Torre fría de puré de papa amasado con ají amarillo y limón, rellena de atún con mayonesa y palta. La misma masa recibe pollo o camarones: el relleno se elige, la causa es la papa.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 800, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 600, 1000, 'papa que muela seca; se amasa fría', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 2, null, true);
+  perform pg_temp.comp(s, 'pasta de aji amarillo', 'AS_PACKAGED', 50, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 30, 70, 'tiñe y pica la masa: es lo que hace causa al puré', null, null);
+  perform pg_temp.comp(s, 'mayonesa', 'AS_PACKAGED', 60, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 40, 80, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'limon', 'RAW', 60, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, 'el jugo va en la masa', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 4, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 40, null, null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 5, null, true);
+  perform pg_temp.comp(s, 'atun en conserva al agua', 'DRAINED', 240, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'EXCELLENT', 'la causa de pollo: cocido, deshilachado y mezclado con la misma mayonesa', 1);
+  perform pg_temp.alt(s, 'camarones pelados', 'GOOD', 'la causa de camarón: saltados, fríos y picados gruesos', 1);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 6, null, true);
+  perform pg_temp.comp(s, 'palta', 'EDIBLE_PORTION', 150, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 200, 'en láminas, la capa del medio', null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 60, 'G', null, true, 2, null, 'MAIN', 'OPTIONAL', null, null, 'picada fina en el relleno de atún', null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 7, null, false);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 110, 'G', 'BOILED', true, 1, null, 'MAIN', 'OPTIONAL', null, null, 'duro, para decorar', 'unidad', 2);
+  perform pg_temp.paso(v_v, 1, 'Pela y cuece las papas en agua con sal hasta que se pasen con el tenedor. Escúrrelas y muélelas de inmediato: la papa fría hace grumos.', 25, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Cuece los huevos duros aparte.', 12, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Deja entibiar el puré y amásalo con la pasta de ají amarillo, el jugo de limón, el aceite y la sal, hasta que quede una masa lisa, amarilla y que se despegue de las manos. Prueba: tiene que picar apenas.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Mezcla el atún escurrido con la mayonesa y la cebolla picada fina.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Arma en una fuente o en un molde: una capa de masa de papa, el relleno de atún, las láminas de palta y la masa restante. Alisa la superficie.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Refrigera la causa armada para que tome cuerpo antes de cortarla.', 30, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Decora con el huevo duro en rodajas y corta en porciones frías.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Cebiche mixto
+  v_v := pg_temp.receta('Cebiche mixto', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 36, 'Reineta curtida en limón con camarones y choritos blanqueados que se incorporan fríos: la diferencia con el ceviche de reineta de la casa es justamente el mar cocido que se suma al pescado crudo.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'reineta', 'RAW', 500, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 650, 'muy fresca: acá el limón no cuece, curte', null, null);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 200, 'G', 'BOILED', false, 2, null, 'MAIN', 'ADJUSTABLE', 150, 300, 'blanqueados un minuto y enfriados de golpe', null, null);
+  perform pg_temp.comp(s, 'choritos', 'RAW', 400, 'G', 'BOILED', false, 3, null, 'MAIN', 'ADJUSTABLE', 300, 500, 'peso con concha; la porción comestible la aplica el catálogo. Se blanquean hasta que abran y se desconchan', null, null);
+  perform pg_temp.alt(s, 'merluza', 'GOOD', 'más blanda que la reineta: cúrtela menos tiempo para que no se deshaga', 1);
+  s := pg_temp.slot(v_v, 'SAUCE', 2, null, true);
+  perform pg_temp.comp(s, 'limon', 'RAW', 90, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 68, 117, 'jugo colado, que es lo que entra al plato: de unos 250 g de limones salen los 90 g de jugo colado', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'en pluma fina, lavada bajo el agua para quitarle lo agresivo', null, null);
+  perform pg_temp.comp(s, 'choclo en grano', 'RAW', 200, 'G', 'BOILED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, 'cocido, el acompañamiento clásico del cebiche', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'aji verde', 'RAW', 30, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 15, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Cuece el choclo en agua hirviendo y déjalo entibiar.', 10, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Blanquea los camarones un minuto en agua hirviendo con sal y los choritos hasta que abran las conchas. Bota cualquier chorito que siga cerrado.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Pasa camarones y choritos a un bol con agua e hielo para cortar la cocción, y desconcha los choritos.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Corta la reineta en cubos parejos de un dedo, sálala y cúrtela en el jugo de limón unos diez minutos, hasta que el borde del cubo se ponga opaco.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Incorpora los mariscos fríos, la cebolla en pluma lavada, el ají y el cilantro. Mezcla suave, prueba la sal y sirve helado con el choclo.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Cebiche carretillero
+  v_v := pg_temp.receta('Cebiche carretillero', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 34, 'El cebiche de carretilla: pescado curtido en leche de tigre licuada con rocoto —más espesa y brava que el jugo simple— y coronado con jibia frita crocante. Lleva la leche de tigre del lote como base.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'reineta', 'RAW', 500, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 650, null, null, null);
+  perform pg_temp.comp(s, 'jibia', 'RAW', 300, 'G', 'FRIED', false, 2, null, 'MAIN', 'ADJUSTABLE', 200, 400, 'en tiras finas, hace de calamar frito', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 2, null, true);
+  perform pg_temp.comp(s, 'pasta de rocoto', 'AS_PACKAGED', 15, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 8, 25, 'se bate en la leche de tigre: es lo que la vuelve carretillera', null, null);
+  perform pg_temp.comp_anidada(s, 'Leche de tigre', 1, 2);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 40, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 30, 50, 'con la maicena, el rebozado seco que se pega a la jibia; el que queda en el plato no se declara', null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 20, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 15, 30, null, null, null);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 15, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 5, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 4, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 40, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 25, 60, 'el retenido en la jibia frita; en la olla va mucho más y no se declara', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 5, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'en pluma fina', null, null);
+  perform pg_temp.comp(s, 'choclo en grano', 'RAW', 200, 'G', 'BOILED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Bate la pasta de rocoto en la leche de tigre fría hasta disolverla por completo: tiene que quedar más espesa y con un rojo apenas visible.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Corta la reineta en cubos, sálala apenas y cúrtela diez minutos en la leche de tigre al rocoto.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Cuece el choclo aparte.', 10, null, null, null, 1);
+  perform pg_temp.paso(v_v, 4, 'Seca muy bien las tiras de jibia, pásalas por la mezcla de harina y maicena sacudiendo el exceso.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Fríelas por tandas en aceite bien caliente, dos a tres minutos hasta que doren. Escúrrelas sobre papel: lo declarado es lo que retiene la costra, no el baño de la olla.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Sirve el pescado con su jugo, la cebolla en pluma y el cilantro, con la jibia frita bien crocante encima y el choclo al lado. La jibia va al momento: parada en el jugo se ablanda.', 4, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Tiradito de reineta en crema de ají amarillo
+  v_v := pg_temp.receta('Tiradito de reineta en crema de ají amarillo', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 19, 'Láminas delgadas de reineta cortadas al sesgo y bañadas al momento en una crema fría de ají amarillo y limón. No es cebiche con otro cuchillo: acá el pescado no se curte, se sirve apenas tocado por la salsa.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'reineta', 'RAW', 500, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 650, 'en láminas al sesgo, como sashimi; el filete bien frío se deja cortar', null, null);
+  perform pg_temp.alt(s, 'salmon', 'GOOD', 'tiradito de salmón: más graso, aguanta bien la crema picante', 1);
+  s := pg_temp.slot(v_v, 'SAUCE', 2, null, true);
+  perform pg_temp.comp(s, 'pasta de aji amarillo', 'AS_PACKAGED', 50, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 35, 70, null, null, null);
+  perform pg_temp.comp(s, 'limon', 'RAW', 90, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 68, 117, 'jugo colado, que es lo que entra al plato: de unos 250 g de limones salen los 90 g de jugo', null, null);
+  perform pg_temp.comp(s, 'leche evaporada', 'AS_PACKAGED', 60, 'ML', null, true, 3, null, 'MAIN', 'OPTIONAL', null, null, 'suaviza y da cuerpo a la crema', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 30, 'emulsiona la crema', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 3, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 5, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 5, null, false);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 10, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Con el filete bien frío y un cuchillo largo, corta láminas delgadas al sesgo, apoyando la hoja casi plana. Tiéndelas sin encimarlas en platos fríos y guárdalos en el refrigerador.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Bate la pasta de ají amarillo con el jugo de limón, la leche evaporada, el ajo molido, la sal y el aceite en hilo, hasta tener una crema fluida que apenas cubra una cuchara.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'En vez de batir a mano: licúa todos los ingredientes de la crema unos segundos hasta que emulsione.', 2, null, 'BLENDER', 'Sin licuadora: el batido a mano del paso anterior es el método base; la pasta ya viene molida y se integra sola.', null);
+  perform pg_temp.paso(v_v, 4, 'Justo antes de llevar a la mesa, baña las láminas con la crema y termina con cilantro. El baño va al momento: la lámina delgada se curte en minutos y deja de ser tiradito.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Salsa acevichada
+  v_v := pg_temp.receta('Salsa acevichada', 'MEAL', array['OTHER']::public.meal_type[], 4, 7, 'Mayonesa aflojada con leche de tigre hasta quedar una crema fluida, ácida y picante. Es la salsa de las frituras de mar y también levanta arroces y sánguches fríos.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'mayonesa', 'AS_PACKAGED', 100, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 80, 140, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, false);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 5, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, 'picado fino', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 1, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, 'la leche de tigre ya viene salada: probar antes', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 3, null, true);
+  perform pg_temp.comp_anidada(s, 'Leche de tigre', 0.25, 1);
+  perform pg_temp.paso(v_v, 1, 'Ten lista un cuarto de la tanda de leche de tigre, bien fría — sirve la que sobró de un cebiche del día.', 1, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Pon la mayonesa en un bol y agrégale la leche de tigre de a cucharadas, batiendo, hasta que quede una crema fluida que caiga en cinta. Prueba, corrige la sal y termina con el cilantro.', 6, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Chicharrón mixto de mar
+  v_v := pg_temp.receta('Chicharrón mixto de mar', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 26, 'Reineta, camarones y jibia en rebozado seco de harina con maicena, fritos hasta quedar crocantes y servidos con limón y salsa acevichada. El rebozado seco y liviano es lo que lo separa del apanado con pan rallado.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'reineta', 'RAW', 400, 'G', 'FRIED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 500, null, null, null);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 200, 'G', 'FRIED', false, 2, null, 'MAIN', 'ADJUSTABLE', 150, 300, null, null, null);
+  perform pg_temp.comp(s, 'jibia', 'RAW', 200, 'G', 'FRIED', false, 3, null, 'MAIN', 'ADJUSTABLE', 150, 300, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 50, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 40, 70, 'con la maicena, el rebozado seco: se declara lo que se pega, no lo que queda en el plato', null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 30, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 20, 40, 'es la que da el crocante liviano', null, null);
+  perform pg_temp.comp(s, 'limon', 'RAW', 80, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', null, null, 'en cascos, para exprimir encima', null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 5, 'G', null, true, 4, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 5, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 60, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 40, 80, 'el retenido en la fritura; el baño de la olla va aparte y no se declara', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp_anidada(s, 'Salsa acevichada', 1, 1);
+  perform pg_temp.paso(v_v, 1, 'Seca muy bien el pescado en cubos, los camarones y la jibia en tiras con papel absorbente, y sazónalos con el ajo molido y la sal. Mojados, el rebozado se hace engrudo.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Mezcla la harina con la maicena y pasa los mariscos por tandas, sacudiendo el exceso: la capa tiene que quedar delgada y pareja.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Fríe por tandas chicas en aceite bien caliente, dos a tres minutos por tanda, hasta dorar. Escurre sobre papel: lo declarado es el aceite que retiene la costra.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En vez de freír en olla: cocina las tandas en la air fryer rociadas con aceite, dándolas vuelta a la mitad.', 18, 200, 'AIR_FRYER', 'Sin air fryer: la fritura en aceite del paso anterior es el método base y la que da el chicharrón de verdad.', null);
+  perform pg_temp.paso(v_v, 5, 'Sirve de inmediato con los cascos de limón y la salsa acevichada para mojar.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Empanadas fritas de ají de gallina
+  v_v := pg_temp.receta('Empanadas fritas de ají de gallina', 'MEAL', array['LUNCH', 'DINNER', 'TEA']::public.meal_type[], 4, 40, 'La masa de empanadas fritas de la casa rellena con el guiso de ají de gallina frío. Los tiempos son con la masa y el ají ya hechos: son preparaciones previas y, partiendo de cero, hay que sumarlas.');
+  s := pg_temp.slot(v_v, 'OTHER', 1, null, true);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 15, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'para estirar la masa; se incorpora a ella', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 2, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 40, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 30, 60, 'el retenido en la masa frita; el baño de la olla va aparte y no se declara', null, null);
+  s := pg_temp.slot(v_v, 'BASE', 3, null, true);
+  perform pg_temp.comp_anidada(s, 'Masa de empanadas fritas', 0.25, 1);
+  s := pg_temp.slot(v_v, 'PROTEIN', 4, null, true);
+  perform pg_temp.comp_anidada(s, 'Ají de gallina', 0.5, 1);
+  perform pg_temp.paso(v_v, 1, 'Ten el guiso de ají de gallina FRÍO de refrigerador y espeso, sin el arroz ni las guarniciones: media tanda alcanza justo. Tibio o aguado, revienta la masa en el aceite.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Estira la masa de empanadas fritas delgada sobre la mesa enharinada y corta discos de unos 12 cm.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Pon una cucharada colmada de relleno en cada disco, moja el borde con agua, dobla y aprieta con los dientes de un tenedor. Que no quede aire adentro.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Fríe por tandas en aceite caliente, dos a tres minutos por lado, hasta que doren y se ampollen. Escurre sobre papel: lo declarado es lo que la masa retiene.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Deja reposar un par de minutos antes de morder: el relleno cremoso sale hirviendo.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Empanadas de lomo saltado
+  v_v := pg_temp.receta('Empanadas de lomo saltado', 'MEAL', array['LUNCH', 'DINNER', 'TEA']::public.meal_type[], 4, 58, 'Empanadas de horno rellenas con las sobras del lomo saltado, bien escurridas y picadas. Los tiempos son con la masa y el salteado ya hechos: son preparaciones previas y, partiendo de cero, hay que sumarlas.');
+  s := pg_temp.slot(v_v, 'OTHER', 1, null, true);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 55, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'batido, para pintar; se come con la empanada', 'unidad', 1);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 10, 'G', null, true, 2, null, 'MAIN', 'OPTIONAL', null, null, 'para estirar la masa', null, null);
+  s := pg_temp.slot(v_v, 'BASE', 2, null, true);
+  perform pg_temp.comp_anidada(s, 'Masa de empanadas al horno', 0.25, 1);
+  s := pg_temp.slot(v_v, 'PROTEIN', 3, null, true);
+  perform pg_temp.comp_anidada(s, 'Lomo saltado', 0.5, 1);
+  perform pg_temp.paso(v_v, 1, 'Precalienta el horno.', 10, 200, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Escurre el lomo saltado en un colador —usa las sobras sin el arroz— y pica grueso la carne y las papas. El jugo que botes acá es masa que no se abre en el horno.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Estira la masa de empanadas al horno y corta discos de unos 15 cm.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Rellena, dobla, sella el borde con el dedo mojado y haz el doblez de las esquinas. Píntalas con el huevo batido.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Hornea sobre lata hasta que estén doradas y sonoras al golpecito.', 25, 200, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Tequeños de ají de gallina
+  v_v := pg_temp.receta('Tequeños de ají de gallina', 'MEAL', array['TEA', 'SNACK']::public.meal_type[], 2, 25, 'Cigarros de masa de wantán rellenos con ají de gallina frío y fritos hasta dorar. Picoteo de once que aprovecha el guiso de la semana; los tiempos son con el ají ya hecho.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'masa de wantan', 'AS_PACKAGED', 120, 'G', 'FRIED', false, 1, null, 'MAIN', 'ADJUSTABLE', 90, 160, 'unas 12 láminas', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 2, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 40, 'el retenido en la masa frita; el baño de la olla no se declara', null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 3, null, true);
+  perform pg_temp.comp_anidada(s, 'Ají de gallina', 0.2, 1);
+  perform pg_temp.paso(v_v, 1, 'Ten el ají de gallina frío y bien espeso, sin arroz ni guarniciones: un cuarto de tanda alcanza para estas láminas.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Pon una cucharadita de relleno cerca de un borde de cada lámina, moja los bordes con agua, dobla los costados hacia adentro y enrolla apretado como un cigarro. Sella bien la punta: por ahí se escapa el relleno.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Fríe por tandas en aceite caliente, girándolos, unos dos minutos por tanda hasta que doren parejo. Escúrrelos sobre papel.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En vez de freír: cocínalos en la air fryer rociados con aceite, dándolos vuelta a la mitad.', 10, 200, 'AIR_FRYER', 'Sin air fryer: la fritura del paso anterior es el método base.', null);
+  perform pg_temp.paso(v_v, 5, 'Sírvelos calientes, enteros: cortados se vacían.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Spring rolls de lomo saltado
+  v_v := pg_temp.receta('Spring rolls de lomo saltado', 'MEAL', array['TEA', 'SNACK']::public.meal_type[], 2, 35, 'Arrollados primavera rellenos con lomo saltado picado y secado al fuego, fritos hasta quedar crujientes. El relleno tiene que estar seco: húmedo, el rollo se abre en el aceite. Tiempos con el salteado ya hecho.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'masa para arrollado primavera', 'AS_PACKAGED', 100, 'G', 'FRIED', false, 1, null, 'MAIN', 'ADJUSTABLE', 80, 130, 'unas 8 láminas grandes', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 2, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 45, 'el retenido en la lámina frita; el baño de la olla no se declara', null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 3, null, true);
+  perform pg_temp.comp_anidada(s, 'Lomo saltado', 0.2, 1);
+  perform pg_temp.paso(v_v, 1, 'Escurre el lomo saltado —sin el arroz— y sécalo en sartén a fuego fuerte, revolviendo, hasta que no quede jugo en el fondo. Este paso no se salta: relleno húmedo es rollo que se abre en el aceite.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Pica fino la carne, las papas y la verdura, y deja enfriar el picadillo extendido en un plato.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Pon el relleno en el tercio inferior de cada lámina, dobla los costados, enrolla apretado y sella el borde con agua.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Fríe por tandas en aceite caliente, girándolos, hasta que doren parejo. Escúrrelos parados sobre papel.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'En vez de freír: cocínalos en la air fryer pincelados con aceite, dándolos vuelta a la mitad.', 12, 200, 'AIR_FRYER', 'Sin air fryer: la fritura del paso anterior es el método base.', null);
+  perform pg_temp.paso(v_v, 6, 'Deja reposar un minuto y sirve enteros o cortados al sesgo.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Gyozas
+  v_v := pg_temp.receta('Gyozas', 'MEAL', array['LUNCH', 'DINNER', 'TEA']::public.meal_type[], 4, 48, 'Empanaditas de masa de wantán con relleno de cerdo y repollo estrujado, doradas por la base y terminadas al vapor en la misma sartén. El dorar-y-vaporizar es lo que las distingue del wantán frito.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pulpa de cerdo', 'RAW', 400, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 500, 'molida o picada finísima a cuchillo', null, null);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'EXCELLENT', 'picada finísima: la versión de pollo, más magra', 1);
+  perform pg_temp.alt(s, 'pavo molido', 'GOOD', 'queda más seco: no le quites el aceite de sésamo', 1);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'repollo', 'RAW', 200, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 250, 'picado fino, salado y estrujado: su agua es la que revienta la masa', null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 50, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 3, null, true);
+  perform pg_temp.comp(s, 'masa de wantan', 'AS_PACKAGED', 250, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 300, 'unas 30 láminas', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'jengibre molido', 'AS_PACKAGED', 2, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 4, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 5, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 20, 45, 'mitad en el relleno, mitad en la salsita de mojar', null, null);
+  perform pg_temp.comp(s, 'vinagre tinto', 'AS_PACKAGED', 15, 'ML', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, 'con la soya, la salsa de mojar', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 10, 'ML', null, true, 1, null, 'ADDED_FAT', 'OPTIONAL', null, null, 'unas gotas en el relleno perfuman todo', null, null);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 2, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 30, 'el del dorado de la base; queda casi entero en la gyoza', null, null);
+  perform pg_temp.paso(v_v, 1, 'Sala el repollo picado fino, déjalo reposar diez minutos y estrújalo con fuerza entre las manos hasta sacarle el agua.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Mezcla el cerdo con el repollo estrujado, el cebollín, el ajo molido, el jengibre, la mitad de la soya y el aceite de sésamo. Amasa con la mano un par de minutos hasta que la mezcla ligue y se ponga pegajosa.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Arma: una cucharadita al centro de cada lámina, moja el borde con agua y cierra haciendo pliegues hacia un lado. Apoya cada gyoza parada, con la base plana.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Dóralas paradas en una sartén caliente con el aceite vegetal, sin moverlas, hasta que la base tueste.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Agrega medio vaso de agua a la sartén, tapa de inmediato y deja vaporizar hasta que el agua se evapore y la masa se vea traslúcida. Destapa un minuto para que la base recupere el crocante.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Sirve con la salsita de soya y vinagre para mojar.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Ensalada nikkei con pollo crocante
+  v_v := pg_temp.receta('Ensalada nikkei con pollo crocante', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 26, 'Ensalada completa de hojas, palta y pepino con tiras de pollo apanadas y un aliño de soya, limón, miel y sésamo. Con camarones apanados es la otra versión de la misma receta.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 500, 'G', 'FRIED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 650, 'en tiras, apanadas', null, null);
+  perform pg_temp.alt(s, 'camarones pelados', 'EXCELLENT', 'apanados igual y fritos apenas dos minutos: la otra versión de esta misma ensalada', 0.8);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 30, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'la que se pega en el apanado', null, null);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 55, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'batido, para apanar', 'unidad', 1);
+  perform pg_temp.comp(s, 'pan rallado', 'AS_PACKAGED', 60, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', 40, 80, 'el que se pega a la tira; lo que queda en el plato no se declara', null, null);
+  perform pg_temp.comp(s, 'jengibre molido', 'AS_PACKAGED', 1, 'G', null, true, 4, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 5, null, 'SEASONING', 'ADJUSTABLE', 0, 4, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 40, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 25, 60, 'el retenido en la costra; en la sartén va más y no se declara', null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 10, 'ML', null, false, 2, null, 'ADDED_FAT', 'ADJUSTABLE', 5, 15, null, null, null);
+  s := pg_temp.slot(v_v, 'SALAD', 4, null, true);
+  perform pg_temp.comp(s, 'lechuga', 'RAW', 200, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pepino', 'RAW', 150, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'palta', 'EDIBLE_PORTION', 150, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', 100, 200, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 30, 'G', null, true, 4, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 5, null, true);
+  perform pg_temp.comp(s, 'semillas de sesamo', 'AS_PACKAGED', 15, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 6, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 20, 40, null, null, null);
+  perform pg_temp.comp(s, 'limon', 'RAW', 60, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', null, null, 'el jugo, para el aliño', null, null);
+  s := pg_temp.slot(v_v, 'SWEETENER', 7, null, true);
+  perform pg_temp.comp(s, 'miel', 'AS_PACKAGED', 15, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 10, 20, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Sala las tiras de pollo y pásalas por harina, huevo batido y pan rallado, apretando para que la costra agarre.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Fríelas en aceite caliente, tres a cuatro minutos, hasta que doren y el centro deje de estar rosado. Escúrrelas sobre papel: lo declarado es el aceite que retiene la costra.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'En vez de freír: cocínalas en la air fryer rociadas con aceite, dándolas vuelta a la mitad.', 14, 200, 'AIR_FRYER', 'Sin air fryer: la fritura en sartén del paso anterior es el método base.', null);
+  perform pg_temp.paso(v_v, 4, 'Bate el aliño: soya, jugo de limón, miel, aceite de sésamo y jengibre.', 3, null, null, null, 1);
+  perform pg_temp.paso(v_v, 5, 'Arma la ensalada con la lechuga, el pepino, la palta y el cebollín. Encima el pollo caliente en tiras, el aliño y el sésamo espolvoreado. Sirve al tiro: la costra se ablanda sobre las hojas.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Sopa capón con gyozas
+  v_v := pg_temp.receta('Sopa capón con gyozas', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 72, 'Caldo de pollo estilo chifa, aromatizado con jengibre y salsa de soya, con gyozas cocidas dentro y cebollín por encima. Una sopa de fonda peruana resuelta con gyozas congeladas del supermercado.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pollo trutro entero con piel', 'RAW', 600, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 500, 800, 'hace el caldo y aporta la carne deshilachada', null, null);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'GOOD', 'sin hueso el caldo queda con menos cuerpo; cuécela entera y deshiláchala igual', 0.75);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'gyozas de pollo congeladas', 'AS_PACKAGED', 400, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 500, 'unas 16 unidades; van congeladas directo al caldo', null, null);
+  perform pg_temp.alt(s, 'ravioles frescos', 'ACCEPTABLE', 'no es chifa, pero la lógica de la masa rellena en el caldo funciona igual', null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 15, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 8, 25, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 5, 'poca: la salsa de soya ya sala', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 4, null, true);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 100, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 5, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 15, 40, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, true);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 40, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 7, null, false);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 1, null, 'ADDED_FAT', 'OPTIONAL', 3, 8, 'unas gotas al servir', null, null);
+  perform pg_temp.paso(v_v, 1, 'Pon los trutros en la olla con 2 litros de agua fría, el jengibre en láminas y el ajo. Lleva a hervor suave, retira la espuma de los primeros minutos y cocina semitapado hasta que el pollo esté cocido.', 40, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Saca los trutros, deshuésalos, deshilacha la carne y devuélvela al caldo. Bota la piel y los huesos.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Agrega la zanahoria en láminas finas y cuécela en el caldo.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Suma las gyozas congeladas, sin descongelar, y cuécelas hasta que floten y la masa se vea translúcida.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Apaga, sazona con la salsa de soya y la sal, y sirve con cebollín en rodajas y unas gotas de aceite de sésamo.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Sopa criolla de cabello de ángel
+  v_v := pg_temp.receta('Sopa criolla de cabello de ángel', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 44, 'La sopa criolla limeña: carne molida sobre un aderezo de ají panca, cabello de ángel, leche evaporada y un huevo escalfado dentro de cada plato, con marraqueta tostada y gotas de limón. No es la sopa de pollo con fideos: acá mandan el aderezo rojo y la leche.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'carne molida de vacuno', 'RAW', 300, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 250, 400, null, null, null);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 220, 'G', 'POACHED', false, 2, null, 'MAIN', 'FIXED', null, null, 'uno por plato, escalfado dentro de la sopa', 'unidad', 4);
+  perform pg_temp.alt(s, 'vacuno posta negra', 'GOOD', 'en tiritas delgadas en vez de molida, como la hacen algunas casas; saltéala igual en el aderezo', 1);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'fideos', 'RAW', 160, 'G', 'BOILED', false, 1, 2.4, 'MAIN', 'ADJUSTABLE', 120, 200, 'cabello de ángel partido con la mano', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'tomate', 'RAW', 150, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'pasta de aji panca', 'AS_PACKAGED', 30, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 20, 40, 'el color y el sabor de la sopa: sin él es otra receta', null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'oregano seco', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'limon', 'RAW', 40, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', null, null, 'gotas al servir, sobre el plato', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 5, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 5, null, true);
+  perform pg_temp.comp(s, 'leche evaporada', 'AS_PACKAGED', 200, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 250, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, false);
+  perform pg_temp.comp(s, 'pan marraqueta', 'EDIBLE_PORTION', 120, 'G', 'BAKED', true, 1, null, 'MAIN', 'OPTIONAL', null, null, 'tostada en cuadritos, va por encima', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 7, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 20, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Sofríe la cebolla, el ajo y la pasta de ají panca en el aceite hasta que el fondo tome un color ladrillo parejo.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Agrega la carne molida y revuélvela hasta que pierda lo rosado. Suma el tomate picado y el orégano y dale un par de minutos más.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Vierte 1,5 litros de agua caliente y deja hervir suave para que el caldo tome el aderezo.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Agrega el cabello de ángel partido y cuécelo al dente.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Baja el fuego, incorpora la leche evaporada y casca los huevos de a uno sobre la superficie, sin revolver, hasta que la clara cuaje y la yema quede blanda.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Tuesta los cuadritos de marraqueta en horno o sartén seca hasta que crujan.', 8, null, null, null, 1);
+  perform pg_temp.paso(v_v, 7, 'Sala, sirve un huevo por plato y corona con la marraqueta tostada y gotas de limón.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Pesto peruano de albahaca y espinaca
+  v_v := pg_temp.receta('Pesto peruano de albahaca y espinaca', 'MEAL', array['OTHER']::public.meal_type[], 4, 18, 'El pesto de los tallarines verdes peruanos: albahaca estirada con espinaca, que da color y volumen sin el costo de la albahaca sola, ajo, parmesano y aceite. No lleva piñones ni nueces, y esa es la gracia.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'albahaca fresca', 'RAW', 40, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 30, 60, 'solo hojas', null, null);
+  perform pg_temp.comp(s, 'espinaca', 'RAW', 100, 'G', 'BOILED', false, 2, null, 'MAIN', 'ADJUSTABLE', 80, 150, 'la marca peruana: volumen y color', null, null);
+  perform pg_temp.comp(s, 'queso parmesano rallado', 'AS_PACKAGED', 40, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', 30, 60, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 3, 10, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 3, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'aceite de oliva', 'AS_PACKAGED', 50, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 30, 60, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Blanquea la espinaca 30 segundos en agua hirviendo, pásala a agua fría y estrújala muy bien: el agua que quede aguará el pesto.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Pica muy fino la albahaca y la espinaca estrujada en la tabla, junta con el ajo molido y sigue picando y aplastando con el cuchillo hasta una pasta gruesa.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'En vez de picar a mano: licúa espinaca, albahaca, ajo y el aceite hasta una pasta pareja.', 3, null, 'BLENDER', 'Sin licuadora: el picado fino del paso anterior; el pesto queda más rústico.', null);
+  perform pg_temp.paso(v_v, 4, 'Mezcla con el aceite, el parmesano y la sal.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Menestrón peruano
+  v_v := pg_temp.receta('Menestrón peruano', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 115, 'Sopa espesa de vacuno con porotos, verduras y fideos que se liga fuera del fuego con pesto de albahaca y espinaca: eso es lo que lo hace peruano y no minestrone. Plato de olla única, contundente y barato. El pesto es receta aparte y conviene tenerlo listo o hacerlo mientras la olla hierve.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno posta negra', 'RAW', 400, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 500, null, null, null);
+  perform pg_temp.comp(s, 'porotos secos', 'RAW', 150, 'G', 'BOILED', false, 2, 2.4, 'MAIN', 'ADJUSTABLE', 100, 200, 'en seco, antes del remojo de la noche anterior', null, null);
+  perform pg_temp.alt(s, 'lentejas', 'GOOD', 'en vez de los porotos: no necesitan remojo y cuecen en la mitad del tiempo', 1);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 300, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'fideos', 'RAW', 120, 'G', 'BOILED', false, 2, 2.4, 'MAIN', 'ADJUSTABLE', 80, 160, 'fideo corto', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'zapallo camote', 'RAW', 200, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'choclo en grano', 'RAW', 150, 'G', 'BOILED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'poroto verde', 'RAW', 100, 'G', 'BOILED', true, 3, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 120, 'G', 'BOILED', false, 4, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', 'STEWED', false, 5, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 6, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 7, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 20, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, false);
+  perform pg_temp.comp(s, 'queso parmesano rallado', 'AS_PACKAGED', 30, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', null, null, 'espolvoreado al servir', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 7, null, true);
+  perform pg_temp.comp_anidada(s, 'Pesto peruano de albahaca y espinaca', 1, 1);
+  perform pg_temp.paso(v_v, 1, 'Remoja los porotos en abundante agua fría la noche anterior. Bota el agua del remojo.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Sofríe la cebolla y el ajo con el aceite hasta que la cebolla esté transparente.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Agrega la carne en cubos y séllala hasta que tome color.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Suma los porotos remojados y 2 litros de agua caliente. Hierve suave, semitapado, hasta que la carne y los porotos estén blandos.', 60, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'En vez de la olla normal: cocina carne y porotos 25 minutos en olla a presión desde que sube la válvula, y sigue con la receta en la olla destapada.', 25, null, 'PRESSURE_COOKER', 'Sin olla a presión: los 60 minutos del paso anterior, agregando agua caliente si baja el nivel.', null);
+  perform pg_temp.paso(v_v, 6, 'Incorpora papa, zapallo, zanahoria, choclo y poroto verde. Cuece hasta que la papa se pase con el tenedor.', 14, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Agrega los fideos y cuécelos al dente.', 7, null, null, null, null);
+  perform pg_temp.paso(v_v, 8, 'Apaga el fuego. Disuelve el pesto en un cucharón de caldo y lígalo a la olla sin volver a hervir: hervido pierde el color y el perfume.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 9, 'Sala al final y sirve con parmesano espolvoreado.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Chupe de camarones
+  v_v := pg_temp.receta('Chupe de camarones', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 52, 'El chupe arequipeño: sopa cremosa de camarones con papa, arroz y choclo, terminada con leche evaporada, queso fresco en cubos y un huevo escalfado por plato. No es el chupe chileno gratinado al horno: este se sirve de la olla.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 400, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 500, null, null, null);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 220, 'G', 'POACHED', false, 2, null, 'MAIN', 'FIXED', null, null, 'uno por plato, escalfado en la sopa', 'unidad', 4);
+  perform pg_temp.alt(s, 'camarones', 'EXCELLENT', 'con caparazón: hay que comprar casi el doble de peso para la misma colita, pero las cáscaras dan más sabor al caldo si les das un hervor aparte', 1.8);
+  perform pg_temp.alt(s, 'merluza', 'GOOD', 'en trozos grandes agregados al final, queda un chupe de pescado a la arequipeña', 1.2);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 500, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 700, null, null, null);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 60, 'G', 'BOILED', false, 2, 2.5, 'MAIN', 'ADJUSTABLE', null, null, 'el puñado que espesa el chupe', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'choclo en grano', 'RAW', 150, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'arvejas frescas', 'RAW', 100, 'G', 'BOILED', true, 2, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'STEWED', false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'pasta de aji panca', 'AS_PACKAGED', 30, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 20, 40, 'el aderezo rojo del chupe', null, null);
+  perform pg_temp.comp(s, 'pasta de huacatay', 'AS_PACKAGED', 10, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', 5, 15, 'la hierba arequipeña; se consigue en frasco en tiendas de productos peruanos', null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'oregano seco', 'AS_PACKAGED', 1, 'G', null, true, 4, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 5, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 5, null, true);
+  perform pg_temp.comp(s, 'leche evaporada', 'AS_PACKAGED', 200, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 250, null, null, null);
+  perform pg_temp.comp(s, 'quesillo', 'AS_PACKAGED', 150, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 100, 200, 'el queso fresco en cubos que se funde a medias en el plato', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Sofríe la cebolla, el ajo y la pasta de ají panca en el aceite con el orégano, hasta que el fondo esté rojizo y perfumado.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Agrega 1,5 litros de agua caliente, la papa y el arroz. Hierve semitapado hasta que la papa esté casi blanda.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Suma el choclo y las arvejas y sigue la cocción.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Baja el fuego. Incorpora la leche evaporada, el huacatay y el quesillo en cubos; desde acá la sopa no debe hervir fuerte o la leche se corta.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Casca los huevos de a uno sobre la superficie, sin revolver, y deja que la clara cuaje.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Agrega los camarones y apaga apenas se pongan rosados y enroscados: se pasan en un par de minutos y quedan como goma.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Prueba la sal al final y sirve un huevo por plato.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Sudado de pescado
+  v_v := pg_temp.receta('Sudado de pescado', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 35, 'Pescado cocido al vapor de su propio jugo, sobre una cama de cebolla, tomate y ají amarillo con un chorro de vino blanco. Casi no hay líquido y el pescado no se revuelve nunca: no es un caldillo, es un sudado.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'reineta', 'RAW', 640, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 480, 800, 'filetes gruesos; se cuecen con el vapor, nunca se dan vuelta', null, null);
+  perform pg_temp.alt(s, 'merluza', 'EXCELLENT', 'más delgada: un par de minutos menos de tapa', 1);
+  perform pg_temp.alt(s, 'congrio', 'EXCELLENT', 'el clásico del sudado de restaurante, más caro', 1);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 250, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'pluma gruesa: debe quedar entera, no deshecha', null, null);
+  perform pg_temp.comp(s, 'tomate', 'RAW', 300, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, 'en gajos', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'pasta de aji amarillo', 'AS_PACKAGED', 40, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 25, 50, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'limon', 'RAW', 40, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', null, null, 'jugo al final, fuera del fuego', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'vino blanco', 'AS_PACKAGED', 100, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 50, 150, 'reemplaza la chicha de jora del original; el alcohol se evapora en la olla', null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 5, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, false);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 10, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 7, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Cuece el arroz aparte mientras armas el sudado.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Sofríe la cebolla en pluma gruesa con el ajo y la pasta de ají amarillo en el aceite, solo hasta que la cebolla apenas se ablande.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Agrega el tomate en gajos, el vino blanco y medio vaso de agua. Deja hervir un par de minutos para armar el jugo.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Sala los filetes y acomódalos sobre la cama de verduras. Tapa y cocina a fuego medio, sin revolver nunca ni darlos vuelta: el vapor los cuece y el filete se saca entero.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Apaga, exprime el limón por encima, reparte el cilantro y sirve con el arroz, cucharando el jugo sobre el pescado.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Tallarín saltado
+  v_v := pg_temp.receta('Tallarín saltado', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 30, 'El lomo saltado en versión de tallarines: tiras de lomo doradas a fuego violento con cebolla, tomate, salsa de soya y vinagre, mezcladas con spaghetti que se impregna del jugo. Sale en media hora y también funciona con pollo o camarones.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno lomo liso', 'RAW', 500, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 650, 'en tiras, cortadas contra la fibra', null, null);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'EXCELLENT', 'tallarín saltado de pollo, en tiras igual de delgadas', 1);
+  perform pg_temp.alt(s, 'camarones pelados', 'GOOD', 'van al final del saltado: se cuecen en un par de minutos', 0.8);
+  perform pg_temp.alt(s, 'vacuno posta negra', 'GOOD', 'más económico; saltéala muy breve para que no endurezca', 1);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'fideos', 'RAW', 320, 'G', 'BOILED', false, 1, 2.4, 'MAIN', 'ADJUSTABLE', 240, 400, 'spaghetti', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 200, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'pluma gruesa, debe quedar crujiente', null, null);
+  perform pg_temp.comp(s, 'tomate', 'RAW', 250, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, 'en gajos, entra al final para que no se deshaga', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'pasta de aji amarillo', 'AS_PACKAGED', 20, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', 10, 30, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimienta negra', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 4, 'poca: la salsa de soya ya sala', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 5, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 45, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 30, 60, null, null, null);
+  perform pg_temp.comp(s, 'vinagre', 'AS_PACKAGED', 20, 'ML', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 10, 30, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, false);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 10, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 7, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 40, 'todo el aceite del saltado termina en el plato', null, null);
+  perform pg_temp.paso(v_v, 1, 'Cuece los spaghetti al dente, escúrrelos y resérvalos con unas gotas de aceite para que no se peguen.', 12, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Salpimienta las tiras de carne. Sartén o wok muy caliente con la mitad del aceite: saltéalas en dos tandas hasta dorarlas por fuera y resérvalas. La sartén repleta suelta jugo y cuece la carne en vez de dorarla.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'En la misma sartén, con el resto del aceite, saltea la cebolla en pluma con el ajo y el ají amarillo a fuego máximo: dos minutos, que quede crujiente.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Devuelve la carne, agrega el tomate en gajos y vierte la salsa de soya y el vinagre por el borde de la sartén para que evaporen y armen el jugo.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Suma los fideos y mezcla todo a fuego fuerte hasta que tomen el jugo. Apaga y reparte el cilantro.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Pasta con mariscos a la criolla
+  v_v := pg_temp.receta('Pasta con mariscos a la criolla', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 42, 'Fideos con camarones y choritos en una salsa criolla de cebolla, tomate, ají amarillo y vino blanco, ligada con el propio jugo de los choritos. Un plato de mariscos que se arma con lo que hay en la pescadería.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 250, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 350, null, null, null);
+  perform pg_temp.comp(s, 'choritos', 'RAW', 500, 'G', 'STEAMED', false, 2, null, 'MAIN', 'ADJUSTABLE', 400, 700, 'con concha; la porción comestible la aplica el catálogo', null, null);
+  perform pg_temp.alt(s, 'almejas', 'GOOD', 'en vez de los choritos, con el mismo vapor inicial', 1);
+  perform pg_temp.alt(s, 'camarones', 'EXCELLENT', 'con caparazón: casi el doble de peso comprado para la misma colita', 1.8);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'fideos', 'RAW', 320, 'G', 'BOILED', false, 1, 2.4, 'MAIN', 'ADJUSTABLE', 240, 400, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'tomate', 'RAW', 300, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'pasta de aji amarillo', 'AS_PACKAGED', 30, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 15, 40, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 10, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 5, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 5, null, true);
+  perform pg_temp.comp(s, 'vino blanco', 'AS_PACKAGED', 100, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 50, 150, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 6, null, false);
+  perform pg_temp.comp(s, 'crema de leche', 'AS_PACKAGED', 100, 'ML', null, true, 1, null, 'MAIN', 'OPTIONAL', 50, 150, 'un chorro al final para la versión cremosa', null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 7, null, false);
+  perform pg_temp.comp(s, 'perejil fresco', 'RAW', 10, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 8, null, true);
+  perform pg_temp.comp(s, 'aceite de oliva', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 35, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Lava los choritos y ábrelos al vapor con medio vaso de agua en olla tapada. Descarta los que no abran, saca la carne de las conchas y cuela y guarda el jugo.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece los fideos al dente y resérvalos con un poco de su agua.', 12, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Sofríe la cebolla, el ajo y la pasta de ají amarillo en el aceite.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Agrega el tomate picado, el vino blanco y el jugo colado de los choritos. Reduce a fuego medio hasta que tome cuerpo de salsa.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Suma los camarones y dales un par de minutos; agrega los choritos desconchados y la crema y da un hervor apenas: los mariscos recocidos quedan como goma.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Mezcla con los fideos, prueba la sal y sirve con perejil.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Pasta Lima thai de pollo
+  v_v := pg_temp.receta('Pasta Lima thai de pollo', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 32, 'Fideos de arroz con saltado de pollo, pimiento y jengibre en una salsa que junta ají amarillo, salsa de soya y limón, con maní tostado por encima. Los fideos de arroz no se hierven: se hidratan, y esa es la mitad del secreto.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 500, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 650, 'en tiras', null, null);
+  perform pg_temp.alt(s, 'camarones pelados', 'GOOD', 'van al final: se cuecen en un par de minutos', 0.8);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'fideos de arroz', 'RAW', 250, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 320, 'se hidratan en agua caliente, nunca se hierven', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 150, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 100, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 60, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 15, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 8, 25, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pasta de aji amarillo', 'AS_PACKAGED', 20, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 10, 30, 'la parte limeña de la salsa', null, null);
+  perform pg_temp.comp(s, 'limon', 'RAW', 40, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', null, null, 'el ácido que hace el lado thai', null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 5, 'G', null, true, 5, null, 'SEASONING', 'OPTIONAL', null, null, 'el toque agridulce', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 6, null, 'SEASONING', 'ADJUSTABLE', 0, 4, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 5, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 25, 55, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, true);
+  perform pg_temp.comp(s, 'mani tostado', 'AS_PACKAGED', 40, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 20, 60, 'machacado grueso, por encima', null, null);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 10, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 7, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 35, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Pon los fideos de arroz en un bol y cúbrelos con agua recién hervida: se hidratan solos, no se hierven. Escúrrelos apenas estén flexibles pero todavía firmes, porque terminan de cocinarse en la sartén.', 8, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Saltea el pollo en tiras a fuego fuerte con la mitad del aceite hasta dorarlo; resérvalo.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'En la misma sartén, con el resto del aceite, saltea el pimiento, la zanahoria, el jengibre y el ajo.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Devuelve el pollo y agrega la salsa de soya, el ají amarillo, el azúcar y el jugo de limón. Un hervor breve para juntar la salsa.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Suma los fideos escurridos y mezcla a fuego fuerte hasta que tomen la salsa y estén al punto.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Sirve con el maní machacado, el cebollín y el cilantro por encima.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Salsa huancaína
+  v_v := pg_temp.receta('Salsa huancaína', 'MEAL', array['OTHER']::public.meal_type[], 4, 17, 'La crema amarilla peruana de ají amarillo, queso fresco y leche, espesada con galletas de soda. No es un plato: es la base que baña papas cocidas, pastas y saltados, y acá está en la porción que de verdad se come entre cuatro.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'quesillo', 'AS_PACKAGED', 250, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 300, 'hace de queso fresco', null, null);
+  perform pg_temp.comp(s, 'pasta de aji amarillo', 'AS_PACKAGED', 50, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 30, 70, 'manda el picor y el color: parte por abajo y prueba', null, null);
+  perform pg_temp.comp(s, 'leche liquida entera', 'AS_PACKAGED', 100, 'ML', null, false, 3, null, 'MAIN', 'ADJUSTABLE', 80, 150, null, null, null);
+  perform pg_temp.alt(s, 'leche evaporada', 'EXCELLENT', 'más cuerpo y el sabor clásico de restaurante', 1);
+  perform pg_temp.alt(s, 'queso mantecoso', 'ACCEPTABLE', 'más graso y salado: la salsa queda pesada, ajusta la sal', null);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'galletas de soda', 'AS_PACKAGED', 30, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 20, 40, 'espesan y dan cuerpo', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 3, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 40, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Muele el quesillo con un tenedor hasta pasta fina, desmigaja las galletas y bate todo con la leche, la pasta de ají amarillo y el aceite hasta lograr una crema espesa y pareja.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'En vez de batir a mano: licúa todos los ingredientes juntos un par de minutos hasta una crema completamente lisa.', 3, null, 'BLENDER', 'Sin licuadora: el batido a mano del paso anterior; queda más rústica pero funciona igual.', null);
+  perform pg_temp.paso(v_v, 3, 'Prueba la sal y el picor. Si quedó muy espesa, suéltala con leche de a cucharadas: debe napar la cuchara sin caerse en bloque.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Fetuccinis a la huancaína con saltado de pollo
+  v_v := pg_temp.receta('Fetuccinis a la huancaína con saltado de pollo', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 27, 'Fetuccinis bañados en salsa huancaína tibia con un saltado de pollo, cebolla y tomate encima, jugoso de salsa de soya y vinagre. Los tiempos son con la huancaína ya lista: es receta aparte y hay que sumarla si se parte de cero.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 500, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 650, 'en tiras', null, null);
+  perform pg_temp.alt(s, 'vacuno lomo liso', 'EXCELLENT', 'la versión de carta con lomo, al triple del costo del pollo', 1);
+  perform pg_temp.alt(s, 'camarones pelados', 'GOOD', 'al final del saltado, un par de minutos', 0.8);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'fideos', 'RAW', 320, 'G', 'BOILED', false, 1, 2.4, 'MAIN', 'ADJUSTABLE', 240, 400, 'fetuccini', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'pluma gruesa', null, null);
+  perform pg_temp.comp(s, 'tomate', 'RAW', 200, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, 'en gajos', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 20, 45, null, null, null);
+  perform pg_temp.comp(s, 'vinagre', 'AS_PACKAGED', 15, 'ML', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 10, 25, null, null, null);
+  perform pg_temp.comp_anidada(s, 'Salsa huancaína', 1, 3);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 4, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, false);
+  perform pg_temp.comp(s, 'perejil fresco', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 7, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 35, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Cuece los fetuccinis al dente y resérvalos con un poco de su agua de cocción.', 12, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Entibia la salsa huancaína a fuego mínimo, revolviendo, sin que llegue a hervir: hervida se corta y pierde la seda. Si espesa, suéltala con el agua de la pasta.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Saltea el pollo en tiras a fuego fuerte con la mitad del aceite hasta dorarlo; resérvalo.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Con el resto del aceite, saltea la cebolla en pluma y el ajo a fuego máximo, que quede crujiente.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Devuelve el pollo, suma el tomate en gajos y vierte la salsa de soya y el vinagre por el borde para armar el jugo.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Mezcla los fetuccinis con la huancaína, sírvelos y corona con el saltado y su jugo. Perejil por encima.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Milanesa con tallarines al pesto peruano
+  v_v := pg_temp.receta('Milanesa con tallarines al pesto peruano', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 30, 'Milanesa de vacuno apanada y dorada, con tallarines verdes al pesto de albahaca y espinaca. Es el clásico de fuente de soda limeña; los tiempos son con el pesto ya hecho, que es receta aparte.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno posta negra', 'RAW', 600, 'G', 'FRIED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 800, 'bistecs delgados; pídelos cortados para milanesa', null, null);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'EXCELLENT', 'milanesa de pollo: abre las pechugas en mariposa y machácalas parejas', 1);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'fideos', 'RAW', 320, 'G', 'BOILED', false, 1, 2.4, 'MAIN', 'ADJUSTABLE', 240, 400, 'tallarines', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 110, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'para el apanado; casi todo el batido termina en la carne', 'unidad', 2);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 40, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 30, 60, 'la que se pega al bistec; en el plato queda más', null, null);
+  perform pg_temp.comp(s, 'pan rallado', 'AS_PACKAGED', 80, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', 60, 110, 'el que se adhiere; el resto queda en el plato de apanar', null, null);
+  perform pg_temp.comp(s, 'limon', 'RAW', 40, 'G', null, true, 4, null, 'SEASONING', 'OPTIONAL', null, null, 'en cuartos sobre la milanesa', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 5, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 4, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 60, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 30, 80, 'aceite retenido por el apanado: en la sartén va más y no se declara, igual que la merluza frita', null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 5, null, false);
+  perform pg_temp.comp(s, 'queso parmesano rallado', 'AS_PACKAGED', 20, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 6, null, true);
+  perform pg_temp.comp_anidada(s, 'Pesto peruano de albahaca y espinaca', 1, 1);
+  perform pg_temp.paso(v_v, 1, 'Cuece los tallarines al dente y resérvalos con un poco de su agua de cocción.', 12, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Machaca los bistecs entre dos láminas de plástico hasta dejarlos delgados y parejos. Sálalos.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Pásalos por harina sacudiendo el exceso, luego por el huevo batido y al final por el pan rallado, apretando con la mano para que el apanado agarre.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Fríelas en sartén con aceite bien caliente, 2 a 3 minutos por lado, hasta que la costra dore. En la sartén va más aceite del declarado: lo que se come es lo que retiene el apanado. Escúrrelas sobre papel.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'En vez de freír en sartén: dora las milanesas en la air fryer, rociadas con el aceite, dándolas vuelta a la mitad.', 14, 200, 'AIR_FRYER', 'Sin air fryer: la sartén con aceite del paso anterior es el método base.', null);
+  perform pg_temp.paso(v_v, 6, 'Fuera del fuego, mezcla los tallarines con el pesto y un chorrito del agua de cocción hasta que queden verdes y sedosos.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Sirve la milanesa con los tallarines al lado, el limón en cuartos y parmesano si se quiere.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Arroz chaufán de pollo
+  v_v := pg_temp.receta('Arroz chaufán de pollo', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 30, 'Arroz frito al estilo chifa con pollo, tortilla de huevo picada, cebollín y salsa de soya. Existe para el arroz que sobró: frío y suelto del día anterior es el único que queda graneado; con arroz recién hecho sale una masa.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'COOKED', 600, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 500, 800, 'arroz cocido del día anterior, frío y desgranado', null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 2, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 400, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 500, null, null, null);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 165, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, 'en tortilla delgada que luego se pica', 'unidad', 3);
+  perform pg_temp.alt(s, 'camarones pelados', 'GOOD', 'chaufa de camarones: entran casi al final', 0.8);
+  perform pg_temp.alt(s, 'jamon de cerdo cocido', 'ACCEPTABLE', 'la versión de aprovechamiento total, en cubitos dorados', 0.5);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 60, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'lo blanco al wok, lo verde al final', null, null);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 100, 'G', 'PAN_SEARED', true, 2, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, false);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 10, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, 'casi siempre sobra: la salsa de soya sala', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 5, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 50, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 30, 70, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 40, 'va completo al plato: en el chaufa nada se escurre', null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 10, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', 5, 15, 'al final, fuera del fuego', null, null);
+  perform pg_temp.paso(v_v, 1, 'Bate los huevos y cuaja una tortilla delgada en la sartén con un poco del aceite. Sácala y pícala en cuadritos.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Saltea el pollo en cubos a fuego fuerte con parte del aceite hasta dorarlo.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Agrega el pimiento, el jengibre y la parte blanca del cebollín; un par de minutos.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Suma el arroz frío desgranado con las manos y saltéalo a fuego máximo, revolviendo desde el fondo, hasta que esté caliente, suelto y con olor a tostado.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Vierte la salsa de soya por el borde de la sartén, agrega la tortilla picada, el aceite de sésamo y el cebollín verde. Mezcla y apaga.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Chaufa blanco
+  v_v := pg_temp.receta('Chaufa blanco', 'MEAL', array['OTHER']::public.meal_type[], 4, 21, 'El arroz salteado chifa sin salsa de soya: ajo dorado, tortilla de huevo picada y cebollín, sazonado solo con sal, por eso queda blanco. Guarnición para acompañar saltados, sudados y pescados.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'COOKED', 600, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 500, 800, 'cocido y frío, del día anterior', null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 2, null, true);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 110, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'en tortilla delgada picada', 'unidad', 2);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 4, 12, 'dorado, es el sabor que manda', null, null);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 8, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 5, 'acá la sal hace el trabajo de la salsa de soya', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 4, null, true);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 50, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 35, 'va completo al plato', null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 8, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', 4, 12, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Bate los huevos, cuaja una tortilla delgada con un poco del aceite, sácala y pícala en cuadritos.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Dora el ajo picado fino y el jengibre en el resto del aceite, sin que el ajo se queme: amargo arruina el arroz.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Suma el arroz frío desgranado y saltéalo a fuego máximo, revolviendo desde el fondo, hasta que esté caliente y suelto. Sala acá: no lleva salsa de soya, por eso queda blanco.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Agrega la tortilla picada, el cebollín y el aceite de sésamo, mezcla y apaga.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Saltado criollo de pollo
+  v_v := pg_temp.receta('Saltado criollo de pollo', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 30, 'Tiras de pollo saltadas a fuego violento con cebolla en pluma, tomate en gajos, ají verde, salsa de soya y vinagre, servidas con su jugo sobre arroz. No es un salteado suave de verduras: acá el wok casi humea y la cebolla queda crujiente.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 600, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 800, 'en tiras gruesas', null, null);
+  perform pg_temp.alt(s, 'reineta', 'GOOD', 'saltado de pescado: sella los trozos y revuelve lo mínimo, se desarman', 1);
+  perform pg_temp.alt(s, 'camarones pelados', 'GOOD', 'entran al final: un par de minutos y listo', 0.8);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 200, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'pluma gruesa: debe quedar crujiente', null, null);
+  perform pg_temp.comp(s, 'tomate', 'RAW', 250, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, 'en gajos, entra al final', null, null);
+  perform pg_temp.comp(s, 'aji verde', 'RAW', 30, 'G', null, true, 3, null, 'MAIN', 'OPTIONAL', null, null, 'en tiras finas, sin pepas si se quiere suave', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimienta negra', 'AS_PACKAGED', 1, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 4, 'poca: la salsa de soya ya sala', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 5, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 45, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 30, 60, null, null, null);
+  perform pg_temp.comp(s, 'vinagre', 'AS_PACKAGED', 20, 'ML', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 10, 30, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, false);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 10, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 7, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 40, 'todo el aceite del saltado va al plato', null, null);
+  perform pg_temp.paso(v_v, 1, 'Cuece el arroz aparte mientras haces el saltado.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Salpimienta las tiras de pollo. Sartén o wok muy caliente con la mitad del aceite: saltéalas en dos tandas hasta dorarlas y resérvalas. Con la sartén repleta el pollo se cuece en su jugo en vez de dorarse.', 7, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Con el resto del aceite a fuego máximo, saltea la cebolla en pluma, el ají verde y el ajo un par de minutos: la cebolla tiene que quedar crujiente.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Devuelve el pollo, suma el tomate en gajos y vierte la salsa de soya y el vinagre por el borde de la sartén: que evaporen fuerte y armen el jugo del saltado.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Prueba la sal, reparte el cilantro y sirve al tiro sobre el arroz, con todo el jugo.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Arroz con choclo
+  v_v := pg_temp.receta('Arroz con choclo', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 29, 'Arroz graneado con granos de choclo, la guarnición peruana que acompaña bistecs, pollos crocantes y pescados. Se hace en una olla y no pide nada raro.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'choclo en grano', 'RAW', 200, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 300, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 5, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 4, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Dora el ajo picado fino en la olla con el aceite, sin que se queme.', 1, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Agrega el arroz y revuélvelo un par de minutos hasta que los granos se vean nacarados.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Suma el choclo, la sal y una taza y media de agua caliente por cada taza de arroz. Tapa y cuece a fuego bajo hasta que el agua se absorba.', 16, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Apaga y deja reposar tapado antes de soltar el grano con un tenedor.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Tacu tacu de porotos
+  v_v := pg_temp.receta('Tacu tacu de porotos', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 107, 'Torta dorada de porotos y arroz machacados con un sofrito de ají amarillo: el plato peruano de aprovechamiento por excelencia, hecho para el arroz y los porotos que sobraron de los porotos de la semana.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'porotos secos', 'RAW', 250, 'G', 'BOILED', false, 1, 2.4, 'MAIN', 'ADJUSTABLE', 200, 300, 'en seco, antes de remojar. Si tienes porotos cocidos del día anterior, son unos 600 g y te saltas la cocción', null, null);
+  perform pg_temp.alt(s, 'lentejas', 'GOOD', 'no necesitan remojo y cuecen en la mitad del tiempo; el tacu tacu queda más suelto', 1);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 2, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'COOKED', 500, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 600, 'arroz ya cocido: acá es donde entra el arroz graneado que sobró', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'pasta de aji amarillo', 'AS_PACKAGED', 30, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 10, 40, 'es lo que hace peruano al plato; con 10 g queda suave', null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'comino molido', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'oregano seco', 'AS_PACKAGED', 1, 'G', null, true, 4, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 5, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 40, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, false);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 220, 'G', 'FRIED', true, 1, null, 'MAIN', 'OPTIONAL', null, null, 'un huevo frito por persona encima, como se sirve en Perú', 'unidad', 4);
+  perform pg_temp.paso(v_v, 1, 'Remoja los porotos en abundante agua fría la noche anterior y bota el agua del remojo. Si partes de porotos y arroz ya cocidos, sáltate este paso y el siguiente.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece los porotos en agua nueva, sin sal, hasta que estén bien blandos. Escúrrelos guardando un poco del caldo.', 60, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'En vez de la olla común: cuece los porotos remojados en la olla a presión, contando los 25 minutos desde que la válvula empieza a sonar.', 25, null, 'PRESSURE_COOKER', 'Sin olla a presión: los 60 minutos de la olla común, agregando agua caliente si baja el nivel.', null);
+  perform pg_temp.paso(v_v, 4, 'Si no tienes arroz sobrante, cuece el arroz aparte mientras los porotos hierven.', 20, null, null, null, 1);
+  perform pg_temp.paso(v_v, 5, 'Sofríe la cebolla picada fina con el aceite, el ajo, la pasta de ají amarillo, el comino y el orégano hasta que la cebolla esté transparente.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Suma los porotos al sofrito y macháchalos a medias con el machacador de papas, agregando un chorrito de su caldo. Incorpora el arroz, sala y mezcla hasta tener una masa gruesa que se despegue de la sartén.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Con la sartén untada en aceite bien caliente, forma la torta y dórala sin moverla hasta que haga costra; dala vuelta ayudándote con un plato y dora el otro lado. Puedes hacer una torta grande o cuatro individuales.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 8, 'Si vas a coronar con huevo, fríelos al final y ponlos encima al servir.', 6, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Tacu tacu a lo pobre
+  v_v := pg_temp.receta('Tacu tacu a lo pobre', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 40, 'El tacu tacu convertido en plato de fonda: la torta de porotos y arroz con bistec, plátano frito, huevo y un saltado corto de cebolla y tomate encima. Se parece al bistec a lo pobre chileno, pero la base es la torta de porotos, no las papas fritas. Los tiempos son con el tacu tacu ya hecho: partiendo de cero hay que sumarle su preparación.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno lomo liso', 'RAW', 500, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 700, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 2, null, true);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 220, 'G', 'FRIED', false, 1, null, 'MAIN', 'FIXED', null, null, null, 'unidad', 4);
+  s := pg_temp.slot(v_v, 'FRUIT', 3, null, true);
+  perform pg_temp.comp(s, 'platano', 'EDIBLE_PORTION', 360, 'G', 'FRIED', false, 1, null, 'MAIN', 'ADJUSTABLE', 240, 480, 'unos tres plátanos maduros, en láminas a lo largo', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 4, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'en pluma gruesa, para el saltado que corona', null, null);
+  perform pg_temp.comp(s, 'tomate', 'RAW', 150, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, true);
+  perform pg_temp.comp(s, 'pasta de aji amarillo', 'AS_PACKAGED', 15, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'vinagre', 'AS_PACKAGED', 15, 'ML', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 5, 20, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 5, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 35, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 45, 'reparte entre el plátano, los bistecs y los huevos', null, null);
+  s := pg_temp.slot(v_v, 'BASE', 7, null, true);
+  perform pg_temp.comp_anidada(s, 'Tacu tacu de porotos', 1, 1);
+  perform pg_temp.paso(v_v, 1, 'Dora las láminas de plátano en la sartén con parte del aceite hasta que tomen color caramelo por ambos lados. Resérvalas.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Sala los bistecs y séllalos a fuego fuerte, dos minutos por lado, en tandas para no enfriar la sartén. Resérvalos tapados.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'En la misma sartén salta la cebolla y el tomate a fuego fuerte con la pasta de ají, un par de minutos para que queden crujientes, y desglasa con el vinagre y un chorrito de agua raspando el fondo.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Fríe los huevos dejando la yema líquida.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Arma cada plato: tacu tacu abajo, bistec con su saltado y juguito encima, huevo frito y plátano al lado.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Bistec a la sartén peruano
+  v_v := pg_temp.receta('Bistec a la sartén peruano', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 36, 'Bistec sellado con cebolla y tomate salteados y un juguito de sillao raspado de la sartén, con plátano frito y arroz con choclo. Es el primo peruano del bistec a lo pobre chileno: acá no hay papas fritas, hay plátano dorado y el jugo salino del sillao.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno asiento picana', 'RAW', 600, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 800, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'tomate', 'RAW', 150, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FRUIT', 3, null, true);
+  perform pg_temp.comp(s, 'platano', 'EDIBLE_PORTION', 240, 'G', 'FRIED', false, 1, null, 'MAIN', 'ADJUSTABLE', 120, 360, 'dos plátanos maduros en láminas a lo largo', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 15, 40, 'el sillao del juguito; ya es salado, por eso la sal va corta', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'comino molido', 'AS_PACKAGED', 1, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 4, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 30, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 7, null, true);
+  perform pg_temp.comp_anidada(s, 'Arroz con choclo', 1, 1);
+  perform pg_temp.paso(v_v, 1, 'Parte por el arroz con choclo: se cuece solo mientras haces todo lo demás.', 24, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Dora las láminas de plátano con parte del aceite hasta que caramelicen por ambos lados. Resérvalas.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Aliña los bistecs con ajo molido, comino y apenas sal, y séllalos a fuego fuerte dos minutos por lado. Resérvalos tapados.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En la misma sartén salta la cebolla y el tomate a fuego fuerte, un par de minutos: tienen que quedar enteros y crujientes, no deshechos.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Devuelve los bistecs con su jugo, agrega el sillao y un chorrito de agua, y raspa el fondo medio minuto para armar el juguito.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Sirve el bistec bañado con su juguito, el plátano y el arroz con choclo.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Cerdo crocante a la miel picante
+  v_v := pg_temp.receta('Cerdo crocante a la miel picante', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 40, 'Cubos de cerdo con costra de maicena, fritos y envueltos a último minuto en una salsa brillante de miel, sillao y ají amarillo. El contraste entre lo crocante y lo pegajoso es el plato.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pulpa de cerdo', 'RAW', 600, 'G', 'FRIED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 800, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 60, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 40, 80, 'la que se pega en la costra; en el plato hondo del apanado va un poco más y sobra', null, null);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 55, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'liga la costra', 'unidad', 1);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 4, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 60, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 30, 80, 'aceite retenido en la fritura: en la sartén va bastante más y no se declara porque no se come', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'miel', 'AS_PACKAGED', 60, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 40, 80, 'es el corazón dulce de la salsa', null, null);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 30, 'ML', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 20, 40, null, null, null);
+  perform pg_temp.comp(s, 'pasta de aji amarillo', 'AS_PACKAGED', 20, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 10, 35, 'el picante se ajusta acá', null, null);
+  perform pg_temp.comp(s, 'vinagre', 'AS_PACKAGED', 15, 'ML', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 10, 20, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 5, null, false);
+  perform pg_temp.comp(s, 'semillas de sesamo', 'AS_PACKAGED', 10, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 30, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 6, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Cuece el arroz aparte: corre solo mientras haces el cerdo.', 20, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Sala los cubos de cerdo, pásalos por el huevo batido y luego por maicena, sacudiendo el exceso.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Fríelos en aceite bien caliente, en dos o tres tandas para que no se les baje la temperatura, hasta que la costra quede dorada y dura. Escúrrelos sobre papel.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En vez de freír en sartén: dora los cubos apanados en la air fryer a 200 °C, en una sola capa y sin amontonar, dándolos vuelta a mitad de camino.', 14, 200, 'AIR_FRYER', 'Sin air fryer: la fritura en sartén es el método base de esta receta.', null);
+  perform pg_temp.paso(v_v, 5, 'En una sartén limpia junta la miel, el sillao, la pasta de ají, el vinagre y el ajo molido, y dale un hervor corto hasta que burbujee espeso.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Apaga el fuego, echa el cerdo a la salsa y envuélvelo en dos vueltas. Esto va al último segundo y se sirve al tiro: si el cerdo se queda esperando dentro de la salsa, el crocante se ablanda. Termina con sésamo y cebollín.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Pollo crocante en salsa chijaukay
+  v_v := pg_temp.receta('Pollo crocante en salsa chijaukay', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 36, 'Clásico del chifa: trozos de pollo con costra de maicena fritos y bañados en una salsa de sillao, jengibre y un toque dulce, ligada brillante con maicena. Va con arroz con choclo.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 600, 'G', 'FRIED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 800, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 70, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 50, 90, '60 g para la costra que se pega y 10 g disueltos para ligar la salsa', null, null);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 55, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'liga la costra', 'unidad', 1);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 60, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 30, 80, 'aceite retenido en la fritura; el baño de la sartén va aparte y no se come', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 25, 50, null, null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 20, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 10, 30, null, null, null);
+  perform pg_temp.comp(s, 'vinagre', 'AS_PACKAGED', 15, 'ML', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 10, 20, null, null, null);
+  perform pg_temp.comp(s, 'jengibre molido', 'AS_PACKAGED', 2, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 1, 3, 'en el chifa va kion fresco; el molido cumple en versión casera', null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 5, null, false);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 40, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 6, null, true);
+  perform pg_temp.comp_anidada(s, 'Arroz con choclo', 1, 1);
+  perform pg_temp.paso(v_v, 1, 'Parte por el arroz con choclo: se hace solo mientras fríes el pollo.', 24, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Pasa los cubos de pollo por el huevo batido y luego por maicena, sacudiendo el exceso. Reserva 10 g de maicena para la salsa.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Fríe el pollo en aceite bien caliente, en tandas, hasta que la costra esté dorada y cruja. Escúrrelo sobre papel.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En vez de freír en sartén: cocina el pollo apanado en la air fryer a 200 °C, por tandas y en una sola capa, dándolo vuelta a la mitad.', 12, 200, 'AIR_FRYER', 'Sin air fryer: la fritura en sartén es el método base de esta receta.', null);
+  perform pg_temp.paso(v_v, 5, 'En una sartén junta el sillao, el azúcar, el vinagre, el jengibre, el ajo molido y media taza de agua con la maicena reservada disuelta. Dale un hervor revolviendo hasta que espese y brille.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Apaga, envuelve el pollo en la salsa y sirve al tiro con el cebollín en pluma encima: la costra aguanta poco dentro de la salsa.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Anticuchos peruanos al ají panca
+  v_v := pg_temp.receta('Anticuchos peruanos al ají panca', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 50, 'Palitos de vacuno marinados largo en ají panca, vinagre y comino, dorados a la plancha y servidos con papas cocidas. La marinada es el plato: sin sus horas de reposo esto es solo carne al palito.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno posta negra', 'RAW', 700, 'G', 'GRILLED', false, 1, null, 'MAIN', 'ADJUSTABLE', 550, 900, 'el anticucho clásico es de corazón; en versión casera chilena la posta funciona y se consigue en cualquier carnicería', null, null);
+  perform pg_temp.alt(s, 'vacuno posta magra', 'EXCELLENT', null, 1);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'GOOD', 'anticucho de pollo: menos tiempo de plancha o se seca', 1);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'pasta de aji panca', 'AS_PACKAGED', 60, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 40, 80, 'define el color y el ahumado del anticucho; no pica fuerte', null, null);
+  perform pg_temp.comp(s, 'vinagre', 'AS_PACKAGED', 40, 'ML', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 25, 50, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 10, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'comino molido', 'AS_PACKAGED', 2, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 1, 3, null, null, null);
+  perform pg_temp.comp(s, 'oregano seco', 'AS_PACKAGED', 1, 'G', null, true, 5, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 6, null, 'SEASONING', 'ADJUSTABLE', 0, 5, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 4, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 600, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 800, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 5, null, false);
+  perform pg_temp.comp(s, 'choclo fresco entero', 'RAW', 700, 'G', 'BOILED', true, 1, null, 'MAIN', 'OPTIONAL', null, null, 'dos choclos en trozos, cocidos junto a las papas, como en la anticuchería', null, null);
+  perform pg_temp.paso(v_v, 1, 'Mezcla la pasta de ají panca con el vinagre, el ajo molido, el comino, el orégano, la sal y la mitad del aceite. Baña los cubos de carne y déjalos marinar tapados en el refrigerador: mínimo 4 horas, mejor de un día para otro. Este reposo no se salta — es lo que hace anticucho al anticucho.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Ensarta la carne en palitos de brocheta, tres o cuatro cubos por palito, guardando la marinada que queda en el bol.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Cuece las papas con cáscara —y el choclo en trozos si lo usas— en agua con sal.', 25, null, null, null, 1);
+  perform pg_temp.paso(v_v, 4, 'Calienta una plancha o sartén grande con el resto del aceite hasta que humee y dora los anticuchos 3 minutos por lado, en tandas, sin amontonarlos.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'En vez de la plancha: ásalos a la parrilla bien caliente, el mismo tiempo por lado, pintándolos con la marinada al dar vuelta.', 12, null, 'GRILL', 'La plancha o sartén del paso anterior es el método base.', null);
+  perform pg_temp.paso(v_v, 6, 'Hierve la marinada sobrante un par de minutos en una ollita —estuvo en contacto con carne cruda— y úsala para pintar los anticuchos ya dorados.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Sirve los palitos con las papas y el choclo.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Risotto criollo de zapallo
+  v_v := pg_temp.receta('Risotto criollo de zapallo', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 54, 'Arroz arborio cremoso con zapallo camote deshecho, ají amarillo y cubos de pollo dorado, mantecado con mantequilla y parmesano. El zapallo se deshace en el caldo y tiñe todo el plato.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'arroz arborio', 'RAW', 320, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 240, 400, 'el grano corto y almidonoso es lo que da la cremosidad; su rendimiento cocido no está medido y no se inventa', null, null);
+  perform pg_temp.alt(s, 'arroz blanco', 'GOOD', 'alternativa honesta: funciona, pero suelta menos almidón y el resultado queda más suelto que un risotto de verdad', 1);
+  s := pg_temp.slot(v_v, 'PROTEIN', 2, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 400, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 600, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'zapallo camote', 'RAW', 500, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 350, 650, 'en cubo chico para que la mitad se deshaga en el caldo', null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'pasta de aji amarillo', 'AS_PACKAGED', 30, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 15, 45, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'vino blanco', 'AS_PACKAGED', 100, 'ML', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, 'el alcohol se evapora en el hervor', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 5, null, true);
+  perform pg_temp.comp(s, 'queso parmesano rallado', 'AS_PACKAGED', 60, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 40, 80, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'mantequilla', 'AS_PACKAGED', 30, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 20, 40, 'para mantecar al final', null, null);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 2, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Dora los cubos de pollo salados en la olla con el aceite y resérvalos.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'En la misma olla sofríe la cebolla picada fina con el ajo y la pasta de ají amarillo hasta que esté transparente.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Agrega el arroz y revuélvelo un par de minutos hasta nacararlo; si usas vino, échalo ahora y deja que se evapore.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Suma el zapallo y ve agregando agua caliente de a cucharón, revolviendo seguido y esperando que se absorba antes del siguiente, hasta que el grano esté cremoso pero con centro firme y el zapallo a medio deshacer. Ten una tetera o una olla chica con agua siempre caliente al lado.', 22, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Fuera del fuego devuelve el pollo y manteca con la mantequilla y el parmesano, revolviendo fuerte. Sala, tapa un minuto y sirve al tiro: el risotto no espera.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Risotto acevichado con mariscos
+  v_v := pg_temp.receta('Risotto acevichado con mariscos', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 56, 'Arroz arborio cremoso con camarones y ostiones, terminado fuera del fuego con una salsa acevichada de limón, ají amarillo y crema. El limón entra al final y no vuelve al fuego: esa es toda la técnica.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'arroz arborio', 'RAW', 320, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 240, 400, null, null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 2, null, true);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 300, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 400, null, null, null);
+  perform pg_temp.comp(s, 'ostiones', 'RAW', 150, 'G', 'PAN_SEARED', true, 2, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.alt(s, 'carne de jaiba', 'GOOD', 'en vez de los ostiones; se agrega al final porque ya viene cocida al vapor de fábrica', 1);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'limon', 'RAW', 100, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 60, 140, 'peso de la fruta: rinde unos 35-40 ml de jugo colado para la acevichada', null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'vino blanco', 'AS_PACKAGED', 80, 'ML', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'pasta de aji amarillo', 'AS_PACKAGED', 25, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 10, 40, null, null, null);
+  perform pg_temp.comp(s, 'crema de leche', 'AS_PACKAGED', 80, 'ML', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 50, 100, 'liga la acevichada y le baja el filo al limón', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 5, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 120, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'mantequilla', 'AS_PACKAGED', 20, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 10, 30, null, null, null);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 2, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 7, null, false);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 10, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Salta los camarones y los ostiones salados en la olla con el aceite, un minuto por lado, apenas cambien de color. Resérvalos: se terminan de cocinar al final.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'En la misma olla sofríe la cebolla picada fina con el ajo hasta que esté transparente.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Nacara el arroz revolviéndolo un par de minutos; si usas vino, échalo y deja que se evapore.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Cuece agregando agua caliente de a cucharón, revolviendo seguido, hasta que el grano esté cremoso con el centro firme.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Apaga el fuego. Mezcla el jugo de limón colado con la pasta de ají amarillo y la crema, y revuélvela con el arroz FUERA del fuego junto con la mantequilla y los mariscos reservados. Si la acevichada hierve, se corta y el plato se pierde: por eso este paso es siempre el último. Sala, corona con cilantro y sirve al tiro.', 4, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Atún sellado con miel de ajonjolí
+  v_v := pg_temp.receta('Atún sellado con miel de ajonjolí', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 32, 'Medallones de atún fresco con costra de sésamo, sellados por fuera y rosados al centro, bañados en una miel tibia con sillao. Va con arroz blanco y ensalada verde. Ojo: esto es atún fresco de pescadería, no el de conserva.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'atun fresco', 'RAW', 600, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 800, 'cuatro medallones parejos de unos 3 cm de alto; el grosor es lo que permite sellarlo sin pasarlo', null, null);
+  perform pg_temp.alt(s, 'salmon', 'GOOD', 'también se sella con costra de sésamo, pero conviene cocinarlo hasta el centro', 1);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'semillas de sesamo', 'AS_PACKAGED', 30, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 20, 40, 'la costra que se pega al medallón', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 4, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 3, null, true);
+  perform pg_temp.comp(s, 'miel', 'AS_PACKAGED', 40, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 25, 60, null, null, null);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 25, 'ML', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 15, 35, null, null, null);
+  perform pg_temp.comp(s, 'jengibre molido', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 4, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 20, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 5, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  s := pg_temp.slot(v_v, 'SALAD', 6, null, true);
+  perform pg_temp.comp_anidada(s, 'Ensalada verde', 1, 1);
+  perform pg_temp.paso(v_v, 1, 'Cuece el arroz aparte.', 20, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Seca muy bien los medallones con papel, sálalos apenas y apriétalos por sus caras contra un plato con el sésamo para que la costra se pegue.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Sartén con el aceite hasta que humee: sella cada medallón un minuto y medio por cara, sin moverlo. El centro queda rosado a propósito — es el punto de este plato; si lo prefieres cocido de lado a lado, dale un par de minutos más por cara sabiendo que queda más seco. Compra el atún fresco y del día.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En la misma sartén fuera del fuego fuerte, entibia la miel con el sillao y el jengibre hasta que se junten en un jarabe, medio minuto.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Lamina los medallones a cuchillo, báñalos con la miel de ajonjolí y sirve con el arroz y la ensalada.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Salmón a la florentina
+  v_v := pg_temp.receta('Salmón a la florentina', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 58, 'Salmón al horno servido sobre una cama de espinacas salteadas con mantequilla, acompañado de papas a la crema gratinadas. Cambia el plato completo respecto del salmón con papas de siempre: acá la fuente de papas va con crema y queso, y el pescado descansa sobre verde.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'salmon', 'RAW', 640, 'G', 'BAKED', false, 1, null, 'MAIN', 'ADJUSTABLE', 480, 800, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'espinaca', 'RAW', 400, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 500, 'parece mucha en crudo; salteada se reduce a un cuarto', null, null);
+  perform pg_temp.alt(s, 'acelga', 'GOOD', 'solo las hojas, sin la penca; más rústica que la espinaca pero funciona igual en la cama', 1);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 3, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 700, 'G', 'BAKED', false, 1, null, 'MAIN', 'ADJUSTABLE', 500, 900, 'en rodajas delgadas y parejas o el gratín queda crudo al centro', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'crema de leche', 'AS_PACKAGED', 200, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 250, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 5, null, true);
+  perform pg_temp.comp(s, 'queso parmesano rallado', 'AS_PACKAGED', 40, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 30, 60, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'mantequilla', 'AS_PACKAGED', 20, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 10, 30, 'para saltear la espinaca', null, null);
+  perform pg_temp.comp(s, 'aceite de oliva', 'AS_PACKAGED', 15, 'ML', null, false, 2, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 20, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 7, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'nuez moscada molida', 'AS_PACKAGED', 1, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'limon', 'RAW', 40, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Precalienta el horno.', 10, 200, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Ordena las rodajas de papa en capas en una fuente enmantequillada, salando entre capas, y cúbrelas con la crema y la nuez moscada. Tapa con el parmesano.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Hornea el gratín hasta que las papas se pasen con el cuchillo y la superficie dore.', 35, 200, null, null, 1);
+  perform pg_temp.paso(v_v, 4, 'Cuando al gratín le queden unos 15 minutos, mete el salmón aliñado con sal, limón y el aceite en su propia fuente, hasta que se separe en láminas al presionarlo.', 15, null, null, null, 1);
+  perform pg_temp.paso(v_v, 5, 'Mientras el horno trabaja, salta la espinaca con la mantequilla y el ajo en una sartén grande hasta que apenas se rinda. Escúrrele el agua que suelte.', 5, null, null, null, 1);
+  perform pg_temp.paso(v_v, 6, 'Arma cada plato: cama de espinaca, el salmón encima y el gratín de papas al lado.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Salmón a la chorrillana
+  v_v := pg_temp.receta('Salmón a la chorrillana', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 32, 'Salmón sellado a la sartén coronado con un saltado corto y jugoso de cebolla, tomate y ají amarillo desglasado con vinagre — la salsa chorrillana de los puertos peruanos, que no tiene nada que ver con la chorrillana chilena de papas fritas. Con arroz graneado.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'salmon', 'RAW', 640, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 480, 800, null, null, null);
+  perform pg_temp.alt(s, 'reineta', 'EXCELLENT', 'en Perú la chorrillana clásica va sobre pescado blanco; menos tiempo de sartén', 1);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 200, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'en pluma gruesa: tiene que quedar entera y crujiente', null, null);
+  perform pg_temp.comp(s, 'tomate', 'RAW', 250, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, 'en gajos gruesos', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 3, null, true);
+  perform pg_temp.comp(s, 'pasta de aji amarillo', 'AS_PACKAGED', 25, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 10, 40, null, null, null);
+  perform pg_temp.comp(s, 'vinagre', 'AS_PACKAGED', 20, 'ML', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 10, 25, 'el desglasado con vinagre es la firma de la chorrillana', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 5, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 30, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, false);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 7, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Cuece el arroz aparte.', 20, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Sala los filetes y séllalos en la sartén con la mitad del aceite, 3 a 4 minutos por lado según el grosor. Resérvalos tapados.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'En la misma sartén a fuego fuerte, con el resto del aceite, salta la cebolla dos minutos, suma el tomate, el ajo y la pasta de ají y salta uno más: las verduras quedan enteras, no deshechas. Este saltado es corto a propósito.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Desglasa con el vinagre y un chorrito de agua raspando el fondo, y deja que el juguito apenas espese.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Vuelca el saltado con todo su jugo sobre los filetes, corona con cilantro y sirve con el arroz.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Asado a la olla al vino tinto
+  v_v := pg_temp.receta('Asado a la olla al vino tinto', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 198, 'Un trozo entero de vacuno dorado y cocido dos horas y media en olla con vino tinto y aderezo de ají panca, hasta poder laminarlo con cuchara. Se parece a la carne mechada, pero el vino y el panca lo llevan a otro plato: salsa oscura, dulzor ahumado y carne en láminas, no deshilachada.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno asiento picana', 'RAW', 1000, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', 800, 1300, 'un trozo entero; se lamina al final, no se deshilacha', null, null);
+  perform pg_temp.alt(s, 'plateada de vacuno', 'EXCELLENT', 'más grasa y más jugosa; mismo tiempo de olla', 1);
+  s := pg_temp.slot(v_v, 'SAUCE', 2, null, true);
+  perform pg_temp.comp(s, 'vino tinto', 'AS_PACKAGED', 250, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 350, 'el alcohol se evapora en la cocción larga; queda el cuerpo y el color', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'pasta de aji panca', 'AS_PACKAGED', 50, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 30, 70, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 10, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'oregano seco', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'comino molido', 'AS_PACKAGED', 1, 'G', null, true, 4, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 6, 'G', null, false, 5, null, 'SEASONING', 'ADJUSTABLE', 0, 7, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 4, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 250, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 200, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 30, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 6, null, true);
+  perform pg_temp.comp(s, 'papa', 'RAW', 800, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 500, 1000, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Sella el trozo entero de carne en la olla con el aceite, dorándolo bien por todos sus lados.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Retira la carne y en la misma olla sofríe la cebolla, la zanahoria y el ajo con la pasta de ají panca, el orégano y el comino, raspando el fondo.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Devuelve la carne, agrega el vino tinto y deja que hierva un par de minutos para que pierda el alcohol.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Suma agua caliente hasta la mitad de la carne, tapa y cocina a fuego mínimo, dándola vuelta a mitad de camino, hasta que ceda sin resistencia al cuchillo. Son sus dos horas y media: no se apuran.', 150, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'En vez de las dos horas y media a fuego mínimo: cierra la olla a presión y cocina 50 minutos contados desde que la válvula suena; deja que pierda presión sola antes de abrir.', 50, null, 'PRESSURE_COOKER', 'Sin olla a presión: los 150 minutos de la olla común a fuego mínimo, revisando el nivel de líquido.', null);
+  perform pg_temp.paso(v_v, 6, 'Cerca del final, cuece las papas peladas en agua con sal.', 25, null, null, null, 1);
+  perform pg_temp.paso(v_v, 7, 'Saca la carne, déjala reposar cinco minutos y lamínala contra la fibra. Mientras, reduce el jugo de la olla destapado hasta que nape la cuchara, y salsea las láminas. Sala al final.', 6, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Pescado a lo macho
+  v_v := pg_temp.receta('Pescado a lo macho', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 42, 'Filete de pescado frito bañado en una salsa cremosa de mariscos al ají amarillo. En la carta peruana se anuncia picante; en esta versión casera el ají parte suave y cada casa le sube el tono. A diferencia del pescado con salsa de mariscos chileno, acá el filete se enharina y se fríe antes de bañarlo, y la salsa se hace con ají amarillo y leche evaporada ligada con maicena: sale anaranjada y espesa, no blanca.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'merluza', 'RAW', 640, 'G', 'FRIED', false, 1, null, 'MAIN', 'ADJUSTABLE', 480, 800, null, null, null);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 200, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', 150, 300, null, null, null);
+  perform pg_temp.comp(s, 'choritos', 'RAW', 200, 'G', 'STEWED', true, 3, null, 'MAIN', 'OPTIONAL', null, null, 'peso con concha; se cuecen en la salsa hasta que abran y se descartan los cerrados', null, null);
+  perform pg_temp.alt(s, 'reineta', 'EXCELLENT', null, 1);
+  perform pg_temp.alt(s, 'congrio', 'EXCELLENT', 'más firme y más caro; aguanta mejor la salsa encima', 1);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 50, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 40, 70, 'la que se pega al filete; en el plato del enharinado va más y sobra', null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'vino blanco', 'AS_PACKAGED', 60, 'ML', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 3, null, true);
+  perform pg_temp.comp(s, 'pasta de aji amarillo', 'AS_PACKAGED', 25, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 10, 50, 'parte por lo bajo: acá vive el picante del plato y se ajusta por casa', null, null);
+  perform pg_temp.comp(s, 'leche evaporada', 'AS_PACKAGED', 100, 'ML', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 60, 150, 'da el cuerpo cremoso de la salsa a lo macho', null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 10, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 5, 15, 'disuelta en agua fría, espesa la salsa', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 4, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'STEWED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'tomate', 'RAW', 150, 'G', 'STEWED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 50, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 30, 70, 'aceite retenido entre la fritura del pescado y el sofrito; el baño de la sartén va aparte', null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, false);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 7, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Cuece el arroz aparte.', 20, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Seca los filetes, sálalos y pásalos por harina sacudiendo el exceso.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Fríelos en aceite caliente, 3 minutos por lado, hasta que doren. Escúrrelos sobre papel y resérvalos calientes.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En otra sartén sofríe la cebolla con el ajo, el tomate y la pasta de ají amarillo hasta que la cebolla se ablande.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Suma los choritos y el vino si lo usas, tapa un par de minutos hasta que abran, y agrega los camarones un minuto más, apenas cambien de color.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Vierte la leche evaporada y la maicena disuelta en dos cucharadas de agua fría, y dale un hervor corto revolviendo hasta que la salsa nape. Sala.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Monta cada filete con la salsa de mariscos encima, cilantro y el arroz al lado.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Pollo salteado a la piña con sésamo
+  v_v := pg_temp.receta('Pollo salteado a la piña con sésamo', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 35, 'Salteado agridulce de pollo con piña, pimiento y cebolla, ligado brillante y espolvoreado con sésamo, sobre arroz graneado. El plato más dulce de la casa: el que los niños repiten.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 600, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 800, null, null, null);
+  s := pg_temp.slot(v_v, 'FRUIT', 2, null, true);
+  perform pg_temp.comp(s, 'pina', 'EDIBLE_PORTION', 300, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 400, 'peso de pulpa, sin cáscara ni corazón', null, null);
+  perform pg_temp.alt(s, 'duraznos en conserva', 'ACCEPTABLE', 'si no hay piña; escurridos y en gajos, agregados al final porque se deshacen', 1);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 150, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 20, 40, null, null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 15, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 5, 25, null, null, null);
+  perform pg_temp.comp(s, 'vinagre', 'AS_PACKAGED', 15, 'ML', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 10, 20, null, null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 10, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 5, 15, 'disuelta en agua fría, da el brillo del salteado', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, true);
+  perform pg_temp.comp(s, 'jengibre molido', 'AS_PACKAGED', 1, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 4, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, true);
+  perform pg_temp.comp(s, 'semillas de sesamo', 'AS_PACKAGED', 15, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 10, 20, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 7, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 30, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 8, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Cuece el arroz aparte.', 20, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Salta los cubos de pollo apenas salados a fuego fuerte con la mitad del aceite hasta dorarlos. Resérvalos.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'En la misma sartén salta el pimiento y la cebolla con el resto del aceite, dejándolos crujientes.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Agrega la piña en cubos y saltéala un par de minutos para que caramelice apenas.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Devuelve el pollo y vierte el sillao, el vinagre, el azúcar, el jengibre y la maicena disuelta en media taza de agua fría. Revuelve hasta que la salsa espese y abrace todo, un par de minutos.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Espolvorea el sésamo, apaga y sirve sobre el arroz.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Sarza criolla
+  v_v := pg_temp.receta('Sarza criolla', 'SALAD', array['LUNCH', 'DINNER']::public.meal_type[], 4, 15, 'Cebolla en pluma fina lavada, con ají, limón y cilantro: el acompañamiento peruano de todos los días para frituras, guisos de porotos o arroz con pollo. El lavado de la cebolla es lo que la separa de una simple cebolla cruda.');
+  s := pg_temp.slot(v_v, 'SALAD', 1, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 300, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 400, 'en pluma fina, cortada a lo largo del gajo para que no se desarme', null, null);
+  perform pg_temp.alt(s, 'cebollin', 'GOOD', 'más suave; igual conviene lavarlo, aunque un solo cambio de agua basta', 0.8);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'aji verde', 'RAW', 20, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', 0, 35, 'sin pepas ni venas; da el toque picante de la sarza', null, null);
+  perform pg_temp.comp(s, 'limon', 'RAW', 60, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 40, 80, 'peso de la fruta: rinde unos 25 ml de jugo, que es el aliño principal', null, null);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 8, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 4, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 10, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 0, 15, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Corta la cebolla en pluma bien fina, siguiendo el sentido del gajo.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Lávala: ponla en un bol con agua fría y una pizca de sal, estrújala suave con la mano y cámbiale el agua dos veces antes de escurrirla bien. Este lavado le quita el picor y el olor crudo y deja la pluma crocante: es el paso que hace la sarza.', 7, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Corta el ají en tiritas finas sin pepas ni venas y pica el cilantro.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Justo antes de servir, mezcla cebolla, ají y cilantro con el jugo de limón, el aceite y la sal. Armada con anticipación se apaga: el limón va al final.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Chalaquita
+  v_v := pg_temp.receta('Chalaquita', 'SALAD', array['LUNCH', 'DINNER']::public.meal_type[], 4, 27, 'La prima peruana de la ensalada chilena: tomate, cebolla y choclo cocido, todo en picadillo fino de cubitos parejos y bañado en jugo de limón. Nada va en pluma ni en gajo, y el choclo y el limón generoso son los que la distinguen.');
+  s := pg_temp.slot(v_v, 'VEGETABLE', 1, null, true);
+  perform pg_temp.comp(s, 'tomate', 'RAW', 300, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 400, null, null, null);
+  perform pg_temp.comp(s, 'choclo en grano', 'RAW', 200, 'G', 'BOILED', false, 2, null, 'MAIN', 'ADJUSTABLE', 150, 250, null, null, null);
+  s := pg_temp.slot(v_v, 'SALAD', 2, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 200, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 120, 250, 'en cubitos, no en pluma: el picadillo fino es la identidad del plato', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'aji verde', 'RAW', 15, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', 0, 25, null, null, null);
+  perform pg_temp.comp(s, 'cilantro', 'RAW', 10, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'limon', 'RAW', 80, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 60, 110, 'va más limón que en una ensalada chilena: la chalaquita queda jugosa, casi marinada', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 4, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 4, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 10, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 0, 15, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Cuece el choclo en grano en agua hirviendo hasta que esté tierno, escúrrelo y déjalo enfriar extendido en un plato.', 10, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Mientras se cuece el choclo, pica el tomate y la cebolla en cubitos parejos de medio centímetro, y el ají y el cilantro bien finos.', 10, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Lava la cebolla picada en agua fría, estrujándola suave, y escúrrela bien: pierde el filo sin perder lo crocante.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Mezcla todo con el jugo de limón, el aceite y la sal. Sírvela fría, con su jugo: acompaña pescados, frituras y choclo con queso.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Crema de rocoto
+  v_v := pg_temp.receta('Crema de rocoto', 'MEAL', array['LUNCH', 'DINNER', 'OTHER']::public.meal_type[], 4, 32, 'Crema untuosa de rocoto blanqueado molido con quesillo y aceite, para acompañar carnes, sánguches o papas cocidas. El triple hervor del rocoto le baja el picor sin apagarle el sabor: sin ese paso es incomible para media familia.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'rocoto', 'RAW', 100, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 70, 130, 'peso del rocoto entero, más o menos uno mediano; pepas y venas se botan y la porción comestible la aplica el catálogo', null, null);
+  perform pg_temp.comp(s, 'quesillo', 'AS_PACKAGED', 80, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 60, 120, 'le da cuerpo y suaviza; en Perú sería queso fresco serrano', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 2, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 30, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'limon', 'RAW', 20, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', 0, 30, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 3, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Parte el rocoto y sácale las pepas y las venas blancas con una cuchara. Lávate bien las manos después (o usa guantes): el rocoto pica en la piel y en los ojos.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Blanquéalo: hiérvelo 5 minutos en agua, bota el agua y repite dos veces más con agua nueva, tres hervores en total. Este paso es obligatorio: es lo que le baja el picor a un nivel que toda la mesa aguanta.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Muele el rocoto blanqueado con el quesillo, el aceite y la sal en el mortero, o aplástalo con un tenedor contra el bol, hasta que quede una crema pareja.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En vez de moler a mano: licúa el rocoto blanqueado con el quesillo, el aceite y la sal hasta que quede una crema lisa.', 4, null, 'BLENDER', 'Sin licuadora: el mortero o el tenedor del paso anterior, que es el camino base.', null);
+  perform pg_temp.publicar(v_v);
+
+  -- Plátano maduro frito
+  v_v := pg_temp.receta('Plátano maduro frito', 'MEAL', array['LUNCH', 'DINNER', 'OTHER']::public.meal_type[], 4, 15, 'Tajadas de plátano macho maduro doradas en sartén: dulces, caramelizadas por fuera y cremosas por dentro. La guarnición peruana clásica para arroz con pollo, porotos o huevos fritos. No sirve el plátano de postre: es otra fruta.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'platano macho', 'EDIBLE_PORTION', 600, 'G', 'FRIED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 800, 'peso pelado, unos 3 plátanos machos. Tienen que estar maduros de verdad, con la cáscara amarilla manchada de negro: verdosos no endulzan ni se ablandan', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 2, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 40, 'es el aceite que las tajadas retienen; en la sartén va bastante más', null, null);
+  perform pg_temp.paso(v_v, 1, 'Pela los plátanos y córtalos en tajadas diagonales de un dedo y medio de grosor: la diagonal da más superficie para dorar.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Fríelas en sartén con un dedo de aceite caliente a fuego medio, 3 a 4 minutos por lado, hasta que estén doradas oscuras y caramelizadas en los bordes. Escúrrelas sobre papel absorbente: los 30 ml declarados son los que se quedan pegados a las tajadas, no el baño de la sartén.', 10, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Yuca cocida al ajo
+  v_v := pg_temp.receta('Yuca cocida al ajo', 'MEAL', array['LUNCH', 'DINNER', 'OTHER']::public.meal_type[], 4, 40, 'Trozos de yuca cocidos hasta abrirse, revolcados calientes en aceite con ajo dorado. Una guarnición mantecosa que cambia el paisaje de papas y arroz de la semana: acompaña carnes, pescado frito o un pebre.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'yuca', 'RAW', 800, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 600, 1000, 'peso con cáscara; la porción comestible la aplica el catálogo', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 12, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 6, 18, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 30, 'se come entero: es el aceite del ajo en que se revuelca la yuca', null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 4, null, false);
+  perform pg_temp.comp(s, 'perejil fresco', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Pela la yuca a cuchillo —la cáscara sale gruesa, con la capa rosada de abajo—, pártela en trozos de unos 6 cm y quítale la fibra dura del centro.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuécela en abundante agua con sal hasta que los trozos se abran en gajos y se pasen con el tenedor. Escúrrela bien.', 25, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Dora el ajo picado en el aceite a fuego suave sin dejar que se queme, apaga el fuego y revuelca ahí la yuca caliente. Sal por encima y perejil si quieres.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Choclo a la mantequilla
+  v_v := pg_temp.receta('Choclo a la mantequilla', 'MEAL', array['LUNCH', 'DINNER', 'OTHER']::public.meal_type[], 4, 28, 'Choclos enteros cocidos y untados calientes con mantequilla y sal. La guarnición más simple de la cocina peruana de casa, y una forma de poner verdura en la mesa sin pelear con nadie.');
+  s := pg_temp.slot(v_v, 'VEGETABLE', 1, null, true);
+  perform pg_temp.comp(s, 'choclo fresco entero', 'RAW', 1400, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 1000, 1800, 'peso con hoja y coronta, unas 4 unidades; la porción comestible la aplica el catálogo', null, null);
+  perform pg_temp.alt(s, 'choclo en grano', 'GOOD', 'desgranado: se saltea directo en la mantequilla unos 10 minutos en vez de cocerse entero', 0.35);
+  s := pg_temp.slot(v_v, 'FAT', 2, null, true);
+  perform pg_temp.comp(s, 'mantequilla', 'AS_PACKAGED', 40, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 20, 60, 'se derrite sobre el choclo caliente y se come entera', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 0, 4, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Deshoja los choclos y sácales los pelos.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuécelos enteros en abundante agua hirviendo sin sal —la sal en el agua endurece el grano— hasta que el grano ceda al diente.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Escúrrelos y úntalos calientes con la mantequilla, para que se derrita encima. Sal fina al momento de comer.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Cancha serrana
+  v_v := pg_temp.receta('Cancha serrana', 'MEAL', array['SNACK', 'OTHER']::public.meal_type[], 4, 14, 'Maíz chulpe tostado en olla con un poco de aceite y sal, hasta quedar dorado y crocante. Es el picoteo que en Perú acompaña el cebiche y la sopa, y acá funciona igual de bien como snack de mesa.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'maiz chulpe', 'AS_PACKAGED', 250, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 350, 'es el maíz de tostar, de grano grande y puntudo; no sirve el choclo ni el maíz de cabritas', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 2, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 20, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 0, 5, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Calienta el aceite en una olla honda con tapa, a fuego medio.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Echa el maíz, tapa y tuesta sacudiendo la olla cada tanto: los granos saltan y crepitan como cabritas aunque no se abren. Está lista cuando suena hueco al sacudir y el grano está dorado parejo, con algunos puntos tostados.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Sálala caliente, sacude para repartir y déjala entibiar destapada: ahí toma lo crocante.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Encurtido rápido de nabo
+  v_v := pg_temp.receta('Encurtido rápido de nabo', 'SALAD', array['LUNCH', 'DINNER', 'OTHER']::public.meal_type[], 4, 17, 'Medialunas finas de nabo en salmuera agridulce de vinagre, listas el mismo día. Preparación de lote pura: se hace el frasco de una vez y se va sirviendo escurrido junto a carnes, guisos y sánguches.');
+  s := pg_temp.slot(v_v, 'SALAD', 1, null, true);
+  perform pg_temp.comp(s, 'nabo', 'RAW', 500, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 350, 650, 'peso con cáscara; el corte fino es lo que hace que el encurtido esté listo el mismo día', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'aji verde', 'RAW', 15, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', 0, 25, null, null, null);
+  perform pg_temp.comp(s, 'vinagre blanco', 'AS_PACKAGED', 50, 'ML', null, false, 2, null, 'SEASONING', 'FIXED', null, null, 'es lo que el nabo absorbe y se come; a la olla van unos 150 ml y el resto se queda en el frasco', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 3, null, 'SEASONING', 'FIXED', null, null, 'la parte de los 12 g de la salmuera que el nabo retiene', null, null);
+  s := pg_temp.slot(v_v, 'SWEETENER', 3, null, true);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 15, 'G', null, false, 1, null, 'SEASONING', 'FIXED', null, null, 'la parte de los 40 g de la salmuera que el nabo retiene', null, null);
+  perform pg_temp.paso(v_v, 1, 'Pela el nabo y córtalo en medialunas bien finas, de unos 3 mm; corta el ají en aritos sin pepas.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Hierve 150 ml de vinagre con 150 ml de agua, 40 g de azúcar y 12 g de sal, solo hasta que se disuelvan. De esa salmuera el nabo se queda con más o menos un tercio: eso es lo que la receta declara como comido.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Acomoda el nabo y el ají en un frasco limpio, cúbrelos con la salmuera caliente y deja enfriar destapado antes de tapar y llevar al refrigerador. Se sirve escurrido.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Masa de wantán casera
+  v_v := pg_temp.receta('Masa de wantán casera', 'MEAL', array['OTHER']::public.meal_type[], 4, 70, 'Láminas delgadas de masa de harina y huevo: la base casera del wantán frito, el suimay, la copa de oro y las empanaditas chifa, sin depender de comprar la lámina hecha. Es una masa dura a propósito, que se estira muy delgada sin romperse.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 250, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'la masa es una proporción: 250 g de harina piden 1 huevo y unos 80 ml de agua fría; con más agua se pega y no se deja estirar delgada', null, null);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 55, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'da elasticidad y el color amarillo pálido del wantán', 'unidad', 1);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 20, 'G', null, false, 3, null, 'MAIN', 'FIXED', null, null, 'para espolvorear al estirar y apilar; queda pegada en las láminas y evita que se suelden entre ellas', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 2, 4, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Mezcla la harina con la sal en un bol, haz un hueco al centro y agrega el huevo y unos 80 ml de agua fría. Junta todo hasta formar una masa firme; si quedan restos secos, súmale agua de a cucharadita, no más.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Amasa sobre el mesón hasta que quede lisa y bien firme. Es una masa dura a propósito: esa dureza es la que después deja estirarla finísima sin que se rompa.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Envuélvela en plástico o cúbrela con el bol dado vuelta y déjala reposar a temperatura ambiente, para que el gluten se relaje y se deje estirar.', 30, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Divide la masa en cuatro y estira cada parte con uslero, espolvoreando maicena por los dos lados, hasta dejarla tan delgada que se te vea la mano a través.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Corta cuadrados de unos 8 cm, espolvoréalos con maicena y apílalos. Salen unas 32 láminas.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Wantán frito
+  v_v := pg_temp.receta('Wantán frito', 'MEAL', array['SNACK', 'OTHER']::public.meal_type[], 4, 23, 'La masa de wantán doblada y frita sin relleno, crujiente y liviana, para picotear como en la fuente de soda china. Los tiempos son con la masa ya hecha: partiendo de cero hay que sumarle la masa.');
+  s := pg_temp.slot(v_v, 'FAT', 1, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 35, 'lo que retiene la masa frita, que absorbe poco por no llevar relleno; en la sartén van unos 2 cm de aceite y el resto se queda ahí', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 0, 3, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 3, null, false);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 30, 'ML', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, 'el pocillo de la mesa, para mojar', null, null);
+  s := pg_temp.slot(v_v, 'BASE', 4, null, true);
+  perform pg_temp.comp_anidada(s, 'Masa de wantán casera', 0.5, 1);
+  perform pg_temp.paso(v_v, 1, 'Dobla cada lámina por la mitad en triángulo, o arrúgala suelta tomándola desde el centro, sin apretar: los pliegues sueltos son los que quedan crujientes e inflados.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Calienta unos 2 cm de aceite en una sartén honda u olla chica, hasta que un pedacito de masa burbujee apenas toca el aceite.', 5, 180, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Fríe los wantanes por tandas, 1 a 2 minutos, dándolos vuelta: se inflan y doran muy rápido, así que no te alejes de la sartén.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Escúrrelos sobre papel absorbente, sálalos apenas y sírvelos al tiro, con salsa de soya para mojar si quieres.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Empanaditas fritas de camarón
+  v_v := pg_temp.receta('Empanaditas fritas de camarón', 'MEAL', array['LUNCH', 'DINNER', 'SNACK']::public.meal_type[], 4, 45, 'Empanaditas chicas de masa de wantán rellenas de camarón picado con cebollín y jengibre, fritas hasta que la masa se ampolla. Los tiempos son con la masa ya hecha; las versiones de pollo y de queso crema van como alternativas del relleno.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 300, 'G', 'FRIED', false, 1, null, 'MAIN', 'ADJUSTABLE', 250, 400, 'picados grueso: enteros rompen la masa al doblar y no se reparten', null, null);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'GOOD', 'la versión de pollo: pícala fina y saltéala un par de minutos antes de rellenar, porque cruda no alcanza a cocinarse en una fritura tan corta', 1);
+  perform pg_temp.alt(s, 'queso crema', 'GOOD', 'la versión de queso: una cucharadita por empanadita y el borde muy bien sellado, porque derretido se escapa por cualquier hoyito', 0.7);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 40, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 4, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'jengibre molido', 'AS_PACKAGED', 2, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 5, 'G', null, false, 3, null, 'MAIN', 'FIXED', null, null, 'liga el jugo del camarón para que el relleno no moje la masa', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 3, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 10, 20, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 40, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 25, 50, 'lo que retienen las 16 empanaditas; el baño de la sartén va aparte y no se declara', null, null);
+  s := pg_temp.slot(v_v, 'BASE', 6, null, true);
+  perform pg_temp.comp_anidada(s, 'Masa de wantán casera', 0.5, 1);
+  perform pg_temp.paso(v_v, 1, 'Pica los camarones grueso y mézclalos con el cebollín picado fino, el ajo rallado, el jengibre, la salsa de soya y la maicena.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Pon una cucharadita de relleno al centro de cada lámina, moja los bordes con agua, dobla en triángulo y aprieta desde el relleno hacia afuera sacando el aire. Salen unas 16.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Calienta unos 2 cm de aceite en una sartén honda hasta que un borde de masa burbujee al tocarlo.', 5, 180, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Fríelas por tandas 2 a 3 minutos, dándolas vuelta, hasta que la masa se ampolle y dore; el camarón picado se cuece en ese tiempo.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Escúrrelas sobre papel absorbente y sírvelas calientes.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Copa de oro
+  v_v := pg_temp.receta('Copa de oro', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 42, 'Copitas de masa de wantán fritas vacías y rellenas al momento de servir con un salteado de pollo, champiñón y pimiento en salsa espesa: acá la masa se cocina sola y el relleno entra después, ya cocido. Los tiempos son con la masa ya hecha.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 400, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 500, null, null, null);
+  perform pg_temp.alt(s, 'camarones pelados', 'GOOD', 'se saltean 2 minutos y no más, o quedan como goma', 0.75);
+  perform pg_temp.alt(s, 'pulpa de cerdo', 'GOOD', 'en cubos chicos; dórala un par de minutos más que el pollo', 1);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'champinon', 'RAW', 100, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 80, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 40, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'jengibre molido', 'AS_PACKAGED', 2, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 8, 'G', null, false, 3, null, 'MAIN', 'FIXED', null, null, 'disuelta en agua fría; espesa la salsa que va dentro de las copas', null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 4, 'G', null, true, 4, null, 'SEASONING', 'OPTIONAL', null, null, 'redondea la salsa', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 5, null, 'SEASONING', 'ADJUSTABLE', 0, 3, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 15, 30, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 35, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 45, '20 ml del salteado más lo que retienen las copas al freírse; el baño de fritura va aparte y no se declara', null, null);
+  s := pg_temp.slot(v_v, 'BASE', 6, null, true);
+  perform pg_temp.comp_anidada(s, 'Masa de wantán casera', 0.5, 1);
+  perform pg_temp.paso(v_v, 1, 'Corta el pollo en cubos, pica las verduras y ten la maicena disuelta en un poco de agua fría.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Fríe las copas vacías: calienta unos 2 cm de aceite y hunde cada lámina apretándola con un cucharón chico contra otro más grande (o contra el borde con una espumadera) para que tome forma de copa; en un minuto sale dorada y firme.', 12, 180, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Escúrrelas boca abajo sobre papel absorbente.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Saltea el pollo a fuego fuerte con el aceite del salteado hasta que dore por todos lados.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Agrega champiñón, pimiento, la parte blanca del cebollín, el ajo y el jengibre; saltea un par de minutos más.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Vierte la salsa de soya con media taza de agua y la maicena disuelta; revuelve hasta que la salsa espese y brille. Prueba y ajusta con el azúcar y la sal.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Rellena las copas justo antes de llevarlas a la mesa, para que no se ablanden, y termina con el verde del cebollín por encima.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Hunán de pescado con ají
+  v_v := pg_temp.receta('Hunán de pescado con ají', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 46, 'Trozos de merluza empolvados en maicena, dorados y bañados en una salsa hunán de ají fresco, agridulce y brillante, servidos con arroz. Versión casera con pescado de verdad en vez de surimi comprado.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'merluza', 'RAW', 600, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 480, 720, 'en trozos grandes: es un pescado blando y muy movido en la sartén se deshace', null, null);
+  perform pg_temp.alt(s, 'reineta', 'EXCELLENT', null, 1);
+  perform pg_temp.alt(s, 'congrio', 'GOOD', 'más firme: aguanta mejor el revuelto final', 1);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 25, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 20, 35, 'para empolvar el pescado y espesar la salsa; se declara la que queda en el plato, no la que cae del sacudido', null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'jengibre molido', 'AS_PACKAGED', 2, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 8, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 5, 12, 'el contrapunto dulce del ají', null, null);
+  perform pg_temp.comp(s, 'limon', 'RAW', 40, 'G', null, false, 5, null, 'SEASONING', 'ADJUSTABLE', null, null, 'peso de la fruta: rinde unos 15 ml de jugo, que hace de vinagre en la salsa', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 6, null, 'SEASONING', 'ADJUSTABLE', 0, 4, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'aji verde', 'RAW', 40, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 20, 60, 'sin pepas queda picante suave; con pepas, bravo', null, null);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 100, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 120, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 30, 50, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 40, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 6, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Cuece el arroz graneado.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Mientras se cuece el arroz, corta la merluza en trozos grandes, sálala y empólvala en maicena sacudiendo el exceso; corta las verduras en tiras y el ají en rodajitas.', 12, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Dora los trozos de pescado en el aceite bien caliente, unos 2 minutos por lado, y resérvalos con cuidado.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En la misma sartén saltea a fuego fuerte la cebolla, el pimiento, el ají, el ajo y el jengibre.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Agrega la salsa de soya, el azúcar, el jugo del limón y media taza de agua con una cucharadita de la maicena disuelta en frío; deja que la salsa espese y brille.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Devuelve el pescado, dale una vuelta suave para bañarlo en la salsa sin deshacerlo y sirve sobre el arroz.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Arrollado primavera
+  v_v := pg_temp.receta('Arrollado primavera', 'MEAL', array['LUNCH', 'DINNER', 'SNACK']::public.meal_type[], 4, 66, 'Arrollados de masa casera rellenos de verduras salteadas con soya, enrollados apretados y fritos hasta dorar. No es el arrollado de huaso chileno: es el rollo chifa de la fuente de soda, y el relleno se enfría por completo antes de armar o se abre en el aceite.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 120, 'G', null, false, 1, null, 'MAIN', 'FIXED', 100, 140, 'para ocho láminas finísimas: con más harina el envoltorio queda grueso y no fríe crocante', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'repollo', 'RAW', 300, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 250, 400, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 150, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 50, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'apio', 'RAW', 80, 'G', null, true, 4, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.alt(s, 'champinon', 'GOOD', 'picado fino en el salteado le da más cuerpo al relleno', null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'jengibre molido', 'AS_PACKAGED', 2, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 3, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 4, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 15, 35, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 45, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 30, 60, '15 ml del salteado del relleno más unos 30 que retiene la masa al freírse; el baño de la sartén no se declara', null, null);
+  perform pg_temp.paso(v_v, 1, 'Haz la masa: mezcla la harina con unos 140 ml de agua caliente y una pizca de la sal, amasa hasta que quede lisa y déjala reposar tapada mientras avanzas con el relleno.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Saltea a fuego fuerte el repollo, la zanahoria, el cebollín, el apio y el jengibre con un chorro del aceite; agrega la salsa de soya y el azúcar y apaga cuando las verduras pierdan la rigidez pero sigan crujientes.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Extiende el relleno en una fuente y déjalo enfriar POR COMPLETO. Este paso no se salta: el relleno tibio suelta vapor, moja la masa y el arrollado se abre en el aceite.', 20, null, null, null, 1);
+  perform pg_temp.paso(v_v, 4, 'Mientras el relleno se enfría, estira la masa delgada y corta 8 cuadrados de unos 15 cm. Reserva una cucharada de harina batida con agua como engrudo para sellar. Estírala hasta dejarla casi transparente: si la lámina se ve opaca, todavía está gruesa.', 15, null, null, null, 1);
+  perform pg_temp.paso(v_v, 5, 'Pon relleno frío en diagonal sobre cada cuadrado, dobla las puntas laterales hacia adentro, enrolla apretado y sella el borde con el engrudo.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Fríe los arrollados en unos 2 cm de aceite caliente, por tandas, 3 a 4 minutos, girándolos hasta que doren parejo.', 12, 180, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'En vez de freír en sartén: pinta los arrollados con aceite y hazlos en la air fryer a 190 °C unos 12 minutos, dándolos vuelta a la mitad.', 12, 190, 'AIR_FRYER', 'Sin air fryer: fríelos en la sartén como indica el paso anterior.', null);
+  perform pg_temp.paso(v_v, 8, 'Escúrrelos sobre papel absorbente y sírvelos calientes.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Arrollado de jamón y queso frito
+  v_v := pg_temp.receta('Arrollado de jamón y queso frito', 'MEAL', array['LUNCH', 'DINNER', 'SNACK']::public.meal_type[], 4, 47, 'Rollos de masa casera con jamón y queso mantecoso que van crudos al aceite: no hay relleno que cocinar, así que la fritura dura la mitad que la de un primavera, lo justo para dorar la masa y derretir el queso.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 120, 'G', null, false, 1, null, 'MAIN', 'FIXED', 100, 140, 'para ocho láminas finísimas: con más harina el envoltorio queda grueso y no fríe crocante', null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 2, null, true);
+  perform pg_temp.comp(s, 'jamon de cerdo cocido', 'AS_PACKAGED', 200, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 250, null, null, null);
+  perform pg_temp.comp(s, 'queso mantecoso', 'AS_PACKAGED', 200, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 150, 250, 'en bastones y frío directo del refrigerador: así se termina de derretir justo cuando la masa ya está dorada', null, null);
+  perform pg_temp.alt(s, 'queso crema', 'ACCEPTABLE', 'derretido es más líquido que el mantecoso: sella el borde doble o se escapa en el aceite', null);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 35, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 25, 45, 'lo que retiene la masa en una fritura corta; el baño de la sartén va aparte y no se declara', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 0, 3, 'solo para la masa: el jamón y el queso ya traen', null, null);
+  perform pg_temp.paso(v_v, 1, 'Haz la masa: mezcla la harina con unos 140 ml de agua caliente y la sal, amasa hasta que quede lisa y déjala reposar tapada un rato.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Estira la masa delgada y corta 8 cuadrados de unos 15 cm. Reserva una cucharada de harina batida con agua como engrudo. Estírala hasta dejarla casi transparente: si la lámina se ve opaca, todavía está gruesa.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Arma en crudo: una lámina de jamón y un bastón de queso frío sobre cada cuadrado, dobla las puntas laterales, enrolla apretado y sella el borde con el engrudo. El relleno no se cocina antes: esa es la gracia de este arrollado.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Fríe por tandas en unos 2 cm de aceite caliente solo 1 y medio a 2 minutos, girándolos: no hay relleno que cocinar, apenas dorar la masa y derretir el queso. Más rato y el queso se escapa.', 8, 180, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'En vez de freír en sartén: pinta los arrollados con aceite y hazlos en la air fryer a 190 °C unos 8 minutos, dándolos vuelta a la mitad.', 8, 190, 'AIR_FRYER', 'Sin air fryer: fríelos en la sartén como indica el paso anterior.', null);
+  perform pg_temp.paso(v_v, 6, 'Escúrrelos sobre papel y déjalos reposar un minuto antes de morder: el queso sale hirviendo.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Suimay al vapor
+  v_v := pg_temp.receta('Suimay al vapor', 'MEAL', array['LUNCH', 'DINNER', 'SNACK']::public.meal_type[], 4, 61, 'Canastitos abiertos de masa de wantán rellenos de cerdo picado con camarón y cebollín, cocidos al vapor: jugosos y sin nada de aceite añadido. Los tiempos son con la masa ya hecha.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pulpa de cerdo', 'RAW', 350, 'G', 'STEAMED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 450, 'picada fina a cuchillo o molida; con algo de grasa el suimay queda jugoso', null, null);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 100, 'G', 'STEAMED', true, 2, null, 'MAIN', 'OPTIONAL', null, null, 'picados y mezclados con el cerdo, como los de la carta', null, null);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'GOOD', 'picada fina; queda más seco que el cerdo', 1);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 40, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'jengibre molido', 'AS_PACKAGED', 2, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 1, 3, null, null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 8, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'liga el relleno para que no se desarme al vapor', null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 3, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 3, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 15, 30, 'la del relleno', null, null);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 20, 'ML', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, 'el pocillo de la mesa, para mojar al servir', null, null);
+  s := pg_temp.slot(v_v, 'BASE', 5, null, true);
+  perform pg_temp.comp_anidada(s, 'Masa de wantán casera', 0.5, 1);
+  perform pg_temp.paso(v_v, 1, 'Mezcla el cerdo picado con el camarón, el cebollín, el jengibre, la salsa de soya, la maicena, el azúcar y la sal. Revuelve siempre en el mismo sentido hasta que la mezcla se ponga pegajosa: esa liga es la que mantiene el suimay armado.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Pon una lámina sobre la palma, carga una cucharada de relleno al centro y cierra la mano para que la masa abrace el relleno como canasto abierto arriba; aplasta apenas la base para que se pare. Salen unos 16.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Arma la vaporera: una olla con dos dedos de agua hirviendo y encima un colador o plato con rejilla que no toque el agua, forrado con hojas de repollo o papel mantequilla agujereado para que no se peguen.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Cocina los suimay al vapor, tapados y sin que se toquen, unos 12 minutos por tanda; con una olla casera son dos tandas. Están listos cuando el relleno se siente firme al apretarlo.', 24, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Sírvelos calientes, con el pocillo de salsa de soya aparte para mojar.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Arroz chaufán especial
+  v_v := pg_temp.receta('Arroz chaufán especial', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 57, 'El chaufán grande de la casa chifa: arroz salteado a fuego fuerte con pollo, camarones, jamón, tortilla de huevo y verduras. La gracia está en el arroz cocido y bien frío, ideal del día anterior.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 280, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 200, 350, 'se cuece y se enfría por completo antes de saltear: recién hecho se apelmaza', null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 2, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 200, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 150, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'jamon de cerdo cocido', 'AS_PACKAGED', 100, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 165, 'G', 'PAN_SEARED', false, 4, null, 'MAIN', 'ADJUSTABLE', 110, 220, 'en tortilla delgada picada en cuadritos', 'unidad', 3);
+  perform pg_temp.alt(s, 'pulpa de cerdo', 'GOOD', 'en cubos chicos en vez del pollo, como el chaufán de chancho de la carta', 1);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 60, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 80, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'arvejas frescas', 'RAW', 80, 'G', null, true, 3, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 45, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 30, 60, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, true);
+  perform pg_temp.comp(s, 'jengibre molido', 'AS_PACKAGED', 1, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 3, 'poca y al final: la soya ya trae', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 40, null, null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', null, null, 'unas gotas fuera del fuego; con poco se nota', null, null);
+  perform pg_temp.paso(v_v, 1, 'Cuece el arroz graneado, extiéndelo en una bandeja y déjalo enfriar por completo. Lo ideal es hacerlo el día anterior y guardarlo refrigerado: frío y suelto es lo que hace al chaufán.', 25, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Mientras el arroz se enfría, corta el pollo y el jamón en cubos, pica las verduras y bate los huevos.', 12, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Haz una tortilla delgada con los huevos en un poco del aceite, retírala y pícala en cuadritos.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Sube el fuego al máximo: sella el pollo hasta dorarlo, agrega los camarones un par de minutos y al final el jamón; retira todo de la sartén.', 7, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'En la misma sartén u olla ancha saltea el pimiento y las arvejas, suma el arroz frío desgranándolo con la cuchara y revuélvelo hasta que esté suelto y bien caliente.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Devuelve las proteínas y la tortilla, agrega la salsa de soya, el jengibre y el cebollín; saltea un par de minutos, prueba antes de salar y termina con el aceite de sésamo fuera del fuego.', 4, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Chaufansí de pollo
+  v_v := pg_temp.receta('Chaufansí de pollo', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 38, 'Fideos de arroz hidratados y salteados a fuego fuerte con pollo en tiras y verduras, al estilo de la casa chifa. El fideo no se hierve: se remoja y se termina en la sartén.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'fideos de arroz', 'RAW', 250, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 300, 'se hidratan en agua caliente, no se hierven; su rendimiento cocido varía según el fideo y queda como desconocido', null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 2, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 400, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 500, null, null, null);
+  perform pg_temp.alt(s, 'camarones pelados', 'GOOD', 'dos minutos de sartén y no más', 0.75);
+  perform pg_temp.alt(s, 'vacuno lomo liso', 'GOOD', 'en tiras finas, sellado en tandas para que no suelte jugo', 1);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 80, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 80, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 40, 'G', null, false, 4, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'jengibre molido', 'AS_PACKAGED', 2, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 3, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 5, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 30, 55, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 40, null, null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Pon los fideos de arroz en un bol, cúbrelos con agua muy caliente y déjalos hidratar unos 10 minutos, hasta que estén flexibles pero con el centro todavía firme: se terminan en la sartén. Escúrrelos bien.', 12, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Mientras los fideos se hidratan, corta el pollo en tiras y las verduras.', 10, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Saltea el pollo a fuego fuerte con la mitad del aceite hasta que dore; retíralo.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Saltea la cebolla, la zanahoria, el pimiento y el ajo con el resto del aceite, sin que pierdan lo crujiente.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Devuelve el pollo, suma los fideos escurridos, la salsa de soya y el jengibre; saltea revolviendo con dos cucharas hasta que el fideo tome color parejo y quede suave.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Apaga el fuego, agrega el cebollín y el aceite de sésamo, prueba y ajusta la sal.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Chow fun de verduras con huevo
+  v_v := pg_temp.receta('Chow fun de verduras con huevo', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 37, 'Fideos de arroz salteados con verduras y trozos de tortilla de huevo, dejando que el fideo se tueste un poco contra la sartén. Acá el huevo es la proteína del plato, no un adorno.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'fideos de arroz', 'RAW', 250, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 300, 'el chow fun clásico es de fideo de arroz ancho; sirve el que encuentres, hidratado en agua caliente', null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 2, null, true);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 330, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 220, 440, 'el huevo es la proteína del plato', 'unidad', 6);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 80, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 80, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'apio', 'RAW', 60, 'G', null, false, 4, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'champinon', 'RAW', 100, 'G', null, true, 5, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 50, 'G', null, false, 6, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'jengibre molido', 'AS_PACKAGED', 2, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 3, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 3, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 5, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 45, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 30, 60, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 35, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 25, 45, null, null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Hidrata los fideos de arroz en agua muy caliente unos 10 minutos, hasta flexibles con el centro firme, y escúrrelos.', 12, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Mientras se hidratan, corta las verduras y bate los huevos con una pizca de sal.', 10, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Cuaja los huevos en tortilla gruesa con parte del aceite, rompiéndola en trozos grandes; retíralos apenas dejen de brillar, que se terminan después.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Saltea a fuego fuerte las verduras duras primero: zanahoria, apio, cebolla y pimiento.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Suma el champiñón, los fideos, la salsa de soya, el ajo, el jengibre y el azúcar; saltea sin miedo y deja que el fideo se tueste un poco contra la sartén, que ese ahumadito es el chow fun.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Devuelve el huevo en trozos, agrega el cebollín y el aceite de sésamo fuera del fuego, prueba y ajusta la sal.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Chaumín de pollo
+  v_v := pg_temp.receta('Chaumín de pollo', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 36, 'Fideos de trigo apenas hervidos y terminados en la sartén con pollo en tiras, repollo y zanahoria, al estilo de la fuente de soda china. Las versiones de carne y de camarón van como alternativas de la proteína.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'fideos', 'RAW', 250, 'G', 'BOILED', false, 1, 2.4, 'MAIN', 'ADJUSTABLE', 200, 300, 'espagueti o fideo chino de trigo: se hierven cortos y se terminan en la sartén', null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 2, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 400, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 500, null, null, null);
+  perform pg_temp.alt(s, 'vacuno lomo liso', 'GOOD', 'el chaumín de carne de la carta: en tiras finas y sellado en tandas para que no suelte jugo', 1);
+  perform pg_temp.alt(s, 'camarones pelados', 'GOOD', 'el de camarón: dos minutos de sartén, no más', 0.75);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'repollo', 'RAW', 150, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 80, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'apio', 'RAW', 60, 'G', null, true, 3, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 40, 'G', null, false, 4, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'jengibre molido', 'AS_PACKAGED', 2, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 3, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 5, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 30, 55, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 40, null, null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Hierve los fideos dos minutos menos de lo que diga el paquete, escúrrelos y refréscalos con agua fría para cortar la cocción.', 10, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Mientras se cuecen los fideos, corta el pollo en tiras y las verduras.', 10, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Sella el pollo a fuego fuerte con la mitad del aceite hasta que dore; retíralo.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Saltea el repollo, la zanahoria, el apio y el ajo con el resto del aceite, dejándolos crujientes.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Devuelve el pollo, agrega los fideos, la salsa de soya y el jengibre; saltea revolviendo hasta que el fideo tome color y se caliente parejo.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Apaga, suma el cebollín y el aceite de sésamo, prueba y ajusta la sal.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Chaumín especial
+  v_v := pg_temp.receta('Chaumín especial', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 48, 'El chaumín grande: fideos de trigo salteados con cuatro proteínas —vacuno, cerdo, pollo y camarón— selladas cada una por su cuenta a fuego fuerte. No es un chaumín con otra carne: es otro plato, más contundente y con más trabajo de sartén.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'fideos', 'RAW', 250, 'G', 'BOILED', false, 1, 2.4, 'MAIN', 'ADJUSTABLE', 200, 300, null, null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 2, null, true);
+  perform pg_temp.comp(s, 'vacuno lomo liso', 'RAW', 150, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pulpa de cerdo', 'RAW', 150, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 150, 'G', 'PAN_SEARED', false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 150, 'G', 'PAN_SEARED', false, 4, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'repollo', 'RAW', 150, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 80, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 60, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 50, 'G', null, false, 4, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'jengibre molido', 'AS_PACKAGED', 2, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 3, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 5, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 50, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 35, 65, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 40, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 25, 50, 'algo más que un chaumín simple: cada tanda de sellado pide su chorro', null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Hierve los fideos dos minutos menos de lo que diga el paquete, escúrrelos y refréscalos con agua fría.', 10, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Mientras se cuecen los fideos, corta las cuatro proteínas en tiras parejas, cada una en su plato, y pica las verduras.', 15, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Sella las proteínas POR TANDAS, cada una sola en la sartén bien caliente: primero el vacuno, después el cerdo, el pollo y al final los camarones, que toman un par de minutos. Amontonadas sueltan jugo y se cuecen en vez de dorarse. Reserva cada tanda.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Saltea el repollo, la zanahoria, el pimiento y el ajo, dejándolos crujientes.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Junta todo con los fideos, la salsa de soya y el jengibre; saltea a fuego fuerte hasta que el fideo tome color y todo quede bien caliente.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Apaga, suma el cebollín y el aceite de sésamo, prueba y ajusta la sal.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Chaumín de verduras
+  v_v := pg_temp.receta('Chaumín de verduras', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 35, 'Fideos de trigo salteados solo con verduras, en dos tandas según su dureza para que lo duro se cocine y lo blando no se pase. Sin proteína animal, liviano y rendidor.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'fideos', 'RAW', 250, 'G', 'BOILED', false, 1, 2.4, 'MAIN', 'ADJUSTABLE', 200, 300, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'repollo', 'RAW', 200, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 100, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'apio', 'RAW', 80, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', null, false, 4, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 80, 'G', null, false, 5, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'champinon', 'RAW', 150, 'G', null, false, 6, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 50, 'G', null, false, 7, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'jengibre molido', 'AS_PACKAGED', 2, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 3, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 3, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 45, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 30, 60, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 40, null, null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Hierve los fideos dos minutos menos de lo que diga el paquete, escúrrelos y refréscalos con agua fría.', 10, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Mientras se cuecen los fideos, corta todas las verduras y sepáralas en dos grupos: las duras (zanahoria, apio, cebolla, pimiento) y las blandas (repollo, champiñón).', 12, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Saltea la tanda dura a fuego fuerte con el aceite y el ajo, hasta que empiece a ablandarse por fuera sin perder lo crujiente.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Suma la tanda blanda —repollo y champiñón— que se hace en un par de minutos. Si va todo junto, lo duro queda crudo o lo blando se pasa.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Agrega los fideos, la salsa de soya, el jengibre y el azúcar; saltea revolviendo hasta que el fideo tome color parejo.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Apaga, suma el cebollín y el aceite de sésamo, prueba y ajusta la sal.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Papo choy salteado con ajo
+  v_v := pg_temp.receta('Papo choy salteado con ajo', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 15, 'Acompañamiento verde de la cocina chifa: papo choy blanqueado y salteado a fuego fuerte con ajo dorado. El blanqueado previo es el truco para que el tallo quede cocido sin quemar la hoja.');
+  s := pg_temp.slot(v_v, 'VEGETABLE', 1, null, true);
+  perform pg_temp.comp(s, 'papo choy', 'RAW', 600, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 800, 'peso con la base; hojas y tallos se separan porque se cocinan en tiempos distintos', null, null);
+  perform pg_temp.alt(s, 'acelga', 'GOOD', 'misma lógica de tallo y hoja separados; el sabor es más terroso', 1);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 12, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 6, 18, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 20, null, null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', 0, 8, 'va fuera del fuego, solo como aroma', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 5, 20, 'es la sal del plato: no lleva sal aparte', null, null);
+  perform pg_temp.paso(v_v, 1, 'Lava el papo choy, separa las hojas de los tallos y corta los tallos al sesgo en trozos de unos 3 cm.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Blanquea solo los tallos un minuto en agua hirviendo con una pizca de sal (pon la olla a calentar apenas empieces a cortar) y escúrrelos bien: así el tallo llega cocido a la sartén y la hoja no alcanza a quemarse.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Calienta el aceite en una sartén grande y dora las láminas de ajo a fuego medio, sin que se quemen.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Sube el fuego al máximo, saltea los tallos dos minutos, y suma las hojas con la soya; saltea hasta que la hoja apenas se ablande y siga verde brillante.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Apaga y termina con el aceite de sésamo. Sírvelo al tiro: recalentado pierde el crujiente.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Salteado mongoliano
+  v_v := pg_temp.receta('Salteado mongoliano', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 33, 'La carne mongoliana de chifa hecha en casa: láminas de vacuno pasadas por un baño de maicena y soya (el velveting que las deja sedosas), salteadas con harto cebollín y una salsa dulce de soya. La misma técnica sirve para pollo, cerdo, camarón o congrio.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno lomo liso', 'RAW', 600, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 750, 'en láminas delgadas contra la fibra', null, null);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'EXCELLENT', 'pollo mongoliano de la carta: mismo velveting, mismo tiempo', 1);
+  perform pg_temp.alt(s, 'pulpa de cerdo', 'EXCELLENT', 'cerdo mongoliano: en láminas igual de delgadas', 1);
+  perform pg_temp.alt(s, 'camarones pelados', 'GOOD', 'camarón mongoliano: sin velveting largo, apenas 10 minutos de reposo y 2-3 de fuego, se pasan al tiro', 1);
+  perform pg_temp.alt(s, 'congrio', 'GOOD', 'congrio mongoliano: en cubos grandes y salteado aparte con cuidado, se desarma si se revuelve mucho', 1);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 12, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'el velveting: se come entera con la carne, es lo que define el plato', null, null);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 10, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 5, 15, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 100, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 60, 140, 'en trozos de 4 cm, es coprotagonista, no adorno', null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 50, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 30, 60, 'la mitad va al velveting y la otra mitad a la salsa; es toda la sal del plato', null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 15, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 8, 20, 'el dulzor que distingue lo mongoliano de un salteado a la soya', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 30, null, null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', 0, 8, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 6, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Corta el lomo en láminas delgadas contra la fibra y mézclalo con la maicena, la mitad de la soya y un chorrito de agua. Déjalo reposar mientras cortas la cebolla en pluma y el cebollín en trozos de 4 cm: ese baño es el velveting y es lo que deja la carne sedosa.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece el arroz aparte mientras avanzas con el salteado.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Calienta la mitad del aceite en la sartén más grande que tengas, hasta que apenas humee. Saltea la carne en dos tandas, sin moverla los primeros segundos, hasta que dore. Resérvala.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Con el resto del aceite saltea el jengibre y el ajo unos segundos, y luego la cebolla y el cebollín, dos minutos: tienen que quedar crujientes.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Devuelve la carne con su jugo, agrega el resto de la soya y el azúcar disueltos en dos cucharadas de agua, y saltea un minuto hasta que la salsa cubra todo y brille.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Apaga, agrega el aceite de sésamo y sirve sobre el arroz.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Salteado al ajo
+  v_v := pg_temp.receta('Salteado al ajo', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 30, 'Salteado de vacuno donde el ajo manda y va en dos tiempos: láminas doradas al principio y picado crudo al final. Esa doble entrada —una que cruje, otra que perfuma— es lo que lo separa de un salteado a la soya.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno lomo liso', 'RAW', 600, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 750, null, null, null);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'EXCELLENT', 'pollo al ajo de la carta', 1);
+  perform pg_temp.alt(s, 'pulpa de cerdo', 'EXCELLENT', 'cerdo al ajo', 1);
+  perform pg_temp.alt(s, 'camarones pelados', 'GOOD', 'camarones al ajo: 2-3 minutos de fuego y salen, se pasan al tiro', 1);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 20, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 12, 28, 'en dos tiempos: la mitad en láminas que se doran, la otra mitad picada fina que entra cruda al final', null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 8, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'liga la salsa; se come completa', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 150, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 25, 50, 'toda la sal del plato', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 30, null, null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', 0, 8, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 6, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Corta la carne en tiras delgadas contra la fibra, la cebolla y el pimiento en pluma. Lamina la mitad del ajo y pica fina la otra mitad, en montoncitos separados.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece el arroz aparte mientras salteas.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Dora las láminas de ajo en el aceite a fuego medio hasta que apenas tomen color y sácalas antes de que amarguen. Resérvalas sobre papel.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Sube el fuego al máximo y sella la carne en dos tandas en ese mismo aceite perfumado, hasta dorar. Resérvala.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Saltea la cebolla y el pimiento dos o tres minutos: crujientes, no blandos.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Devuelve la carne, agrega la soya con la maicena disuelta en tres cucharadas de agua y dale un hervor de un minuto hasta que la salsa brille.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Apaga y agrega el ajo crudo picado, el ajo dorado reservado y el aceite de sésamo. El crudo perfuma, el dorado cruje: no te saltes ninguno.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Salteado sichiu
+  v_v := pg_temp.receta('Salteado sichiu', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 30, 'Salteado picante de vacuno al estilo del sichiu de chifa. La carta no publica descripción, así que esta formulación estilo Sichuan —ají fresco, vinagre, un toque dulce y pimienta recién molida— es una interpretación casera y así se declara.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno lomo liso', 'RAW', 600, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 750, null, null, null);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'EXCELLENT', 'pollo sichiu de la carta', 1);
+  perform pg_temp.alt(s, 'camarones pelados', 'GOOD', 'camarón sichiu: 2-3 minutos de fuego, se pasan al tiro', 1);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 10, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'mitad al velveting de la carne, mitad a ligar la salsa; se come completa', null, null);
+  perform pg_temp.comp(s, 'merquen', 'AS_PACKAGED', 2, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', 0, 4, 'hace de ají seco; suma picor y humo', null, null);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 12, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 6, 16, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 10, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimienta negra', 'AS_PACKAGED', 2, 'G', null, false, 5, null, 'SEASONING', 'ADJUSTABLE', 1, 3, 'recién molida al final, hace de pimienta de Sichuan casera', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'aji verde', 'RAW', 40, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', 20, 60, 'el picante del plato: sin él queda un salteado agridulce suave', null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 80, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 25, 50, 'toda la sal del plato', null, null);
+  perform pg_temp.comp(s, 'vinagre blanco', 'AS_PACKAGED', 10, 'ML', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 5, 15, null, null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 8, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 4, 12, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 30, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 6, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Corta la carne en láminas contra la fibra y mézclala con la mitad de la maicena, un chorrito de soya y otro de agua. Corta el cebollín en trozos, el ají en tiras finas sin pepas y ten listo el jengibre y el ajo picados.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece el arroz aparte mientras salteas.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Saltea la carne en el aceite apenas humeante, en dos tandas, hasta dorar. Resérvala.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Baja un poco el fuego y sofríe el jengibre, el ajo, el ají en tiras y el merquén por medio minuto, hasta que perfume sin quemarse.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Devuelve la carne con el cebollín, agrega la soya, el vinagre y el azúcar con el resto de la maicena disueltos en un cuarto de taza de agua, y saltea hasta que la salsa espese y cubra todo.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Apaga, muele la pimienta encima y sirve sobre el arroz.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Salteado a la china con alga y champiñón
+  v_v := pg_temp.receta('Salteado a la china con alga y champiñón', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 30, 'Salteado de vacuno donde el sello ''a la china'' de la carta significa siempre alga más champiñón: el alga se hidrata y aporta lo marino, el champiñón lo carnoso. Salsa liviana de soya, sin dulzor.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno lomo liso', 'RAW', 550, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 700, null, null, null);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'EXCELLENT', 'pollo a la china de la carta', 1);
+  perform pg_temp.alt(s, 'pulpa de cerdo', 'EXCELLENT', 'cerdo a la china', 1);
+  perform pg_temp.alt(s, 'congrio', 'GOOD', 'congrio a la china: en cubos grandes, salteado con cuidado para que no se desarme', 1);
+  perform pg_temp.alt(s, 'camarones pelados', 'GOOD', 'camarón a la china: 2-3 minutos de fuego', 1);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'champinon', 'RAW', 200, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 300, null, null, null);
+  perform pg_temp.comp(s, 'alga wakame seca', 'AS_PACKAGED', 8, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 5, 12, 'peso seco: hidratada rinde varias veces su volumen', null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', 'PAN_SEARED', false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 80, 'G', 'PAN_SEARED', false, 4, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 10, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 8, 'G', null, false, 3, null, 'MAIN', 'FIXED', null, null, 'liga la salsa; se come completa', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 25, 50, 'toda la sal del plato; el alga también aporta lo suyo', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 30, null, null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', 0, 8, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 6, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Pon el alga a remojar en agua fría. Mientras se hidrata, corta la carne en láminas contra la fibra, el champiñón en láminas gruesas, la cebolla en pluma y la zanahoria en rodelas finas. Escurre el alga y córtala en tiras.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece el arroz aparte mientras salteas.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Sella la carne en el aceite apenas humeante, en dos tandas, y resérvala.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En la misma sartén dora los champiñones sin moverlos mucho, hasta que suelten su agua y la reabsorban.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Agrega la cebolla, la zanahoria, el jengibre y el ajo, y saltea dos minutos.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Devuelve la carne con el alga, suma la soya y la maicena disueltas en un cuarto de taza de agua, y dale dos minutos hasta que la salsa ligue.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Apaga, termina con el aceite de sésamo y sirve con el arroz.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Salteado chitén con maní
+  v_v := pg_temp.receta('Salteado chitén con maní', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 30, 'Salteado de vacuno con pimiento y cebollín en salsa de soya apenas dulce, coronado con maní tostado que entra fuera del fuego para que cruja y no amargue. Ojo: lleva maní, alérgeno declarado.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno lomo liso', 'RAW', 600, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 750, null, null, null);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'EXCELLENT', 'pollo chitén de la carta', 1);
+  perform pg_temp.alt(s, 'camarones pelados', 'GOOD', 'camarón chitén: 2-3 minutos de fuego, se pasan al tiro', 1);
+  s := pg_temp.slot(v_v, 'TOPPING', 2, null, true);
+  perform pg_temp.comp(s, 'mani tostado', 'AS_PACKAGED', 80, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 60, 100, 'ALÉRGENO: maní. Es comida, no grasa añadida, y entra fuera del fuego: dentro de la salsa hirviendo se ablanda y amarga', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 150, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 60, 'G', 'PAN_SEARED', false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 10, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 8, 'G', null, false, 3, null, 'MAIN', 'FIXED', null, null, 'liga la salsa; se come completa', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 5, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 25, 50, 'toda la sal del plato', null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 8, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 4, 12, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 30, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 7, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Corta la carne, el pimiento y la cebolla en cubos parejos de unos 2 cm, el cebollín en rodelas, y ten listos el jengibre y el ajo picados.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece el arroz aparte mientras salteas.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Sella los cubos de carne en el aceite apenas humeante, en dos tandas, y resérvalos.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Saltea el jengibre, el ajo, la cebolla y el pimiento dos o tres minutos: el cubo tiene que quedar con mordida.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Devuelve la carne con el cebollín, agrega la soya y el azúcar con la maicena disueltos en un cuarto de taza de agua, y saltea hasta que la salsa espese y cubra todo.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Apaga el fuego y recién ahí agrega el maní tostado, revolviendo una sola vez. Sirve sobre el arroz.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Salteado con champiñones
+  v_v := pg_temp.receta('Salteado con champiñones', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 28, 'Vacuno y champiñones salteados en salsa de soya ligada. El champiñón se dora solo y sin sal hasta que reabsorbe su propia agua: ese paso es lo que separa el plato de un guiso aguado.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno lomo liso', 'RAW', 600, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 750, null, null, null);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'EXCELLENT', 'pollo con champiñones de la carta', 1);
+  perform pg_temp.alt(s, 'pulpa de cerdo', 'EXCELLENT', 'cerdo con champiñones', 1);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'champinon', 'RAW', 300, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 400, 'en láminas gruesas o cuartos: muy delgado desaparece en la salsa', null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 8, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'liga la salsa; se come completa', null, null);
+  perform pg_temp.comp(s, 'pimienta negra', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', 0, 2, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 25, 50, 'toda la sal del plato', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 30, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 6, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Corta la carne en láminas contra la fibra, el champiñón en láminas gruesas y la cebolla en pluma. Pica el ajo.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece el arroz aparte mientras salteas.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Dora los champiñones en la mitad del aceite, sin sal y sin moverlos mucho, hasta que suelten su agua y la reabsorban. Ese dorado seco es todo el plato: apurado queda un guiso aguado. Resérvalos.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Sube el fuego, agrega el resto del aceite y sella la carne en dos tandas hasta dorar.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Suma la cebolla y el ajo, y saltea dos minutos.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Devuelve los champiñones, agrega la soya con la maicena disuelta en un cuarto de taza de agua y dale un hervor corto hasta que la salsa ligue y brille.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Apaga, muele pimienta encima y sirve sobre el arroz.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Salteado tausi
+  v_v := pg_temp.receta('Salteado tausi', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 30, 'Pollo salteado con tausi, el poroto negro fermentado del chifa: salado, profundo y con muy poquito rinde mucho. Se enjuaga y se machaca apenas antes de entrar a la sartén, y por lo mismo el plato casi no lleva soya.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 600, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 750, null, null, null);
+  perform pg_temp.alt(s, 'pulpa de cerdo', 'EXCELLENT', 'cerdo tausi de la carta: en cubos iguales, un par de minutos más de fuego', 1);
+  s := pg_temp.slot(v_v, 'SAUCE', 2, null, true);
+  perform pg_temp.comp(s, 'tausi', 'AS_PACKAGED', 20, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 12, 28, 'poroto negro fermentado: sodio muy alto en poca cantidad, va con su gramaje real para que el motor clínico lo vea. Se enjuaga antes de usar', null, null);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 25, 'ML', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 15, 35, 'menos que en los otros salteados: el tausi ya trae mucha sal', null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 5, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 8, 'redondea lo salado del fermento', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 150, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 10, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 10, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 8, 'G', null, false, 3, null, 'MAIN', 'FIXED', null, null, 'liga la salsa; se come completa', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 30, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, false);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 40, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', 0, 60, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 7, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Enjuaga el tausi bajo el agua para sacarle el exceso de sal y macháralo apenas con un tenedor. Corta el pollo, el pimiento y la cebolla en cubos parejos de 2 cm, y pica el ajo y el jengibre.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece el arroz aparte mientras salteas.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Sella el pollo en el aceite apenas humeante, en dos tandas, hasta dorar. Resérvalo.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Sofríe el tausi machacado con el ajo y el jengibre por medio minuto, hasta que perfume.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Agrega la cebolla y el pimiento y saltea dos minutos.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Devuelve el pollo, suma la soya y el azúcar con la maicena disueltos en un cuarto de taza de agua, y dale un hervor corto hasta que la salsa cubra todo.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Apaga, corona con el cebollín y sirve sobre el arroz.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Carne salteada a la soya
+  v_v := pg_temp.receta('Carne salteada a la soya', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 28, 'La puerta de entrada al chifa casero: láminas de vacuno, cebolla y la soya como única salsa. Sin velveting, sin ligar, sin vuelta: sartén bien caliente y listo.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno lomo liso', 'RAW', 600, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 750, null, null, null);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'EXCELLENT', 'la versión de pollo de la carta: mismo corte en láminas, mismo tiempo', 1);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 60, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 45, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 30, 55, 'es la única salsa y toda la sal del plato', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 6, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Corta la carne en láminas delgadas contra la fibra, la cebolla en pluma y el cebollín en trozos. Pica el ajo.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece el arroz aparte mientras salteas.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Calienta el aceite hasta que apenas humee y sella la carne en dos tandas, sin moverla los primeros segundos, hasta dorar. Resérvala.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Saltea la cebolla con el ajo dos o tres minutos: transparente pero todavía con mordida.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Devuelve la carne con el cebollín, agrega la soya y un chorrito de agua, y saltea un minuto hasta que todo quede bañado.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Apaga y sirve al tiro sobre el arroz, con el jugo de la sartén encima.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Carne especial china
+  v_v := pg_temp.receta('Carne especial china', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 33, 'El salteado especial del chifa: vacuno, pollo y camarones en la misma sartén, cada uno entrando en su momento. El orden de los pasos ES el plato: la carne primero, el pollo después y el camarón al final, que se pasa al tiro.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno lomo liso', 'RAW', 300, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 400, null, null, null);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 250, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', 180, 350, null, null, null);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 200, 'G', 'PAN_SEARED', false, 3, null, 'MAIN', 'ADJUSTABLE', 150, 300, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 100, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 80, 'G', 'PAN_SEARED', false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 60, 'G', 'PAN_SEARED', false, 4, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 10, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 10, 'G', null, false, 3, null, 'MAIN', 'FIXED', null, null, 'liga la salsa; se come completa', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 45, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 30, 55, 'toda la sal del plato', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 40, null, null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', 0, 8, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 6, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Corta la carne y el pollo en láminas delgadas, en tablas separadas (o lava la tabla entre medio). Corta la cebolla y el pimiento en pluma, la zanahoria en rodelas finas, el cebollín en trozos, y seca bien los camarones.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece el arroz aparte mientras salteas.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Sella primero la carne en un tercio del aceite apenas humeante: es la que necesita la sartén más caliente. Resérvala.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Sella el pollo con otro tercio del aceite y resérvalo junto a la carne.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Con el aceite restante saltea el jengibre, el ajo, la cebolla, el pimiento y la zanahoria, dos o tres minutos.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Entra el camarón al final: dos minutos y cambia de color. Más que eso y se pone gomoso. Devuelve la carne y el pollo reservados.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Agrega la soya con la maicena disuelta en un cuarto de taza de agua y el cebollín, y dale un hervor corto hasta que la salsa cubra todo.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 8, 'Apaga, termina con el aceite de sésamo y sirve sobre el arroz.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Pollo pekín
+  v_v := pg_temp.receta('Pollo pekín', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 35, 'Pollo en dos cocciones, como lo hace el chifa: primero asado al horno hasta dorar los bordes y después salteado y lacado con salsa hoisin. El asado previo concentra; el salteado barniza.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 700, 'G', 'BAKED', false, 1, null, 'MAIN', 'ADJUSTABLE', 500, 900, 'en trozos grandes: chicos se secan en el horno', null, null);
+  perform pg_temp.alt(s, 'pulpa de cerdo', 'GOOD', 'queda un cerdo lacado; dale 5 minutos más de horno', 1);
+  s := pg_temp.slot(v_v, 'SAUCE', 2, null, true);
+  perform pg_temp.comp(s, 'salsa hoisin', 'AS_PACKAGED', 60, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 40, 80, 'mitad al adobo, mitad al lacado final; es dulce y salada a la vez', null, null);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 20, 'ML', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 10, 30, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 8, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 4, null, true);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 80, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'en plumas finas, entra fuera del fuego como en el pato pekín', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 20, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, false);
+  perform pg_temp.comp(s, 'semillas de sesamo', 'AS_PACKAGED', 10, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', 0, 15, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 7, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Prende el horno a 200 °C. Corta la pechuga en trozos grandes y úntalos con la soya, la mitad del hoisin y el aceite. Pica fino el jengibre y el ajo, y corta el cebollín en plumas.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece el arroz aparte mientras el pollo se asa.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Asa los trozos en una lata en capa única, 15 minutos a 200 °C, hasta que los bordes doren. Esta es la primera de las dos cocciones y no se salta: es la que concentra el sabor.', 15, 200, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En vez del horno: dora los trozos adobados en la air fryer, en dos tandas para no apilarlos.', 16, 190, 'AIR_FRYER', 'Sin air fryer: el horno del paso anterior es el método base de esta receta.', null);
+  perform pg_temp.paso(v_v, 5, 'Calienta una sartén grande, sofríe el jengibre y el ajo unos segundos, y entra el pollo asado con su jugo y el resto del hoisin. Saltea hasta que la salsa lo lacee y brille por todos lados.', 7, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Apaga, corona con el cebollín crudo y el sésamo, y sirve con el arroz.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Apanado chifa en batido de maicena
+  v_v := pg_temp.receta('Apanado chifa en batido de maicena', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 30, 'Bastones de pollo pasados por un batido líquido de maicena, harina y agua helada, fritos hasta inflar: la costra crujiente y aireada del chifa, nada que ver con un apanado de pan rallado. La salsa va aparte, para mojar en la mesa.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 600, 'G', 'FRIED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 750, 'en bastones gruesos', null, null);
+  perform pg_temp.alt(s, 'congrio', 'EXCELLENT', 'el apanado de congrio de la carta: mismo batido, tandas de 2-3 minutos y con más cuidado al dar vuelta', 1);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 50, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'la del batido que queda pegada al pollo: en el bol se baten 80 g con la harina y agua helada, y parte se queda en el bol', null, null);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 25, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'la que se pega: en el bol van 40 g', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 4, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 5, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 60, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 40, 80, 'aceite retenido en la costra: en la sartén va mucho más y no se declara porque no se come', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, false);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 15, 'ML', null, true, 1, null, 'SEASONING', 'OPTIONAL', 0, 25, 'va aparte, para mojar en la mesa: sobre la costra la ablanda', null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 5, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Corta la pechuga en bastones gruesos, sálalos y sécalos bien: el batido no se pega en superficie húmeda.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece el arroz aparte.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Bate 80 g de maicena, 40 g de harina y unos 120 ml de agua HELADA hasta un batido fluido que apenas cubra el dorso de la cuchara. El frío es el secreto de la costra: si el agua está tibia, sale chiclosa.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Calienta abundante aceite en una sartén honda (un dedo de profundidad). Pasa los bastones por el batido, deja escurrir el exceso y fríelos en tandas chicas, unos 3 minutos por tanda, hasta que inflen y doren.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Escúrrelos sobre rejilla o papel y sirve al tiro, con el arroz y la soya aparte en un pocillo.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Chicharrón chifa
+  v_v := pg_temp.receta('Chicharrón chifa', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 30, 'Trozos de pollo pasados por maicena seca —no por batido—, fritos hasta quedar de costra fina y crujiente, y terminados con un salteado relámpago en salsa. Es el hermano seco del apanado en batido, y esa diferencia se nota en cada mordida.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 600, 'G', 'FRIED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 750, null, null, null);
+  perform pg_temp.alt(s, 'camarones pelados', 'EXCELLENT', 'el chicharrón de camarón de la carta: tandas de 2 minutos, se pasan al tiro', null);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 40, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'la que queda pegada al espolvorear en seco; en el plato se usa algo más y el resto se sacude', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 4, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 8, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 3, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 60, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 40, 80, 'aceite retenido en la costra: en la sartén va mucho más y no se declara porque no se come', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 15, 35, null, null, null);
+  perform pg_temp.comp(s, 'vinagre blanco', 'AS_PACKAGED', 10, 'ML', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 5, 15, null, null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 8, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 4, 12, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 5, null, false);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 40, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', 0, 60, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 6, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Corta el pollo en trozos de bocado, sálalos y sécalos muy bien con papel: la maicena seca solo se pega en superficie seca.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece el arroz aparte.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Pasa los trozos por la maicena seca sacudiendo bien el exceso. Esa costra fina y seca es lo que separa el chicharrón del apanado en batido: acá no hay masa que infle.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Fríelos en aceite caliente (un dedo en la sartén) en tandas chicas, hasta dorar por fuera y cocer por dentro, unos 3 minutos por tanda. Escúrrelos en rejilla. El aceite declarado es el que retiene la costra, no el de la sartén.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'En una sartén limpia sofríe el ajo y el jengibre, agrega la soya, el vinagre y el azúcar, y cuando burbujee entra el chicharrón: medio minuto de salteado justo para lacarlo sin ablandar la costra.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Apaga, corona con cebollín y sirve con el arroz.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Pollo con piña agridulce
+  v_v := pg_temp.receta('Pollo con piña agridulce', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 31, 'Pollo frito crocante y salsa agridulce con piña, pimiento y cebolla que se cocinan por caminos separados y se juntan recién al servir. Ese último segundo es todo el plato: cocinados juntos, la costra se ablanda y queda un guiso.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 600, 'G', 'FRIED', false, 1, null, 'MAIN', 'ADJUSTABLE', 450, 750, null, null, null);
+  perform pg_temp.alt(s, 'pulpa de cerdo', 'EXCELLENT', 'el cerdo agridulce clásico: mismos cubos, un minuto más de fritura', 1);
+  s := pg_temp.slot(v_v, 'FRUIT', 2, null, true);
+  perform pg_temp.comp(s, 'pina en conserva', 'DRAINED', 200, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 280, 'escurrida, en trozos de bocado; guarda un poco del jugo para la salsa', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 30, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'la mayor parte espolvorea el pollo (se declara lo que se pega) y una cucharadita liga la salsa', null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 6, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 0, 4, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 4, null, true);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 100, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 100, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 5, null, true);
+  perform pg_temp.comp(s, 'vinagre blanco', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 15, 35, 'el ácido del agridulce', null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 30, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 20, 40, 'no es un espolvoreo: es la mitad dulce de la salsa y el motor tiene que verla completa', null, null);
+  perform pg_temp.comp(s, 'salsa de tomate envasada', 'AS_PACKAGED', 30, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', 20, 45, 'da el color rojo y el cuerpo del agridulce de chifa', null, null);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 15, 'ML', null, false, 4, null, 'SEASONING', 'ADJUSTABLE', 10, 25, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 55, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 40, 70, 'el retenido por el pollo frito más el del salteado de la salsa; el baño de la sartén no se declara porque no se come', null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 7, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Corta el pollo en cubos de bocado, sálalos, sécalos y pásalos por la maicena seca sacudiendo el exceso. Corta el pimiento y la cebolla en cuadros grandes y la piña escurrida en trozos.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Mezcla la salsa en una taza: vinagre, azúcar, salsa de tomate, soya, una cucharadita de maicena y medio pocillo del jugo de la piña.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Cuece el arroz aparte.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 4, 'Fríe el pollo en aceite caliente (un dedo en la sartén) en tandas, unos 3 minutos por tanda, hasta dorar. Escúrrelo en rejilla y no lo tapes: tapado se ablanda.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'En una sartén limpia con un chorrito de aceite sofríe el ajo y el jengibre, saltea el pimiento y la cebolla dos minutos, agrega la mezcla de la taza y la piña, y hierve hasta que la salsa espese y brille.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Junta el pollo frito con la salsa recién al momento de servir, fuera del fuego, con dos vueltas de cuchara. Cocinados juntos queda un guiso: acá la costra tiene que crujir debajo del agridulce.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Costillar cantonés
+  v_v := pg_temp.receta('Costillar cantonés', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 60, 'Costillitas de cerdo fritas hasta despegarse del hueso y revolcadas en un glaseado de miel y soya con especias. El plato chifa que se pide para compartir, hecho en casa.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'costillar de cerdo', 'RAW', 1200, 'G', 'FRIED', false, 1, null, 'MAIN', 'ADJUSTABLE', 900, 1500, 'peso con hueso; la porción comestible la aplica el catálogo', null, null);
+  perform pg_temp.alt(s, 'alitas de pollo', 'GOOD', 'misma fritura y mismo glaseado; se fríen 2 minutos menos por tanda', 1);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 40, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'la que queda pegada al costillar; para espolvorear se usa desde un plato con más', null, null);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 15, 'G', null, false, 2, null, 'SEASONING', 'FIXED', null, null, 'rallado, al adobo', null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 10, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'canela molida', 'AS_PACKAGED', 1, 'G', null, true, 4, null, 'SEASONING', 'OPTIONAL', null, null, 'con el anís y el clavo hace de cinco especias casero', null, null);
+  perform pg_temp.comp(s, 'anis en grano', 'AS_PACKAGED', 1, 'G', null, true, 5, null, 'SEASONING', 'OPTIONAL', null, null, 'machacado en mortero', null, null);
+  perform pg_temp.comp(s, 'clavo de olor molido', 'AS_PACKAGED', 1, 'G', null, true, 6, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'limon', 'RAW', 20, 'G', null, true, 7, null, 'SEASONING', 'OPTIONAL', null, null, 'unas gotas para cortar el dulzor del glaseado', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 3, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 50, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 30, 60, 'parte adoba, parte va al glaseado', null, null);
+  perform pg_temp.comp(s, 'miel', 'AS_PACKAGED', 40, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 25, 50, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 4, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 70, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 50, 80, 'aceite retenido por el costillar frito; el baño de la sartén va aparte y no se declara porque no se come', null, null);
+  perform pg_temp.paso(v_v, 1, 'Corta el costillar en costillas individuales y cada una en trozos de 4 a 5 cm, o pídelo trozado en la carnicería. Sécalos bien con papel.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Mezcla la mitad de la soya con el jengibre rallado, el ajo y las especias molidas. Revuelca los trozos en ese adobo y déjalos reposar tapados.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Escurre los trozos y espolvoréalos con maicena por todos lados, sacudiendo el exceso.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Fríelos por tandas en una sartén honda con dos dedos de aceite bien caliente, 8 a 10 minutos por tanda, hasta que estén dorados y la carne ceda junto al hueso. En la sartén va mucho más aceite del declarado: los 70 ml son los que se quedan en el costillar.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'En vez de freír en sartén: pinta los trozos con un par de cucharadas de aceite y hazlos en la air fryer a 200 °C unos 18 minutos, moviendo el canasto a la mitad.', 18, 200, 'AIR_FRYER', 'Sin air fryer: la fritura en sartén honda es el método base de esta receta.', null);
+  perform pg_temp.paso(v_v, 6, 'En la sartén limpia junta la miel, el resto de la soya y un chorrito de agua caliente; deja que espese apenas y revuelca ahí las costillas hasta que brillen. Termina con unas gotas de limón si quieres.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Cerdo asado con pimentón y cebolla morada
+  v_v := pg_temp.receta('Cerdo asado con pimentón y cebolla morada', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 55, 'El char siu doméstico: filete de cerdo marinado en soya y miel, asado al horno y terminado en sartén con pimentón y cebolla morada crocantes. Se sirve laminado sobre arroz.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'filete de cerdo', 'RAW', 800, 'G', 'BAKED', false, 1, null, 'MAIN', 'ADJUSTABLE', 600, 1000, null, null, null);
+  perform pg_temp.alt(s, 'pulpa de cerdo', 'GOOD', 'más veteada y jugosa; dale unos 10 minutos más de horno', 1);
+  s := pg_temp.slot(v_v, 'SAUCE', 2, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 50, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 30, 60, null, null, null);
+  perform pg_temp.comp(s, 'miel', 'AS_PACKAGED', 50, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', 30, 60, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 12, 'G', null, false, 1, null, 'SEASONING', 'FIXED', null, null, 'rallado, a la marinada', null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 10, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'canela molida', 'AS_PACKAGED', 1, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, 'el toque de especia del char siu', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 4, null, true);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 250, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 300, null, null, null);
+  perform pg_temp.comp(s, 'cebolla morada', 'RAW', 250, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', 150, 300, 'en pluma gruesa, que se note', null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 5, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', null, null, 'unas gotas al final, fuera del fuego', null, null);
+  perform pg_temp.paso(v_v, 1, 'Mezcla la soya, la miel, el jengibre rallado, el ajo y la canela. Revuelca el filete y déjalo tapado mientras el horno calienta; ideal si lo dejaste de un día para otro.', 10, null, null, null, 1);
+  perform pg_temp.paso(v_v, 2, 'Precalienta el horno.', 10, 200, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Hornea el filete en una fuente con su marinada, pintándolo con el jugo a mitad de camino, hasta que el centro quede apenas rosado: unos 30 minutos, o 63 °C si tienes termómetro.', 30, 200, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Cuece el arroz aparte mientras el cerdo se asa.', 18, null, null, null, 2);
+  perform pg_temp.paso(v_v, 5, 'Saca el filete, déjalo reposar 5 minutos y córtalo en láminas delgadas.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'En una sartén bien caliente saltea el pimentón y la cebolla morada con el aceite 4 a 5 minutos: crocantes, no blandos. Junta las láminas de cerdo con el jugo de la fuente, apaga y termina con el sésamo.', 6, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Calamar Casa China
+  v_v := pg_temp.receta('Calamar Casa China', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 35, 'Anillos de calamar salteados al wok con cebolla, pimentón y jengibre, ligados con soya. Todo el plato se juega en los 90 segundos del calamar: pasado de ese punto se pone como goma y no vuelve.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'calamar', 'RAW', 800, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 600, 1000, 'peso entero sin limpiar; la porción comestible la aplica el catálogo. Si compras tubos ya limpios, con unos dos tercios del peso basta', null, null);
+  perform pg_temp.alt(s, 'jibia', 'GOOD', 'viene limpia; córtala delgada, dale 2 a 3 minutos más y corre el mismo riesgo de goma', 0.7);
+  perform pg_temp.alt(s, 'camarones pelados', 'GOOD', '2 a 3 minutos, hasta que enrosquen y cambien de color', 0.6);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 150, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 60, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, 'sesgado, se agrega al final', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 10, 'G', null, false, 1, null, 'SEASONING', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 20, 40, null, null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 8, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'disuelta en agua fría para ligar el jugo', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 30, null, null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 6, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Limpia el calamar si viene entero: tira de la cabeza, saca la pluma transparente y la piel, y corta el tubo en anillos de 1 cm y los tentáculos en dos. Sécalo muy bien con papel: mojado no se saltea, se hierve.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece el arroz aparte mientras preparas el salteado.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Calienta el wok o la sartén más grande con el aceite hasta que humee apenas. Saltea cebolla, pimentón, jengibre y ajo 3 minutos: tienen que quedar crocantes.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Sube el fuego al máximo y agrega el calamar: 90 segundos revolviendo sin parar. Entre los 90 segundos y los 3 minutos se pone como goma y ya no vuelve; ese minuto y medio es la receta entera.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Vierte la soya y la maicena disuelta, revuelve 30 segundos hasta que el jugo apenas espese, apaga y termina con el cebollín y el sésamo.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Arrollado de marisco al vapor
+  v_v := pg_temp.receta('Arrollado de marisco al vapor', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 50, 'Rollos de camarón y jaiba envueltos en tortilla delgada de huevo y cocidos al vapor, servidos en rodajas con soya. Sin aceite de fritura: el plato de mariscos más liviano de la mesa chifa casera.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 250, 'G', 'STEAMED', false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 300, null, null, null);
+  perform pg_temp.comp(s, 'carne de jaiba', 'RAW', 150, 'G', 'STEAMED', false, 2, null, 'MAIN', 'ADJUSTABLE', 100, 200, null, null, null);
+  perform pg_temp.comp(s, 'clara de huevo', 'EDIBLE_PORTION', 60, 'G', null, false, 3, null, 'MAIN', 'FIXED', null, null, 'dos claras: amarran el relleno', null, null);
+  perform pg_temp.alt(s, 'ostiones', 'GOOD', 'en vez de la jaiba, picados grueso; quedan más dulces', 1);
+  s := pg_temp.slot(v_v, 'BASE', 2, null, true);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 165, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'FIXED', null, null, 'para las tortillas delgadas que envuelven el arrollado', 'unidad', 3);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 15, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'liga el relleno', null, null);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 8, 'G', null, false, 2, null, 'SEASONING', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 3, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 4, null, true);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 50, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 5, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 10, 30, 'para mojar al servir', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 10, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 5, 15, 'apenas para cuajar las tortillas', null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Pica los camarones a cuchillo hasta dejar una pasta gruesa y mézclala con la jaiba desmenuzada, las claras, la maicena, el cebollín, el jengibre rallado y la sal.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'En vez de picar a cuchillo: muele camarones y jaiba con dos o tres pulsos de procesadora, cuidando que quede grueso y no puré.', 3, null, 'FOOD_PROCESSOR', 'Sin procesadora: el picado a cuchillo del paso anterior es el método base; toma más tiempo pero da mejor textura.', null);
+  perform pg_temp.paso(v_v, 3, 'Bate los huevos con una pizca de sal y cuaja dos tortillas delgadas y grandes en una sartén apenas aceitada, sin dorarlas: son la envoltura.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Reparte el relleno sobre cada tortilla, enróllalas apretado y envuelve cada rollo en film apto para cocción o en un paño limpio, amarrando las puntas.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Cuece los rollos al vapor, en vaporera o sobre una rejilla dentro de una olla tapada con dos dedos de agua hirviendo, 15 minutos: el relleno tiene que sentirse firme al apretar.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Deja entibiar 5 minutos, corta en rodajas de 2 cm y sirve con la soya y unas gotas de sésamo.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Camarón fuyón
+  v_v := pg_temp.receta('Camarón fuyón', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 27, 'Tortillas de huevo con camarones, brotes y cebollín, doradas en sartén y bañadas con una salsita de soya ligada. Es el egg foo young del chifa: una tortilla, no un salteado.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 300, 'G', 'FRIED', false, 1, null, 'MAIN', 'ADJUSTABLE', 250, 400, null, null, null);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 330, 'G', 'FRIED', false, 2, null, 'MAIN', 'ADJUSTABLE', 275, 440, null, 'unidad', 6);
+  perform pg_temp.alt(s, 'carne de jaiba', 'GOOD', 'desmenuzada, va directo a la mezcla sin saltear', 0.8);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'GOOD', 'picada chica y salteada 3 a 4 minutos antes de ir a la mezcla', 1);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'brotes de soya', 'RAW', 150, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 200, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 60, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'champinon', 'RAW', 100, 'G', null, true, 3, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 3, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 15, 35, 'un chorrito a la mezcla, el resto a la salsita', null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 8, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'para la salsita que va encima', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 4, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 45, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 35, 55, 'aceite retenido: la tortilla absorbe más de lo que uno cree. En la sartén va más y no se declara', null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 3, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 5, null, true);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 0, 3, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Corta los camarones en dos o tres y saltéalos 1 minuto en la sartén apenas aceitada, que apenas cambien de color. Resérvalos.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Bate los huevos con la sal y un chorrito de soya; mezcla con los camarones, los brotes, el cebollín y el champiñón.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Calienta aceite en la sartén y cuaja tortillas de a cucharón, 2 a 3 minutos por lado, hasta dorarlas. Salen unas ocho tortillas chicas en tres o cuatro tandas; repón aceite entre tandas: lo declarado es lo que la tortilla absorbe.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Para la salsita: hierve media taza de agua con el resto de la soya y la maicena disuelta en agua fría, revolviendo hasta que espese y brille. Sírvela sobre las tortillas con unas gotas de sésamo.', 4, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Chapsui
+  v_v := pg_temp.receta('Chapsui', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 35, 'Salteado chifa de verduras crocantes con tiras de pollo, ligado con soya y maicena, sobre arroz. La proteína se cambia a gusto —vacuno, cerdo, camarón o congrio— y la verdura entra por orden de dureza: eso es lo que separa un chapsui de una verdura hervida.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 500, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 600, 'en tiras delgadas', null, null);
+  perform pg_temp.alt(s, 'vacuno lomo liso', 'EXCELLENT', 'en tiras contra la fibra; mismos 2 a 3 minutos de sellado', 1);
+  perform pg_temp.alt(s, 'pulpa de cerdo', 'GOOD', 'tiras delgadas, un minuto más de sellado', 1);
+  perform pg_temp.alt(s, 'camarones pelados', 'GOOD', 'no se sellan al principio: van al final, 2 minutos sobre la verdura, como dice el paso de la salsa', 0.8);
+  perform pg_temp.alt(s, 'congrio', 'GOOD', 'en cubos grandes; se acomoda encima al final y no se revuelve, o se deshace', 0.9);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 120, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 120, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'apio', 'RAW', 100, 'G', 'PAN_SEARED', false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, 'sesgado', null, null);
+  perform pg_temp.comp(s, 'repollo', 'RAW', 200, 'G', 'PAN_SEARED', false, 4, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'PAN_SEARED', false, 5, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'champinon', 'RAW', 100, 'G', null, true, 6, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 50, 'G', null, false, 7, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 10, 'G', null, false, 1, null, 'SEASONING', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 3, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, 'redondea la salsa', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 25, 50, null, null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 10, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'disuelta en media taza de agua fría', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 40, null, null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 6, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Corta todo antes de prender el fuego: la proteína en tiras y la verdura pareja, separada por dureza (zanahoria y pimentón por un lado; apio y repollo por otro; cebolla y champiñón aparte).', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece el arroz aparte mientras salteas.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Sella el pollo a fuego máximo con la mitad del aceite, 2 a 3 minutos, y retíralo. Si tu proteína es camarón o congrio, sáltate este paso: entran al final, como dicen los dos últimos pasos.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En el mismo wok con el resto del aceite saltea por orden de dureza: zanahoria y pimentón 2 minutos; apio y repollo 2 más; cebolla y champiñón 1 más, con el jengibre y el ajo. La verdura queda crocante: echada toda junta desde el principio es verdura hervida, no chapsui.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Devuelve el pollo, agrega la soya, el azúcar y la maicena disuelta; revuelve 1 a 2 minutos hasta que el jugo espese y abrace todo. Con camarones: van crudos junto con la soya, 2 minutos bastan.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Con congrio: acomoda los cubos encima, tapa 3 minutos y no revuelvas; se sirve levantando con cuidado. En cualquier versión, termina con el cebollín y el sésamo fuera del fuego.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Chapsui especial
+  v_v := pg_temp.receta('Chapsui especial', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 38, 'El chapsui grande de la casa: pollo, vacuno, cerdo y camarones en el mismo wok, cada carne sellada por su cuenta antes de juntarse con la verdura crocante. No es el chapsui con otra carne: es el de las cuatro.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 250, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 300, null, null, null);
+  perform pg_temp.comp(s, 'vacuno lomo liso', 'RAW', 250, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', 200, 300, 'contra la fibra', null, null);
+  perform pg_temp.comp(s, 'pulpa de cerdo', 'RAW', 250, 'G', 'PAN_SEARED', false, 3, null, 'MAIN', 'ADJUSTABLE', 200, 300, null, null, null);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 150, 'G', 'PAN_SEARED', false, 4, null, 'MAIN', 'ADJUSTABLE', 100, 200, 'van crudos al final, no se sellan', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 100, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 100, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'apio', 'RAW', 100, 'G', 'PAN_SEARED', false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'repollo', 'RAW', 150, 'G', 'PAN_SEARED', false, 4, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'PAN_SEARED', false, 5, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 50, 'G', null, false, 6, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 12, 'G', null, false, 1, null, 'SEASONING', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 3, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 50, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 30, 60, null, null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 10, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'disuelta en media taza de agua fría', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 40, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 30, 50, 'se reparte entre las tandas de sellado y la verdura', null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 6, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Corta las tres carnes en tiras delgadas, cada una en su plato, y la verdura pareja y separada por dureza. Ten todo a mano: el fuego no espera.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece el arroz aparte mientras salteas.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Sella cada carne por separado a fuego máximo, tanda por tanda, retirando y reservando: vacuno 2 minutos, cerdo 3, pollo 3. Juntas de crudo sueltan agua y se cuecen en vez de dorarse: por eso esta receta es otra y no el chapsui con más carne.', 9, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En el mismo wok saltea la verdura por orden de dureza: zanahoria y pimentón, después apio y repollo, al final cebolla con jengibre y ajo.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Devuelve las carnes, agrega los camarones crudos, la soya, el azúcar y la maicena disuelta; 2 minutos hasta que el camarón enrosque y el jugo espese.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Apaga y termina con el cebollín y el sésamo.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Chapsui de verduras
+  v_v := pg_temp.receta('Chapsui de verduras', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 38, 'El chapsui sin proteína animal: puro salteado de verduras crocantes con brotes y callampas, ligado con soya y servido sobre arroz. De toda la mesa chifa casera, es el plato que más verdura pone en el wok.');
+  s := pg_temp.slot(v_v, 'VEGETABLE', 1, null, true);
+  perform pg_temp.comp(s, 'repollo', 'RAW', 300, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'zanahoria', 'RAW', 150, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 150, 'G', 'PAN_SEARED', false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'apio', 'RAW', 120, 'G', 'PAN_SEARED', false, 4, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 150, 'G', 'PAN_SEARED', false, 5, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'champinon', 'RAW', 150, 'G', 'PAN_SEARED', false, 6, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'brotes de soya', 'RAW', 150, 'G', null, false, 7, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'poroto verde', 'RAW', 100, 'G', 'PAN_SEARED', true, 8, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'callampa seca', 'AS_PACKAGED', 8, 'G', null, true, 9, null, 'MAIN', 'OPTIONAL', null, null, 'remojadas; su agua sirve para disolver la maicena', null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 60, 'G', null, false, 10, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 10, 'G', null, false, 1, null, 'SEASONING', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 3, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 3, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 25, 50, null, null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 10, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 4, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 40, null, null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 5, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Si usas callampas secas, remójalas en agua caliente 20 minutos y guarda el agua. Mientras tanto corta toda la verdura pareja, separada por dureza.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece el arroz aparte mientras salteas.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Con el wok humeando, saltea por orden de dureza: zanahoria, pimentón y poroto verde 2 minutos; apio y repollo 2 más; cebolla, champiñón y callampas 2 más, con el jengibre y el ajo.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Agrega la soya, el azúcar y la maicena disuelta en el agua de las callampas (o en agua fría); 1 minuto a que el jugo espese y brille.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Fuera del fuego suma los brotes, el cebollín y el sésamo. El brote se come al toque: cocido de más suelta agua y ablanda todo el salteado.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Diente de dragón con proteína
+  v_v := pg_temp.receta('Diente de dragón con proteína', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 30, 'Brotes de soya salteados a wok humeante con tiras de pollo y un ligado corto de soya, sobre arroz. La proteína se cambia a gusto por vacuno, cerdo o camarones; los brotes entran al final y se comen al toque, crujientes.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 400, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 500, null, null, null);
+  perform pg_temp.alt(s, 'vacuno lomo liso', 'EXCELLENT', 'en tiras contra la fibra, 2 minutos de sellado', 1);
+  perform pg_temp.alt(s, 'pulpa de cerdo', 'GOOD', 'tiras delgadas, un minuto más de sellado', 1);
+  perform pg_temp.alt(s, 'camarones pelados', 'GOOD', 'no se sellan: van con la soya al final, 2 minutos hasta que enrosquen', 0.8);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'brotes de soya', 'RAW', 400, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 500, null, null, null);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 100, 'G', 'PAN_SEARED', true, 2, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 60, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 10, 'G', null, false, 1, null, 'SEASONING', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 20, 40, null, null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 8, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'disuelta en un pocillo de agua fría', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 15, 30, null, null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 6, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Corta el pollo en tiras delgadas, enjuaga y escurre muy bien los brotes, y ten todo cortado y a mano: este salteado no da tiempo de picar nada.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Cuece el arroz aparte mientras salteas.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Sella el pollo a fuego máximo con la mitad del aceite, 2 a 3 minutos, y retíralo. Con camarones, sáltate este paso: van al final.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'En el mismo wok humeando saltea el pimentón con el jengibre y el ajo 1 minuto; devuelve el pollo, agrega la soya y la maicena disuelta y deja que espese 1 minuto.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Los brotes al final: 1 a 2 minutos revolviendo, que queden crujientes. El diente de dragón se come al toque o suelta agua. Cebollín y sésamo fuera del fuego.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Diente de dragón salteado
+  v_v := pg_temp.receta('Diente de dragón salteado', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 11, 'Brotes de soya salteados a wok humeante con cebollín, jengibre y un chorro de soya. Acompañamiento chifa de tres minutos de fuego, para anidar junto a cualquier salteado o parrilla china.');
+  s := pg_temp.slot(v_v, 'VEGETABLE', 1, null, true);
+  perform pg_temp.comp(s, 'brotes de soya', 'RAW', 500, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 400, 600, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 60, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, 'sesgado', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 8, 'G', null, false, 1, null, 'SEASONING', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 3, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 10, 20, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 4, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 20, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 10, 25, null, null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Enjuaga los brotes y escúrrelos muy bien; corta el cebollín sesgado y ten todo a mano junto al fuego.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Calienta el wok o la sartén más grande con el aceite hasta que humee: a fuego medio el brote hierve en su propia agua en vez de saltearse.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Ajo y jengibre 20 segundos, y los brotes adentro: 90 segundos a 2 minutos revolviendo sin parar, la soya por el borde del wok, el cebollín y el sésamo, y afuera. Crocante o nada.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Parrilla china de carnes
+  v_v := pg_temp.receta('Parrilla china de carnes', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 50, 'Láminas de vacuno, cerdo y pollo marinadas en soya y marcadas por tandas a fuego fuerte, con cebolla y pimentón crocantes y camarones si la ocasión lo pide. La parrilla mixta del chifa hecha en la cocina de la casa.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'vacuno lomo liso', 'RAW', 400, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 500, 'contra la fibra', null, null);
+  perform pg_temp.comp(s, 'pechuga de pollo sin piel', 'RAW', 300, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', 250, 400, null, null, null);
+  perform pg_temp.comp(s, 'pulpa de cerdo', 'RAW', 300, 'G', 'PAN_SEARED', false, 3, null, 'MAIN', 'ADJUSTABLE', 250, 400, null, null, null);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 150, 'G', 'PAN_SEARED', true, 4, null, 'MAIN', 'OPTIONAL', null, null, 'la versión pollo-camarón de la carta los suma; van al final', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 250, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 250, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 50, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 3, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 50, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 30, 60, 'marina las tres carnes', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 12, 'G', null, false, 1, null, 'SEASONING', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 10, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 3, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 40, null, null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 6, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Corta las tres carnes en láminas delgadas, el vacuno contra la fibra.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Marínalas en la soya con el jengibre rallado, el ajo y el azúcar, cada carne por separado.', 20, null, null, null, 1);
+  perform pg_temp.paso(v_v, 3, 'Cuece el arroz aparte mientras las carnes marinan.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 4, 'Calienta una sartén de fondo grueso hasta que humee y marca las carnes por tandas, escurridas: vacuno 2 minutos, cerdo 3, pollo 3. Una capa por tanda; amontonadas se hierven en su jugo en vez de marcarse. Retira y reserva.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'En vez de la sartén: marca las carnes a la parrilla bien caliente, tanda por tanda, 2 a 3 minutos por lado.', 12, null, 'GRILL', 'Sin parrilla: la sartén de fondo grueso del paso anterior es el método base de esta receta.', null);
+  perform pg_temp.paso(v_v, 6, 'Saltea la cebolla y el pimentón con el aceite 4 minutos; agrega los camarones y dales 2 minutos, hasta que enrosquen.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 7, 'Devuelve las carnes con su jugo, revuelve 1 minuto, apaga y termina con el cebollín y el sésamo.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Parrilla china de mariscos
+  v_v := pg_temp.receta('Parrilla china de mariscos', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 50, 'Choritos, camarones, ostiones y calamar marcados a fuego fuerte con cebolla y pimentón, cada marisco con su propio reloj. Cuatro tiempos distintos en la misma sartén: esa es toda la dificultad, y toda la gracia.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'choritos', 'RAW', 400, 'G', 'STEAMED', false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 500, 'peso con concha; la porción comestible la aplica el catálogo', null, null);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 250, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', 200, 300, null, null, null);
+  perform pg_temp.comp(s, 'ostiones', 'RAW', 200, 'G', 'PAN_SEARED', false, 3, null, 'MAIN', 'ADJUSTABLE', 150, 250, null, null, null);
+  perform pg_temp.comp(s, 'calamar', 'RAW', 400, 'G', 'PAN_SEARED', false, 4, null, 'MAIN', 'ADJUSTABLE', 300, 500, 'peso entero sin limpiar; la porción comestible la aplica el catálogo', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 2, null, true);
+  perform pg_temp.comp(s, 'cebolla', 'RAW', 200, 'G', 'PAN_SEARED', false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'pimiento rojo', 'RAW', 200, 'G', 'PAN_SEARED', false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 50, 'G', null, false, 3, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 12, 'G', null, false, 1, null, 'SEASONING', 'FIXED', null, null, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 10, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'limon', 'RAW', 30, 'G', null, true, 3, null, 'SEASONING', 'OPTIONAL', null, null, 'unas gotas al servir', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 25, 50, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 30, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 20, 40, null, null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 6, null, true);
+  perform pg_temp.comp(s, 'arroz blanco', 'RAW', 240, 'G', 'BOILED', false, 1, 2.5, 'MAIN', 'ADJUSTABLE', 160, 320, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Abre los choritos al vapor con un dedo de agua en olla tapada, 5 a 7 minutos. Bota los que no abrieron, saca la carne de la mitad y deja el resto en su media concha.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Limpia el calamar y córtalo en anillos; seca camarones y ostiones con papel. Cada marisco en su plato: de acá en adelante se cocina por reloj.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Cuece el arroz aparte mientras marcas los mariscos.', 18, null, null, null, 1);
+  perform pg_temp.paso(v_v, 4, 'Saltea la cebolla y el pimentón a fuego máximo con el jengibre y el ajo, 3 minutos, y retíralos a un plato.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Marca por tandas y en este orden, sacando cada tanda apenas cumple: ostiones 1 minuto por lado y afuera; camarones 2 a 3 minutos hasta que enrosquen y afuera; calamar 90 segundos y afuera. Cuatro mariscos, cuatro relojes: el que se pasa se pierde.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Devuelve todo al wok con los choritos y la soya, 1 minuto de revuelta para juntar los jugos, y termina con el cebollín, el sésamo y unas gotas de limón.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Sopa wantán
+  v_v := pg_temp.receta('Sopa wantán', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 50, 'Wantanes caseros de cerdo y camarón cocidos en un caldo claro de jengibre y cebollín. Receta de la práctica chifa casera: armar los paquetitos en cadena es la mitad del rito y de la gracia.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'masa de wantan', 'AS_PACKAGED', 200, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'unas 24 láminas', null, null);
+  s := pg_temp.slot(v_v, 'PROTEIN', 2, null, true);
+  perform pg_temp.comp(s, 'pulpa de cerdo', 'RAW', 300, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 250, 400, 'picada fina a cuchillo, casi molida', null, null);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 100, 'G', 'BOILED', true, 2, null, 'MAIN', 'OPTIONAL', null, null, 'picados dentro del relleno', null, null);
+  perform pg_temp.alt(s, 'pavo molido', 'GOOD', 'ya viene molido: se ahorra el picado, queda un relleno más suave', 1);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 60, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', null, null, 'mitad al relleno, mitad al servir', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 15, 'G', null, false, 1, null, 'SEASONING', 'FIXED', null, null, 'mitad rallado al relleno, mitad en láminas al caldo', null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 5, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'amarra el relleno', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 3, null, 'SEASONING', 'ADJUSTABLE', 0, 4, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 5, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 25, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 15, 35, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 3, 8, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Pica la pulpa a cuchillo hasta dejarla casi molida y mézclala con los camarones picados, la mitad del cebollín y del jengibre, un chorro de soya, la maicena y unas gotas de sésamo.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'En vez de picar a cuchillo: dale a la pulpa cuatro o cinco pulsos de procesadora, sin llegar a pasta.', 4, null, 'FOOD_PROCESSOR', 'Sin procesadora: el picado a cuchillo del paso anterior es el método base; da mejor textura aunque tome más tiempo.', null);
+  perform pg_temp.paso(v_v, 3, 'Arma los wantanes: una cucharadita de relleno al centro de cada lámina, moja los bordes con agua, cierra en triángulo apretando para sacar el aire y junta las dos puntas. Son unos 24; en cadena avanza rápido.', 20, null, null, null, 1);
+  perform pg_temp.paso(v_v, 4, 'Mientras armas, hierve suave 1,5 litros de agua con el resto del jengibre en láminas y un chorro de soya; prueba y ajusta la sal.', 10, null, null, null, 1);
+  perform pg_temp.paso(v_v, 5, 'Cuece los wantanes en el caldo a hervor suave, 5 a 6 minutos desde que flotan. No lo dejes borbotear fuerte: se abren.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Sirve con el resto del cebollín y unas gotas de sésamo por encima.', 1, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Sopa de mariscos chifa
+  v_v := pg_temp.receta('Sopa de mariscos chifa', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 36, 'Sopa espesa de camarones, choritos y ostiones al estilo chifa casero: caldo de jengibre ligado con maicena, hilos de huevo y alga al final. No es una paila marina: el jengibre, el alga y el cuerpo del ligado son exactamente lo que la separan.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 200, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 250, null, null, null);
+  perform pg_temp.comp(s, 'choritos', 'RAW', 300, 'G', 'STEAMED', false, 2, null, 'MAIN', 'ADJUSTABLE', 200, 400, 'peso con concha; la porción comestible la aplica el catálogo', null, null);
+  perform pg_temp.comp(s, 'ostiones', 'RAW', 150, 'G', 'BOILED', true, 3, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 110, 'G', 'BOILED', false, 4, null, 'MAIN', 'FIXED', null, null, 'batido, en hilos sobre el caldo', 'unidad', 2);
+  perform pg_temp.alt(s, 'carne de jaiba', 'GOOD', 'en vez de los ostiones, desmenuzada al final', 1);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'jengibre fresco', 'RAW', 15, 'G', null, false, 1, null, 'SEASONING', 'FIXED', null, null, 'en láminas al caldo', null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 3, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 4, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'alga nori', 'AS_PACKAGED', 3, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'en tiras; se ablanda con el calor del caldo', null, null);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 50, 'G', null, false, 2, null, 'MAIN', 'ADJUSTABLE', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 15, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'el ligado que le da el cuerpo de sopa chifa', null, null);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 20, 'ML', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 10, 30, null, null, null);
+  s := pg_temp.slot(v_v, 'FAT', 5, null, true);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 3, 8, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Abre los choritos al vapor con un dedo de agua en olla tapada, 5 a 7 minutos. Bota los cerrados, saca las carnes y cuela el jugo: es la base del caldo.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Completa el jugo con agua hasta 1,5 litros, suma el jengibre en láminas y la soya, y hierve suave 8 minutos para que el caldo tome el sabor.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Agrega los camarones y los ostiones: 2 a 3 minutos, hasta que el camarón enrosque.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Vierte la maicena disuelta en agua fría revolviendo, hasta que el caldo tome cuerpo: cae espeso de la cuchara, no como caldo claro. Ahí está la diferencia con una paila marina.', 2, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Con el hervor apenas moviéndose, deja caer el huevo batido en hilo fino mientras revuelves despacio: se cuaja en hebras.', 1, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Fuera del fuego suma las carnes de chorito, el nori en tiras, el cebollín y el sésamo. Prueba la sal al final: la soya y el jugo de chorito ya salan.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Salsa agridulce casera
+  v_v := pg_temp.receta('Salsa agridulce casera', 'MEAL', array['OTHER']::public.meal_type[], 4, 14, 'La salsa dulce y ácida de la comida china de casa: vinagre, azúcar y un toque de tomate, ligada con maicena hasta que brilla. Para mojar wantanes o bañar un apanado.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'vinagre de arroz', 'AS_PACKAGED', 60, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 45, 80, 'es el ácido que define la salsa; el mismo vinagre del arroz de sushi', null, null);
+  s := pg_temp.slot(v_v, 'SWEETENER', 2, null, true);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 50, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 40, 60, 'acá el azúcar es estructura de la salsa, no un espolvoreo', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 3, null, true);
+  perform pg_temp.comp(s, 'salsa de tomate envasada', 'AS_PACKAGED', 40, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 30, 60, 'da el color rojizo y redondea el ácido', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 15, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 10, 20, null, null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 8, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'la liga; sin ella queda un almíbar aguado que no se pega a nada', null, null);
+  perform pg_temp.paso(v_v, 1, 'Mide y junta todo antes de prender el fuego: la salsa avanza rápido y no da tiempo de buscar nada.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Mezcla en una olla chica el vinagre, el azúcar, la salsa de tomate, la soya y 150 ml de agua. Lleva a hervor suave revolviendo hasta que el azúcar se disuelva por completo.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Disuelve la maicena en 30 ml de agua fría y agrégala en hilo sobre la salsa hirviendo, revolviendo sin parar hasta que espese y quede brillante.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Apaga y deja entibiar: al enfriar espesa un poco más.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Salsa teriyaki casera
+  v_v := pg_temp.receta('Salsa teriyaki casera', 'MEAL', array['OTHER']::public.meal_type[], 4, 16, 'Salsa japonesa dulce y salada: soya reducida con azúcar, miel y un toque de jengibre, ligada con maicena. En la casa acompaña el sushi y sirve para glasear pollo.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 80, 'ML', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 60, 100, 'es el cuerpo de la salsa: todo lo declarado termina en el plato', null, null);
+  s := pg_temp.slot(v_v, 'SWEETENER', 2, null, true);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 40, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 30, 50, null, null, null);
+  perform pg_temp.comp(s, 'miel', 'AS_PACKAGED', 20, 'G', null, true, 2, null, 'MAIN', 'OPTIONAL', null, null, 'da el brillo del glaseado; sin miel sale igual, un poco menos lustrosa', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'jengibre molido', 'AS_PACKAGED', 2, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 6, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'maicena', 'AS_PACKAGED', 6, 'G', null, false, 3, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Mide todo antes de partir y ralla o muele el ajo si lo vas a usar.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Junta en una olla chica la soya, el azúcar, la miel, el jengibre, el ajo y 100 ml de agua. Hierve suave revolviendo hasta que el azúcar se disuelva.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Disuelve la maicena en 30 ml de agua fría, agrégala en hilo y revuelve hasta que la salsa nape la cuchara.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Apaga y deja entibiar antes de usarla: fría espesa más.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Ají chino casero
+  v_v := pg_temp.receta('Ají chino casero', 'MEAL', array['OTHER']::public.meal_type[], 4, 12, 'El ají de mesa de la comida china: hojuelas de ají seco con ajo y sésamo, despertadas con aceite volcado humeando. No es pebre: acá no hay tomate ni cilantro, solo picor y aroma tostado.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'aji seco en hojuelas', 'AS_PACKAGED', 12, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 8, 16, 'el picor manda: parte por menos si en la casa no comen picante', null, null);
+  perform pg_temp.alt(s, 'merquen', 'ACCEPTABLE', 'cambia el carácter: el merquén es ahumado y ya trae sal, así que baja la sal aparte', 1);
+  s := pg_temp.slot(v_v, 'FAT', 2, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 50, 'ML', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'acá el aceite ES el cuerpo del ají, no un baño de fritura: lo declarado se come entero, cucharada a cucharada', null, null);
+  perform pg_temp.comp(s, 'aceite de sesamo', 'AS_PACKAGED', 5, 'ML', null, true, 2, null, 'ADDED_FAT', 'OPTIONAL', null, null, 'un chorrito al final, fuera del fuego; hirviendo se amarga', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'ajo', 'RAW', 8, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 2, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 3, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 4, null, false);
+  perform pg_temp.comp(s, 'semillas de sesamo', 'AS_PACKAGED', 8, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Pon en un pocillo que resista calor el ají seco, el ajo picado fino, el sésamo y la sal.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Calienta el aceite en una olla chica hasta que apenas empiece a humear.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Vuelca el aceite humeando sobre el ají de una sola vez —chisporrotea, es lo esperable— y revuelve. Si usas aceite de sésamo, agrégalo acá, fuera del fuego, y deja entibiar.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Arroz de sushi
+  v_v := pg_temp.receta('Arroz de sushi', 'MEAL', array['OTHER']::public.meal_type[], 4, 39, 'El arroz avinagrado que sostiene todos los rolls de la casa: grano corto lavado hasta que el agua sale clara, cocido tapado y aliñado cortando con la pala, nunca revolviendo.');
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 1, null, true);
+  perform pg_temp.comp(s, 'arroz grano corto', 'RAW', 300, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 250, 400, 'grano corto de verdad: el arroz largo del guiso no pega y el roll se desarma', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'vinagre de arroz', 'AS_PACKAGED', 45, 'ML', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 35, 55, null, null, null);
+  perform pg_temp.comp(s, 'sal', 'AS_PACKAGED', 5, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 0, 6, null, null, null);
+  s := pg_temp.slot(v_v, 'SWEETENER', 3, null, true);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 20, 'G', null, false, 1, null, 'SEASONING', 'ADJUSTABLE', 15, 25, 'va disuelta en el vinagre: es aliño del arroz, no un postre', null, null);
+  perform pg_temp.paso(v_v, 1, 'Lava el arroz en un bol cambiando el agua hasta que salga casi clara —unas cinco veces— y escúrrelo bien.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Ponlo en una olla con 360 ml de agua fría, tapa y lleva a hervor; apenas hierva, baja el fuego al mínimo y cuece tapado 12 minutos sin destapar en ningún momento.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Apaga y deja reposar tapado: el vapor termina la cocción.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Mientras reposa, disuelve el azúcar y la sal en el vinagre, entibiándolo apenas si cuesta.', 4, null, null, null, 1);
+  perform pg_temp.paso(v_v, 5, 'Vuelca el arroz en una fuente amplia, riega el aliño y mézclalo CORTANDO con una pala, sin revolver, mientras lo abanicas hasta que entibie y tome brillo. Revolver lo vuelve engrudo.', 6, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- California roll casero
+  v_v := pg_temp.receta('California roll casero', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 46, 'El roll con el arroz por fuera y sésamo, relleno de kanikama, palta, pepino y queso crema. La misma base acepta el relleno que haya: camarón, salmón o pollo. Los tiempos son con el arroz de sushi ya hecho y apenas tibio.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'kanikama', 'AS_PACKAGED', 200, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 250, 'en bastones, tal como viene del paquete', null, null);
+  perform pg_temp.alt(s, 'camarones pelados', 'EXCELLENT', 'cocidos y fríos: el california de camarón de la carta', 1);
+  perform pg_temp.alt(s, 'salmon', 'EXCELLENT', 'crudo: apto para consumo crudo y bien frío hasta el momento de armar', 1);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'GOOD', 'cocida y desmenuzada fría: la versión de pollo de la carta', 1);
+  s := pg_temp.slot(v_v, 'FRUIT', 2, null, true);
+  perform pg_temp.comp(s, 'palta', 'EDIBLE_PORTION', 150, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 120, 200, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, true);
+  perform pg_temp.comp(s, 'pepino', 'RAW', 120, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 80, 160, 'en bastones, sin las semillas del centro', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'queso crema', 'AS_PACKAGED', 120, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 80, 160, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 5, null, true);
+  perform pg_temp.comp(s, 'alga nori', 'AS_PACKAGED', 15, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'unas seis láminas enteras; se usan por mitades', null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, true);
+  perform pg_temp.comp(s, 'semillas de sesamo', 'AS_PACKAGED', 15, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 10, 20, 'lo que queda pegado al arroz; en el plato donde se pasa el roll va un poco más', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 7, null, false);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, 'para mojar en pocillos; es lo que se moja de verdad, no la botella', null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 8, null, true);
+  perform pg_temp.comp_anidada(s, 'Arroz de sushi', 1, 1);
+  perform pg_temp.paso(v_v, 1, 'Ten el arroz de sushi hecho y apenas tibio. Forra la esterilla con plástico de cocina; si no tienes esterilla, sirve un paño limpio bien tirante, forrado igual.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Corta la palta y el pepino en bastones parejos y abre los kanikama a lo largo.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Pon media lámina de nori con lo brillante hacia abajo, cúbrela con una capa delgada de arroz dejando libre un borde de dos dedos, y da vuelta el conjunto para que el arroz quede contra el plástico.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Acomoda kanikama, palta, pepino y queso crema en una línea al centro y enrolla apretando parejo con la esterilla, cerrando sobre el borde libre. Repite con el resto.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Pasa cada roll por el sésamo y córtalo en ocho con cuchillo filoso mojado, limpiando la hoja entre cortes.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Sirve de inmediato con la soya en pocillos aparte.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Roll envuelto en palta
+  v_v := pg_temp.receta('Roll envuelto en palta', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 57, 'Roll de camarón y queso crema cubierto por láminas de palta traslapadas: el avocado de la carta hecho en casa. El laminado es lo que lo hace avanzado. Los tiempos son con el arroz de sushi ya hecho.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 180, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 140, 220, null, null, null);
+  perform pg_temp.alt(s, 'kanikama', 'EXCELLENT', 'sin cocción previa: acorta el trabajo', 1);
+  perform pg_temp.alt(s, 'salmon', 'GOOD', 'crudo: apto para consumo crudo y bien frío', 1);
+  s := pg_temp.slot(v_v, 'FRUIT', 2, null, true);
+  perform pg_temp.comp(s, 'palta', 'EDIBLE_PORTION', 240, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 280, 'va laminada por fuera: paltas apenas maduras y firmes; una pasada de madura se muele al estirarla', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'queso crema', 'AS_PACKAGED', 120, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 80, 160, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 4, null, false);
+  perform pg_temp.comp(s, 'pepino', 'RAW', 100, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 5, null, true);
+  perform pg_temp.comp(s, 'alga nori', 'AS_PACKAGED', 15, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 6, null, false);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 7, null, true);
+  perform pg_temp.comp_anidada(s, 'Arroz de sushi', 1, 1);
+  perform pg_temp.paso(v_v, 1, 'Hierve los camarones en agua con sal hasta que tomen color parejo, dos o tres minutos; escúrrelos y enfríalos.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Forra la esterilla con plástico de cocina y ten el arroz de sushi apenas tibio.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Arma rolls con el arroz por fuera: media lámina de nori, capa delgada de arroz, vuelta sobre el plástico, y al centro camarones, queso crema y pepino. Enrolla apretando parejo.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Lamina la palta lo más fino que puedas y acomoda las láminas traslapadas sobre un trozo de plástico, formando una manta del ancho del roll.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Pon el roll sobre la manta de palta, envuélvelo con el plástico y aprieta suave con la esterilla, lo justo para que la palta se abrace al roll sin romperse.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Corta en ocho CON el plástico puesto, con cuchillo filoso mojado, y retira el plástico de cada corte al emplatar: así las láminas no se corren.', 10, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Roll envuelto en salmón
+  v_v := pg_temp.receta('Roll envuelto en salmón', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 51, 'Roll de palta y queso crema vestido por fuera con láminas de salmón crudo: el sake roll de la carta colapsado en una receta de casa. Los tiempos son con el arroz de sushi ya hecho.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'salmon', 'RAW', 260, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 200, 320, 'va crudo, en láminas por fuera del roll', null, null);
+  s := pg_temp.slot(v_v, 'FRUIT', 2, null, true);
+  perform pg_temp.comp(s, 'palta', 'EDIBLE_PORTION', 120, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 160, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'queso crema', 'AS_PACKAGED', 120, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 80, 160, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 4, null, false);
+  perform pg_temp.comp(s, 'pepino', 'RAW', 100, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 5, null, true);
+  perform pg_temp.comp(s, 'alga nori', 'AS_PACKAGED', 15, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 6, null, false);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 7, null, true);
+  perform pg_temp.comp_anidada(s, 'Arroz de sushi', 1, 1);
+  perform pg_temp.paso(v_v, 1, 'Usa salmón apto para consumo crudo y mantenlo bien frío hasta el momento de cortarlo. Con el cuchillo más filoso que tengas, saca láminas delgadas y parejas, cortando de una pasada, sin aserruchar.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Forra la esterilla con plástico de cocina y ten el arroz de sushi apenas tibio.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Arma rolls con el arroz por fuera y palta, queso crema y pepino al centro; enrolla apretando parejo.', 18, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Cubre un trozo de plástico con las láminas de salmón traslapadas, pon el roll encima, envuélvelo y aprieta suave con la esterilla para que el salmón se pegue al arroz.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Corta en ocho con el plástico puesto y cuchillo mojado; retíralo al emplatar.', 10, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Hot roll frito en panko
+  v_v := pg_temp.receta('Hot roll frito en panko', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 64, 'Roll clásico apanado en panko y frito hasta que la costra dora y el queso crema se funde. El secreto de casa: el roll entra FRÍO al aceite o se desarma. Los tiempos son con el arroz de sushi ya hecho.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'kanikama', 'AS_PACKAGED', 200, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 150, 250, null, null, null);
+  perform pg_temp.alt(s, 'salmon', 'GOOD', 'sake furay: salmón apto para consumo crudo, queda apenas cocido con la fritura', 1);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'GOOD', 'tori: cocida y desmenuzada fría antes de armar', 1);
+  s := pg_temp.slot(v_v, 'OTHER', 2, null, true);
+  perform pg_temp.comp(s, 'queso crema', 'AS_PACKAGED', 140, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 180, 'en el hot roll el queso es parte de la identidad: caliente se funde', null, null);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 55, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'batido, para pegar el panko; casi todo queda en el roll', 'unidad', 1);
+  s := pg_temp.slot(v_v, 'FRUIT', 3, null, false);
+  perform pg_temp.comp(s, 'palta', 'EDIBLE_PORTION', 100, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 4, null, true);
+  perform pg_temp.comp(s, 'alga nori', 'AS_PACKAGED', 15, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 5, null, true);
+  perform pg_temp.comp(s, 'panko', 'AS_PACKAGED', 60, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'lo que se pega al roll; en el plato hondo se pone más y sobra', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 60, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 40, 80, 'aceite retenido en la costra: en la sartén va bastante más y ese baño no se declara', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 7, null, false);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 8, null, true);
+  perform pg_temp.comp_anidada(s, 'Arroz de sushi', 1, 1);
+  perform pg_temp.paso(v_v, 1, 'Arma rolls clásicos con el nori por fuera: lámina de nori, capa de arroz de sushi, y kanikama, queso crema y palta al centro. Enrolla apretado con la esterilla forrada.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Lleva los rolls enteros al refrigerador al menos 20 minutos: tienen que ir fríos al aceite o se desarman al freírlos.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Pasa cada roll por huevo batido y luego por panko, apretando con la mano para que la costra quede pareja.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Fríe en aceite bien caliente, girando los rolls hasta que la costra dore por todos lados, un par de minutos por roll: el interior solo se templa.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'En vez de freír en sartén: pinta los rolls apanados con un poco del aceite y dóralos en la air fryer, girándolos a la mitad.', 12, 200, 'AIR_FRYER', 'Sin air fryer: la sartén con aceite del paso anterior es el método base de esta receta.', null);
+  perform pg_temp.paso(v_v, 6, 'Deja reposar un par de minutos y corta cada roll en ocho con cuchillo filoso, de cortes firmes.', 6, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Roll tempura
+  v_v := pg_temp.receta('Roll tempura', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 64, 'Roll bañado entero en batido de tempura y frito: costra inflada y liviana, distinta a la del panko. La técnica está en el batido con agua con hielo y mezcla mínima, con grumos a propósito. Los tiempos son con el arroz de sushi ya hecho.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 180, 'G', 'BOILED', false, 1, null, 'MAIN', 'ADJUSTABLE', 140, 220, 'van cocidos al interior: la fritura del roll es corta y no alcanza a cocerlos', null, null);
+  perform pg_temp.alt(s, 'kanikama', 'GOOD', 'sin cocción previa', 1);
+  perform pg_temp.alt(s, 'salmon', 'GOOD', 'apto para consumo crudo; con la fritura corta queda a medio cocer, y así se sirve', 1);
+  s := pg_temp.slot(v_v, 'FRUIT', 2, null, true);
+  perform pg_temp.comp(s, 'palta', 'EDIBLE_PORTION', 100, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 80, 140, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'queso crema', 'AS_PACKAGED', 120, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 80, 160, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 4, null, true);
+  perform pg_temp.comp(s, 'alga nori', 'AS_PACKAGED', 15, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 5, null, true);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 80, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'la del batido que queda pegada al roll: en el bol se baten unos 150 g con el agua helada y sobra', null, null);
+  s := pg_temp.slot(v_v, 'FAT', 6, null, true);
+  perform pg_temp.comp(s, 'aceite vegetal', 'AS_PACKAGED', 70, 'ML', null, false, 1, null, 'ADDED_FAT', 'ADJUSTABLE', 50, 90, 'retenido en la costra; el baño de la olla es mucho más y no se declara', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 7, null, false);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 8, null, true);
+  perform pg_temp.comp_anidada(s, 'Arroz de sushi', 1, 1);
+  perform pg_temp.paso(v_v, 1, 'Hierve los camarones dos o tres minutos, escúrrelos y enfríalos.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Arma rolls clásicos con el nori por fuera y camarones, palta y queso crema al centro.', 18, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Refrigera los rolls 20 minutos: fríos aguantan el batido y el golpe del aceite sin desarmarse.', 20, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Prepara el batido recién antes de freír: 150 g de harina con unos 250 ml de agua CON HIELO, mezclando apenas, cuatro o cinco vueltas de palillo. Tiene que quedar con grumos: batir de más lo vuelve pan.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Pasa cada roll por el batido, deja escurrir el exceso y fríe en aceite bien caliente hasta que la costra infle y apenas dore, girándolo una vez.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Escurre sobre rejilla o papel, corta en ocho con cuchillo mojado y sirve al tiro: la tempura pierde el crocante en minutos.', 6, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Handroll de sushi
+  v_v := pg_temp.receta('Handroll de sushi', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 25, 'El cono de nori relleno a mano: la entrada más fácil al sushi casero, sin esterilla y sin cortar. Se come apenas armado, antes de que el nori se ablande. Los tiempos son con el arroz de sushi ya hecho.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'kanikama', 'AS_PACKAGED', 150, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 120, 200, null, null, null);
+  perform pg_temp.alt(s, 'camarones pelados', 'EXCELLENT', 'cocidos y fríos', 1);
+  perform pg_temp.alt(s, 'salmon', 'GOOD', 'crudo: apto para consumo crudo y bien frío', 1);
+  s := pg_temp.slot(v_v, 'FRUIT', 2, null, true);
+  perform pg_temp.comp(s, 'palta', 'EDIBLE_PORTION', 120, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 160, null, null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 3, null, false);
+  perform pg_temp.comp(s, 'pepino', 'RAW', 100, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, true);
+  perform pg_temp.comp(s, 'queso crema', 'AS_PACKAGED', 100, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 60, 140, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 5, null, true);
+  perform pg_temp.comp(s, 'alga nori', 'AS_PACKAGED', 10, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'unas cuatro láminas enteras: cada mitad es un cono', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 6, null, false);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 7, null, true);
+  perform pg_temp.comp_anidada(s, 'Arroz de sushi', 0.75, 1);
+  perform pg_temp.paso(v_v, 1, 'Corta las láminas de nori por la mitad y deja todos los rellenos en bastones, listos en la mesa.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Toma media lámina con lo brillante hacia afuera y, con la mano apenas húmeda, pon dos cucharadas de arroz de sushi en el tercio izquierdo, aplastándolo en diagonal.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Acomoda los rellenos sobre el arroz, siguiendo la diagonal, y enrolla en cono desde la esquina de abajo, cerrando la punta con un grano de arroz aplastado como pegamento.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Cómelos apenas armados: en minutos el nori se pone chicloso. Lo que mejor resulta es llevar todo a la mesa y que cada uno arme el suyo.', 4, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Nigiri de salmón
+  v_v := pg_temp.receta('Nigiri de salmón', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 35, 'Bolitas ovaladas de arroz de sushi con una lámina de salmón crudo encima, apretadas con dos dedos. Lo mínimo del sushi: dos ingredientes y la mano. Los tiempos son con el arroz de sushi ya hecho.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'salmon', 'RAW', 240, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 180, 300, null, null, null);
+  perform pg_temp.alt(s, 'camarones pelados', 'GOOD', 'cocidos, abiertos en mariposa y bien fríos: el nigiri de camarón del tope', 1);
+  perform pg_temp.alt(s, 'palta', 'GOOD', 'láminas de palta en el tope: el nigiri vegetariano; el sistema recalcula la nutrición desde cero', null);
+  s := pg_temp.slot(v_v, 'SAUCE', 2, null, false);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 30, 'ML', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 3, null, true);
+  perform pg_temp.comp_anidada(s, 'Arroz de sushi', 0.75, 1);
+  perform pg_temp.paso(v_v, 1, 'Con el salmón apto para consumo crudo y bien frío hasta ese momento, corta láminas de un dedo de ancho y medio centímetro de grosor, al sesgo y de una sola pasada.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Con las manos mojadas en agua con un chorrito de vinagre, forma bolitas ovaladas de arroz de unos 20 gramos, apretando apenas: firmes por fuera, sueltas por dentro.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Cubre cada bolita con una lámina de salmón y dale una presión suave con dos dedos, para que la lámina se abrace al arroz.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Sirve de inmediato, con la soya aparte: se moja por el lado del pescado, no del arroz, que se desarma.', 2, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Gohan mixto
+  v_v := pg_temp.receta('Gohan mixto', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 24, 'El sushi sin enrollar: un bol de arroz de sushi tibio con salmón, camarones, palta y queso crema por sectores, bañado con salsa acevichada. Mismo contenido que los rolls, cero técnica. Los tiempos son con el arroz de sushi ya hecho.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'salmon', 'RAW', 150, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 120, 200, null, null, null);
+  perform pg_temp.comp(s, 'camarones pelados', 'RAW', 150, 'G', 'BOILED', false, 2, null, 'MAIN', 'ADJUSTABLE', 120, 200, null, null, null);
+  perform pg_temp.comp(s, 'kanikama', 'AS_PACKAGED', 100, 'G', null, true, 3, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.alt(s, 'pechuga de pollo sin piel', 'GOOD', 'cocida y desmenuzada fría, en lugar del salmón para quien no come pescado crudo', 1);
+  s := pg_temp.slot(v_v, 'FRUIT', 2, null, true);
+  perform pg_temp.comp(s, 'palta', 'EDIBLE_PORTION', 120, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 160, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'queso crema', 'AS_PACKAGED', 80, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', null, null, 'en cubitos fríos, repartidos arriba', null, null);
+  perform pg_temp.comp(s, 'limon', 'RAW', 30, 'G', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 20, 45, 'el jugo, para la acevichada', null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 4, null, true);
+  perform pg_temp.comp(s, 'mayonesa', 'AS_PACKAGED', 60, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 40, 80, 'base de la salsa acevichada; es la porción que se come, no el pote', null, null);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 15, 'ML', null, false, 2, null, 'SEASONING', 'ADJUSTABLE', 10, 25, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 5, null, false);
+  perform pg_temp.comp(s, 'cebollin', 'RAW', 30, 'G', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.comp(s, 'semillas de sesamo', 'AS_PACKAGED', 10, 'G', null, true, 2, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'CARBOHYDRATE', 6, null, true);
+  perform pg_temp.comp_anidada(s, 'Arroz de sushi', 1, 1);
+  perform pg_temp.paso(v_v, 1, 'Hierve los camarones dos o tres minutos, escúrrelos y enfríalos.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Con el salmón apto para consumo crudo y bien frío, córtalo en cubos parejos de bocado.', 6, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Mezcla la salsa acevichada: la mayonesa con el jugo del limón y la soya, batiendo con tenedor hasta que quede fluida.', 3, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Reparte el arroz de sushi apenas tibio en cuatro bols y acomoda encima, por sectores, el salmón, los camarones, el kanikama, la palta y el queso crema.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Baña con la acevichada, espolvorea el sésamo y el cebollín, y sirve.', 3, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Roll sin arroz
+  v_v := pg_temp.receta('Roll sin arroz', 'MEAL', array['LUNCH', 'DINNER']::public.meal_type[], 4, 49, 'Roll de nori relleno de salmón, palta, pepino y una franja generosa de queso crema, sin nada de arroz: el queso es el pegamento y el cuerpo. Cambia el armado completo: hay que apretar más y afirmarlo en frío antes de cortar.');
+  s := pg_temp.slot(v_v, 'PROTEIN', 1, null, true);
+  perform pg_temp.comp(s, 'salmon', 'RAW', 220, 'G', 'RAW', false, 1, null, 'MAIN', 'ADJUSTABLE', 180, 280, null, null, null);
+  perform pg_temp.alt(s, 'camarones pelados', 'GOOD', 'cocidos y fríos', 1);
+  perform pg_temp.alt(s, 'kanikama', 'GOOD', null, 1);
+  s := pg_temp.slot(v_v, 'FRUIT', 2, null, true);
+  perform pg_temp.comp(s, 'palta', 'EDIBLE_PORTION', 150, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 120, 200, null, null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'queso crema', 'AS_PACKAGED', 160, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 120, 200, 'acá no es relleno de más: es lo que le da cuerpo al roll sin arroz', null, null);
+  s := pg_temp.slot(v_v, 'VEGETABLE', 4, null, true);
+  perform pg_temp.comp(s, 'pepino', 'RAW', 120, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 80, 160, null, null, null);
+  s := pg_temp.slot(v_v, 'BASE', 5, null, true);
+  perform pg_temp.comp(s, 'alga nori', 'AS_PACKAGED', 12, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 6, null, false);
+  perform pg_temp.comp(s, 'semillas de sesamo', 'AS_PACKAGED', 10, 'G', null, true, 1, null, 'MAIN', 'OPTIONAL', null, null, null, null, null);
+  s := pg_temp.slot(v_v, 'SAUCE', 7, null, false);
+  perform pg_temp.comp(s, 'salsa de soya', 'AS_PACKAGED', 40, 'ML', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Con el salmón apto para consumo crudo y bien frío, corta salmón, palta y pepino en bastones parejos. Ten el queso crema frío y firme.', 10, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Sobre la esterilla forrada en plástico, pon la lámina de nori entera con lo brillante hacia abajo y una franja generosa de queso crema al centro: sin arroz, el queso es el pegamento.', 4, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Acomoda encima el salmón, la palta y el pepino y enrolla apretando MÁS que un roll con arroz: sin el arroz el roll no tiene cuerpo y suelto se desarma.', 12, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Envuelve cada roll en plástico y llévalo al refrigerador unos 15 minutos, para que el queso lo afirme.', 15, null, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Corta en ocho con el plástico puesto y cuchillo filoso mojado; retíralo al emplatar y termina con el sésamo por encima.', 8, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Suspiro limeño
+  v_v := pg_temp.receta('Suspiro limeño', 'DESSERT', array['DESSERT']::public.meal_type[], 6, 65, 'El postre limeño clásico: un manjar de leche condensada y evaporada enriquecido con yemas, coronado con merengue italiano y canela. El punto técnico es el almíbar caliente sobre las claras: es lo que las cuece y deja el merengue firme y brillante.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'leche condensada', 'AS_PACKAGED', 400, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'un tarro', null, null);
+  perform pg_temp.comp(s, 'leche evaporada', 'AS_PACKAGED', 400, 'ML', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'un tarro', null, null);
+  perform pg_temp.comp(s, 'yema de huevo', 'EDIBLE_PORTION', 70, 'G', null, false, 3, null, 'MAIN', 'FIXED', null, null, 'unas 4 yemas; espesan y dan el color del manjar', null, null);
+  s := pg_temp.slot(v_v, 'TOPPING', 2, null, true);
+  perform pg_temp.comp(s, 'clara de huevo', 'EDIBLE_PORTION', 70, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'unas 2 claras, para el merengue', null, null);
+  s := pg_temp.slot(v_v, 'SWEETENER', 3, null, true);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 150, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 120, 180, 'va entera al almíbar del merengue: acá el azúcar es el postre', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 4, null, false);
+  perform pg_temp.comp(s, 'vino tinto', 'AS_PACKAGED', 30, 'ML', null, true, 1, null, 'MAIN', 'OPTIONAL', 0, 40, 'reemplaza al oporto tradicional del almíbar; se puede omitir sin pena', null, null);
+  perform pg_temp.comp(s, 'canela molida', 'AS_PACKAGED', 1, 'G', null, true, 2, null, 'SEASONING', 'OPTIONAL', null, null, 'espolvoreada al final', null, null);
+  perform pg_temp.paso(v_v, 1, 'Vierte la leche condensada y la evaporada en una olla ancha y cocínalas a fuego medio-bajo, revolviendo sin parar con cuchara de palo, hasta que la mezcla tome color de manjar claro y al pasar la cuchara se vea el fondo de la olla un segundo.', 35, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Fuera del fuego, agrega las yemas batidas de a poco y revolviendo rápido para que no se corten. Vuelve la olla a fuego suave dos o tres minutos, siempre revolviendo, para que la yema se cocine.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Reparte el manjar en copas o pocillos y déjalo enfriar.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Haz el almíbar: pon el azúcar con 50 ml de agua (y el vino, si lo usas) a fuego medio, sin revolver, hasta punto de bola blanda: una gota en agua fría forma una bolita que se aplasta entre los dedos.', 8, 118, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Bate las claras a nieve y, sin dejar de batir, agrégales el almíbar hirviendo en hilo fino por el borde del bol. Sigue batiendo hasta que el merengue esté firme, brillante y apenas tibio: el calor del almíbar es lo que cuece la clara.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 6, 'Corona cada copa con una nube de merengue y espolvorea canela por encima.', 4, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Crema volteada
+  v_v := pg_temp.receta('Crema volteada', 'DESSERT', array['DESSERT']::public.meal_type[], 6, 85, 'El flan peruano de tarro: leche condensada y evaporada con huevos sobre caramelo, cocido a baño maría y volteado al servir. A diferencia de la leche asada, acá el baño maría es obligatorio —es lo que impide los hoyos— y el caramelo va en el molde para caer encima al voltearla.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'huevo de gallina', 'EDIBLE_PORTION', 275, 'G', 'BAKED', false, 1, null, 'MAIN', 'ADJUSTABLE', 220, 330, null, 'unidad', 5);
+  perform pg_temp.comp(s, 'leche condensada', 'AS_PACKAGED', 400, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'un tarro', null, null);
+  perform pg_temp.comp(s, 'leche evaporada', 'AS_PACKAGED', 400, 'ML', null, false, 3, null, 'MAIN', 'FIXED', null, null, 'un tarro', null, null);
+  s := pg_temp.slot(v_v, 'SWEETENER', 2, null, true);
+  perform pg_temp.comp(s, 'azucar granulada', 'AS_PACKAGED', 120, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 100, 150, 'para el caramelo del molde, que cae sobre el postre al voltearlo', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, false);
+  perform pg_temp.comp(s, 'esencia de vainilla', 'AS_PACKAGED', 5, 'ML', null, true, 1, null, 'SEASONING', 'OPTIONAL', null, null, null, null, null);
+  perform pg_temp.paso(v_v, 1, 'Haz el caramelo: derrite el azúcar en una olla chica a fuego medio, sin revolver, moviendo la olla hasta que esté color ámbar. Viértelo de inmediato en el molde y gíralo para cubrir el fondo y un poco de las paredes.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Bate los huevos apenas, solo hasta juntar clara y yema —sin hacer espuma, la espuma se vuelve hoyos—. Agrega la condensada, la evaporada y la vainilla, mezcla y cuela la mezcla directamente sobre el molde acaramelado.', 7, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Pon el molde dentro de una fuente honda y llénala con agua caliente hasta la mitad de la altura del molde: el baño maría es obligatorio, es lo que impide que la mezcla hierva y quede agujereada. Hornea hasta que el centro tiemble apenas al mover el molde y un cuchillo salga limpio.', 60, 160, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Deja enfriar por completo, mejor unas horas en el refrigerador. Para servir, pasa un cuchillo por el borde, tapa con un plato hondo y voltéala de un golpe seco: baja entera con su caramelo.', 10, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Mousse de lúcuma
+  v_v := pg_temp.receta('Mousse de lúcuma', 'DESSERT', array['DESSERT']::public.meal_type[], 6, 23, 'Mousse casero de puré de lúcuma con crema batida, servido en copas. La versión de vitrina es una torta de varias capas con cacao; esta es la doméstica razonable: el mousse solo, sin fingir la torta, con el sabor a lúcuma al frente.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'pure de lucuma endulzado', 'AS_PACKAGED', 350, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 300, 400, 'se vende congelado o en frasco', null, null);
+  perform pg_temp.comp(s, 'crema para batir', 'AS_PACKAGED', 400, 'ML', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'bien fría para que suba', null, null);
+  perform pg_temp.alt(s, 'lucuma', 'GOOD', 'pulpa de lúcuma fresca molida con dos cucharadas de azúcar; queda menos dulce y más harinosa que el puré envasado', 0.8);
+  s := pg_temp.slot(v_v, 'SWEETENER', 2, null, true);
+  perform pg_temp.comp(s, 'leche condensada', 'AS_PACKAGED', 100, 'G', null, false, 1, null, 'MAIN', 'ADJUSTABLE', 50, 150, 'el puré ya viene endulzado: prueba antes de ponerla entera', null, null);
+  s := pg_temp.slot(v_v, 'OTHER', 3, null, true);
+  perform pg_temp.comp(s, 'gelatina sin sabor', 'AS_PACKAGED', 5, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'da la firmeza justa para servir en copas', null, null);
+  perform pg_temp.paso(v_v, 1, 'Hidrata la gelatina en 30 ml de agua fría, espera que esponje y disuélvela a fuego mínimo en una olla chica, sin que hierva. Déjala entibiar.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Bate la crema bien fría hasta punto turrón suave: firme, pero que la punta todavía caiga.', 8, null, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Mezcla el puré de lúcuma con la leche condensada y la gelatina tibia. Incorpora la crema batida en dos tandas, con movimientos envolventes de abajo hacia arriba para no bajarla.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Reparte en copas y refrigera hasta que esté firme, unas tres horas como mínimo antes de servir.', 5, null, null, null, null);
+  perform pg_temp.publicar(v_v);
+
+  -- Tartaleta de maracuyá
+  v_v := pg_temp.receta('Tartaleta de maracuyá', 'DESSERT', array['DESSERT']::public.meal_type[], 8, 78, 'Base de masa quebrada con una crema de leche condensada, yemas y pulpa de maracuyá, horneada hasta cuajar apenas. El ácido del maracuyá hace el mismo trabajo que el limón en el pie: cuaja la condensada, y el resultado es un postre entre dulce y ácido que se corta frío.');
+  s := pg_temp.slot(v_v, 'BASE', 1, null, true);
+  perform pg_temp.comp(s, 'harina de trigo', 'RAW', 200, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'para la masa', null, null);
+  perform pg_temp.comp(s, 'mantequilla', 'AS_PACKAGED', 100, 'G', null, false, 2, null, 'MAIN', 'FIXED', null, null, 'fría, en cubos, para la masa', null, null);
+  perform pg_temp.comp(s, 'yema de huevo', 'EDIBLE_PORTION', 70, 'G', null, false, 3, null, 'MAIN', 'FIXED', null, null, 'unas 4 yemas: 1 junta la masa y 3 van a la crema', null, null);
+  perform pg_temp.comp(s, 'leche condensada', 'AS_PACKAGED', 400, 'G', null, false, 4, null, 'MAIN', 'FIXED', null, null, 'un tarro, la base de la crema', null, null);
+  perform pg_temp.comp(s, 'pulpa de maracuya', 'AS_PACKAGED', 150, 'G', null, false, 5, null, 'MAIN', 'ADJUSTABLE', 120, 180, 'pulpa colada, sin pepas; su ácido es lo que cuaja la crema, no la reduzcas bajo el mínimo', null, null);
+  s := pg_temp.slot(v_v, 'SWEETENER', 2, null, true);
+  perform pg_temp.comp(s, 'azucar flor', 'AS_PACKAGED', 60, 'G', null, false, 1, null, 'MAIN', 'FIXED', null, null, 'endulza la masa', null, null);
+  perform pg_temp.paso(v_v, 1, 'Haz la masa: mezcla la harina con el azúcar flor, agrega la mantequilla fría en cubos y deshaz con la punta de los dedos hasta que parezca arena. Junta con una yema y dos o tres cucharadas de agua fría, sin amasar, envuelve el disco y refrigéralo 20 minutos.', 35, null, null, null, null);
+  perform pg_temp.paso(v_v, 2, 'Estira la masa y forra un molde de tarta bajo de 24 cm. Pincha el fondo con tenedor y hornéala hasta que esté apenas dorada; si tienes papel mantequilla y porotos secos, ponlos encima los primeros 10 minutos como peso para que no se infle (esos porotos no se comen).', 18, 180, null, null, null);
+  perform pg_temp.paso(v_v, 3, 'Haz la crema: bate la leche condensada con las tres yemas restantes y la pulpa de maracuyá, solo hasta juntar. Vas a notar que espesa sola: es el ácido del maracuyá cuajando la condensada.', 5, null, null, null, null);
+  perform pg_temp.paso(v_v, 4, 'Vierte la crema sobre la base tibia y hornea suave, solo hasta que los bordes se afirmen y el centro tiemble apenas.', 15, 160, null, null, null);
+  perform pg_temp.paso(v_v, 5, 'Deja enfriar a temperatura ambiente y después refrigérala bien antes de desmoldar y cortar: fría se afirma y las porciones salen limpias.', 5, null, null, null, null);
   perform pg_temp.publicar(v_v);
 end $$;

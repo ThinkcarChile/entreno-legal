@@ -63,7 +63,6 @@ import {
   ident,
   leerRespaldo,
   literal,
-  morir,
   redactar,
   respaldoMasReciente,
 } from "./respaldo-lib.mjs";
@@ -86,19 +85,22 @@ const SEGURO = tieneBandera("--si-estoy-seguro");
 const SOBRESCRIBIR = tieneBandera("--sobrescribir");
 const EN_SECO = tieneBandera("--en-seco");
 
-if (!["pglite", "supabase"].includes(DESTINO)) {
-  morir(`--destino sólo acepta \`pglite\` (ensayo) o \`supabase\` (de verdad). Llegó: ${DESTINO}`);
-}
-if (!posicional) {
-  morir(
-    [
-      "Uso: node scripts/respaldo-restaurar.mjs <archivo.ndjson|ultimo> [--destino pglite|supabase]",
-      "",
-      "  ultimo     toma el respaldo más nuevo de " + dirRespaldosPorDefecto(),
-      "  --en-seco  con --destino supabase: ensaya el camino real SIN escribir en producción",
-    ].join(SALTO),
-  );
-}
+/**
+ * Los argumentos se VALIDAN adentro de `principal()`, no acá arriba.
+ *
+ * Acá arriba había dos `morir()`. `morir()` ya no llama a `process.exit()` —lanza
+ * `SalidaLimpia`— pero lanzar desde el tope de un módulo ESM tampoco lo atrapa
+ * nadie: quien escribía mal `--destino` recibía su mensaje seguido de la pila de
+ * Node, y la cabecera de este archivo prometía justo lo contrario. Adentro de
+ * `principal()` el camino de salida es uno solo y es el mismo para todos: se
+ * devuelve un código y `process.exitCode` lo recoge.
+ */
+const USO = [
+  "Uso: node scripts/respaldo-restaurar.mjs <archivo.ndjson|ultimo> [--destino pglite|supabase]",
+  "",
+  "  ultimo     toma el respaldo más nuevo de " + dirRespaldosPorDefecto(),
+  "  --en-seco  con --destino supabase: ensaya el camino real SIN escribir en producción",
+].join(SALTO);
 
 // ---------------------------------------------------------------------------
 // Salida
@@ -112,6 +114,12 @@ if (!posicional) {
  * vez del código que uno pidió — o sea, el proceso miente justo en el camino de
  * error. Ya mordió en `aplicar-migracion.mjs` y en
  * `verificar-estado-produccion.mjs`; acá no se repite.
+ *
+ * Y «NUNCA por `process.exit`» tampoco alcanza por sí solo: este archivo llegó a
+ * afirmarlo mientras llamaba a `morir()` en el tope del módulo, donde la
+ * `SalidaLimpia` que lanza no la atrapa nadie y Node imprime la pila detrás del
+ * mensaje. La regla completa es: TODA salida pasa por `principal()`, que devuelve
+ * un número, y ese número es el único que llega a `process.exitCode`.
  */
 const porCerrar = [];
 
@@ -200,6 +208,14 @@ async function espejarCaminoReal(respaldo, cuentasDestino) {
 }
 
 async function principal() {
+  // --- 0. Los argumentos ----------------------------------------------------
+  if (!["pglite", "supabase"].includes(DESTINO)) {
+    return abortar(
+      `--destino sólo acepta \`pglite\` (ensayo) o \`supabase\` (de verdad). Llegó: ${DESTINO}`,
+    );
+  }
+  if (!posicional) return abortar(USO);
+
   // --- 1. Abrir el archivo (y negarse si está truncado o alterado) ---------
   let ruta = posicional;
   if (posicional === "ultimo") {
@@ -374,14 +390,33 @@ async function principal() {
     return 0;
   }
 
+  // Las dos cifras del veredicto salen del MISMO plan: las filas que se
+  // escribieron y las tablas en que se escribieron. `cierre.filas` es el total
+  // del archivo e incluye `auth.users`, que el modo real no restaura; usarlo acá
+  // sumaba al verde filas que nadie escribió.
+  const fuera = resultado.tablasFueraDelPlan ?? [];
+  const declararLoQueQuedoFuera = () => {
+    if (fuera.length === 0) return;
+    console.log("");
+    console.log("Lo que este respaldo trae y esta restauración NO escribió:");
+    for (const f of fuera) {
+      console.log(`  - ${f.tabla}: ${f.filas} fila(s) en el archivo, 0 escritas.`);
+    }
+    console.log("  (las cuentas las crea Supabase Auth; el respaldo sólo las reenlaza por correo)");
+  };
+
   if (modo === "ensayo") {
     console.log(
-      `ENSAYO OK: el respaldo se restaura completo y vuelve idéntico (${cierre.filas} filas, ${resultado.plan.length} tablas).`,
+      `ENSAYO OK: el respaldo se restaura completo y vuelve idéntico (${resultado.filasCargadas} filas, ${resultado.plan.length} tablas).`,
     );
+    declararLoQueQuedoFuera();
     return 0;
   }
 
-  console.log(`RESTAURACIÓN OK: ${cierre.filas} filas en ${resultado.plan.length} tablas, sin huérfanos.`);
+  console.log(
+    `RESTAURACIÓN OK: ${resultado.filasCargadas} filas en ${resultado.plan.length} tablas, sin huérfanos.`,
+  );
+  declararLoQueQuedoFuera();
   console.log("");
   console.log("Falta a mano (no lo hace este script):");
   console.log("  - Subir de nuevo los archivos del bucket medical-documents.");
