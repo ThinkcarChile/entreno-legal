@@ -401,7 +401,7 @@
       "prueba": "que app.exigir_can_edit_plan tenga el escape de cascada. Mira el cuerpo de una funcion A PROPOSITO, y no es la fragilidad de la 0022: aca la PROPIEDAD es el escape. Si una migracion futura redefine la funcion sin el, este testigo se pone falso y eso es CORRECTO — el arreglo se habria perdido."
     },
     "0060_cierre_prevuelo.sql": {
-      "estado": "PENDIENTE",
+      "estado": "APLICADA",
       "sha256": "900a2d6e5ea6b7e75fb55c302727930862c94e8f061417648595a2201ed4228a",
       "testigo": "not has_function_privilege('authenticated', 'public.purge_assistant_conversations()', 'execute')",
       "prueba": "que authenticated NO pueda ejecutar purge_assistant_conversations. Es la propiedad [16] de la 0060, y discrimina de verdad: antes de aplicarla produccion contestaba TRUE. Si una migracion futura vuelve a abrir ese EXECUTE, este testigo se pone falso y eso es correcto."

@@ -143,7 +143,7 @@ Con las tres respuestas, el camino se elige solo.
 ## Y esto va antes que cualquiera de los dos
 
 **Que producción tenga la cadena de migraciones completa.** Hoy (2026-09-02) la
-tiene: 58 aplicadas, cero pendientes, verificado en vivo con los testigos. Si
+tiene: 59 aplicadas, cero pendientes, verificado en vivo con los testigos. Si
 cuando leas esto hubo migraciones nuevas, el estado real sale de acá, nunca de
 memoria:
 
