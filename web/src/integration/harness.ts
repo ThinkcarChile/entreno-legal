@@ -143,6 +143,10 @@ export const MIGRACIONES = [
   // de la 0039/0041 miraban al padre en plena cascada). Encontrado por el
   // pre-vuelo DESPUES de aplicar las 19 a produccion.
   "supabase/migrations/0059_borrado_en_cascada.sql",
+  // 0060: lo demas que el pre-vuelo encontro vivo tras aplicar las 19 — un revoke
+  // que omitia PUBLIC, tres politicas que dejaban editar perfiles ajenos, y tres
+  // guardianes mas de la clase cascada.
+  "supabase/migrations/0060_cierre_prevuelo.sql",
 ];
 
 /**
