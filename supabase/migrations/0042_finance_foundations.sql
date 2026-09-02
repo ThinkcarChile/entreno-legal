@@ -559,7 +559,25 @@ begin
     end if;
     return new;
   end if;
-  if new.currency is distinct from old.currency then
+  -- COMPLETAR NO ES CAMBIAR. `old.currency is not null` no es una concesión al
+  -- backfill: es la regla dicha bien. NULL no es una moneda, es la ausencia de
+  -- una — llenarla no reinterpreta nada, porque no había nada que interpretar.
+  -- Lo que esta guarda existe para impedir es pasar de una moneda A OTRA, que sí
+  -- reescribe el significado de un número ya guardado.
+  --
+  -- Sin este matiz la migración se mataba a sí misma, y de la peor forma: el
+  -- trigger se crea unas líneas más arriba y el backfill de acá abajo
+  -- (`set currency = h.currency where currency is null`) es justamente un
+  -- NULL → 'CLP'. Sobre una tabla vacía el update no toca ninguna fila, nadie se
+  -- entera y todo pasa en verde; sobre una despensa con lotes de verdad, la
+  -- migración aborta a la mitad. Lo encontró el ensayo de despliegue el día que
+  -- dejó de correr sobre una base vacía.
+  --
+  -- Y después del `set not null` de más abajo, ninguna fila puede volver a tener
+  -- la moneda en NULL, así que esta puerta queda cerrada igual: no se abre un
+  -- camino, se describe uno que sólo existe mientras la columna se está
+  -- llenando.
+  if old.currency is not null and new.currency is distinct from old.currency then
     raise exception 'la moneda de un lote no se cambia: reinterpretaría lo que costó'
       using errcode = 'check_violation';
   end if;

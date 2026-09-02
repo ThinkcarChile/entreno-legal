@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { levantarBase, MIGRACIONES, migracionesDeProduccion, type Harness } from "./harness";
+import { crearHogar, levantarBase, MIGRACIONES, migracionesDeProduccion, type Harness } from "./harness";
 
 /**
  * EL ENSAYO DEL DESPLIEGUE.
@@ -28,6 +28,7 @@ import { levantarBase, MIGRACIONES, migracionesDeProduccion, type Harness } from
  */
 
 const RAIZ = path.resolve(__dirname, "../../..");
+const USUARIO = "11111111-1111-4111-8111-111111111111";
 
 /** Las que faltan: la diferencia entre la cadena del repo y lo que produccion tiene. */
 function pendientes(): string[] {
@@ -138,5 +139,166 @@ describe("ensayo del despliegue: las pendientes, encima de lo que produccion ya 
     } finally {
       await desdeCero.cerrar();
     }
+  });
+});
+
+/**
+ * EL MISMO ENSAYO, PERO CON LA BASE OCUPADA.
+ *
+ * El bloque de arriba aplica las pendientes sobre el estado de producción y eso
+ * ya encuentra mucho. Pero esa base está VACÍA DE DATOS, y hay una familia
+ * entera de fallas que sólo existe cuando hay filas:
+ *
+ *   · `add column ... not null` sin default: intachable sobre cero filas,
+ *     imposible sobre una.
+ *   · `create unique index`: pasa siempre sobre una tabla vacía; muere si los
+ *     datos que ya están tienen un duplicado.
+ *   · `add constraint ... check`: Postgres lo VALIDA contra todas las filas
+ *     existentes al crearlo. Sobre cero filas es un trámite.
+ *
+ * Y no es hipotético acá: la 0046 le agrega a `shopping_list_items` un check de
+ * coherencia del precio, y producción tiene veinticinco líneas de lista que ese
+ * check va a tener que aprobar una por una. Sobre la base vacía del bloque de
+ * arriba, ese check se crea sin mirar nada.
+ *
+ * Así que esto siembra —con los RPC y las formas que usa el resto de la suite—
+ * un hogar con su plan, su lista con líneas, sus lotes en la despensa y sus
+ * porciones proyectadas, y RECIÉN AHÍ aplica las diecinueve. Los datos son
+ * inventados y de laboratorio; lo que se copia de producción no son los valores
+ * sino la FORMA: que las tablas que estas migraciones alteran no estén vacías.
+ */
+describe("ensayo del despliegue, con la base ocupada", () => {
+  let base!: Harness;
+
+  beforeAll(async () => {
+    // Con seeds: el catálogo y el recetario son lo que producción de verdad
+    // tiene adentro (464 recetas, 234 alimentos), y varias de las pendientes
+    // tocan tablas que cuelgan de ahí.
+    base = await levantarBase({ conSeeds: true, soloProduccion: true });
+
+    const hogar = await crearHogar(base, USUARIO, "Ensayo", "Ana");
+
+    await base.comoAdmin(async () => {
+      // TRES alimentos distintos, no uno repetido: `shopping_items_suggestion_uniq`
+      // impide dos sugerencias del mismo alimento en la misma lista, que es
+      // justamente la clase de regla que sólo se descubre con datos adentro.
+      const alimentos = await base.filas<{ id: string }>(
+        "select id from public.ingredients where household_id is null order by canonical_name limit 3",
+      );
+
+      // Un plan de la semana con su día y una comida confirmada.
+      const plan = await base.fila<{ id: string }>(
+        `insert into public.weekly_plans (household_id, week_start, status)
+         values ($1, date_trunc('week', current_date)::date, 'DRAFT') returning id`,
+        [hogar.householdId],
+      );
+      await base.db.query(
+        `insert into public.weekly_plan_days (plan_id, plan_date) values ($1, current_date)`,
+        [plan!.id],
+      );
+
+      // La lista de compras CON LÍNEAS: son las filas que el check de la 0046
+      // va a tener que aprobar.
+      const lista = await base.fila<{ id: string }>(
+        `insert into public.shopping_lists (household_id, plan_id, status)
+         values ($1, $2, 'ACTIVE') returning id`,
+        [hogar.householdId, plan!.id],
+      );
+      const lineas = [
+        ["Pollo crudo", 500],
+        ["Arroz", 300],
+        ["Zanahoria", 250],
+      ] as const;
+      for (let i = 0; i < lineas.length; i += 1) {
+        const [etiqueta, gramos] = lineas[i]!;
+        await base.db.query(
+          `insert into public.shopping_list_items
+             (list_id, source, ingredient_id, label, unit, planned_quantity, purchase_basis)
+           values ($1, 'STOCK_INTELLIGENCE', $2, $3, 'G', $4, 'RAW')`,
+          [lista!.id, alimentos[i]!.id, etiqueta, gramos],
+        );
+      }
+
+      // Y la despensa, que es la otra tabla que las pendientes alteran a fondo.
+      const lotes = [
+        ["Lote viejo", 1200],
+        ["Lote nuevo", 800],
+      ] as const;
+      for (let i = 0; i < lotes.length; i += 1) {
+        const [etiqueta, cantidad] = lotes[i]!;
+        await base.db.query(
+          `insert into public.inventory_lots
+             (household_id, ingredient_id, label, unit, quantity, weight_basis, status)
+           values ($1, $2, $3, 'G', $4, 'RAW', 'AVAILABLE')`,
+          [hogar.householdId, alimentos[i]!.id, etiqueta, cantidad],
+        );
+      }
+    });
+  }, 180_000);
+
+  afterAll(async () => {
+    await base?.cerrar();
+  });
+
+  it("la base de ensayo quedó de verdad ocupada", async () => {
+    // SIN ESTO EL TEST DE ABAJO NO SIGNIFICA NADA. Si la siembra fallara en
+    // silencio, aplicar sobre cero filas volvería a pasar y el verde diría
+    // exactamente lo mismo que decía antes de escribir todo esto.
+    const conteo = await base.fila<Record<string, number>>(
+      `select (select count(*) from public.shopping_list_items) as items,
+              (select count(*) from public.inventory_lots)      as lotes,
+              (select count(*) from public.ingredients)         as alimentos,
+              (select count(*) from public.household_members)   as gente`,
+    );
+    expect(Number(conteo!.items), "sin líneas de lista no se valida el check de la 0046").toBeGreaterThan(0);
+    expect(Number(conteo!.lotes), "sin lotes no se ejercita lo que la 0042/0048 le agregan").toBeGreaterThan(0);
+    expect(Number(conteo!.alimentos)).toBeGreaterThan(100);
+    expect(Number(conteo!.gente)).toBeGreaterThan(0);
+  });
+
+  it("las 19 se aplican sobre datos, no sobre una base vacía", async () => {
+    const puestas = new Set(migracionesDeProduccion());
+    const faltan = MIGRACIONES.filter((m) => !puestas.has(m));
+    const aplicadas: string[] = [];
+
+    for (const archivo of faltan) {
+      const sql = readFileSync(path.join(RAIZ, archivo), "utf8");
+      try {
+        await base.db.exec(sql);
+        aplicadas.push(archivo);
+      } catch (e) {
+        const detalle = e instanceof Error ? e.message : String(e);
+        throw new Error(
+          [
+            `${archivo} se aplica sobre una base VACÍA pero NO sobre una con datos.`,
+            "",
+            `Postgres dijo: ${detalle}`,
+            "",
+            "Es la familia de falla que el ensayo de arriba no puede ver: un check que",
+            "se valida contra las filas que ya están, un índice único que choca con un",
+            "duplicado que ya existe, una columna not null sobre una tabla ocupada.",
+            "",
+            `Las ${aplicadas.length} anteriores sí entraron.`,
+          ].join(String.fromCharCode(10)),
+        );
+      }
+    }
+    expect(aplicadas).toEqual(faltan);
+  });
+
+  it("y los datos que ya estaban siguen ahí, con su valor DESCONOCIDO y no en cero", async () => {
+    // Migrar no puede perder filas, y tampoco puede inventarles un valor. Las
+    // columnas de dinero que la 0042 agrega nacen UNKNOWN a propósito: una línea
+    // de lista sin precio conocido no vale $0.
+    const despues = await base.fila<Record<string, number>>(
+      `select (select count(*) from public.shopping_list_items) as items,
+              (select count(*) from public.inventory_lots)      as lotes,
+              (select count(*) from public.inventory_lots where value_status = 'UNKNOWN') as lotes_sin_precio,
+              (select count(*) from public.shopping_list_items where price_estimate_status = 'UNKNOWN') as items_sin_precio`,
+    );
+    expect(Number(despues!.items)).toBe(3);
+    expect(Number(despues!.lotes)).toBe(2);
+    expect(Number(despues!.lotes_sin_precio), "un lote sin precio quedó valorizado en algo").toBe(2);
+    expect(Number(despues!.items_sin_precio), "una línea sin precio quedó valorizada en algo").toBe(3);
   });
 });

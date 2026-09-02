@@ -412,16 +412,70 @@ function revisarSellos(archivos) {
   }
 }
 
-/** Anota en el libro el sha256 de cada migración que no lo tenga. */
+/**
+ * Anota en el libro el sha256 de cada migración que no lo tenga, y ACTUALIZA el
+ * de las PENDIENTES que hayan cambiado desde que se sellaron.
+ *
+ * La primera versión sólo rellenaba lo que faltaba, y eso dejaba un callejón sin
+ * salida real: sellar las diecinueve, encontrar un defecto en una, arreglarlo, y
+ * quedarse sin forma de volver a sellarla — el guardián se quejaba para siempre
+ * y no había comando que lo resolviera. Un candado sin llave no es seguridad, es
+ * una puerta rota.
+ *
+ * Una APLICADA que cambió NO se re-sella acá, ni con esta bandera ni con
+ * ninguna. Producción tiene puesto ese archivo; volver a sellarlo sólo borraría
+ * la señal de que el repo y la base dejaron de ser lo mismo, que es exactamente
+ * la que hay que ver. Eso se arregla con una migración nueva.
+ */
 function sellar(archivos) {
   const libro = JSON.parse(readFileSync(LIBRO, "utf8"));
   const puestos = [];
+  const cambiadas = [];
+  const intocables = [];
   for (const f of archivos) {
     const e = libro.migraciones?.[f];
-    if (e === undefined || e.sha256) continue;
-    e.sha256 = sha(f);
-    puestos.push(f);
+    if (e === undefined) continue;
+    const real = sha(f);
+    if (!e.sha256) {
+      e.sha256 = real;
+      puestos.push(f);
+      continue;
+    }
+    if (e.sha256 === real) continue;
+    if (e.estado === "APLICADA") {
+      intocables.push(f);
+      continue;
+    }
+    e.sha256 = real;
+    cambiadas.push(f);
   }
+  if (intocables.length > 0) {
+    console.error(
+      linea([
+        "",
+        "NO SE RE-SELLAN, PORQUE PRODUCCIÓN LAS TIENE PUESTAS:",
+        "",
+        ...intocables.map((f) => `   ${f}`),
+        "",
+        "Que una aplicada cambie significa que el repo dejó de describir la base. Volver a",
+        "sellarla taparía justo la señal que hay que ver. El arreglo va en una migración",
+        "NUEVA, y el archivo viejo se deja como estaba.",
+        "",
+      ]),
+    );
+    process.exit(1);
+  }
+  if (cambiadas.length > 0) {
+    console.log(
+      linea([
+        "",
+        `Re-selladas ${cambiadas.length} que habían cambiado desde el sello anterior:`,
+        "",
+        ...cambiadas.map((f) => `   ${f}`),
+      ]),
+    );
+  }
+  puestos.push(...cambiadas);
   if (puestos.length === 0) {
     console.log(linea(["", "Todas las de la cadena ya tenían su checksum. No se tocó el libro.", ""]));
     return;

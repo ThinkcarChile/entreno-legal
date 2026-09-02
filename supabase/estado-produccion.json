@@ -284,7 +284,7 @@
     },
     "0042_finance_foundations.sql": {
       "estado": "PENDIENTE",
-      "sha256": "a32f4e359d48f3399fa9ca6926ad731c50c99349029ffd5362f76d86a63f4731",
+      "sha256": "1a8b6ed69bbf4aae70e3f59b089c7f70484cc8a001621e70adc759464eead138",
       "testigo": "to_regclass('public.currency_units') is not null",
       "prueba": "la tabla currency_units -la escala del dinero por moneda- nace aca y en ninguna otra; los tipos money_status/money_unknown_reason no sirven de testigo porque to_regclass no ve enums",
       "nota": "sha256 en null a proposito: la migracion del Sprint 14 todavia se esta escribiendo. Ver la nota de la 0039."

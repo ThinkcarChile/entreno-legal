@@ -369,17 +369,34 @@ export function cargarLibroDeProduccion(): LibroProduccion {
     }
     const real = sha256De(path.join(DIR_MIGRACIONES, archivo));
     if (real !== entrada.sha256) {
+      // SE DICE CUAL DE LAS DOS COSAS PASO, PORQUE NO SE ARREGLAN IGUAL.
+      //
+      // Que cambie una APLICADA es lo grave: produccion tiene puesto un archivo
+      // que ya no existe, y el repo dejo de describir la base. Se arregla con una
+      // migracion NUEVA, jamas editando la vieja.
+      //
+      // Que cambie una PENDIENTE es trabajo normal: todavia no esta en ninguna
+      // base, y corregirla ANTES de aplicarla es justo lo que uno quiere que
+      // pase. Solo hay que volver a sellarla.
+      //
+      // Antes las dos caian en el mismo mensaje, que hablaba de que produccion y
+      // el repo dejaron de ser lo mismo y mandaba a escribir una migracion nueva.
+      // Sobre una pendiente eso es falso y el consejo es malo: agregaria una
+      // migracion para arreglar algo que todavia se puede arreglar en su sitio.
       desalineadas.push(
-        `${archivo}: el libro dice ${entrada.sha256.slice(0, 12)}… y el archivo vale ${real.slice(0, 12)}…`,
+        `${archivo} [${entrada.estado}]: el libro dice ${entrada.sha256.slice(0, 12)}… ` +
+          `y el archivo vale ${real.slice(0, 12)}…`,
       );
     }
   }
   if (desalineadas.length > 0) {
+    const hayAplicadas = desalineadas.some((d) => d.includes("[APLICADA]"));
     throw new EstadoDeProduccionDesconocido(
       `El contenido de estas migraciones ya no es el que dice el libro:\n` +
         desalineadas.map((d) => `  · ${d}`).join("\n") +
-        `\nLas migraciones 0001..0038 están congeladas: una aplicada que cambió ` +
-        `significa que producción y el repo dejaron de ser lo mismo.`,
+        (hayAplicadas
+          ? `\nUna APLICADA que cambió es lo grave: producción tiene puesto un archivo que ya no existe, y el repo dejó de describir la base.`
+          : `\nTodas son PENDIENTES: todavía no están en ninguna base, así que corregirlas es normal. Sólo hay que volver a sellarlas.`),
       `  Si el cambio era correcto, va en una migración NUEVA y el archivo viejo\n` +
         `  se deja como estaba. Si el archivo viejo es el bueno, revierte la edición.\n` +
         `  Recién ahí vuelve a correr:\n${CORRER_EL_SCRIPT}`,
