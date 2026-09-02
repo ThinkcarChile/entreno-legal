@@ -139,6 +139,10 @@ export const MIGRACIONES = [
   "supabase/migrations/0056_asistente_inbox.sql",
   "supabase/migrations/0057_asistente_presupuesto.sql",
   "supabase/migrations/0058_idempotencia_acciones.sql",
+  // 0059: borrar un padre moria por el guardian de sus hijos (cinco funciones
+  // de la 0039/0041 miraban al padre en plena cascada). Encontrado por el
+  // pre-vuelo DESPUES de aplicar las 19 a produccion.
+  "supabase/migrations/0059_borrado_en_cascada.sql",
 ];
 
 /**

@@ -192,6 +192,33 @@ describe("§3-bis — la app solo depende de lo que producción tiene puesto HOY
       const numero = numeroDeMigracion(r);
       return numero !== null && pendientesPorNumero.has(numero);
     });
+
+    // -----------------------------------------------------------------------
+    // LLEGÓ EL DÍA QUE EL COMENTARIO DE ARRIBA ANTICIPABA.
+    //
+    // El 2026-09-02 producción se puso al día con el repo entero: cero
+    // pendientes. Y ahí este canario se quedaba sin trabajo exactamente como
+    // estaba escrito que iba a pasar — con el `not.toEqual([])` en rojo,
+    // pidiendo que alguien lo revisara.
+    //
+    // Revisado: la respuesta NO es apagarlo. Es que en ese estado la afirmación
+    // que importa cambia, y sigue siendo una afirmación de verdad, no vacía:
+    // que la cadena recortada a lo que producción tiene SEA la cadena completa.
+    // Si mañana alguien agrega una migración nueva, vuelve a haber pendientes y
+    // el canario retoma su trabajo de siempre sin que nadie toque nada.
+    //
+    // Lo que se conserva es el principio: este test NUNCA pasa por vacuidad. O
+    // hay pendientes y se demuestra que producción no las tiene, o no las hay y
+    // se demuestra que producción tiene TODO. Nunca "no había nada que mirar".
+    // -----------------------------------------------------------------------
+    if (pendientes.length === 0) {
+      expect(
+        migracionesDeProduccion(),
+        "el libro no declara ninguna pendiente pero la cadena de producción no es la completa",
+      ).toEqual(MIGRACIONES);
+      return;
+    }
+
     expect(pendientesEnLaCadenaCompleta).not.toEqual([]);
 
     // Ahora sí: ninguna de esas puede sobrevivir al recorte. Se compara por

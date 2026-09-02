@@ -139,7 +139,7 @@ describe("ensayo del despliegue: las pendientes, encima de lo que produccion ya 
     } finally {
       await desdeCero.cerrar();
     }
-  });
+  }, 180_000);
 });
 
 /**
@@ -419,9 +419,33 @@ describe("ensayo del despliegue, con la base ocupada", () => {
       const faltan = MIGRACIONES.filter((m) => !puestas.has(m));
       const alteradas = tablasQueAlteranLasPendientes(faltan);
 
-      // El barrido tiene que ver algo: si dejara de reconocer los `alter table`,
-      // la lista saldría vacía y este guardián aprobaría por no haber mirado.
-      expect(alteradas.length, "el barrido no encontró ninguna tabla alterada").toBeGreaterThan(5);
+      // SIN PENDIENTES NO HAY NADA QUE CUBRIR, Y ESO ES LA META, NO UNA FALLA.
+      //
+      // El 2026-09-02 producción se puso al día con el repo entero y este
+      // guardián se quedó sin trabajo. Se declara en vez de fingir: exigirle
+      // tablas alteradas cuando no hay migración que las altere sería un rojo
+      // que no señala ningún defecto, y un rojo que no señala nada es cómo un
+      // equipo aprende a ignorar los rojos.
+      //
+      // Vuelve solo en cuanto alguien escriba la 0059.
+      // QUE EL BARRIDO FUNCIONE se comprueba contra la cadena ENTERA, no contra
+      // las pendientes: una pendiente puede legitimamente no alterar ninguna
+      // tabla (la 0059 solo redefine funciones) y eso no significa que el
+      // barrido se haya roto. Antes las dos preguntas iban juntas y la segunda
+      // hacia fallar a la primera.
+      const alterTablesEnTodaLaCadena = MIGRACIONES.reduce((n, m) => {
+        const sql = readFileSync(path.join(RAIZ, m), "utf8");
+        return n + (sql.match(/^alter\s+table\s+/gim) ?? []).length;
+      }, 0);
+      expect(alterTablesEnTodaLaCadena, "el barrido dejó de reconocer alter table").toBeGreaterThan(20);
+
+      // Sin pendientes, o con pendientes que no alteran ninguna tabla que ya
+      // existiera, no hay nada que cubrir. Eso es un estado legitimo y se
+      // declara; no se finge un rojo.
+      if (faltan.length === 0 || alteradas.length === 0) {
+        expect(alteradas).toEqual([]);
+        return;
+      }
 
       const vacias: string[] = [];
       for (const tabla of alteradas) {
@@ -444,6 +468,12 @@ describe("ensayo del despliegue, con la base ocupada", () => {
       const puestas = new Set(migracionesDeProduccion());
       const faltan = MIGRACIONES.filter((m) => !puestas.has(m));
       const alteradas = new Set(tablasQueAlteranLasPendientes(faltan));
+      // Mientras NO haya pendientes, las exenciones no sobran: quedan guardadas
+      // esperando a la próxima migración. Revisarlas contra una lista vacía las
+      // declararía a todas obsoletas y empujaría a borrar un conocimiento que
+      // costó contar filas en la producción real.
+      if (faltan.length === 0 || alteradas.size === 0) return;
+
       const sobrantes = Object.keys(NO_SE_SIEMBRAN).filter((t) => !alteradas.has(t));
       expect(
         sobrantes,

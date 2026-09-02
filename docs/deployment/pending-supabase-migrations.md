@@ -9,7 +9,7 @@
 
 <!-- ESTADO:INICIO — generado, no editar a mano -->
 
-**Proyecto:** `smwyxfnlxoohenhsdcjx` · **38 aplicadas** · **19 pendientes**
+**Proyecto:** `smwyxfnlxoohenhsdcjx` · **57 aplicadas** · **1 pendientes**
 
 Método: `TESTIGOS_EN_VIVO` · verificado el 2026-09-02 · vale hasta el 2026-12-01.
 
@@ -24,32 +24,14 @@ node scripts/estado-a-documento.mjs --escribir
 
 **Pendientes de aplicar, en el orden en que van:**
 
-- `0039_permisos_plan_y_cocina.sql`
-- `0040_adaptive_reviews.sql`
-- `0041_eventos_avanzados.sql`
-- `0042_finance_foundations.sql`
-- `0043_purchases_core.sql`
-- `0044_cost_allocations.sql`
-- `0045_receipts_pipeline.sql`
-- `0046_price_observations.sql`
-- `0047_food_budgets.sql`
-- `0048_finance_integrity.sql`
-- `0050_asistente_ambito.sql`
-- `0051_asistente_consentimiento.sql`
-- `0052_asistente_sellos.sql`
-- `0053_asistente_propuestas.sql`
-- `0054_asistente_conversaciones.sql`
-- `0055_asistente_auditoria.sql`
-- `0056_asistente_inbox.sql`
-- `0057_asistente_presupuesto.sql`
-- `0058_idempotencia_acciones.sql`
+- `0059_borrado_en_cascada.sql`
 
 ```bash
 node scripts/poner-al-dia.mjs --pendientes            # muestra el plan, no toca nada
 node scripts/poner-al-dia.mjs --pendientes --aplicar
 ```
 
-<sub>Aplicadas: 0001, 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0037, 0036, 0038</sub>
+<sub>Aplicadas: 0001, 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0037, 0036, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0050, 0051, 0052, 0053, 0054, 0055, 0056, 0057, 0058</sub>
 
 <!-- ESTADO:FIN -->
 
