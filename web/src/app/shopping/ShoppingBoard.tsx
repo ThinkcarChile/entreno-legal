@@ -14,6 +14,7 @@ import {
 import { MEAL_TYPE_LABELS, type MealType } from "@/domain/recipes/types";
 import { Button, ButtonOutline, Card, Chip, Flotante, Icon, Notice } from "@/components/ui";
 import type { ShoppingItem, ShoppingListData } from "./queries";
+import { textoDelRelevo, type RelevoDeEvento } from "@/app/demanda-abierta";
 import {
   addManualItem,
   completeList,
@@ -61,6 +62,7 @@ export function ShoppingBoard({
   weekStart,
   lista,
   unconfirmed,
+  relevos,
   desactualizada,
   demandaDisponible,
   stock = {},
@@ -68,6 +70,12 @@ export function ShoppingBoard({
   weekStart: string;
   lista: ShoppingListData | null;
   unconfirmed: { date: string; mealType: MealType; recipeName: string | null }[];
+  /**
+   * Las comidas de esta semana que un evento releva: NO se compran, y la
+   * pantalla lo dice. Una lista que encoge sin explicación se lee como una
+   * falla del sistema y termina con alguien comprando el almuerzo igual.
+   */
+  relevos: RelevoDeEvento[];
   desactualizada: boolean;
   demandaDisponible: boolean;
   /** Stock disponible por `ingredientId::unidad::base` (Sprint 7). */
@@ -111,6 +119,33 @@ export function ShoppingBoard({
     <div className="mt-md space-y-md">
       {message && <Flotante tono="ok">{message}</Flotante>}
       {error && <Flotante tono="error">{error}</Flotante>}
+
+      {relevos.length > 0 && (
+        <Notice icon="outdoor_grill" tono="info">
+          <p className="font-semibold">
+            {relevos.length === 1
+              ? "Hay 1 comida que esta semana no se compra"
+              : `Hay ${relevos.length} comidas que esta semana no se compran`}
+          </p>
+          <p className="mt-0.5">
+            Un evento las reemplaza, así que sus ingredientes NO están en esta lista. Lo del
+            evento se compra en su propia pantalla.
+          </p>
+          <ul className="mt-sm list-inside list-disc">
+            {relevos.map((r) => (
+              <li key={`${r.eventoId}-${r.fecha}-${r.comidaCruda}`} className="min-w-0">
+                {textoDelRelevo(r)}{" "}
+                <Link
+                  href={`/eventos/${r.eventoId}`}
+                  className="font-semibold underline underline-offset-2"
+                >
+                  Ver el evento
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Notice>
+      )}
 
       {unconfirmed.length > 0 && (
         <Notice icon="pending_actions">
@@ -434,6 +469,9 @@ function ItemRow({
             {item.source === "STOCK_INTELLIGENCE" && (
               <Chip tono="primario">sugerido por despensa</Chip>
             )}
+            {/* La línea de un evento se marca: si el asado se cancela, la
+                0041 la retira y la persona tiene que poder reconocerla acá. */}
+            {item.source === "EVENT" && <Chip tono="primario">evento</Chip>}
           </span>
           <span className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1.5 font-body-sm text-body-sm text-on-surface-variant">
             <span>
@@ -526,11 +564,24 @@ function ItemRow({
                 {item.provenance.map((p, i) => (
                   <li key={i} className="flex justify-between gap-sm">
                     <span className="min-w-0 capitalize">
-                      {formatDate(p.date)} · {MEAL_TYPE_LABELS[p.mealType] ?? p.mealType}
-                      <span className="text-outline"> · {p.members.join(", ")}</span>
+                      {"kind" in p && p.kind === "EVENT" ? (
+                        <>
+                          {formatDate(p.date)} · {p.title}
+                          <span className="text-outline"> · {p.cut}</span>
+                        </>
+                      ) : (
+                        <>
+                          {formatDate(p.date)} · {MEAL_TYPE_LABELS[p.mealType] ?? p.mealType}
+                          <span className="text-outline"> · {p.members.join(", ")}</span>
+                        </>
+                      )}
                     </span>
                     <span className="shrink-0 font-semibold">
-                      {formatQuantity(p.quantity, item.unit)}
+                      {/* Un corte que el motor no pudo estimar aporta `null`, y
+                          eso NO es cero gramos: se dice con palabras. */}
+                      {p.quantity === null
+                        ? "cantidad por confirmar"
+                        : formatQuantity(p.quantity, item.unit)}
                     </span>
                   </li>
                 ))}

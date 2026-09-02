@@ -31,3 +31,5 @@ Formato: `NNNN-titulo-corto.md`, correlativo. Plantilla:
 | [0009](./0009-stock-intelligence.md) | Stock Intelligence: derivado en vivo, reservas lógicas, motores versionados | APROBADO (Sprint 8) |
 | [0010](./0010-procurement.md) | Procurement: planificar el abastecimiento sin falsificar el stock | PROPUESTO (Sprint 9, local) |
 | [0011](./0011-batch-prep.md) | Batch prep: sugerir arriba, transformar solo al confirmar | PROPUESTO (Sprint 10, local) |
+| [0012](./0012-clinical-architecture.md) | Arquitectura clínica: frontera IA/reglas, grants médicos, inmutabilidad | ACEPTADA (Sprint 11) |
+| [0013](./0013-principio-contable-caja-vs-consumo.md) | Gasto de caja != consumo económico: tres cifras separadas y el desconocido con tipo | ACEPTADA (Sprint 14) |

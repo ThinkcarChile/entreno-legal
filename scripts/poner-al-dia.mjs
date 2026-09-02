@@ -18,14 +18,32 @@
  * así lo que se aplica es exactamente la secuencia que las pruebas ejercitan.
  * Si los dos se separan, las pruebas dejan de probar lo que va a correr.
  *
- * POR QUÉ SE PIDEN EXPLÍCITAS Y NO "APLICA LO QUE FALTE": porque NO EXISTE un
- * registro de migraciones aplicadas en ninguna base. La única fuente de verdad
- * es `docs/deployment/pending-supabase-migrations.md`, escrito a mano. Sin ese
- * registro este script no puede saber qué falta, y deducirlo mal sobre una base
- * clínica es peor que pedir la lista. La primera versión de este archivo
- * aplicaba las 38 de corrido: habría muerto en la primera, porque
- * `create table public.households` sobre una base que ya la tiene no es
- * idempotente.
+ * QUÉ APLICAR: se puede nombrar a mano, o pedir `--pendientes`.
+ *
+ * Durante mucho tiempo acá decía que había que nombrarlas SIEMPRE, porque no
+ * existía ningún registro de migraciones aplicadas y la única fuente era
+ * `docs/deployment/pending-supabase-migrations.md`, escrito a mano. Eso dejó de
+ * ser cierto: `supabase/estado-produccion.json` es un libro legible por máquina
+ * donde cada migración declara un TESTIGO —una expresión SQL falsa antes de
+ * aplicarla y verdadera después— y `verificar-estado-produccion.mjs` se los
+ * pregunta A LA BASE REAL. No es un registro paralelo que alguien deba acordarse
+ * de actualizar: es la base contestando qué tiene puesto.
+ *
+ * `--pendientes` usa ese libro. No es una comodidad menor: la alternativa era
+ * tipear diecinueve números a mano contra una base con datos de una familia, y
+ * equivocarse en uno deja la cadena a medio migrar.
+ *
+ * Lo que NO hace es adivinar. Si el libro no fue verificado contra la base en
+ * vivo, o su verificación caducó, `--pendientes` se niega y manda a correr la
+ * comprobación, que toma un minuto. Un libro viejo no es conocimiento, es un
+ * recuerdo — y sobre una base clínica esa diferencia importa.
+ *
+ * (Nombrarlas a mano sigue funcionando igual, y sigue siendo lo correcto cuando
+ * se quiere aplicar sólo una parte de lo que falta.)
+ *
+ * La primera versión de este archivo aplicaba las 38 de corrido: habría muerto
+ * en la primera, porque `create table public.households` sobre una base que ya
+ * la tiene no es idempotente.
  *
  * LO QUE NO HACE, a propósito:
  *
@@ -39,7 +57,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { readdirSync, readFileSync, existsSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -49,6 +67,8 @@ const MIGRACIONES = path.join(RAIZ, "supabase", "migrations");
 const HARNESS = path.join(RAIZ, "web", "src", "integration", "harness.ts");
 
 const APLICAR = process.argv.includes("--aplicar");
+const PENDIENTES = process.argv.includes("--pendientes");
+const SELLAR = process.argv.includes("--sellar");
 const PEDIDAS = process.argv
   .slice(2)
   .filter((a) => !a.startsWith("--"))
@@ -85,6 +105,68 @@ function huerfanas(orden) {
     .sort();
 }
 
+const LIBRO = path.join(RAIZ, "supabase", "estado-produccion.json");
+
+/**
+ * Las que el libro declara PENDIENTE, en el orden del arnés.
+ *
+ * La guarda es DELIBERADAMENTE MÁS ESTRICTA que la del módulo que gobierna la
+ * vigencia del libro (`web/src/integration/estado-produccion.ts`, con su techo
+ * por método y sus 90 días). Acá no se reimplementa esa política —dos dueños de
+ * la misma regla terminan discrepando— sino que se exige un subconjunto que no
+ * admite interpretación: que el estado se haya sacado preguntándole a la base
+ * (`TESTIGOS_EN_VIVO`) y que esa pregunta siga vigente.
+ *
+ * La asimetría es a propósito. Este script ESCRIBE en una base con datos reales;
+ * el gate sólo lee. Negarse de más cuesta un minuto de verificación; aceptar de
+ * menos cuesta una cadena a medio aplicar.
+ */
+function pendientesDelLibro(orden) {
+  if (!existsSync(LIBRO)) {
+    throw new Error(`No encuentro ${LIBRO}. Sin el libro no se sabe qué falta y no se adivina.`);
+  }
+  const libro = JSON.parse(readFileSync(LIBRO, "utf8"));
+
+  if (libro.metodo !== "TESTIGOS_EN_VIVO") {
+    throw new Error(
+      linea([
+        `El libro dice metodo="${libro.metodo}", no TESTIGOS_EN_VIVO: su estado NO salió de`,
+        "preguntarle a la base. Corre primero:",
+        "",
+        "   node scripts/verificar-estado-produccion.mjs --escribir",
+      ]),
+    );
+  }
+  const hoy = new Date().toISOString().slice(0, 10);
+  if (!libro.caduca_el || libro.caduca_el < hoy) {
+    throw new Error(
+      linea([
+        `La verificación del libro caducó (caduca_el=${libro.caduca_el}, hoy=${hoy}).`,
+        "Un libro vencido es un recuerdo, no conocimiento. Corre:",
+        "",
+        "   node scripts/verificar-estado-produccion.mjs --escribir",
+      ]),
+    );
+  }
+
+  const estados = libro.migraciones ?? {};
+  // Toda migración de la cadena tiene que tener entrada. Una sin entrada es de
+  // estado DESCONOCIDO, y desconocido no se puede tratar como "ya aplicada":
+  // saltársela dejaría la cadena con un hueco en el medio.
+  const sinEntrada = orden.filter((f) => estados[f] === undefined);
+  if (sinEntrada.length > 0) {
+    throw new Error(
+      linea([
+        `${sinEntrada.length} migración(es) de la cadena no tienen entrada en el libro:`,
+        ...sinEntrada.map((f) => `   ${f}`),
+        "",
+        "Su estado es DESCONOCIDO. Agrégales su testigo antes de aplicar nada.",
+      ]),
+    );
+  }
+  return orden.filter((f) => estados[f].estado === "PENDIENTE");
+}
+
 const sha = (archivo) =>
   createHash("sha256").update(readFileSync(path.join(MIGRACIONES, archivo))).digest("hex");
 
@@ -107,21 +189,30 @@ try {
 
 const sueltas = huerfanas(orden);
 if (sueltas.length > 0) {
-  // Ruidoso a propósito: una migración escrita y no enganchada es una que
-  // ninguna prueba ejercita y que este script no aplicaría nunca. El silencio
-  // acá es exactamente cómo una migración de seguridad se queda sin aplicar.
-  console.error(
+  // RUIDOSO SÍ, PERO NO UN PORTAZO. Y la diferencia la enseñó este mismo
+  // script: la primera versión se DETENÍA acá, y el día que hubo que aplicar
+  // urgente la 0036 y la 0038 —las dos correctamente enganchadas y probadas—
+  // se nego a hacerlo porque OTRAS quince migraciones estaban a medio escribir
+  // en tres frentes en paralelo. El guardián tomó de rehén un trabajo válido
+  // por el estado de un trabajo ajeno.
+  //
+  // Lo que de verdad hay que impedir es aplicar algo que ninguna prueba
+  // ejercita, y eso ya está impedido aguas abajo: los números pedidos se
+  // resuelven CONTRA la lista del arnés, así que pedir una migración suelta
+  // falla con nombre y apellido. Acá alcanza con avisar fuerte, porque el
+  // riesgo real de una migración sin enganchar es quedarse sin aplicar en
+  // silencio — y este aviso es justamente lo que rompe el silencio.
+  console.warn(
     linea([
       "",
-      `Hay ${sueltas.length} migración(es) en disco que el arnés NO nombra:`,
+      `AVISO: hay ${sueltas.length} migración(es) en disco que el arnés NO nombra:`,
       ...sueltas.map((f) => `   ${f}`),
       "",
-      "Agrégalas a la lista MIGRACIONES de web/src/integration/harness.ts. Mientras no estén ahí,",
-      "ninguna prueba las ejercita y este script no las va a aplicar.",
+      "Ninguna prueba las ejercita y este script no las va a aplicar. Cuando estén listas,",
+      "agrégalas a la lista MIGRACIONES de web/src/integration/harness.ts.",
       "",
     ]),
   );
-  process.exit(1);
 }
 
 console.log(linea(["", `Orden de aplicación (${orden.length}, tomado del arnés de pruebas):`, ""]));
@@ -142,6 +233,14 @@ for (const f of orden) console.log(`   ${f}  ${sha(f).slice(0, 12)}…`);
  * Es un defecto del aplicador, no de este script, y queda anotado para
  * arreglarlo ahí (le falta cerrar el proceso limpio al terminar).
  */
+// SELLAR NO TOCA LA BASE: es leer archivos y anotar su checksum en el libro.
+// Va antes de conectarse para que se pueda sellar sin credenciales y sin red
+// y, sobre todo, para que no dependa de que produccion este contestando.
+if (SELLAR) {
+  sellar(orden);
+  process.exit(0);
+}
+
 console.log("\nConectando…");
 let conectado = false;
 try {
@@ -179,54 +278,174 @@ if (!conectado) {
   process.exit(1);
 }
 
+/**
+ * QUÉ SE VA A APLICAR. Se resuelve IGUAL en modo informe y se muestra: el plan
+ * completo se puede ver sin autorizar nada, que es exactamente lo que hace falta
+ * para decidir si autorizarlo.
+ */
+let plan = null;
+let motivoDelPlan = "";
+
+if (PENDIENTES) {
+  try {
+    plan = pendientesDelLibro(orden);
+    motivoDelPlan = "lo que el libro declara PENDIENTE, preguntado a la base en vivo";
+  } catch (e) {
+    console.error(linea(["", e.message, ""]));
+    process.exit(1);
+  }
+  if (plan.length === 0) {
+    console.log(linea(["", "El libro no declara ninguna pendiente: no hay nada que aplicar.", ""]));
+    process.exit(0);
+  }
+} else if (PEDIDAS.length > 0) {
+  // Se resuelven contra el orden del arnés: los números se pueden dar en
+  // cualquier orden y salen en el que de verdad hay que aplicarlos.
+  const pedidas = [];
+  for (const q of PEDIDAS) {
+    const calzan = orden.filter((f) => f === q || f.startsWith(`${q}_`));
+    if (calzan.length === 0) {
+      console.error(linea(["", `No hay ninguna migración que empiece por "${q}" en el arnés.`, ""]));
+      process.exit(1);
+    }
+    if (calzan.length > 1) {
+      console.error(linea(["", `"${q}" calza con ${calzan.length}: ${calzan.join(", ")}.`, ""]));
+      process.exit(1);
+    }
+    pedidas.push(calzan[0]);
+  }
+  plan = orden.filter((f) => pedidas.includes(f));
+  motivoDelPlan = "nombradas a mano";
+}
+
+if (plan !== null) {
+  console.log(linea(["", `Plan (${plan.length} — ${motivoDelPlan}), en el orden en que van:`, ""]));
+  for (const f of plan) console.log(`   ${f}`);
+  // Se revisa ACÁ y no justo antes de escribir: el estado de los sellos es parte
+  // de lo que hay que ver para decidir si autorizar, no una sorpresa que aparece
+  // cuando ya se dijo que sí.
+  revisarSellos(plan);
+}
+
 if (!APLICAR) {
   console.log(
     linea([
       "",
-      "Esto fue solo la revisión: no se tocó nada.",
+      "Esto fue sólo la revisión: no se tocó nada.",
       "",
-      "Para aplicar, nombra cuáles (el orden lo pone el script):",
+      "Para aplicar lo que la base dice que le falta:",
       "",
-      "   node scripts/poner-al-dia.mjs --aplicar 0036 0038",
+      "   node scripts/poner-al-dia.mjs --pendientes --aplicar",
       "",
-      "Se piden explícitas porque no existe un registro de migraciones aplicadas en la base: la",
-      "única fuente de verdad hoy es docs/deployment/pending-supabase-migrations.md, escrito a",
-      "mano. Adivinar cuáles faltan y equivocarse deja la base a medio migrar.",
+      "O nombrando cuáles, si se quiere sólo una parte (el orden lo pone el script):",
+      "",
+      "   node scripts/poner-al-dia.mjs --aplicar 0039 0040",
+      "",
+      "El estado sale de supabase/estado-produccion.json, donde cada migración declara un",
+      "testigo que se le pregunta A LA BASE. Si esa verificación caducó, --pendientes se",
+      "niega y pide correrla de nuevo en vez de adivinar.",
       "",
     ]),
   );
   process.exit(0);
 }
 
-if (PEDIDAS.length === 0) {
+/**
+ * EL SELLO: que lo que se aplique sea EXACTAMENTE lo que se revisó.
+ *
+ * El documento de despliegue dice desde siempre que una migración listada como
+ * pendiente está CONGELADA y que el checksum sirve para comprobarlo. Faltaba
+ * quien lo comprobara: acá se calculaba el sha para IMPRIMIRLO y nada más.
+ *
+ * No es una preocupación de manual. Estas diecinueve las estuvieron escribiendo
+ * tres frentes en paralelo durante el mismo día en que se iban a aplicar; entre
+ * "las revisé" y "las apliqué" cabe perfectamente una edición.
+ *
+ * La regla es asimétrica a propósito:
+ *   · Con checksum en el libro y DISTINTO al del archivo: se detiene. El archivo
+ *     cambió después de sellarse y nadie sabe qué trae de nuevo.
+ *   · Sin checksum en el libro: avisa fuerte y sigue. Una migración recién
+ *     escrita todavía no está sellada, y negarse ahí dejaría el despliegue
+ *     rehén de un trámite en vez de protegerlo de un cambio real.
+ */
+function revisarSellos(archivos) {
+  const libro = existsSync(LIBRO) ? JSON.parse(readFileSync(LIBRO, "utf8")) : { migraciones: {} };
+  const rotos = [];
+  const sinSellar = [];
+  for (const f of archivos) {
+    const esperado = libro.migraciones?.[f]?.sha256;
+    if (!esperado) {
+      sinSellar.push(f);
+      continue;
+    }
+    const real = sha(f);
+    if (real !== esperado) rotos.push({ f, esperado, real });
+  }
+  if (rotos.length > 0) {
+    console.error(
+      linea([
+        "",
+        "EL ARCHIVO CAMBIÓ DESPUÉS DE SELLARSE. No se aplica nada:",
+        "",
+        ...rotos.map((r) => `   ${r.f}`),
+        ...rotos.map((r) => `      libro ${r.esperado.slice(0, 16)}…  archivo ${r.real.slice(0, 16)}…`),
+        "",
+        "Lo que se iba a aplicar NO es lo que se revisó. Revisa el cambio y vuelve a sellar:",
+        "",
+        "   node scripts/poner-al-dia.mjs --sellar",
+        "",
+      ]),
+    );
+    process.exit(1);
+  }
+  if (sinSellar.length > 0) {
+    console.warn(
+      linea([
+        "",
+        `AVISO: ${sinSellar.length} de las que se van a aplicar no tienen checksum en el libro.`,
+        "Nada garantiza que sean las que se revisaron. Para sellarlas tal como están hoy:",
+        "",
+        "   node scripts/poner-al-dia.mjs --sellar",
+        "",
+      ]),
+    );
+  }
+}
+
+/** Anota en el libro el sha256 de cada migración que no lo tenga. */
+function sellar(archivos) {
+  const libro = JSON.parse(readFileSync(LIBRO, "utf8"));
+  const puestos = [];
+  for (const f of archivos) {
+    const e = libro.migraciones?.[f];
+    if (e === undefined || e.sha256) continue;
+    e.sha256 = sha(f);
+    puestos.push(f);
+  }
+  if (puestos.length === 0) {
+    console.log(linea(["", "Todas las de la cadena ya tenían su checksum. No se tocó el libro.", ""]));
+    return;
+  }
+  writeFileSync(LIBRO, `${JSON.stringify(libro, null, 2)}
+`, "utf8");
+  console.log(linea(["", `Selladas ${puestos.length}:`, "", ...puestos.map((f) => `   ${f}`), ""]));
+}
+
+if (plan === null) {
   console.error(
     linea([
       "",
-      "--aplicar sin decir cuáles. Nombra los números:",
+      "--aplicar sin decir qué. Las dos formas:",
       "",
-      "   node scripts/poner-al-dia.mjs --aplicar 0036 0038",
+      "   node scripts/poner-al-dia.mjs --pendientes --aplicar   (lo que la base dice que falta)",
+      "   node scripts/poner-al-dia.mjs --aplicar 0039 0040      (sólo esas)",
       "",
     ]),
   );
   process.exit(1);
 }
 
-// Se resuelven contra el orden del arnés: los números se pueden dar en
-// cualquier orden y salen en el que de verdad hay que aplicarlos.
-const pedidas = [];
-for (const p of PEDIDAS) {
-  const calzan = orden.filter((f) => f === p || f.startsWith(`${p}_`));
-  if (calzan.length === 0) {
-    console.error(`\nNo hay ninguna migración que empiece por "${p}" en la lista del arnés.\n`);
-    process.exit(1);
-  }
-  if (calzan.length > 1) {
-    console.error(`\n"${p}" calza con ${calzan.length}: ${calzan.join(", ")}. Sé más preciso.\n`);
-    process.exit(1);
-  }
-  pedidas.push(calzan[0]);
-}
-const enOrden = orden.filter((f) => pedidas.includes(f));
+const enOrden = plan;
 
 console.log(linea(["", `Se van a aplicar ${enOrden.length}, en este orden:`, ""]));
 for (const f of enOrden) console.log(`   ${f}`);

@@ -106,6 +106,39 @@ export const MIGRACIONES = [
   // SOLA: sin esta, el eje queda sin escritor y sus lectores leen el vacío como
   // cero. Las dos van juntas o no va ninguna.
   "supabase/migrations/0038_foodlog_intake.sql",
+
+  // ------------------------------------------------------------------ Sprints 13-16
+  //
+  // Estas veinte estaban ESCRITAS EN DISCO Y SIN ENGANCHAR. La lista se habia
+  // quedado en la 0038 mientras el codigo de la aplicacion ya consultaba las
+  // tablas, columnas y funciones que crean: 42 objetos que ninguna prueba
+  // producia y que, por lo tanto, ninguna prueba podia echar de menos.
+  //
+  // Es el mismo agujero que costo la 0036 —y esa vez se descubrio con la
+  // despensa reventando contra la base real, no con un test rojo—. Mientras una
+  // migracion no este en esta lista, todo lo que construye es codigo que
+  // funciona solo en la cabeza de quien lo escribio.
+  "supabase/migrations/0039_permisos_plan_y_cocina.sql",
+  "supabase/migrations/0040_adaptive_reviews.sql",
+  "supabase/migrations/0041_eventos_avanzados.sql",
+  "supabase/migrations/0042_finance_foundations.sql",
+  "supabase/migrations/0043_purchases_core.sql",
+  "supabase/migrations/0044_cost_allocations.sql",
+  "supabase/migrations/0045_receipts_pipeline.sql",
+  "supabase/migrations/0046_price_observations.sql",
+  "supabase/migrations/0047_food_budgets.sql",
+  "supabase/migrations/0048_finance_integrity.sql",
+  // No hay 0049: el numero se salto al partir el modulo del asistente. Queda
+  // dicho para que nadie lo busque creyendo que se perdio un archivo.
+  "supabase/migrations/0050_asistente_ambito.sql",
+  "supabase/migrations/0051_asistente_consentimiento.sql",
+  "supabase/migrations/0052_asistente_sellos.sql",
+  "supabase/migrations/0053_asistente_propuestas.sql",
+  "supabase/migrations/0054_asistente_conversaciones.sql",
+  "supabase/migrations/0055_asistente_auditoria.sql",
+  "supabase/migrations/0056_asistente_inbox.sql",
+  "supabase/migrations/0057_asistente_presupuesto.sql",
+  "supabase/migrations/0058_idempotencia_acciones.sql",
 ];
 
 /**
@@ -218,7 +251,7 @@ function claveDeCache(migraciones: readonly string[], conSeeds: boolean): string
     ...migraciones.map((m) => `${m}\n${resolverMigracion(m)}`),
     ...(conSeeds ? SEEDS.map((s) => `${s}\n${readFileSync(path.join(ROOT, s), "utf8")}`) : []),
   ];
-  return createHash("sha256").update(partes.join(" ")).digest("hex").slice(0, 32);
+  return createHash("sha256").update(partes.join("\u0000")).digest("hex").slice(0, 32);
 }
 
 /** Construye la base desde cero: migraciones en orden y, si toca, los seeds. */

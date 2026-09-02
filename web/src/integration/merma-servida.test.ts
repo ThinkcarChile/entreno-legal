@@ -219,9 +219,24 @@ describe("ALTO 3 — se boto del plato: el informe de desperdicio lo ve", () => 
     expect(filas).toHaveLength(1);
     expect(Number(filas[0]!.quantity)).toBe(50);
     expect(filas[0]!.waste_kind).toBe("SERVING");
-    // 1000 g costaron $5.000: 50 g de merma valen $250. Mismo costeo del lote
-    // limpio que la merma de la despensa, no uno paralelo.
-    expect(Number(filas[0]!.estimated_cost)).toBe((VALOR_POLLO * 50) / 1000);
+    // EL COSTO DE LA MERMA DEL PLATO ES DESCONOCIDO, Y ESO SE DECLARA.
+    //
+    // Este test pedia $250 (= $5.000 × 50/1000) y lo sacaba de la estimacion
+    // vieja de la 0036 (`acquisition_value × cantidad / entradas`), un segundo
+    // modelo contable que divergia del devengo. La 0048 mato a ese escritor:
+    // `estimated_cost` ahora LEE `cost_allocations`.
+    //
+    // Y el plato no tiene devengo propio: `discard_serving` escribe un
+    // movimiento con delta 0 —la comida ya salio de la despensa al SERVIR, y ahi
+    // se cobro entera como CONSUMED—, asi que costear otra vez esos 50 g contra
+    // el lote lo dejaria cobrado dos veces y `verify_lot_cost_invariant` lo
+    // reportaria descuadrado. Lo que falta es RECLASIFICAR parte de un consumo ya
+    // cobrado a merma, que necesita una categoria con signo negativo que el enum
+    // todavia no tiene.
+    //
+    // Mientras tanto: NULL. Desconocido, no cero. Un $0 aca seria «no se boto
+    // plata», que es exactamente la mentira que el sprint existe para impedir.
+    expect(filas[0]!.estimated_cost).toBeNull();
   });
 
   it("y el inventario NO se descuenta dos veces: el lote sigue en 800", async () => {

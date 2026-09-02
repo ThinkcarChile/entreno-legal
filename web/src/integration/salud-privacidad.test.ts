@@ -24,7 +24,14 @@ describe("§45/§83/§84 — cocina, compras, etiquetas y QR sin datos clínicos
   // Superficies que JAMÁS importan del dominio clínico ni del módulo health.
   // La única divulgación permitida es el estado categórico del serving, que
   // vive en plan/ (y no requiere importar nada clínico).
-  const SUPERFICIES_LIMPIAS = ["app/q", "lib/labels", "app/shopping", "app/prep", "app/procurement", "app/pantry", "app/stock"];
+  //
+  // Sprint 15: entran /inbox, /asistente y las piezas de la tarjeta. La bandeja
+  // y el chat le muestran avisos de TODA la casa a quien tenga los permisos, y
+  // son la superficie donde un import distraído al dominio clínico filtraría el
+  // biomarcador entero dentro de una frase compuesta. Lo clínico que sí pueden
+  // mostrar viaja ya categórico dentro del resumen de la propuesta o del aviso,
+  // filtrado por la RLS (0053/0056), no leído desde acá.
+  const SUPERFICIES_LIMPIAS = ["app/q", "lib/labels", "app/shopping", "app/prep", "app/procurement", "app/pantry", "app/stock", "app/inbox", "app/asistente", "components/assistant"];
 
   it("ninguna superficie de cocina/compras/etiquetas importa del módulo clínico", () => {
     const ofensas: string[] = [];

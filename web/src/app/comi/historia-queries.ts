@@ -11,6 +11,8 @@ import { addDays, DEFAULT_TIME_ZONE, effectiveDate } from "@/domain/nutrition/ca
 import {
   effectFor,
   eventCoversDate,
+  eventIncludes,
+  EVENT_MEMBER_SCOPES,
   EVENT_STRATEGIES,
   type DayEvent,
 } from "@/domain/nutrition/events";
@@ -334,6 +336,9 @@ const eventoFila = z.object({
   meal_type: mealType.nullable(),
   strategy: z.enum(EVENT_STRATEGIES),
   title: z.string(),
+  // Sin esta columna, cero integrantes es ambiguo: puede ser "toda la familia"
+  // (semántica 0007) o "nadie de la casa va a ese asado" (0041).
+  member_scope: z.enum(EVENT_MEMBER_SCOPES),
 });
 
 const eventoMiembroFila = z.object({ event_id: uuid, member_id: uuid });
@@ -882,10 +887,10 @@ async function cargarEventos(
 
   return [...porId.values()]
     .map((e) => {
-      // Sin filas = evento de TODA la familia (0007). Acá la lista vacía
-      // significa eso y no "no se pudo leer": la consulta ya reventó si falló.
-      // Por eso la ausencia se pregunta explícita, sin operador de respaldo:
-      // un atajo confundiría las dos cosas en un mismo valor.
+      // La lista vacía NO significa nada por sí sola: lo que significa lo dice
+      // `member_scope` (ver eventIncludes). Acá la ausencia se pregunta
+      // explícita, sin operador de respaldo: la consulta ya reventó si falló,
+      // así que vacío es vacío y no "no se pudo leer".
       const propios = porEvento.get(e.id);
       return {
         id: e.id,
@@ -895,9 +900,12 @@ async function cargarEventos(
         mealType: e.meal_type,
         strategy: e.strategy,
         title: e.title,
+        memberScope: e.member_scope,
         memberIds: propios === undefined ? [] : propios,
       };
     })
-    .filter((e) => e.memberIds.length === 0 || e.memberIds.includes(memberId))
+    // La misma función que usa el motor de efectos: dos copias de esta regla
+    // fue justamente lo que dejó "vacío = todos" vivo en un rincón.
+    .filter((e) => eventIncludes(e, memberId))
     .sort((a, b) => (a.id < b.id ? -1 : 1));
 }

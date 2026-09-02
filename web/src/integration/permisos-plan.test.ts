@@ -306,10 +306,17 @@ describe("escribir la semana pide can_edit_plan", () => {
     );
     expect(noPudo(creadoMember), "MEMBER creó un evento").toBe(true);
 
+    // EN BORRADOR A PROPÓSITO. Lo que esta prueba mide es el PERMISO —quién
+    // puede escribir la semana— y desde la 0041 hay una regla de CICLO DE VIDA
+    // encima: un evento que salió del borrador no se borra, se cancela. Son dos
+    // cosas distintas y conviene no confundirlas: crear el evento en PLANNED
+    // hacía fallar el borrado del PLANNER por un motivo que no tiene nada que
+    // ver con sus permisos, y el rojo decía "PLANNER no pudo borrar su propio
+    // evento", que manda a revisar la RLS justo donde no estaba el problema.
     const evento = await h.como(USER_PLANNER, async () => {
       const fila = await h.fila<{ id: string }>(
-        `insert into public.nutrition_events (household_id, event_date, event_type, title)
-         values ($1, $2, 'BARBECUE', 'Asado del PLANNER') returning id`,
+        `insert into public.nutrition_events (household_id, event_date, event_type, title, status)
+         values ($1, $2, 'BARBECUE', 'Asado del PLANNER', 'DRAFT') returning id`,
         [hogar.householdId, LUNES],
       );
       return fila!.id;
@@ -324,7 +331,32 @@ describe("escribir la semana pide can_edit_plan", () => {
     const borradoPlanner = await h.como(USER_PLANNER, () =>
       intentar("delete from public.nutrition_events where id = $1", [evento]),
     );
-    expect(borradoPlanner.filas, "PLANNER no pudo borrar su propio evento").toBe(1);
+    expect(borradoPlanner.filas, "PLANNER no pudo borrar su propio evento en borrador").toBe(1);
+
+    // Y LA OTRA MITAD, para que quede escrito que el permiso no es lo que corta
+    // fuera del borrador: al PLANNER —que sí puede editar la semana— la regla de
+    // ciclo de vida le niega el borrado igual, y la salida es cancelar.
+    const yaPlaneado = await h.como(USER_PLANNER, async () => {
+      const fila = await h.fila<{ id: string }>(
+        `insert into public.nutrition_events (household_id, event_date, event_type, title)
+         values ($1, $2, 'BARBECUE', 'Asado ya planeado') returning id`,
+        [hogar.householdId, LUNES],
+      );
+      return fila!.id;
+    });
+    const borrarPlaneado = await h.como(USER_PLANNER, () =>
+      intentar("delete from public.nutrition_events where id = $1", [yaPlaneado]),
+    );
+    expect(
+      noPudo(borrarPlaneado),
+      "un evento fuera del borrador se pudo borrar: su historia se perdió",
+    ).toBe(true);
+    const cancelado = await h.como(USER_PLANNER, () =>
+      intentar("update public.nutrition_events set status = 'CANCELLED' where id = $1", [
+        yaPlaneado,
+      ]),
+    );
+    expect(cancelado.filas, "el PLANNER no pudo cancelar su propio evento").toBe(1);
   });
 
   it("nadie queda sin rol: el estado \"sin ningún rol\" ya no existe", async () => {

@@ -172,6 +172,19 @@ export function WeekBoard({
                       <strong className="font-semibold">{e.title}</strong> ·{" "}
                       {EVENT_LABELS[e.eventType] ?? e.eventType} ·{" "}
                       {STRATEGY_LABELS[e.strategy] ?? e.strategy}
+                      {/* No saber a quién afecta no es "afecta a todos": se dice, y
+                          mientras tanto no le cambia los objetivos a nadie. */}
+                      {e.memberScope === "UNDECLARED" && (
+                        <span className="mt-0.5 block">
+                          Todavía no dice a quién de la casa afecta, así que por ahora no cambia
+                          los objetivos de nadie.
+                        </span>
+                      )}
+                      {e.memberScope === "DECLARED_ROSTER" && e.memberIds.length === 0 && (
+                        <span className="mt-0.5 block">
+                          Nadie de la casa va: no cambia los objetivos de nadie.
+                        </span>
+                      )}
                     </span>
                     <button
                       type="button"

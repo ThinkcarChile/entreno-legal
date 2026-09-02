@@ -98,10 +98,18 @@ async function stockInputDesdeBase(): Promise<StockInput> {
       await h.filas<{
         id: string; ingredient_id: string; label: string; quantity: string; unit: string;
         weight_basis: string; is_approximate: boolean; expiry_date: string | null;
-        use_by: string | null; created_at: string; status: string; acquisition_value: string | null;
+        use_by: string | null; created_at: string; status: string;
       }>(
+        // SIN `acquisition_value`, igual que el cargador de verdad. La 0048
+        // cierra por COLUMNA la lectura del dinero de esta tabla, asi que
+        // pedirlo como USER_A muere con "permission denied for table
+        // inventory_lots" — y con el mensaje apuntando a la TABLA, que manda a
+        // buscar el problema donde no esta. Esta funcion dice que replica la
+        // costura del cargador; el cargador ya dejo de pedirlo (stock/queries.ts
+        // lo saco y declara acquisitionValue null), asi que replicarlo es
+        // justamente esto.
         `select id, ingredient_id, label, quantity, unit, weight_basis, is_approximate,
-                expiry_date, use_by, created_at::text, status, acquisition_value
+                expiry_date, use_by, created_at::text, status
          from public.inventory_lots
          where household_id = $1 and status = 'AVAILABLE' and ingredient_id is not null`,
         [hogarA.householdId],
@@ -118,7 +126,9 @@ async function stockInputDesdeBase(): Promise<StockInput> {
       useBy: l.use_by,
       createdAt: l.created_at,
       status: l.status as "AVAILABLE",
-      acquisitionValue: l.acquisition_value === null ? null : Number(l.acquisition_value),
+      // Declarado DESCONOCIDO, no cero: el cargador tampoco lo sabe. `analyzeStock`
+      // costea la merma con `waste_movements.estimated_cost`, no con esto.
+      acquisitionValue: null,
     }));
 
     const futureDemand = (
@@ -377,11 +387,20 @@ describe("§4/§59 el ejemplo del director, desde filas reales", () => {
 
   it("§59B merma: el impacto es una señal, no una regla de '-1 compra'", async () => {
     // Dale valor al lote para probar el costo proporcional (§26).
+    //
+    // POR `app.set_lot_value`, NO por un `update` a `acquisition_value`. Desde la
+    // 0042 el dueño del valor es `value_minor` (entero) y `acquisition_value` es
+    // su espejo interno: escribir sólo el espejo dejaba el lote en UNKNOWN, el
+    // descarte producía una asignación DESCONOCIDA y `wasteCost30` salía NULL —
+    // correcto para ese estado, pero no era lo que este test quería montar.
     await h.comoAdmin(async () => {
-      await h.db.query(
-        "update public.inventory_lots set acquisition_value = 10000 where household_id = $1 and ingredient_id = $2",
+      const lotes = await h.filas<{ id: string }>(
+        "select id from public.inventory_lots where household_id = $1 and ingredient_id = $2",
         [hogarA.householdId, polloId],
       );
+      for (const l of lotes) {
+        await h.db.query("select app.set_lot_value($1, 10000)", [l.id]);
+      }
     });
     const lote = (await h.como(USER_A, () =>
       h.fila<{ id: string }>(
@@ -402,9 +421,25 @@ describe("§4/§59 el ejemplo del director, desde filas reales", () => {
     const items = analyzeStock(input);
     const pollo = items.find((i) => i.ingredientId === polloId)!;
     expect(pollo.waste30).toBe(400);
-    // Costo proporcional: el hijo se llevó su parte del valor y la perdió entera.
-    expect(pollo.wasteCost30).not.toBeNull();
-    expect(pollo.wasteCost30!).toBeGreaterThan(0);
+
+    // EL COSTO DE ESTA MERMA ES DESCONOCIDO, Y ESO ES LA RESPUESTA CORRECTA.
+    //
+    // Antes esta prueba exigia un costo proporcional mayor que cero, calculado
+    // por la estimacion vieja de la 0036 (`acquisition_value × cantidad /
+    // entradas`). La 0048 mato a ese escritor: `estimated_cost` sale de
+    // `cost_allocations` —un costeo real— o no sale.
+    //
+    // Y aca no sale, por una razon que vale la pena entender: en §59A este mismo
+    // pollo YA SALIO de la despensa cuando todavia nadie sabia lo que costaba, y
+    // esa salida quedo registrada como DESCONOCIDA. Ponerle precio despues no
+    // puede retro-costear lo ya comido: si el sistema lo hiciera, la plata de lo
+    // consumido se traspasaria a lo que queda y el kilo restante "costaria" mas
+    // de lo que se pago. Por eso el hijo del split nace con
+    // `PENDING_LATE_CORRECTION` y su merma vale DESCONOCIDO.
+    //
+    // Es la guarda [H14]/[H55] de `app.allocate_movement_cost` funcionando de
+    // punta a punta: UNKNOWN no es CERO, y tampoco es una estimacion disfrazada.
+    expect(pollo.wasteCost30).toBeNull();
     expect(pollo.onHand).toBe(3000); // 3.400 − 400
   });
 

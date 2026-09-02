@@ -324,9 +324,14 @@ beforeAll(async () => {
     // Rol MEMBER: integrante de verdad, sin administración. Es la persona a la
     // que la RLS le esconde las invitaciones.
     await h.db.query(
+      // `on conflict do nothing` porque desde la 0039 el rol MEMBER YA ESTA:
+      // un trigger se lo pone a toda ficha nueva, para que "sin ningun rol" no
+      // sea un estado alcanzable. El insert se deja igual —dice en voz alta cual
+      // es la precondicion de esta prueba— pero deja de pelear con el trigger.
       `insert into public.member_role_assignments (member_id, role_id)
        select $1, id from public.household_roles
-       where household_id = $2 and code = 'MEMBER'`,
+       where household_id = $2 and code = 'MEMBER'
+       on conflict do nothing`,
       [paulaId, hogar.householdId],
     );
 

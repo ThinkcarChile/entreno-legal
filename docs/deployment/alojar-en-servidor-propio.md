@@ -38,12 +38,43 @@ archivos (el HTML/PHP clásico de cPanel) no alcanza.
 
 ### Lo que sí está listo
 
-`next.config.ts` ahora compila en modo `standalone`. Eso deja en
+`next.config.ts` compila en modo `standalone`. Eso deja en
 `web/.next/standalone/` un servidor Node autocontenido —`server.js`,
-`package.json` y solo las dependencias que de verdad se usan— de unos **65 MB**.
-Verificado: el build corre limpio y produce ese bundle.
+`package.json` y solo las dependencias que de verdad se usan—.
 
-Eso es exactamente lo que se sube a un servidor propio.
+**Verificado el 2026-09-02**: el build corre limpio (`✓ Compiled successfully`),
+genera **59 rutas** y el bundle armado pesa **68 MB**.
+
+#### Cómo se arma, exactamente
+
+El standalone NO se basta solo: Next deja fuera los estáticos y `public/`, y sin
+ellos la app carga sin estilos, sin íconos y sin PWA instalable. Son tres copias
+después del build:
+
+```bash
+cd web
+npx next build
+cp -r public              .next/standalone/public
+mkdir -p                  .next/standalone/.next
+cp -r .next/static        .next/standalone/.next/static
+```
+
+Lo que queda en `web/.next/standalone/` es lo que se sube tal cual.
+
+#### El tropiezo que cuesta una reconstrucción
+
+**No corras el servidor de desarrollo después de compilar.** `npm run dev`
+reescribe `.next` entero y se lleva `standalone/` por delante — el directorio
+simplemente desaparece, sin ningún aviso, y el error aparece recién cuando vas a
+subir y no hay nada que subir. Compilar y armar es lo último que se hace antes de
+subir; si hubo que volver a desarrollo, se vuelve a compilar.
+
+#### Lo que el bundle sí trae
+
+`public/` lleva `manifest.webmanifest`, `sw.js` (el service worker),
+`sin-conexion.html` (la pantalla sin conexión), `icon.svg`,
+`apple-touch-icon.png` y la carpeta `icons/`. O sea: **la PWA completa**, lista
+para instalarse desde cualquier origen HTTPS.
 
 ---
 
@@ -111,14 +142,31 @@ Con las tres respuestas, el camino se elige solo.
 
 ## Y esto va antes que cualquiera de los dos
 
-**Aplicar las migraciones 0036 y 0038.** El código ya consulta objetos que
-producción no tiene: si la app se publica antes, `/pantry`, `/pantry/reorder`,
-`/pantry/item/[id]` y `/procurement` fallan el primer día. No es un detalle de
-despliegue — es la diferencia entre publicar una app y publicar una app rota.
+**Aplicar las 19 migraciones pendientes.** El código ya consulta objetos que
+producción no tiene: si la app se publica antes, las pantallas que dependen de
+ellos fallan el primer día. No es un detalle de despliegue — es la diferencia
+entre publicar una app y publicar una app rota.
+
+(La 0036 y la 0038, que esta sección pedía antes, ya están aplicadas y
+verificadas en vivo. Lo que falta hoy es de la 0039 a la 0058.)
 
 ```bash
-node scripts/poner-al-dia.mjs --aplicar 0036 0038
+node scripts/poner-al-dia.mjs --pendientes            # muestra el plan, no toca nada
+node scripts/poner-al-dia.mjs --sellar                # congela el checksum de cada una
+node scripts/poner-al-dia.mjs --pendientes --aplicar
 ```
+
+El paso del medio importa más de lo que parece: sella en el libro el checksum de
+cada migración pendiente, y a partir de ahí el aplicador se DETIENE si alguna
+cambió después de sellarse. Sin eso, entre "las revisé" y "las apliqué" cabe una
+edición que nadie nota — y estas diecinueve las escribieron tres frentes en
+paralelo.
+
+**Lo que respalda que esto va a funcionar:** `web/src/integration/ensayo-despliegue.test.ts`
+levanta una base EN EL ESTADO REAL DE PRODUCCIÓN, aplica las pendientes una por
+una en orden, y después compara columna por columna contra la cadena armada desde
+cero. Las dos tienen que quedar idénticas. Aplicar la cadena entera sobre una base
+vacía —que es lo que hace el resto de la suite— responde otra pregunta y no ésta.
 
 **Y después de publicar**, en Supabase → Authentication → URL Configuration: hay
 que agregar el dominio nuevo a *Site URL* y *Redirect URLs*. Si no, el login

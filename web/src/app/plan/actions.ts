@@ -646,6 +646,12 @@ export async function saveEvent(input: {
       meal_type: input.mealType,
       strategy: input.strategy,
       title: input.title.trim(),
+      // Este formulario SÍ pregunta a quién afecta, y su respuesta "ninguno
+      // marcado" significa toda la familia — está escrito al lado de las
+      // casillas. Se guarda esa lectura explícita en vez de dejar que otro la
+      // adivine mirando una lista vacía (0041, member_scope).
+      member_scope:
+        (input.memberIds ?? []).length > 0 ? "DECLARED_ROSTER" : "LEGACY_EMPTY_MEANS_ALL",
     })
     .select("id")
     .single();

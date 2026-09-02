@@ -109,14 +109,42 @@ const CORRECCIONES = [
   },
 ];
 
+/**
+ * Cada seed con un TESTIGO: una consulta que dice si ya está aplicado.
+ *
+ * Hace falta porque los tres NO son iguales de idempotentes, y suponerlo costó
+ * un intento fallido contra producción:
+ *
+ *   · `dev_recipes_biblioteca.sql` sí lo es (212 `on conflict do nothing`): se
+ *     puede re-aplicar sin duplicar nada.
+ *   · `dev_catalog_seed.sql` NO. Sus inserts revientan contra una fila que ya
+ *     existe — y reventó, con `duplicate key ... (pechuga de pollo sin piel)`.
+ *     Ese seed se aplicó a producción en las primeras semanas del proyecto.
+ *
+ * O sea que "aplicar los tres en orden" es correcto en una base nueva y
+ * equivocado en la de producción. El testigo resuelve las dos: mira si el
+ * contenido ya está y salta el que sobra, en vez de confiar en la memoria de
+ * alguien sobre qué se corrió hace meses.
+ */
 const SEEDS = [
-  // El orden importa y no es alfabético: la biblioteca referencia POR NOMBRE
-  // las ensaladas que publica dev_recipes_seed. Al revés muere con
-  // "Alimento desconocido en la biblioteca: papa" — es exactamente el error que
-  // tuvo el CI en silencio durante meses.
-  "supabase/seed/dev_catalog_seed.sql",
-  "supabase/seed/dev_recipes_seed.sql",
-  "supabase/seed/dev_recipes_biblioteca.sql",
+  {
+    archivo: "supabase/seed/dev_catalog_seed.sql",
+    // Sus inserts NO son idempotentes, así que el testigo no es una comodidad:
+    // es lo único que evita que reviente.
+    testigo: "select 1 from public.ingredients where canonical_name = 'pechuga de pollo sin piel' and household_id is null",
+  },
+  {
+    archivo: "supabase/seed/dev_recipes_seed.sql",
+    testigo: "select 1 from public.meal_templates where name = 'Ensalada chilena' and household_id is null",
+  },
+  {
+    // La biblioteca va ÚLTIMA y no es alfabético: referencia POR NOMBRE las
+    // ensaladas que publica el seed anterior. Al revés muere con "Alimento
+    // desconocido en la biblioteca: papa" — es el mismo error que tuvo el CI en
+    // silencio durante meses.
+    archivo: "supabase/seed/dev_recipes_biblioteca.sql",
+    testigo: "select 1 from public.meal_templates where name = 'Charquicán' and household_id is null",
+  },
 ];
 
 async function retrato() {
@@ -146,17 +174,25 @@ if (!APLICAR) {
   process.exit(0);
 }
 
-for (const archivo of SEEDS) {
-  const ruta = path.join(RAIZ, archivo);
-  const texto = readFileSync(ruta, "utf8");
+for (const { archivo, testigo } of SEEDS) {
+  const ya = await sql(`select exists (${testigo}) as puesto`);
+  if ((Array.isArray(ya) ? ya[0] : ya)?.puesto) {
+    console.log(`
+${archivo} — ya estaba aplicado, se salta`);
+    continue;
+  }
+  const texto = readFileSync(path.join(RAIZ, archivo), "utf8");
   // El guardián de codificación del Sprint 11 sigue vigente: un acento roto en
   // una base clínica ya costó una migración de reparación.
   if (texto.includes("�")) {
-    console.error(`\n${archivo} trae caracteres de reemplazo: no se manda.\n`);
+    console.error(`
+${archivo} trae caracteres de reemplazo: no se manda.
+`);
     process.exitCode = 1;
     break;
   }
-  process.stdout.write(`\naplicando ${archivo}… `);
+  process.stdout.write(`
+aplicando ${archivo}… `);
   await sql(texto);
   console.log("ok");
 }

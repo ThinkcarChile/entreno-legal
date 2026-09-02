@@ -1,7 +1,11 @@
 import Link from "next/link";
+import { PuntoBadge } from "@/components/assistant/piezas";
+import type { BadgeInbox } from "@/domain/assistant/presentacion";
 
 export type NavKey =
   | "home"
+  | "inbox"
+  | "assistant"
   | "family"
   | "catalog"
   | "recipes"
@@ -10,7 +14,8 @@ export type NavKey =
   | "pantry"
   | "procurement"
   | "prep"
-  | "health";
+  | "health"
+  | "finanzas";
 
 /**
  * Navegación del kit NutriFamilia: en móvil una barra superior + bottom nav
@@ -21,15 +26,27 @@ export type NavKey =
  * destinos caben cómodos con el pulgar en 320 px, nueve no.
  */
 const DESTINOS: { key: NavKey; href: string; icon: string; label: string; enBottom: boolean }[] = [
-  { key: "home", href: "/", icon: "home", label: "Inicio", enBottom: true },
+  /*
+   * La ranura de inicio la toma la BANDEJA, no el chat.
+   *
+   * El diseño la había dado al asistente, y eso pone el chat de vestíbulo: con
+   * el proveedor caído, la cuota agotada o el consentimiento sin activar, el
+   * destino principal del pulgar sería una pantalla degradada — justo lo
+   * contrario de "la app no depende del chat". La bandeja la producen los
+   * motores y se lee sin salir a la red; el asistente cuelga de ella y vive en
+   * la barra lateral.
+   */
+  { key: "inbox", href: "/inbox", icon: "inbox", label: "Pendientes", enBottom: true },
   { key: "plan", href: "/plan", icon: "calendar_month", label: "Semana", enBottom: true },
   { key: "prep", href: "/prep", icon: "restaurant", label: "Cocina", enBottom: true },
   { key: "shopping", href: "/shopping", icon: "shopping_cart", label: "Compras", enBottom: true },
   { key: "health", href: "/health", icon: "favorite", label: "Salud", enBottom: true },
+  { key: "assistant", href: "/asistente", icon: "smart_toy", label: "Asistente", enBottom: false },
   { key: "pantry", href: "/pantry", icon: "inventory_2", label: "Despensa", enBottom: false },
   { key: "procurement", href: "/procurement", icon: "local_shipping", label: "Pedidos", enBottom: false },
   { key: "recipes", href: "/recipes", icon: "menu_book", label: "Recetas", enBottom: false },
   { key: "catalog", href: "/catalog", icon: "nutrition", label: "Catálogo", enBottom: false },
+  { key: "finanzas", href: "/finanzas", icon: "savings", label: "Finanzas", enBottom: false },
   { key: "family", href: "/family", icon: "group", label: "Familia", enBottom: false },
 ];
 
@@ -52,6 +69,7 @@ export function AppShell({
   action,
   children,
   wide = false,
+  badge,
 }: {
   active: NavKey;
   title: string;
@@ -60,6 +78,12 @@ export function AppShell({
   children: React.ReactNode;
   /** `true` deja el contenido usar todo el ancho del escritorio (tableros). */
   wide?: boolean;
+  /**
+   * Pendientes de la casa para la campanita. Omitirlo significa "esta pantalla
+   * no lo consultó", que NO es lo mismo que "no hay" ni que "no pude contar":
+   * los tres se ven distinto a propósito.
+   */
+  badge?: BadgeInbox;
 }) {
   return (
     <div className="relative flex min-h-dvh flex-col md:flex-row">
@@ -73,12 +97,21 @@ export function AppShell({
             NutriFamilia
           </h1>
         </Link>
+        {/*
+          La campanita apunta a la bandeja (antes iba a /health, que no es
+          donde están los pendientes). El badge es un tipo con dos casos y no un
+          número: un fallo de lectura pintado como 0 —o como badge ausente— se
+          ve idéntico a "todo en orden", y este es el único indicador
+          permanente de la navegación. No pasar `badge` es la tercera cosa:
+          esta pantalla no preguntó, y entonces no afirma nada.
+        */}
         <Link
-          href="/health"
-          aria-label="Salud"
-          className="flex h-10 w-10 items-center justify-center rounded-full text-primary transition-colors hover:bg-surface-variant/50"
+          href="/inbox"
+          aria-label="Pendientes"
+          className="relative flex h-10 w-10 items-center justify-center rounded-full text-primary transition-colors hover:bg-surface-variant/50"
         >
           <Icono name="notifications" />
+          {badge && <PuntoBadge badge={badge} />}
         </Link>
       </header>
 

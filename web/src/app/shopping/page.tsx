@@ -8,6 +8,7 @@ import { aggregateDemand, demandSignature } from "@/domain/shopping/engine";
 import { loadHouseholdMembers } from "@/app/family/nutrition-queries";
 import { DataAccessError } from "@/lib/supabase/unwrap";
 import { loadShoppingContext, loadShoppingList } from "./queries";
+import { cargarRelevosDeEventos } from "@/app/demanda-abierta";
 import { loadAvailableLots } from "@/app/pantry/queries";
 import { expiryInfo, stockByIngredient } from "@/domain/inventory/fefo";
 import { ShoppingBoard } from "./ShoppingBoard";
@@ -31,7 +32,7 @@ export default async function ShoppingPage({ searchParams }: Props) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/shopping");
 
-  const { householdId } = await loadHouseholdMembers(supabase);
+  const { householdId, members } = await loadHouseholdMembers(supabase);
   if (!householdId) {
     return (
       <AppShell active="shopping" title="Compras">
@@ -74,6 +75,18 @@ export default async function ShoppingPage({ searchParams }: Props) {
     lista !== null && lista.currentRevision > 0 && lista.currentSignature !== firmaActual;
 
   const demandaFresca = aggregateDemand(contexto.input);
+
+  // H20: lo que esta semana NO se compra porque hay un evento. Se lee aparte de
+  // la lista a propósito: la lista dice qué comprar y esto dice qué se dejó de
+  // comprar y por qué. Sin la segunda mitad, el relevo es una lista más corta
+  // sin explicación, y una lista más corta sin explicación se compra igual.
+  const relevos = await cargarRelevosDeEventos(
+    supabase,
+    members.map((m) => m.id),
+    inicio,
+    addDays(inicio, 6),
+  );
+
   const anterior = addDays(inicio, -7);
   const siguiente = addDays(inicio, 7);
 
@@ -103,6 +116,7 @@ export default async function ShoppingPage({ searchParams }: Props) {
         weekStart={inicio}
         lista={lista}
         unconfirmed={contexto.unconfirmed}
+        relevos={relevos}
         desactualizada={desactualizada}
         demandaDisponible={demandaFresca.length > 0}
         stock={stock}

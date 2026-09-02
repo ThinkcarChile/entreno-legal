@@ -26,6 +26,38 @@ export const EVENT_STRATEGIES = [
 ] as const;
 export type EventStrategy = (typeof EVENT_STRATEGIES)[number];
 
+/**
+ * A QUIÉN de la casa afecta un evento — y, sobre todo, si eso se declaró.
+ *
+ * El defecto que cierra (Sprint 13, lente "el vacío leído como cero"): la lista
+ * de integrantes vacía significaba SIEMPRE "toda la familia". Con el armador de
+ * /eventos eso se volvió falso de dos maneras distintas y silenciosas:
+ *
+ *   · un asado con once invitados y ningún integrante del hogar dejaba la lista
+ *     en cero filas, y los cuatro de la casa amanecían con el día RELAXED sin
+ *     que nadie lo hubiera pedido;
+ *   · un asado donde TODOS los del hogar marcaron DECLINED terminaba igual: el
+ *     roster decía "no va nadie" y el efecto nutricional decía "van todos".
+ *
+ * "Nadie declaró a quién afecta" y "se declaró y no quedó nadie" son DOS HECHOS
+ * DISTINTOS, y hasta ahora se veían iguales: cero filas. Por eso el hecho vive
+ * en su propia columna (`nutrition_events.member_scope`) y no se deduce del
+ * largo de una lista.
+ *
+ *  - `LEGACY_EMPTY_MEANS_ALL`: la semántica de siempre (0007) — vacío = toda la
+ *    familia, con filas = esas personas. Es el valor por omisión, así que ningún
+ *    evento anterior cambia de significado y ningún escritor viejo se rompe.
+ *  - `DECLARED_ROSTER`: la lista MANDA, incluso vacía. Vacía = nadie del hogar.
+ *  - `UNDECLARED`: nadie dijo nada todavía. No es "todos" ni es "nadie": es
+ *    desconocido, no cambia los objetivos de nadie y la pantalla lo DICE.
+ */
+export const EVENT_MEMBER_SCOPES = [
+  "LEGACY_EMPTY_MEANS_ALL",
+  "DECLARED_ROSTER",
+  "UNDECLARED",
+] as const;
+export type EventMemberScope = (typeof EVENT_MEMBER_SCOPES)[number];
+
 export interface DayEvent {
   id: string;
   /** Fecha DATE-only, `YYYY-MM-DD`. */
@@ -37,7 +69,9 @@ export interface DayEvent {
   mealType: MealType | null;
   strategy: EventStrategy;
   title: string;
-  /** Integrantes afectados. VACÍO = el evento es de toda la familia. */
+  /** Cómo se lee `memberIds`. Sin esto, vacío es ambiguo (ver arriba). */
+  memberScope: EventMemberScope;
+  /** Integrantes afectados. Qué significa vacío lo dice `memberScope`. */
   memberIds: readonly string[];
 }
 
@@ -108,9 +142,50 @@ export function frozenEffectConfig(
   };
 }
 
-/** Un evento afecta a esta persona si es familiar o si la nombra. */
+/**
+ * ¿Este evento afecta los objetivos de esta persona?
+ *
+ * La respuesta depende de `memberScope`, no del largo de la lista:
+ *
+ *  - `LEGACY_EMPTY_MEANS_ALL`: la regla de siempre (vacío = toda la familia).
+ *  - `DECLARED_ROSTER`: exactamente quien esté nombrado. Lista vacía = nadie del
+ *    hogar, que es justo el caso del asado donde todos marcaron que no van.
+ *  - `UNDECLARED`: NO SE SABE, y no saber no autoriza a relajarle los macros a
+ *    nadie. Se devuelve `false` y la pantalla dice por qué (`eventRosterIsUnknown`),
+ *    en vez de aplicar en silencio un efecto que nadie pidió.
+ */
 export function eventIncludes(event: DayEvent, memberId: string): boolean {
-  return event.memberIds.length === 0 || event.memberIds.includes(memberId);
+  switch (event.memberScope) {
+    case "LEGACY_EMPTY_MEANS_ALL":
+      return event.memberIds.length === 0 || event.memberIds.includes(memberId);
+    case "DECLARED_ROSTER":
+      return event.memberIds.includes(memberId);
+    case "UNDECLARED":
+      return false;
+  }
+}
+
+/**
+ * `true` cuando el evento no cambia nada PORQUE NADIE DIJO A QUIÉN AFECTA.
+ *
+ * Existe para que la pantalla pueda distinguir "este evento no te toca" de "no
+ * sabemos si te toca": el silencio de un UNKNOWN que nadie muestra es
+ * exactamente lo que dejó a cuatro personas con el día relajado sin pedirlo.
+ */
+export function eventRosterIsUnknown(event: Pick<DayEvent, "memberScope">): boolean {
+  return event.memberScope === "UNDECLARED";
+}
+
+/**
+ * `true` cuando el roster se declaró y NO quedó nadie del hogar adentro.
+ *
+ * Tampoco es lo mismo que "no te toca a ti": es "no le toca a nadie de la casa",
+ * y en la pantalla del evento vale la pena decirlo (por si falta agregarse).
+ */
+export function eventHasNoHouseholdMembers(
+  event: Pick<DayEvent, "memberScope" | "memberIds">,
+): boolean {
+  return event.memberScope === "DECLARED_ROSTER" && event.memberIds.length === 0;
 }
 
 /**

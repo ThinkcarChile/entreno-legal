@@ -312,7 +312,13 @@ describe("split: la cantidad y el valor se conservan (K-11, K-19)", () => {
       await h.db.query("select public.split_lot($1, array[150, 150, 150]::numeric[])", [lote]);
     });
 
-    const familia = await h.como(USER_A, () =>
+    // Se lee como DUENA, no como USER_A: la 0048 le cierra a `authenticated` la
+    // lectura del dinero del lote —columna por columna— y lo desvia a la vista
+    // `lot_valuations`, que exige FINANCE_VIEW. Esta prueba no comprueba quien
+    // puede ver el precio; comprueba la FISICA de K-19: que al partir un lote el
+    // valor se reparta y el total se conserve. Esa es una propiedad de los
+    // datos, no de lo que alcanza a ver un integrante.
+    const familia = await h.comoAdmin(() =>
       h.filas<{ quantity: string; acquisition_value: string | null; parent_lot_id: string | null }>(
         `select quantity, acquisition_value, parent_lot_id from public.inventory_lots
          where household_id = $1 order by created_at`,
@@ -333,7 +339,11 @@ describe("split: la cantidad y el valor se conservan (K-11, K-19)", () => {
   });
 
   it("el padre vaciado por partición queda SPLIT, no CONSUMED: nadie se lo comió", async () => {
-    const padre = await h.como(USER_A, () =>
+    // Como DUENA: `acquisition_value` esta en el WHERE, y filtrar por una columna
+    // tambien exige poder leerla. La 0048 se la cierra a `authenticated`, asi que
+    // como USER_A esto muere con "permission denied for table inventory_lots"
+    // aunque la columna del SELECT sea otra.
+    const padre = await h.comoAdmin(() =>
       h.fila<{ status: string }>(
         `select status from public.inventory_lots
          where household_id = $1 and parent_lot_id is null and quantity = 0

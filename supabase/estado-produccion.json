@@ -25,8 +25,8 @@
     "que exista, porque una migracion sin entrada es una migracion de estado desconocido)."
   ],
   "proyecto": "smwyxfnlxoohenhsdcjx",
-  "verificado_el": "2026-08-26",
-  "caduca_el": "2026-11-24",
+  "verificado_el": "2026-09-02",
+  "caduca_el": "2026-12-01",
   "metodo": "TESTIGOS_EN_VIVO",
   "metodo_nota": "MANIFIESTO = el estado sale del registro de aplicacion del repo (docs/deployment/pending-supabase-migrations.md, verificacion en vivo del 2026-08-25 por la Management API) y los checksums estan recomprobados contra los archivos. TESTIGOS_EN_VIVO = los testigos de aca abajo se corrieron contra la base real. El script es el unico que escribe TESTIGOS_EN_VIVO; a mano no se pone.",
   "caducidad_nota": "Una verificacion vieja no es conocimiento, es un recuerdo. Pasado caduca_el el gate se pone rojo diciendo que NO PUEDE SABER el estado de produccion, y se arregla corriendo el script. ERROR != VACIO: mejor un rojo que pide una comprobacion de un minuto que un verde que no significa nada.",
@@ -160,14 +160,14 @@
     "0022_consume_product_identity.sql": {
       "estado": "APLICADA",
       "sha256": "b25657ea399d79cb4a1fb7fe9a29969adf253d5d2008ae0d1d5dde020f28c513",
-      "testigo": "exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'consume_planned_meal' and p.prosrc like '%product_id%')",
-      "prueba": "consume_planned_meal existe desde la 0012; la 0022 le mete la identidad de producto"
+      "testigo": "exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'consumption_shortfalls' and column_name = 'product_id')",
+      "prueba": "consumption_shortfalls.product_id: la columna que la 0022 agrega para dejar el linaje del faltante cuando la identidad es un producto. NO se mira consume_planned_meal, aunque sea el corazon de esta migracion: la 0036 vuelve a definir esa funcion con un cuerpo que ya no nombra product_id, asi que el testigo viejo daba FALSO sobre una produccion que SI tiene la 0022 puesta. Y ese falso negativo no era solo ruido: invitaba a re-aplicar la 0022, que con su 'create or replace' le devolveria a consume_planned_meal el poder de escribir consumo que la 0036 le quito a proposito. Un testigo tiene que mirar algo que nadie mas adelante pise; una columna aditiva lo es, el cuerpo de una funcion no."
     },
     "0023_confirm_consume_serialization.sql": {
       "estado": "APLICADA",
       "sha256": "a13a60e34532a4024d303e55a44abedaf462708cbc92d9831fefd8c089bf384f",
-      "testigo": "exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'confirm_meal_assignment' and p.prosrc like '%for update of a%')",
-      "prueba": "confirm_meal_assignment existe desde la 0008; la 0023 le agrega el candado de fila que serializa los dos RPC"
+      "testigo": "exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public', 'app') and p.proname = 'confirm_meal_assignment' and p.prosrc like '%for update of a%')",
+      "prueba": "el candado de fila que la 0023 le agrega a confirm_meal_assignment, buscado en 'public' O en 'app'. El esquema no se clava a proposito: la 0039 no reescribe esta funcion, la MUDA a 'app' con un alter function ... set schema y deja en 'public' un envoltorio delgado que no lleva el candado en su cuerpo. El testigo viejo solo miraba 'public', asi que iba a empezar a contestar PENDIENTE el dia exacto en que la 0039 llegara a produccion: una falsa alarma sobre una migracion aplicada, con la re-aplicacion como reparacion sugerida. La propiedad que importa es que el candado exista en algun lado, no en que esquema vive hoy."
     },
     "0024_demo_family_function.sql": {
       "estado": "APLICADA",
@@ -250,30 +250,149 @@
       "prueba": "el trigger que ata la invitación al hogar del que invita"
     },
     "0036_foodlog_plan_vs_reality.sql": {
-      "estado": "PENDIENTE",
+      "estado": "APLICADA",
       "sha256": "8081a08995f3de8f5dbe113339a1699bfc422efd87c245aa122c1e93015ccab2",
       "testigo": "to_regclass('public.meal_serving_records') is not null",
       "prueba": "la tabla meal_serving_records del servido"
     },
     "0038_foodlog_intake.sql": {
-      "estado": "PENDIENTE",
+      "estado": "APLICADA",
       "sha256": "b54d3cd9eae17f25e30223284ecb7267956b10ecc9afdcc6152f4f760cc05f26",
       "testigo": "to_regclass('public.intake_log_items') is not null",
       "prueba": "la tabla intake_log_items del eje ACTUAL_CONSUMED"
     },
     "0039_permisos_plan_y_cocina.sql": {
       "estado": "PENDIENTE",
-      "sha256": null,
+      "sha256": "a4b53e231d0c789f12a8b6c72a244340987fc2c13fca8f5e9072fb7cc1a28bf7",
       "testigo": "exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'app' and p.proname = 'can_edit_plan')",
       "prueba": "las politicas RLS no sirven de testigo -son veinte y pueden cambiar de nombre-; app.can_edit_plan es de esta migracion y no existe en ninguna anterior, aunque la columna can_edit_plan viva desde la 0001",
       "nota": "sha256 en null a proposito: la migracion todavia se esta escribiendo y su contenido cambia. Que no tenga checksum no cambia en nada lo que produccion tiene puesto -no la tiene-, y el dia que se aplique el script le escribe el checksum de lo que se aplico."
     },
     "0040_adaptive_reviews.sql": {
       "estado": "PENDIENTE",
-      "sha256": null,
+      "sha256": "de9fba2d4835ce82e59672fc328facd42c254e63b403c3903e40477f4d8443e7",
       "testigo": "to_regclass('public.adaptive_nutrition_reviews') is not null",
       "prueba": "la tabla adaptive_nutrition_reviews, que solo nace aca",
       "nota": "sha256 en null a proposito: la migracion todavia se esta escribiendo. Ver la nota de la 0039."
+    },
+    "0041_eventos_avanzados.sql": {
+      "estado": "PENDIENTE",
+      "sha256": "8f8c4d2355d0f77fd7b9ebebe9ef6a48e334b92dba85230159a2188feb0dbc7e",
+      "testigo": "to_regclass('public.event_participants') is not null",
+      "prueba": "la tabla event_participants, el roster operativo del evento, nace en esta migracion y en ninguna anterior",
+      "nota": "sha256 en null a proposito: la migracion del Sprint 13 todavia se esta escribiendo. Ver la nota de la 0039."
+    },
+    "0042_finance_foundations.sql": {
+      "estado": "PENDIENTE",
+      "sha256": "a32f4e359d48f3399fa9ca6926ad731c50c99349029ffd5362f76d86a63f4731",
+      "testigo": "to_regclass('public.currency_units') is not null",
+      "prueba": "la tabla currency_units -la escala del dinero por moneda- nace aca y en ninguna otra; los tipos money_status/money_unknown_reason no sirven de testigo porque to_regclass no ve enums",
+      "nota": "sha256 en null a proposito: la migracion del Sprint 14 todavia se esta escribiendo. Ver la nota de la 0039."
+    },
+    "0043_purchases_core.sql": {
+      "estado": "PENDIENTE",
+      "sha256": "025c246231a3d01af642d7f69baaad53d663c07fd0b79ce195e35a4cc618d02f",
+      "testigo": "to_regclass('public.purchase_item_lots') is not null",
+      "prueba": "la tabla purchase_item_lots -el puente linea de boleta <-> lote- nace aca y en ninguna otra; purchases no sirve porque el nombre es demasiado generico y currency_units es de la 0042",
+      "nota": "sha256 en null a proposito: la migracion del Sprint 14 todavia se esta escribiendo. Ver la nota de la 0039."
+    },
+    "0044_cost_allocations.sql": {
+      "estado": "PENDIENTE",
+      "sha256": "32104a8bc8f7976fd73bf634911514b0046729d4b7361b5ae86a0d8d10acc5a9",
+      "testigo": "to_regclass('public.cost_allocations') is not null",
+      "prueba": "la tabla cost_allocations, el puente entre el libro mayor y el dinero, nace en esta migracion; el enum cost_category tambien, pero una tabla es mas facil de comprobar contra la base real",
+      "nota": "sha256 en null a proposito: la migracion del Sprint 14 todavia se esta escribiendo. Ver la nota de la 0039."
+    },
+    "0045_receipts_pipeline.sql": {
+      "estado": "PENDIENTE",
+      "sha256": "0841eae53ba4276f50277d24d5d103a3a5c43b6cc1e7c12347fc57fd2a4cc6ec",
+      "testigo": "to_regclass('public.receipt_extraction_candidates') is not null",
+      "prueba": "la tabla receipt_extraction_candidates -donde vive lo que la lectura automatica PROPONE y nadie decidio todavia- nace solo aca; purchase_receipts serviria igual, pero el nombre se confunde con purchase_items de la 0043",
+      "nota": "sha256 en null a proposito: la migracion del Sprint 14 todavia se esta escribiendo. Ver la nota de la 0039."
+    },
+    "0046_price_observations.sql": {
+      "estado": "PENDIENTE",
+      "sha256": "a70685406cdbc609da95982cc0e36d1f86b20cc469ed72c00d1613eac73e2968",
+      "testigo": "to_regclass('public.price_observations') is not null",
+      "prueba": "la tabla price_observations -los hechos de precio fechados- nace aca y en ninguna otra; los enums price_source y normalization_block tambien, pero to_regclass no ve enums",
+      "nota": "sha256 en null a proposito: la migracion del Sprint 14 todavia se esta escribiendo. Ver la nota de la 0039."
+    },
+    "0047_food_budgets.sql": {
+      "estado": "PENDIENTE",
+      "sha256": "2ed1c0f365806a9bac24aec64936381028d39f9c391f13b1af15dadb9fe8fc6d",
+      "testigo": "to_regclass('public.household_food_budgets') is not null",
+      "prueba": "la tabla household_food_budgets, el presupuesto con vigencia y con base declarada; households.week_start_dow no sirve de testigo porque una columna no la ve to_regclass",
+      "nota": "sha256 en null a proposito: la migracion del Sprint 14 todavia se esta escribiendo. Ver la nota de la 0039."
+    },
+    "0048_finance_integrity.sql": {
+      "estado": "PENDIENTE",
+      "sha256": "b221c89891f0cafa712ddf3477cc11e0515fcc90e7ddbbebbca107f467fedd47",
+      "testigo": "to_regclass('public.lot_valuations') is not null",
+      "prueba": "la vista lot_valuations, el puente por el que se lee el dinero del lote una vez cerrada la columna; finance_integrity_report tambien nace aca pero lot_valuations es la que cambia el modelo de permisos",
+      "nota": "sha256 en null a proposito: la migracion del Sprint 14 todavia se esta escribiendo. Ver la nota de la 0039."
+    },
+    "0050_asistente_ambito.sql": {
+      "estado": "PENDIENTE",
+      "sha256": "3bbe70d9b6970a177ad9258de39ca89e9c4e7f9251b4c44761647a6bbefcffd1",
+      "testigo": "exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'app' and p.proname = 'row_scope')",
+      "prueba": "app.row_scope -la lista blanca de tablas que el asistente puede nombrar- nace en esta migracion; can_edit_plan y can_cook NO sirven de testigo porque son de la 0039",
+      "nota": "sha256 en null a proposito: la migracion del Sprint 15 todavia se esta escribiendo. Ver la nota de la 0039."
+    },
+    "0051_asistente_consentimiento.sql": {
+      "estado": "PENDIENTE",
+      "sha256": "366f11ec1a8871a1dd6d435b5f557f4f943636390062295ab7201cc1f19d535f",
+      "testigo": "to_regclass('public.household_ai_consents') is not null",
+      "prueba": "la tabla household_ai_consents; el consentimiento por documento de la 0026 vive en lab_documents y no en una tabla propia",
+      "nota": "sha256 en null a proposito: la migracion del Sprint 15 todavia se esta escribiendo. Ver la nota de la 0039."
+    },
+    "0052_asistente_sellos.sql": {
+      "estado": "PENDIENTE",
+      "sha256": "040e6867755e721f989d70fa613a0598f951f88fc96a9475e69381028707afdb",
+      "testigo": "exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'app' and p.proname = 'stock_input_stamp')",
+      "prueba": "app.stock_input_stamp: la firma de entrada del motor de stock, que hasta esta migracion no existia en ninguna forma",
+      "nota": "sha256 en null a proposito: la migracion del Sprint 15 todavia se esta escribiendo. Ver la nota de la 0039."
+    },
+    "0053_asistente_propuestas.sql": {
+      "estado": "PENDIENTE",
+      "sha256": "467944b0a3edc1dfd204c4e95157924bf182816300281a0bdf6fce7831a24b22",
+      "testigo": "to_regclass('public.assistant_proposals') is not null",
+      "prueba": "la tabla assistant_proposals, sin la cual no hay proposalId y la compuerta de confirmacion no tiene sobre que apoyarse",
+      "nota": "sha256 en null a proposito: la migracion del Sprint 15 todavia se esta escribiendo. Ver la nota de la 0039."
+    },
+    "0054_asistente_conversaciones.sql": {
+      "estado": "PENDIENTE",
+      "sha256": "e2edb5721d0c5df5d3f135e969676aa8bb64e79f3bc1db22ae4cc0046c4d51f5",
+      "testigo": "to_regclass('public.assistant_conversations') is not null",
+      "prueba": "la tabla assistant_conversations, el hilo por actor",
+      "nota": "sha256 en null a proposito: la migracion del Sprint 15 todavia se esta escribiendo. Ver la nota de la 0039."
+    },
+    "0055_asistente_auditoria.sql": {
+      "estado": "PENDIENTE",
+      "sha256": "accc00022b33ffe665830c3d0bed766d62adbf7206e18b92d87f0892be84d2b4",
+      "testigo": "to_regclass('public.assistant_medical_audit') is not null",
+      "prueba": "la tabla assistant_medical_audit: el libro clinico del asistente, con RLS por grant y no por ser admin",
+      "nota": "sha256 en null a proposito: la migracion del Sprint 15 todavia se esta escribiendo. Ver la nota de la 0039."
+    },
+    "0056_asistente_inbox.sql": {
+      "estado": "PENDIENTE",
+      "sha256": "826a67470ea34d2f9e444d92bfa8ca37150f0c4f091b0046fa9bbc6d33c13336",
+      "testigo": "to_regclass('public.assistant_inbox_items') is not null",
+      "prueba": "la tabla assistant_inbox_items, la cola durable del hogar",
+      "nota": "sha256 en null a proposito: la migracion del Sprint 15 todavia se esta escribiendo. Ver la nota de la 0039."
+    },
+    "0057_asistente_presupuesto.sql": {
+      "estado": "PENDIENTE",
+      "sha256": "aa462ee7102979baca9165ccf18b8eded259c1d1ec2230a8f04fb98f5cde4a65",
+      "testigo": "to_regclass('public.assistant_usage') is not null",
+      "prueba": "la tabla assistant_usage, donde vive la reserva atomica de presupuesto",
+      "nota": "sha256 en null a proposito: la migracion del Sprint 15 todavia se esta escribiendo. Ver la nota de la 0039."
+    },
+    "0058_idempotencia_acciones.sql": {
+      "estado": "PENDIENTE",
+      "sha256": "499648a3d8a74c891b8d517e202b03b983dbb672fb7532a8d708240b68bf5139",
+      "testigo": "to_regclass('public.action_idempotency') is not null",
+      "prueba": "la tabla action_idempotency; el dedupe_key de inventory_lots no sirve de testigo porque el ALTER es IF NOT EXISTS y podria venir de otra parte",
+      "nota": "sha256 en null a proposito: la migracion del Sprint 15 todavia se esta escribiendo. Ver la nota de la 0039."
     }
   }
 }

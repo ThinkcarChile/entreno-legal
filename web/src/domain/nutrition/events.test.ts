@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { applyEventEffect, effectFor, eventCoversDate, eventIncludes, type DayEvent } from "./events";
+import {
+  applyEventEffect,
+  effectFor,
+  eventCoversDate,
+  eventHasNoHouseholdMembers,
+  eventIncludes,
+  eventRosterIsUnknown,
+  type DayEvent,
+} from "./events";
 import type { TargetSet } from "./types";
 
 const almuerzo: TargetSet = {
@@ -16,6 +24,9 @@ function evento(parcial: Partial<DayEvent>): DayEvent {
     mealType: "LUNCH",
     strategy: "RELAXED",
     title: "Asado en casa",
+    // Por omisión, la semántica de siempre: lista vacía = toda la familia. Los
+    // tests del borde declaran su propio alcance.
+    memberScope: "LEGACY_EMPTY_MEANS_ALL",
     memberIds: [],
     ...parcial,
   };
@@ -139,5 +150,64 @@ describe("§5 dos eventos el mismo día", () => {
     ];
     expect(effectFor(eventos, "m1", "2026-09-05", "DINNER").kind).toBe("UNTRACKED");
     expect(effectFor(eventos, "m1", "2026-09-05", "LUNCH").kind).toBe("UNTRACKED");
+  });
+});
+
+/**
+ * EL BORDE QUE ESTA RONDA VINO A CERRAR (Sprint 13, lente "el vacío leído como
+ * cero"): la lista de integrantes vacía significaba SIEMPRE "toda la familia".
+ *
+ * Con el armador de /eventos eso pasó a ser falso de dos maneras: un asado con
+ * puros invitados, y un asado donde todos los del hogar marcaron DECLINED. En
+ * los dos casos la tabla queda en cero filas y la familia entera amanecía con
+ * el día RELAXED sin que nadie lo hubiera pedido.
+ *
+ * Estos tests se caen si `eventIncludes` vuelve a ser
+ * `memberIds.length === 0 || memberIds.includes(memberId)`.
+ */
+describe("[ALTO] a quién afecta un evento: vacío no es una respuesta por sí solo", () => {
+  it("con la semántica de siempre, la lista vacía sí es toda la familia", () => {
+    const viejo = evento({ memberScope: "LEGACY_EMPTY_MEANS_ALL", memberIds: [] });
+    expect(eventIncludes(viejo, "m1")).toBe(true);
+    expect(eventRosterIsUnknown(viejo)).toBe(false);
+  });
+
+  it("un roster DECLARADO y vacío no incluye a nadie de la casa", () => {
+    // El asado donde los cuatro del hogar dijeron que no van: la lista se
+    // declaró y no quedó nadie. Eso NO es lo mismo que no haber declarado.
+    const asado = evento({ memberScope: "DECLARED_ROSTER", memberIds: [] });
+    expect(eventIncludes(asado, "m1")).toBe(false);
+    expect(eventHasNoHouseholdMembers(asado)).toBe(true);
+  });
+
+  it("un roster declarado nombra exactamente a quienes van", () => {
+    const asado = evento({ memberScope: "DECLARED_ROSTER", memberIds: ["m2"] });
+    expect(eventIncludes(asado, "m2")).toBe(true);
+    expect(eventIncludes(asado, "m1")).toBe(false);
+  });
+
+  it("sin declarar no es ni todos ni nadie: no afecta, y se puede decir por qué", () => {
+    const asado = evento({ memberScope: "UNDECLARED", memberIds: [] });
+    expect(eventIncludes(asado, "m1")).toBe(false);
+    expect(eventRosterIsUnknown(asado)).toBe(true);
+    expect(eventHasNoHouseholdMembers(asado)).toBe(false);
+  });
+
+  it("mientras no se sepa quién va, el evento NO le relaja los objetivos a nadie", () => {
+    const sinDeclarar = evento({
+      memberScope: "UNDECLARED",
+      strategy: "RELAXED",
+      memberIds: [],
+    });
+    expect(effectFor([sinDeclarar], "m1", "2026-09-05", "LUNCH").kind).toBe("NONE");
+
+    // Y el mismo evento, una vez que alguien dice quién de la casa va, sí aplica.
+    const declarado = evento({
+      memberScope: "DECLARED_ROSTER",
+      strategy: "RELAXED",
+      memberIds: ["m1"],
+    });
+    expect(effectFor([declarado], "m1", "2026-09-05", "LUNCH").kind).toBe("RELAXED");
+    expect(effectFor([declarado], "m2", "2026-09-05", "LUNCH").kind).toBe("NONE");
   });
 });

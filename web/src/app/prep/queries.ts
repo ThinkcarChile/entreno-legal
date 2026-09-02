@@ -236,7 +236,12 @@ export async function loadPrepInput(
       )
       .eq("status", "PLANNED")
       .gte("serving_date", today)
-      .in("member_id", memberIds.length > 0 ? memberIds : ["00000000-0000-0000-0000-000000000000"]),
+      .in("member_id", memberIds.length > 0 ? memberIds : ["00000000-0000-0000-0000-000000000000"])
+      // EL RELEVO DEL EVENTO (H20). Lo que un asado cubre tampoco se pre-cocina:
+      // adelantar el almuerzo del sábado que el evento reemplaza no cuesta plata
+      // de compra, pero ocupa horno, congelador y una tarde para una comida que
+      // no se va a comer.
+      .is("covered_by_event_id", null),
     loadPrepPreferences(db, householdId),
     loadEquipment(db, householdId),
     loadSafetyRules(db, householdId),

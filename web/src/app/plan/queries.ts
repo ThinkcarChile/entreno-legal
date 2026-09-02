@@ -8,7 +8,12 @@ import {
   ESTADOS_CLINICOS_LIMPIOS,
   type ClinicalAssessmentStatus,
 } from "@/domain/clinical/types";
-import type { DayEvent, EventStrategy } from "@/domain/nutrition/events";
+import {
+  EVENT_MEMBER_SCOPES,
+  type DayEvent,
+  type EventMemberScope,
+  type EventStrategy,
+} from "@/domain/nutrition/events";
 import type { MealType } from "@/domain/recipes/types";
 
 /**
@@ -89,7 +94,9 @@ export interface WeekPlan {
     mealType: MealType | null;
     strategy: string;
     title: string;
-    /** Integrantes afectados. VACÍO = toda la familia. */
+    /** Qué significa la lista de abajo, incluida la lista vacía. */
+    memberScope: EventMemberScope;
+    /** Integrantes afectados. Lo que significa VACÍO lo dice `memberScope`. */
     memberIds: string[];
   }[];
 }
@@ -124,6 +131,10 @@ const eventRowSchema = z.object({
   meal_type: z.string().nullable(),
   strategy: z.string(),
   title: z.string(),
+  // Cero filas en nutrition_event_members no dice por sí solo a quién afecta el
+  // evento: eso lo dice esta columna (0041). Sin ella, un asado donde todos los
+  // del hogar marcaron DECLINED le relajaba los macros a la familia entera.
+  member_scope: z.enum(EVENT_MEMBER_SCOPES),
 });
 
 /** Crea la semana si no existe y devuelve su contenido completo. */
@@ -240,7 +251,7 @@ export async function loadWeek(
   const fechas = weekDays(weekStartDate);
   const { data: eventRows, error: eventosError } = await db
     .from("nutrition_events")
-    .select("id, event_date, end_date, event_type, meal_type, strategy, title")
+    .select("id, event_date, end_date, event_type, meal_type, strategy, title, member_scope")
     .eq("household_id", householdId)
     .gte("event_date", fechas[0]!)
     .lte("event_date", fechas[6]!)
@@ -248,7 +259,9 @@ export async function loadWeek(
   if (eventosError) throw new DataAccessError("eventos de la semana", eventosError);
   const eventos = parseRows(eventRowSchema, eventRows, "eventos de la semana");
 
-  // A quién afecta cada evento. Sin filas = a toda la familia.
+  // A quién afecta cada evento. Qué significa "sin filas" depende de
+  // member_scope: puede ser toda la familia (eventos de siempre), nadie de la
+  // casa (roster declarado y vacío) o todavía no se sabe.
   const afectados = new Map<string, string[]>();
   if (eventos.length > 0) {
     const { data, error } = await db
@@ -304,6 +317,7 @@ export async function loadWeek(
       mealType: e.meal_type as MealType | null,
       strategy: e.strategy,
       title: e.title,
+      memberScope: e.member_scope,
       memberIds: afectados.get(e.id) ?? [],
     })),
   };
@@ -467,7 +481,7 @@ export async function loadEventsForDate(
 ): Promise<DayEvent[]> {
   const { data, error } = await db
     .from("nutrition_events")
-    .select("id, event_date, end_date, event_type, meal_type, strategy, title")
+    .select("id, event_date, end_date, event_type, meal_type, strategy, title, member_scope")
     .eq("household_id", householdId)
     .lte("event_date", date)
     .or(`end_date.is.null,end_date.gte.${date}`);
@@ -503,6 +517,7 @@ export async function loadEventsForDate(
     mealType: e.meal_type as MealType | null,
     strategy: e.strategy as EventStrategy,
     title: e.title,
+    memberScope: e.member_scope,
     memberIds: afectados.get(e.id) ?? [],
   }));
 }

@@ -348,15 +348,27 @@ describe("§18 un evento nuevo marca para revisión, no recalcula solo", () => {
     expect(despues).toEqual(antes);
   });
 
-  it("borrar el evento también marca: la comida vuelve a no cuadrar", async () => {
+  it("cancelar el evento también marca: la comida vuelve a no cuadrar", async () => {
+    // SE CANCELA, NO SE BORRA. La 0041 le puso un candado a esta tabla: un
+    // evento que ya salio del borrador no se puede borrar, porque su historia
+    // queda ("este evento ya salio del borrador: se cancela, no se borra").
+    // Antes esta prueba hacia un DELETE y desde esa migracion muere ahi.
+    //
+    // La garantia del §18 no se perdio, cambio de verbo: `flag_meals_on_event_change`
+    // dispara en INSERT, UPDATE y DELETE, asi que pasar a CANCELLED marca igual
+    // —y la version de la 0041 ademas arreglo que solo marcaba el primer dia,
+    // que dejaba un viaje de tres dias con los dias 2 y 3 desalineados en
+    // silencio—. Lo que se comprueba sigue siendo lo mismo: cuando el evento
+    // deja de aplicar, la comida vuelve a no cuadrar.
     await h.como(USER_A, async () => {
       await h.db.query(
         "update public.meal_assignments set needs_review = false, review_reason = null where id = $1",
         [almuerzoSabado],
       );
-      await h.db.query("delete from public.nutrition_events where household_id = $1", [
-        hogarA.householdId,
-      ]);
+      await h.db.query(
+        "update public.nutrition_events set status = 'CANCELLED' where household_id = $1",
+        [hogarA.householdId],
+      );
     });
 
     const marca = await h.como(USER_A, () =>

@@ -381,3 +381,62 @@ export function TextField({
     </label>
   );
 }
+
+/**
+ * Hoja inferior (bottom sheet): un formulario corto que sube desde abajo sin
+ * sacarte de la pantalla en la que estás.
+ *
+ * Nació en el evento: "llegó otra persona" se aprieta con el pulgar, parado al
+ * lado de la parrilla, y mandar a la persona a otra pantalla para escribir tres
+ * campos es la manera segura de que deje de anotar a la gente que llega. Vive
+ * acá y no suelta en esa pantalla porque el alto de la barra inferior, el
+ * comportamiento del fondo y el foco tienen que ser los mismos en todas las que
+ * vengan después.
+ *
+ * No usa hooks a propósito: quien la abre ya es un componente de cliente y es
+ * él quien tiene el estado. Así esta pieza sigue sirviendo en cualquier lado.
+ */
+export function HojaInferior({
+  titulo,
+  abierta,
+  onCerrar,
+  children,
+}: {
+  titulo: string;
+  abierta: boolean;
+  onCerrar: () => void;
+  children: React.ReactNode;
+}) {
+  if (!abierta) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center">
+      {/* El fondo cierra, pero es un botón de verdad: un `div` con onClick no
+          lo alcanza nadie que navegue con teclado. */}
+      <button
+        type="button"
+        aria-label="Cerrar"
+        onClick={onCerrar}
+        className="absolute inset-0 bg-inverse-surface/40"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={titulo}
+        className="soft-shadow relative w-full max-w-[32rem] rounded-t-3xl bg-surface-container-lowest px-container-margin pt-md pb-xl"
+      >
+        <div className="mb-md flex items-center justify-between gap-md">
+          <h2 className="font-headline-sm text-headline-sm text-on-surface">{titulo}</h2>
+          <button
+            type="button"
+            onClick={onCerrar}
+            aria-label="Cerrar"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant"
+          >
+            <Icon name="close" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}

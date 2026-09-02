@@ -7,8 +7,64 @@
 
 ## Estado remoto conocido
 
-**Aplicado en Supabase** (proyecto `smwyxfnlxoohenhsdcjx`): `0001 → 0028` **COMPLETO**
-+ bloque de reglas USDA del seed. Verificado en vivo el 2026-08-25:
+<!-- ESTADO:INICIO — generado, no editar a mano -->
+
+**Proyecto:** `smwyxfnlxoohenhsdcjx` · **38 aplicadas** · **19 pendientes**
+
+Método: `TESTIGOS_EN_VIVO` · verificado el 2026-09-02 · vale hasta el 2026-12-01.
+
+Esto NO se escribe a mano: sale de `supabase/estado-produccion.json`, donde cada
+migración declara un testigo —una expresión SQL falsa antes de aplicarla y verdadera
+después— que se le pregunta a la base de verdad. Para actualizarlo:
+
+```bash
+node scripts/verificar-estado-produccion.mjs --escribir
+node scripts/estado-a-documento.mjs --escribir
+```
+
+**Pendientes de aplicar, en el orden en que van:**
+
+- `0039_permisos_plan_y_cocina.sql`
+- `0040_adaptive_reviews.sql`
+- `0041_eventos_avanzados.sql`
+- `0042_finance_foundations.sql`
+- `0043_purchases_core.sql`
+- `0044_cost_allocations.sql`
+- `0045_receipts_pipeline.sql`
+- `0046_price_observations.sql`
+- `0047_food_budgets.sql`
+- `0048_finance_integrity.sql`
+- `0050_asistente_ambito.sql`
+- `0051_asistente_consentimiento.sql`
+- `0052_asistente_sellos.sql`
+- `0053_asistente_propuestas.sql`
+- `0054_asistente_conversaciones.sql`
+- `0055_asistente_auditoria.sql`
+- `0056_asistente_inbox.sql`
+- `0057_asistente_presupuesto.sql`
+- `0058_idempotencia_acciones.sql`
+
+```bash
+node scripts/poner-al-dia.mjs --pendientes            # muestra el plan, no toca nada
+node scripts/poner-al-dia.mjs --pendientes --aplicar
+```
+
+<sub>Aplicadas: 0001, 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0037, 0036, 0038</sub>
+
+<!-- ESTADO:FIN -->
+
+
+### El registro de qué hace cada una
+
+Lo que sigue NO es el estado —ese es el bloque de arriba, que sale del libro— sino
+el registro de qué hace cada migración, con qué checksum se revisó y qué se
+comprobó en vivo cuando se aplicó. Eso se escribe a mano y se conserva.
+
+Acá decía además, a mano, hasta dónde estaba aplicada la cadena. Se sacó: ese dato
+ya tenía dueño y los dos discreparon —el documento anunciaba la 0036 y la 0038 como
+pendientes cuando producción ya las tenía puestas—. Una lista de "qué falta
+aplicar" equivocada es la lista con la que alguien decide qué correr contra una
+base con datos de una familia.
 
 - `0001 → 0015` — Sprints 0-10, aplicadas con checksum verificado.
 - **0016 — reglas de congelado/refrigerado por categoría** · SHA-256
@@ -332,3 +388,44 @@ revisar `git log` del archivo y regenerar este manifiesto.
 | 9 — Procurement | demo viva ejecutada (orden creada/avanzada/recibida contra Supabase real) |
 | 10 — Batch prep | demo viva ejecutada (`docs/qa/sprint-10-demo-viva.md`); 0016/0017 nacieron de ella |
 | Gate 0→10 | **PASS** (Final Closure 2026-08-25; informe §54 + sección Final Closure) — canario §50 PASS en vivo; tandas 1-3 de fixes aplicadas; tanda 4 de motores lista (weight_basis en prep + planningCoveredDates + reorder por base); quedan product_id extremo a extremo y el informe §54 |
+
+## Sprint 14 — finanzas del hogar (0042 → 0048)
+
+> **Todavía NO están congeladas.** Los siete archivos se están escribiendo en
+> paralelo por varios frentes del mismo sprint, así que su SHA-256 sigue en
+> `null` en `supabase/estado-produccion.json` (misma convención que la 0039).
+> **Se sellan al cerrar el sprint**, y recién ahí se copian acá los checksums.
+> Aplicar una de estas contra Supabase antes de ese sello es aplicar algo que
+> puede cambiar.
+
+Orden de aplicación: **estrictamente 0042 → 0048**. No es el orden alfabético
+por casualidad: cada una depende de la anterior y la cadena real la fija la
+lista `MIGRACIONES` de `web/src/integration/harness.ts`.
+
+| # | Archivo | Qué trae | ¿Destructiva? |
+|---|---|---|---|
+| 0042 | `0042_finance_foundations.sql` | La escala del dinero (`currency_units`, entero en unidad menor), aritmética exacta de reparto (`app.apportion`, half-even), `inventory_lots.value_minor` + moneda congelada, y **los permisos financieros** (`finance_permission`, `household_finance_grants`, `app.finance_access`) | **No.** Aditiva. Reescribe `split_lot`, `merge_lots` y `create_household`; agrega la FK `invitations_role_fk` — que **falla si hay invitaciones con un `role_code` que no existe en su hogar** (revisar antes) |
+| 0043 | `0043_purchases_core.sql` | `purchases`, `purchase_items`, `purchase_charges`, `purchase_item_lots` y el receptor único `app.receive_lot_from_purchase` | **No.** Aditiva. Reapunta `receive_shopping_list`, `receive_procurement_order` y `add_manual_lot` |
+| 0044 | `0044_cost_allocations.sql` | `cost_allocations`: el puente entre el ledger y el dinero. Clasificación de merma, invariante de valor, `lot_cost_balance` | **No.** Aditiva |
+| 0045 | `0045_receipts_pipeline.sql` | Boletas: subir, extraer, revisar, confirmar. Bucket privado `purchase-receipts` + la policy de SELECT que faltaba en `medical-documents` | **No.** Aditiva |
+| 0046 | `0046_price_observations.sql` | Precios como hechos fechados, normalización que se niega a inventar, estimación en la lista de compra | **Estrecha permisos**: parte la policy `for all` de `supplier_products` (0014:71) y la escritura de `price` pasa a RPC con `FINANCE_MANAGE_PRICES` |
+| 0047 | `0047_food_budgets.sql` | Presupuesto con vigencia y con **base declarada** (caja / consumo), cortes de período en la zona del hogar, `pantry_value`, `budget_period_summary` | **No.** Aditiva. Agrega `households.week_start_dow` con default 1 |
+| 0048 | `0048_finance_integrity.sql` | Informes de integridad, `lot_valuations`, y **el cierre por columna** del dinero de `inventory_lots` | **Estrecha permisos**: `revoke select on public.inventory_lots` + `grant select` por columna. Ver la nota de abajo |
+
+### La nota de la 0048 que no se puede saltar
+
+La 0048 revoca el `select` de tabla sobre `public.inventory_lots` y lo vuelve a
+otorgar **columna por columna**, dejando fuera `acquisition_value`,
+`value_minor`, `value_status` y `value_unknown_reason`. Consecuencia directa:
+
+> **Toda migración posterior que agregue una columna a `inventory_lots` tiene
+> que terminar con `select app.grant_lot_columns();`**
+
+Sin eso, esa columna nueva queda sin permiso y cualquier `select` que la pida
+falla con «permission denied for column». Falla ruidoso —que es lo correcto—
+pero falla. A la fecha esto afecta a `0058_idempotencia_acciones.sql`, que
+agrega `inventory_lots.dedupe_key`.
+
+Después de aplicar la 0048, el valor de un lote se lee **sólo** por
+`public.lot_valuations`, que exige `FINANCE_VIEW`. `web/src/app/stock/queries.ts`
+ya dejó de pedir `acquisition_value` en el mismo cambio.

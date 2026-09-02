@@ -139,7 +139,14 @@ export async function loadShoppingContext(
          )`,
       )
       .in("assignment_id", confirmadas)
-      .neq("status", "CANCELLED");
+      .neq("status", "CANCELLED")
+      // EL RELEVO DEL EVENTO (H20). La porción que un asado cubre NO se compra.
+      // Sin esta línea, el sábado del asado esta lista pedía el almuerzo entero
+      // y la lista del evento pedía la carne: se compraba dos veces la misma
+      // comida. Lo relevado se lee aparte —`cargarRelevosDeEventos`— y la
+      // pantalla lo DICE, porque una lista que encoge sin explicación se lee
+      // como una falla y alguien termina comprando igual.
+      .is("covered_by_event_id", null);
     if (error) throw new DataAccessError("porciones confirmadas", error);
 
     const asigPorId = new Map(asignaciones.map((a) => [a.id, a]));
@@ -253,9 +260,26 @@ export async function loadShoppingContext(
 // La lista guardada
 // ---------------------------------------------------------------------------
 
+/**
+ * De dónde viene una línea. `EVENT` (Sprint 13) es la demanda de un asado o de
+ * cualquier evento: entra a ESTA lista, no a una paralela (§31 del Sprint 13).
+ */
+export type ShoppingSource = "FOOD_PLAN" | "MANUAL" | "STOCK_INTELLIGENCE" | "EVENT";
+
+/**
+ * "¿Por qué necesito esto?" tiene dos respuestas posibles y NO tienen la misma
+ * forma: la del plan semanal nombra una comida con sus participantes; la de un
+ * evento nombra el evento y el corte. El discriminante `kind` existe para que
+ * la pantalla no lea `mealType` de una fila de asado y dibuje un renglón vacío.
+ * Las filas viejas no traen `kind` y por eso el plan es la variante sin marca.
+ */
+export type ShoppingProvenance =
+  | { kind?: undefined; assignmentId: string; date: string; mealType: MealType; quantity: number; members: string[] }
+  | { kind: "EVENT"; eventId: string; title: string; date: string; itemId: string; cut: string; quantity: number | null; min: number | null; max: number | null };
+
 export interface ShoppingItem {
   id: string;
-  source: "FOOD_PLAN" | "MANUAL" | "STOCK_INTELLIGENCE";
+  source: ShoppingSource;
   lineKey: string | null;
   ingredientId: string | null;
   productId: string | null;
@@ -268,7 +292,7 @@ export interface ShoppingItem {
   yieldFactor: number | null;
   unresolved: boolean;
   unresolvedReason: string | null;
-  provenance: { assignmentId: string; date: string; mealType: MealType; quantity: number; members: string[] }[];
+  provenance: ShoppingProvenance[];
   status: "PENDING" | "PURCHASED" | "SKIPPED" | "HAVE_ENOUGH";
   statusReason: string | null;
   categoryCode: string | null;
@@ -289,7 +313,7 @@ const categoriaEmbebida = z
 
 const itemRowSchema = z.object({
   id: uuid,
-  source: z.enum(["FOOD_PLAN", "MANUAL", "STOCK_INTELLIGENCE"]),
+  source: z.enum(["FOOD_PLAN", "MANUAL", "STOCK_INTELLIGENCE", "EVENT"]),
   line_key: z.string().nullable(),
   ingredient_id: uuid.nullable(),
   product_id: uuid.nullable(),
@@ -302,14 +326,30 @@ const itemRowSchema = z.object({
   yield_factor: nullableNumeric,
   unresolved: z.boolean(),
   unresolved_reason: z.string().nullable(),
+  // La procedencia de un evento tiene otra forma. Se valida como unión y NO se
+  // deja pasar cualquier objeto: una fila que no calza con ninguna de las dos
+  // revienta acá, que es donde se puede leer el error, y no en la pantalla.
   provenance: z.array(
-    z.object({
-      assignmentId: z.string(),
-      date: z.string(),
-      mealType: z.string(),
-      quantity: z.number(),
-      members: z.array(z.string()),
-    }),
+    z.union([
+      z.object({
+        assignmentId: z.string(),
+        date: z.string(),
+        mealType: z.string(),
+        quantity: z.number(),
+        members: z.array(z.string()),
+      }),
+      z.object({
+        kind: z.literal("EVENT"),
+        eventId: z.string(),
+        title: z.string(),
+        date: z.string(),
+        itemId: z.string(),
+        cut: z.string(),
+        quantity: z.number().nullable(),
+        min: z.number().nullable(),
+        max: z.number().nullable(),
+      }),
+    ]),
   ),
   status: z.enum(["PENDING", "PURCHASED", "SKIPPED", "HAVE_ENOUGH"]),
   status_reason: z.string().nullable(),
@@ -327,6 +367,10 @@ export async function loadShoppingList(db: Db, planId: string): Promise<Shopping
     .from("shopping_lists")
     .select("id, status, current_revision")
     .eq("plan_id", planId)
+    // La lista de la SEMANA. Desde la 0041 una lista aparte de evento comparte
+    // el `plan_id` (el índice único se partió en dos parciales), así que sin
+    // este filtro `maybeSingle` reventaría en cuanto exista una lista delta.
+    .is("event_id", null)
     .maybeSingle();
   if (error) throw new DataAccessError("lista de compras", error);
   if (!lista) return null;
@@ -378,7 +422,9 @@ export async function loadShoppingList(db: Db, planId: string): Promise<Shopping
     yieldFactor: row.yield_factor,
     unresolved: row.unresolved,
     unresolvedReason: row.unresolved_reason,
-    provenance: row.provenance.map((p) => ({ ...p, mealType: p.mealType as MealType })),
+    provenance: row.provenance.map((p) =>
+      "kind" in p ? p : { ...p, mealType: p.mealType as MealType },
+    ) as ShoppingProvenance[],
     status: row.status,
     statusReason: row.status_reason,
     categoryCode: row.ingredients?.ingredient_categories?.code ?? null,

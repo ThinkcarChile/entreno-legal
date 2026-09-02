@@ -359,7 +359,13 @@ describe("gate final §2/§15", () => {
       const lista = (await h.fila<{ id: string }>(
         `insert into public.shopping_lists (household_id, plan_id, status)
          values ($1, $2, 'ACTIVE')
-         on conflict (plan_id) do update set status = 'ACTIVE'
+         -- El predicado NO es adorno: la 0041 cambio la restriccion
+         -- shopping_lists_one_per_plan por un indice unico PARCIAL
+         -- (where event_id is null), para que la lista delta de un evento pueda
+         -- convivir con la semanal sin pelearse por el indice. Un
+         -- 'on conflict (plan_id)' a secas ya no calza con ningun indice y
+         -- Postgres responde "no unique or exclusion constraint matching".
+         on conflict (plan_id) where event_id is null do update set status = 'ACTIVE'
          returning id`,
         [hogar.householdId, plan],
       ))!.id;

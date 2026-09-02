@@ -39,7 +39,13 @@ const lotRow = z.object({
   use_by: dateString.nullable(),
   created_at: z.string(),
   status: z.enum(["AVAILABLE", "RESERVED", "CONSUMED", "DISCARDED", "SPLIT"]),
-  acquisition_value: nullableNumeric,
+  // `acquisition_value` YA NO SE PIDE ACÁ. Sprint 14 (migración 0048) cerró por
+  // COLUMNA la lectura del dinero de `inventory_lots`: el valor sólo se lee por
+  // `public.lot_valuations`, que exige el permiso FINANCE_VIEW. Este loader lo
+  // pedía y NADIE lo usaba —`analyzeStock` costea la merma con
+  // `waste_movements.estimated_cost`, no con esto—, así que seguir pidiéndolo
+  // habría roto la despensa entera de todo integrante sin permiso financiero
+  // para alimentar un campo muerto. Se mata al lector viejo en el mismo cambio.
 });
 
 const demandRow = z.object({
@@ -170,7 +176,7 @@ export async function loadStockInput(
         .from("inventory_lots")
         .select(
           `id, ingredient_id, label, quantity, unit, weight_basis, is_approximate,
-           expiry_date, use_by, created_at, status, acquisition_value`,
+           expiry_date, use_by, created_at, status`,
         )
         .eq("household_id", householdId)
         .eq("status", "AVAILABLE")
@@ -186,6 +192,7 @@ export async function loadStockInput(
         .gt("quantity", 0)
         .is("ingredient_id", null)
         .not("product_id", "is", null),
+      // LA DEMANDA QUE TODAVÍA HAY QUE COMPRAR.
       db
         .from("member_serving_projections")
         .select(
@@ -197,7 +204,13 @@ export async function loadStockInput(
         .eq("status", "PLANNED")
         .not("assignment_id", "is", null)
         .in("member_id", memberIds)
-        .gte("serving_date", today),
+        .gte("serving_date", today)
+        // EL RELEVO DEL EVENTO (H20). Una porción con `covered_by_event_id` la
+        // cubre un asado y NO demanda ingredientes. Sin esta línea, el sábado
+        // del asado esta consulta proyectaba el almuerzo confirmado mientras la
+        // lista del evento pedía los kilos de carne: se compraban las dos cosas.
+        // La marca existía en la base desde la 0041 y ningún lector la miraba.
+        .is("covered_by_event_id", null),
       // LO SERVIDO (0036): la fuente viva del consumo observado. `!inner` no es
       // decorativo — sin él, un renglón cuyo registro no pasa el filtro llegaría
       // con el embed en null y se perdería en silencio.
@@ -293,7 +306,10 @@ export async function loadStockInput(
       useBy: l.use_by,
       createdAt: l.created_at,
       status: l.status,
-      acquisitionValue: l.acquisition_value,
+      // DESCONOCIDO, no cero: el valor del lote vive detrás de FINANCE_VIEW y
+      // este loader no lo pide. `StockLot.acquisitionValue` queda declarado
+      // como lo que es —un dato que este camino no trae— y ningún motor lo lee.
+      acquisitionValue: null,
     }));
 
   const futuras = parseRows(demandRow, futureRes.data, "stock: demanda futura");
@@ -468,10 +484,24 @@ export async function loadStockInput(
     }));
   }
 
+  // [I-1]: cuántos lotes con identidad de producto quedaron FUERA del análisis.
+  // La pantalla lo dice, y CERO significa «análisis completo de verdad».
+  //
+  // Por eso un `count` nulo NO se aplana a 0: PostgREST devuelve `null` cuando
+  // el conteo no vino en la respuesta, y convertirlo en cero le diría a la
+  // persona que no quedó nada afuera justo cuando no sabemos si quedó. Es la
+  // misma regla del dinero —desconocido no es cero— aplicada a un conteo que la
+  // pantalla presenta como completo.
+  const excludedProductLots = productLotsRes.count;
+  if (excludedProductLots === null) {
+    throw new Error(
+      "stock: la consulta de lotes de producto no trajo su conteo; sin él no se puede " +
+        "declarar el análisis como completo",
+    );
+  }
+
   return {
-    // [I-1]: cuántos lotes con identidad de producto quedaron FUERA del
-    // análisis. La pantalla lo dice; cero = análisis completo de verdad.
-    excludedProductLots: productLotsRes.count ?? 0,
+    excludedProductLots,
     today,
     lots,
     futureDemand,

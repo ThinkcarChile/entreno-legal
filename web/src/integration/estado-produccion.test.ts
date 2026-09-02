@@ -15,7 +15,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
-import { MIGRACIONES, recorrerCadena } from "./harness";
+import { levantarBase, MIGRACIONES, recorrerCadena, type Harness } from "./harness";
 import {
   archivosDeMigracion,
   AUSENCIA_DEL_OBJETO,
@@ -848,12 +848,16 @@ describe("el script corrido de verdad contra un árbol simulado", () => {
      * se detiene con el mismo reclamo. Ésa es la razón por la que el remedio del
      * lector ahora dice "a mano" — y se sostiene corriéndolo, no leyéndolo.
      */
-    const nueva = path.join(arbol, "supabase", "migrations", "0041_recien_escrita.sql");
+    // El número tiene que ser uno que NADIE use: se empareja libro<->disco POR
+    // NÚMERO, así que reusar el de una migración real (la 0041 del Sprint 13,
+    // por ejemplo) no produce "nadie la declara" sino "hay dos con el mismo
+    // prefijo", que es otro reclamo y deja este guardián mirando a otro lado.
+    const nueva = path.join(arbol, "supabase", "migrations", "0099_recien_escrita.sql");
     writeFileSync(nueva, "-- todavía nadie le escribió un testigo\nselect 1;\n");
     try {
       const r = correr();
       expect(r.status, r.stderr).toBe(1);
-      expect(r.stderr).toContain("0041_recien_escrita.sql");
+      expect(r.stderr).toContain("0099_recien_escrita.sql");
       expect(r.stderr).toMatch(/testigo/i);
       expect(r.stdout).not.toContain("Preguntándole");
     } finally {
@@ -922,5 +926,125 @@ describe("un testigo que no contesta no es un testigo que dice que no", () => {
   it("un booleano de verdad pasa tal cual", () => {
     expect(respuestaDelTestigo({ presente: true }, "0001_x.sql", "select true")).toBe(true);
     expect(respuestaDelTestigo({ presente: false }, "0001_x.sql", "select false")).toBe(false);
+  });
+});
+
+
+/**
+ * UN TESTIGO TIENE QUE SEGUIR SIENDO VERDADERO DESPUÉS DE TODA LA CADENA.
+ *
+ * El resto del archivo prueba que cada testigo DISCRIMINA: falso antes de su
+ * migración, verdadero justo después. Eso es necesario y no alcanza, porque
+ * deja sin mirar lo que pasa DESPUÉS — y una migración posterior puede pisar
+ * justo lo que el testigo miraba.
+ *
+ * Pasó de verdad, y conviene contarlo entero porque el daño no era el que
+ * parecía. El testigo de la 0022 preguntaba si el cuerpo de
+ * `consume_planned_meal` nombraba `product_id`. Discriminaba perfecto: la 0022
+ * es la que se lo mete. Pero catorce migraciones más adelante la 0036 vuelve a
+ * definir esa misma función —a propósito, para quitarle el poder de escribir
+ * consumo— y su cuerpo ya no nombra `product_id`. Desde ese día el testigo
+ * contestaba FALSO sobre una producción que SÍ tiene la 0022 puesta.
+ *
+ * Lo grave no es el rojo. Es a qué invita el rojo: a re-aplicar la 0022, cuyo
+ * `create or replace` devolvería la versión vieja de la función y desharía en
+ * silencio lo que la 0036 hizo. Un libro de estado equivocado no solo informa
+ * mal: propone la reparación que rompe.
+ *
+ * De ahí la propiedad de acá abajo. No mira la ortografía del caso de la 0022
+ * —"que ningún testigo hable de consume_planned_meal" habría cerrado ese caso y
+ * ninguno de los próximos—: mira lo que de verdad importa, que es que sobre la
+ * base con TODO aplicado, los 57 testigos digan que sí.
+ */
+describe("los testigos sobreviven a la cadena entera", () => {
+  let base!: Harness;
+
+  beforeAll(async () => {
+    base = await levantarBase({ conSeeds: false });
+  }, 120_000);
+
+  afterAll(async () => {
+    await base?.cerrar();
+  });
+
+  /**
+   * `sqlDeTodosLosTestigos` arma VARIAS sentencias, no una. Por eso va por
+   * `exec()` y no por `base.filas()`: una consulta preparada admite un solo
+   * comando y Postgres rechaza el lote entero. Se toma el último resultado,
+   * que es el select que junta las respuestas.
+   */
+  const correrTestigos = async (entradas: [string, { testigo: string }][]) => {
+    const resultados = await base.db.exec(escritor.sqlDeTodosLosTestigos(entradas));
+    const ultimo = resultados[resultados.length - 1];
+    return (ultimo?.rows ?? []) as unknown as { archivo: string; presente: unknown }[];
+  };
+
+  it("con la cadena completa aplicada, TODOS los testigos dan verdadero", async () => {
+    const libro = cargarLibroDeProduccion();
+    const entradas = libro.entradas.map(
+      (e) => [e.archivo, { testigo: e.testigo }] as [string, { testigo: string }],
+    );
+
+    const filas = await correrTestigos(entradas);
+
+    // Se afirma primero que contestaron TODOS. Sin esto, un SQL que devolviera
+    // cero filas dejaría la lista de mentirosos vacía y el test verde: el modo
+    // clásico de que un guardián apruebe por no haber mirado.
+    expect(filas.length, "no contestaron todos los testigos").toBe(entradas.length);
+
+    const mienten = filas
+      .filter((f) => f.presente !== true)
+      .map((f) => {
+        const razon =
+          f.presente === null
+            ? "contestó NULL (el testigo no sabe, que no es lo mismo que 'no está')"
+            : "contestó FALSO sobre una base que SÍ tiene esa migración aplicada";
+        return `${f.archivo} — ${razon}. Algo posterior en la cadena pisó lo que este testigo miraba: hay que apuntarlo a algo que nadie más adelante toque (una columna aditiva sirve; el cuerpo de una función no).`;
+      })
+      .sort();
+
+    expect(mienten).toEqual([]);
+  });
+
+  it("el criterio tiene dientes: un testigo imposible SÍ sale en la lista", async () => {
+    // Comprobación por mutación. Sin ella, "la lista salió vacía" no distingue
+    // entre "todos los testigos aguantaron" y "el criterio no detecta nada".
+    const filas = await correrTestigos([
+      ["migracion_inventada.sql", { testigo: "to_regclass('public.tabla_que_no_existe') is not null" }],
+    ]);
+    expect(filas).toEqual([{ archivo: "migracion_inventada.sql", presente: false }]);
+  });
+});
+
+
+/**
+ * EL DOCUMENTO DE DESPLIEGUE DICE LO MISMO QUE EL LIBRO.
+ *
+ * `docs/deployment/pending-supabase-migrations.md` es lo que alguien abre para
+ * decidir qué correr contra producción. Su sección de estado solía escribirse a
+ * mano, y como el mismo dato ya tenía dueño —este libro, con testigos que se le
+ * preguntan a la base— los dos terminaron discrepando: el documento seguía
+ * anunciando la 0036 y la 0038 como pendientes días después de que producción
+ * las tuviera puestas.
+ *
+ * Ahora esa sección se GENERA. Este test es lo que impide que vuelva a envejecer
+ * en silencio: si el libro cambia y nadie regenera el documento, el rojo lo dice
+ * acá y no lo descubre alguien a mitad de un despliegue.
+ */
+describe("el documento de despliegue no envejece solo", () => {
+  it("su bloque de estado es exactamente el que sale del libro", async () => {
+    const { bloqueDesdeLibro, conBloque } = await import(
+      pathToFileURL(path.join(RAIZ, "scripts", "estado-a-documento.mjs")).href
+    );
+    const libro = JSON.parse(
+      readFileSync(path.join(RAIZ, "supabase", "estado-produccion.json"), "utf8"),
+    );
+    const ruta = path.join(RAIZ, "docs", "deployment", "pending-supabase-migrations.md");
+    const doc = readFileSync(ruta, "utf8");
+
+    expect(
+      conBloque(doc, bloqueDesdeLibro(libro)),
+      "el documento quedó atrás. Regenéralo: node scripts/estado-a-documento.mjs --escribir",
+    ).toBe(doc);
   });
 });
