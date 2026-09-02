@@ -142,31 +142,29 @@ Con las tres respuestas, el camino se elige solo.
 
 ## Y esto va antes que cualquiera de los dos
 
-**Aplicar las 19 migraciones pendientes.** El código ya consulta objetos que
-producción no tiene: si la app se publica antes, las pantallas que dependen de
-ellos fallan el primer día. No es un detalle de despliegue — es la diferencia
-entre publicar una app y publicar una app rota.
-
-(La 0036 y la 0038, que esta sección pedía antes, ya están aplicadas y
-verificadas en vivo. Lo que falta hoy es de la 0039 a la 0058.)
+**Que producción tenga la cadena de migraciones completa.** Hoy (2026-09-02) la
+tiene: 58 aplicadas, cero pendientes, verificado en vivo con los testigos. Si
+cuando leas esto hubo migraciones nuevas, el estado real sale de acá, nunca de
+memoria:
 
 ```bash
-node scripts/poner-al-dia.mjs --pendientes            # muestra el plan, no toca nada
-node scripts/poner-al-dia.mjs --sellar                # congela el checksum de cada una
+node scripts/verificar-estado-produccion.mjs   # le pregunta a la base qué tiene
+node scripts/poner-al-dia.mjs --pendientes     # muestra el plan, no toca nada
+node scripts/poner-al-dia.mjs --sellar         # congela el checksum de cada pendiente
 node scripts/poner-al-dia.mjs --pendientes --aplicar
 ```
 
-El paso del medio importa más de lo que parece: sella en el libro el checksum de
-cada migración pendiente, y a partir de ahí el aplicador se DETIENE si alguna
-cambió después de sellarse. Sin eso, entre "las revisé" y "las apliqué" cabe una
-edición que nadie nota — y estas diecinueve las escribieron tres frentes en
-paralelo.
+El sello importa más de lo que parece: a partir de ahí el aplicador se DETIENE si
+una migración cambió después de sellarse. Entre "la revisé" y "la apliqué" cabe
+una edición que nadie nota.
 
-**Lo que respalda que esto va a funcionar:** `web/src/integration/ensayo-despliegue.test.ts`
-levanta una base EN EL ESTADO REAL DE PRODUCCIÓN, aplica las pendientes una por
-una en orden, y después compara columna por columna contra la cadena armada desde
-cero. Las dos tienen que quedar idénticas. Aplicar la cadena entera sobre una base
-vacía —que es lo que hace el resto de la suite— responde otra pregunta y no ésta.
+**Lo que respalda que aplicar va a funcionar:** `web/src/integration/ensayo-despliegue.test.ts`
+levanta una base EN EL ESTADO REAL DE PRODUCCIÓN —con datos en cada tabla que las
+pendientes alteran, no vacía— aplica las pendientes en orden y compara columna por
+columna contra la cadena desde cero. Y aun así, el 2026-09-02 un pre-vuelo
+adversarial encontró un defecto que ese ensayo no podía ver (un guardián que moría
+en cascada, invisible sin un día con comidas que borrar). Para un despliegue con
+migraciones nuevas, vale la pena correr los dos.
 
 **Y después de publicar**, en Supabase → Authentication → URL Configuration: hay
 que agregar el dominio nuevo a *Site URL* y *Redirect URLs*. Si no, el login
