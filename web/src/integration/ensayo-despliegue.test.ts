@@ -187,14 +187,14 @@ describe("ensayo del despliegue, con la base ocupada", () => {
       );
 
       // Un plan de la semana con su día y una comida confirmada.
-      const plan = await base.fila<{ id: string }>(
+      const plan = (await base.fila<{ id: string }>(
         `insert into public.weekly_plans (household_id, week_start, status)
          values ($1, date_trunc('week', current_date)::date, 'DRAFT') returning id`,
         [hogar.householdId],
-      );
+      ))!;
       await base.db.query(
         `insert into public.weekly_plan_days (plan_id, plan_date) values ($1, current_date)`,
-        [plan!.id],
+        [plan.id],
       );
 
       // La lista de compras CON LÍNEAS: son las filas que el check de la 0046
@@ -220,17 +220,82 @@ describe("ensayo del despliegue, con la base ocupada", () => {
       }
 
       // Y la despensa, que es la otra tabla que las pendientes alteran a fondo.
+      // El resto de las tablas que las pendientes alteran y que producción tiene
+      // ocupadas. No es decoración: cada una es una superficie donde un check o
+      // un índice único de las 19 se va a validar contra filas de verdad. Las
+      // cantidades no importan; que NO estén vacías, sí.
+      const receta = (await base.fila<{ id: string }>(
+        `select v.id from public.meal_template_versions v
+          join public.meal_templates m on m.id = v.template_id
+         where m.household_id is null and v.status = 'PUBLISHED' limit 1`,
+      ))!;
+      const dia = (await base.fila<{ id: string }>(
+        "select id from public.weekly_plan_days where plan_id = $1 limit 1",
+        [plan.id],
+      ))!;
+      const comida = (await base.fila<{ id: string }>(
+        `insert into public.meal_assignments (day_id, meal_type, kind, version_id, status, confirmed_at)
+         values ($1, 'LUNCH', 'RECIPE', $2, 'CONFIRMED', now()) returning id`,
+        [dia.id, receta.id],
+      ))!;
+      // El perfil se PUBLICA por su RPC, no se busca: un integrante recién creado
+      // no tiene ninguno, y sin perfil no hay porción proyectada ni evaluación
+      // clínica que sembrar — que son dos de las tablas que las pendientes
+      // alteran.
+      const publicado = (await base.fila<{ publish_nutrition_profile: string }>(
+        `select public.publish_nutrition_profile($1, 'BASIC', $2, '{}'::jsonb,
+                '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, 'ensayo de despliegue')`,
+        [hogar.memberId, `firma-ensayo-${hogar.memberId}`],
+      ))!;
+      const perfil = { id: publicado.publish_nutrition_profile };
+      if (perfil.id !== null) {
+        await base.db.query(
+          `insert into public.member_serving_projections
+             (member_id, version_id, profile_id, optimizer_version, meal_type, serving_date,
+              fit, adaptation_level, assignment_id, status)
+           values ($1, $2, $3, 'ensayo/1.0.0', 'LUNCH', current_date, 'COMPATIBLE', 0, $4, 'PLANNED')`,
+          [hogar.memberId, receta.id, perfil.id, comida.id],
+        );
+        await base.db.query(
+          `insert into public.meal_clinical_assessments
+             (member_id, version_id, assignment_id, assessed_on, engine_version, status)
+           values ($1, $2, $3, current_date, 'ensayo/1.0.0', 'COMPATIBLE')`,
+          [hogar.memberId, receta.id, comida.id],
+        );
+      }
+      await base.db.query(
+        `insert into public.nutrition_goals
+           (member_id, goal_type, scope, meal_type, minimum, preferred, maximum, unit)
+         values ($1, 'PROTEIN_G', 'PER_MEAL', 'LUNCH', 60, 90, 110, 'g')`,
+        [hogar.memberId],
+      );
+      await base.db.query(
+        `insert into public.member_clinical_restrictions
+           (member_id, type, target, value, unit, severity, source, verification_status, valid_from)
+         values ($1, 'NUTRIENT_MAX'::public.clinical_restriction_type, 'SODIUM_MG', 2000, 'mg',
+                 'HARD', 'CLINICIAN_ENTERED', 'CONFIRMED', current_date - 1)`,
+        [hogar.memberId],
+      );
+      await base.db.query(
+        `insert into public.nutrition_events (household_id, event_date, event_type, title)
+         values ($1, current_date, 'BARBECUE', 'Asado del ensayo')`,
+        [hogar.householdId],
+      );
+
       const lotes = [
         ["Lote viejo", 1200],
         ["Lote nuevo", 800],
       ] as const;
       for (let i = 0; i < lotes.length; i += 1) {
         const [etiqueta, cantidad] = lotes[i]!;
+        // POR `add_manual_lot`, no por un insert directo: ese RPC escribe además la
+        // fila de `inventory_movements`, que es otra de las tablas que las
+        // pendientes alteran (la 0043 le agrega un índice único). Un insert a
+        // mano deja el lote sin su movimiento y la tabla vacía — o sea, sin nada
+        // contra lo que ese índice pueda chocar.
         await base.db.query(
-          `insert into public.inventory_lots
-             (household_id, ingredient_id, label, unit, quantity, weight_basis, status)
-           values ($1, $2, $3, 'G', $4, 'RAW', 'AVAILABLE')`,
-          [hogar.householdId, alimentos[i]!.id, etiqueta, cantidad],
+          "select public.add_manual_lot($1, $2, $3, 'G', $4)",
+          [hogar.householdId, etiqueta, cantidad, alimentos[i]!.id],
         );
       }
     });
@@ -301,4 +366,90 @@ describe("ensayo del despliegue, con la base ocupada", () => {
     expect(Number(despues!.lotes_sin_precio), "un lote sin precio quedó valorizado en algo").toBe(2);
     expect(Number(despues!.items_sin_precio), "una línea sin precio quedó valorizada en algo").toBe(3);
   });
+
+  /**
+   * QUÉ TABLAS TIENE QUE TENER FILAS EL ENSAYO, DERIVADO DE LAS PROPIAS MIGRACIONES.
+   *
+   * Sembrar "unas cuantas tablas" no sirve: la que se olvida es justamente la que
+   * no se prueba. Esto lee las pendientes, saca las tablas que ALTERAN y que NO
+   * crean ellas mismas —o sea, las que ya existían con datos adentro— y exige que
+   * el ensayo las tenga ocupadas.
+   *
+   * Es la lección del defecto de la 0042 subida un nivel: ahí faltaban filas en
+   * `inventory_lots` y por eso el backfill no disparaba el trigger. Arreglar ese
+   * caso y seguir sembrando a mano habría dejado la misma trampa armada para la
+   * próxima tabla.
+   */
+  function tablasQueAlteranLasPendientes(archivos: string[]): string[] {
+    const alteradas = new Set<string>();
+    const creadas = new Set<string>();
+    for (const archivo of archivos) {
+      const sql = readFileSync(path.join(RAIZ, archivo), "utf8");
+      for (const m of sql.matchAll(/^alter\s+table\s+(?:only\s+)?public\.([a-z_0-9]+)/gim)) {
+        alteradas.add(m[1]!.toLowerCase());
+      }
+      for (const m of sql.matchAll(/^create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-z_0-9]+)/gim)) {
+        creadas.add(m[1]!.toLowerCase());
+      }
+    }
+    return [...alteradas].filter((t) => !creadas.has(t)).sort();
+  }
+
+  /**
+   * Tablas que las pendientes alteran y que el ensayo NO siembra, cada una con su
+   * razón. Estar acá es una DECLARACIÓN, no un olvido: si mañana una migración
+   * altera una tabla nueva y nadie la siembra, el test se pone rojo y obliga a
+   * elegir entre sembrarla o escribir por qué no hace falta.
+   *
+   * Las razones de hoy salieron de contar filas en la producción real.
+   */
+  const NO_SE_SIEMBRAN: Readonly<Record<string, string>> = {
+    // Producción tiene 0 filas: no hay datos viejos que una migración pueda romper.
+    household_observed_yields: "producción no tiene ninguna (0 filas): no hay dato viejo que romper",
+    meal_serving_records: "producción no tiene ninguna (0 filas)",
+    // La invitación es un objeto de ciclo de vida corto y las pendientes sólo le
+    // agregan columnas nullable; sembrarla exigiría un segundo usuario y un token
+    // vivo, que es andamiaje sin nada que atrapar.
+    invitations: "sólo recibe columnas nullable; sembrar una exige un token vivo y no atrapa nada",
+  };
+
+  describe("el ensayo cubre TODAS las tablas que las pendientes alteran", () => {
+    it("ninguna tabla alterada se queda sin filas por olvido", async () => {
+      const puestas = new Set(migracionesDeProduccion());
+      const faltan = MIGRACIONES.filter((m) => !puestas.has(m));
+      const alteradas = tablasQueAlteranLasPendientes(faltan);
+
+      // El barrido tiene que ver algo: si dejara de reconocer los `alter table`,
+      // la lista saldría vacía y este guardián aprobaría por no haber mirado.
+      expect(alteradas.length, "el barrido no encontró ninguna tabla alterada").toBeGreaterThan(5);
+
+      const vacias: string[] = [];
+      for (const tabla of alteradas) {
+        if (tabla in NO_SE_SIEMBRAN) continue;
+        const fila = await base.fila<{ n: string }>(`select count(*) as n from public.${tabla}`);
+        if (Number(fila!.n) === 0) vacias.push(tabla);
+      }
+
+      expect(
+        vacias,
+        "estas tablas las alteran las migraciones pendientes y el ensayo las deja VACÍAS: " +
+          "sobre cero filas un check no valida nada y un índice único no choca con nada. " +
+          "Siémbralas en el beforeAll, o agrégalas a NO_SE_SIEMBRAN con su razón escrita.",
+      ).toEqual([]);
+    });
+
+    it("lo declarado como no-sembrado sigue existiendo y sigue siendo alterado", () => {
+      // Una exención que ya no corresponde a nada es peor que ninguna: se lee como
+      // que el caso está pensado cuando en realidad quedó colgando.
+      const puestas = new Set(migracionesDeProduccion());
+      const faltan = MIGRACIONES.filter((m) => !puestas.has(m));
+      const alteradas = new Set(tablasQueAlteranLasPendientes(faltan));
+      const sobrantes = Object.keys(NO_SE_SIEMBRAN).filter((t) => !alteradas.has(t));
+      expect(
+        sobrantes,
+        "estas exenciones ya no aplican: ninguna migración pendiente altera esas tablas",
+      ).toEqual([]);
+    });
+  });
+
 });
