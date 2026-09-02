@@ -840,14 +840,23 @@ describe("el respaldo no se guarda en cualquier parte", () => {
     );
   });
 
+  // RUTAS ABSOLUTAS Y NEUTRAS AL SISTEMA. Antes decía `path.join("D:", …)`, que
+  // en Windows es una ruta absoluta y en Linux es RELATIVA ("D:/OneDrive/…"):
+  // `motivoParaNoGuardarAca` la resolvía contra el cwd —o sea, dentro del
+  // repo— y el CI contestaba "DENTRO del repositorio" a las dos preguntas.
+  // Verde acá, rojo en CI, sin que cambiara nada de lo que se prueba. Se parte
+  // de `os.tmpdir()`, que es absoluto en cualquier sistema y nunca está dentro
+  // del repositorio ni en una carpeta que sincronice sola.
   it("en una carpeta que sincroniza sola con la nube, tampoco", () => {
     for (const nube of ["OneDrive", "Dropbox", "Google Drive", "iCloud"]) {
-      expect(lib.motivoParaNoGuardarAca(path.join("D:", nube, "respaldos"))).toMatch(/sincroniza sola/);
+      expect(lib.motivoParaNoGuardarAca(path.join(os.tmpdir(), nube, "respaldos"))).toMatch(
+        /sincroniza sola/,
+      );
     }
   });
 
   it("una carpeta local cualquiera sí sirve", () => {
-    expect(lib.motivoParaNoGuardarAca(path.join("D:", "respaldos-mesa-familiar"))).toBeNull();
+    expect(lib.motivoParaNoGuardarAca(path.join(os.tmpdir(), "respaldos-mesa-familiar"))).toBeNull();
   });
 });
 

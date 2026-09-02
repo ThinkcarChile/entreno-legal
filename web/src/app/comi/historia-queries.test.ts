@@ -80,10 +80,17 @@ beforeAll(async () => {
   await h.comoAdmin(async () => {
     // La persona existe desde hace cinco días: así la ventana puede pedir días
     // ANTERIORES a su historia y verse que se distinguen de un día sin registro.
-    await h.db.query("update public.household_members set created_at = $2::date where id = $1", [
-      hogar.memberId,
-      addDays(hoyReal, -5),
-    ]);
+    // A MEDIODÍA EN LA ZONA DEL HOGAR, no `$2::date` a secas. Un DATE convertido
+    // a timestamptz cae a la MEDIANOCHE de la zona de la SESIÓN de Postgres: en
+    // esta máquina (Santiago) daba el día pedido, y en CI (UTC) daba las 00:00Z,
+    // que en Santiago todavía es el día ANTERIOR — el motor, que convierte con la
+    // zona del hogar, respondía 27 donde el test esperaba 28. Verde acá, rojo en
+    // CI, sin que el motor tuviera nada malo. Con mediodía en la zona del hogar
+    // la fecha es la misma se mire desde donde se mire.
+    await h.db.query(
+      "update public.household_members set created_at = ($2::date + time '12:00') at time zone 'America/Santiago' where id = $1",
+      [hogar.memberId, addDays(hoyReal, -5)],
+    );
     await h.db.query(
       `insert into public.member_tracking_settings (member_id, mode) values ($1, 'FULL')
        on conflict (member_id) do update set mode = 'FULL'`,

@@ -169,9 +169,24 @@ function hoyISO(): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-function sha256De(archivo: string): string {
-  return createHash("sha256").update(readFileSync(archivo)).digest("hex");
+function sha256De(ruta: string): string {
+  // SE HASHEA EL CONTENIDO NORMALIZADO A LF, NO LOS BYTES DEL DISCO.
+  //
+  // Git normaliza los finales de linea al confirmar (el repo es LF), pero en
+  // Windows un archivo recien escrito por un script puede quedar en CRLF en el
+  // working copy. El 2026-09-02 se sellaron 8 migraciones sobre esos bytes: en
+  // esta maquina el sha calzaba y en CI (checkout LF) no, y el guardian decia
+  // NO SE PUEDE SABER QUE TIENE PRODUCCION sobre una base que si se sabia.
+  // El checksum protege el CONTENIDO, y el final de linea no es contenido.
+  //
+  // Sin regex ni secuencias de escape a proposito: este archivo se edita por
+  // scripts en Windows, donde las barras invertidas no sobreviven el viaje.
+  const CR = String.fromCharCode(13);
+  const LF = String.fromCharCode(10);
+  const texto = readFileSync(ruta, "utf8").split(CR + LF).join(LF);
+  return createHash("sha256").update(Buffer.from(texto, "utf8")).digest("hex");
 }
+
 
 /** Días de calendario entre dos fechas AAAA-MM-DD. */
 function diasEntre(desde: string, hasta: string): number {

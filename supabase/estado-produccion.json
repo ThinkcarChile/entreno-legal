@@ -251,19 +251,19 @@
     },
     "0036_foodlog_plan_vs_reality.sql": {
       "estado": "APLICADA",
-      "sha256": "8081a08995f3de8f5dbe113339a1699bfc422efd87c245aa122c1e93015ccab2",
+      "sha256": "6c4de893d8876a5e9a655da5cde06123fbcd3d34fdc55444e7391a899897bc73",
       "testigo": "to_regclass('public.meal_serving_records') is not null",
       "prueba": "la tabla meal_serving_records del servido"
     },
     "0038_foodlog_intake.sql": {
       "estado": "APLICADA",
-      "sha256": "b54d3cd9eae17f25e30223284ecb7267956b10ecc9afdcc6152f4f760cc05f26",
+      "sha256": "e06187ad045958a83f7cf9b8db1d51a968c2221d58eeabd2c7ea6a4b9f42a941",
       "testigo": "to_regclass('public.intake_log_items') is not null",
       "prueba": "la tabla intake_log_items del eje ACTUAL_CONSUMED"
     },
     "0039_permisos_plan_y_cocina.sql": {
       "estado": "APLICADA",
-      "sha256": "a4b53e231d0c789f12a8b6c72a244340987fc2c13fca8f5e9072fb7cc1a28bf7",
+      "sha256": "427b4c7445f768e078c8f934cddf4e65506c90d4cdb536f06095ffd5a7a4534c",
       "testigo": "exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'app' and p.proname = 'can_edit_plan')",
       "prueba": "las politicas RLS no sirven de testigo -son veinte y pueden cambiar de nombre-; app.can_edit_plan es de esta migracion y no existe en ninguna anterior, aunque la columna can_edit_plan viva desde la 0001",
       "nota": "sha256 en null a proposito: la migracion todavia se esta escribiendo y su contenido cambia. Que no tenga checksum no cambia en nada lo que produccion tiene puesto -no la tiene-, y el dia que se aplique el script le escribe el checksum de lo que se aplico."
@@ -291,14 +291,14 @@
     },
     "0043_purchases_core.sql": {
       "estado": "APLICADA",
-      "sha256": "025c246231a3d01af642d7f69baaad53d663c07fd0b79ce195e35a4cc618d02f",
+      "sha256": "df94e1bcb4722c052725f15cb80b6b0d0228ee94d71c2bdf09b8894ca6ae671e",
       "testigo": "to_regclass('public.purchase_item_lots') is not null",
       "prueba": "la tabla purchase_item_lots -el puente linea de boleta <-> lote- nace aca y en ninguna otra; purchases no sirve porque el nombre es demasiado generico y currency_units es de la 0042",
       "nota": "sha256 en null a proposito: la migracion del Sprint 14 todavia se esta escribiendo. Ver la nota de la 0039."
     },
     "0044_cost_allocations.sql": {
       "estado": "APLICADA",
-      "sha256": "32104a8bc8f7976fd73bf634911514b0046729d4b7361b5ae86a0d8d10acc5a9",
+      "sha256": "ed3dfe1c8cb6e8ca5a14801b4a5441b9a2cb7a91b567b884fec337ea3429d4d2",
       "testigo": "to_regclass('public.cost_allocations') is not null",
       "prueba": "la tabla cost_allocations, el puente entre el libro mayor y el dinero, nace en esta migracion; el enum cost_category tambien, pero una tabla es mas facil de comprobar contra la base real",
       "nota": "sha256 en null a proposito: la migracion del Sprint 14 todavia se esta escribiendo. Ver la nota de la 0039."
@@ -319,14 +319,14 @@
     },
     "0047_food_budgets.sql": {
       "estado": "APLICADA",
-      "sha256": "2ed1c0f365806a9bac24aec64936381028d39f9c391f13b1af15dadb9fe8fc6d",
+      "sha256": "864286204a0b18c5165765b89b8dc0b88266b66725cf00e04f00a334e837b815",
       "testigo": "to_regclass('public.household_food_budgets') is not null",
       "prueba": "la tabla household_food_budgets, el presupuesto con vigencia y con base declarada; households.week_start_dow no sirve de testigo porque una columna no la ve to_regclass",
       "nota": "sha256 en null a proposito: la migracion del Sprint 14 todavia se esta escribiendo. Ver la nota de la 0039."
     },
     "0048_finance_integrity.sql": {
       "estado": "APLICADA",
-      "sha256": "b221c89891f0cafa712ddf3477cc11e0515fcc90e7ddbbebbca107f467fedd47",
+      "sha256": "a6b9ccfdc32565b63f6a875c487ef101f09f389bb498df3cd8ebbef337a56b3a",
       "testigo": "to_regclass('public.lot_valuations') is not null",
       "prueba": "la vista lot_valuations, el puente por el que se lee el dinero del lote una vez cerrada la columna; finance_integrity_report tambien nace aca pero lot_valuations es la que cambia el modelo de permisos",
       "nota": "sha256 en null a proposito: la migracion del Sprint 14 todavia se esta escribiendo. Ver la nota de la 0039."
@@ -354,7 +354,7 @@
     },
     "0053_asistente_propuestas.sql": {
       "estado": "APLICADA",
-      "sha256": "467944b0a3edc1dfd204c4e95157924bf182816300281a0bdf6fce7831a24b22",
+      "sha256": "190117a98ae792abd9ebe8cc7a542e2052dbbf6f0b8c47ae1ca6993ac044fcf6",
       "testigo": "to_regclass('public.assistant_proposals') is not null",
       "prueba": "la tabla assistant_proposals, sin la cual no hay proposalId y la compuerta de confirmacion no tiene sobre que apoyarse",
       "nota": "sha256 en null a proposito: la migracion del Sprint 15 todavia se esta escribiendo. Ver la nota de la 0039."
