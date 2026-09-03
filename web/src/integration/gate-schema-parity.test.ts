@@ -102,16 +102,56 @@ async function relacionesDe(h: Harness): Promise<Set<string>> {
  * tiene" deja el diagnóstico cerrado en la misma línea del rojo.
  */
 function faltantes(usos: Map<string, string[]>, existentes: Set<string>): string[] {
-  return [...usos.entries()]
-    .filter(([nombre]) => !existentes.has(nombre))
-    .map(([nombre, archivos]) => {
-      const culpable = migracionPendienteQueCrea(nombre);
-      const origen = culpable
-        ? `la crea ${culpable}, que producción NO tiene aplicada`
-        : `ninguna migración del repo la crea`;
-      return `${nombre} — ${origen} — usada en ${archivos.join(", ")}`;
-    })
-    .sort();
+  const { sinProductor, brechaDeDespliegue } = clasificarFaltantes(usos, existentes);
+  return [...sinProductor, ...brechaDeDespliegue].sort();
+}
+
+/**
+ * FALTAR NO ES UNA SOLA COSA, Y TRATARLO COMO SI LO FUERA ROMPE EL GATE.
+ *
+ * Un objeto que la app usa y la base no tiene puede serlo por dos motivos que no
+ * se parecen en nada:
+ *
+ *   · SIN PRODUCTOR — ninguna migración del repo lo crea. Nadie lo va a crear
+ *     nunca. Es el defecto original de este gate: la app pedía
+ *     `meal_serving_record_items` y todo salía verde. Esto FALLA, siempre.
+ *
+ *   · BRECHA DE DESPLIEGUE — lo crea una migración que está escrita, SELLADA y
+ *     todavía sin aplicar. No es un defecto del código: es que producción va
+ *     atrás, que es el estado normal entre escribir una migración y que su dueño
+ *     autorice aplicarla, y esa autorización puede tardar días.
+ *
+ * Mezclarlas dejaba CI ROJO durante toda esa ventana. Un CI crónicamente rojo se
+ * deja de mirar, y el día que aparezca un SIN PRODUCTOR de verdad nadie lo va a
+ * distinguir del rojo de siempre. La protección se pierde por desgaste, no por
+ * un cambio de código.
+ *
+ * Ojo con lo que NO se afloja: la brecha no se silencia. Se deriva del libro
+ * —que es quien sabe qué está pendiente— y su propio test la afirma entera, así
+ * que un objeto nuevo no se puede colar adentro sin que se vea. Y en cuanto la
+ * migración se aplica, el libro cambia y la brecha desaparece sola: no hay
+ * ninguna lista escrita a mano que alguien tenga que acordarse de limpiar.
+ */
+function clasificarFaltantes(
+  usos: Map<string, string[]>,
+  existentes: Set<string>,
+): { sinProductor: string[]; brechaDeDespliegue: string[] } {
+  const sinProductor: string[] = [];
+  const brechaDeDespliegue: string[] = [];
+  for (const [nombre, archivos] of usos.entries()) {
+    if (existentes.has(nombre)) continue;
+    const culpable = migracionPendienteQueCrea(nombre);
+    if (culpable) {
+      brechaDeDespliegue.push(
+        `${nombre} — la crea ${culpable}, que producción NO tiene aplicada — usada en ${archivos.join(", ")}`,
+      );
+    } else {
+      sinProductor.push(
+        `${nombre} — ninguna migración del repo la crea — usada en ${archivos.join(", ")}`,
+      );
+    }
+  }
+  return { sinProductor: sinProductor.sort(), brechaDeDespliegue: brechaDeDespliegue.sort() };
 }
 
 let completa: Harness;
@@ -264,13 +304,79 @@ describe("§3-bis — la app solo depende de lo que producción tiene puesto HOY
     const { rpcs } = referencias();
     expect(rpcs.size).toBeGreaterThan(5);
 
-    expect(faltantes(rpcs, await funcionesDe(produccion))).toEqual([]);
+    // Falla por lo que es un DEFECTO. La brecha de despliegue —lo que sí crea una
+    // migración escrita y sellada, pero todavía sin aplicar— la afirma entera el
+    // test de más abajo, para que no se silencie ni se pueda colar nada adentro.
+    const { sinProductor } = clasificarFaltantes(rpcs, await funcionesDe(produccion));
+    expect(sinProductor).toEqual([]);
   });
 
   it("toda tabla/vista que la app lee con .from() existe en producción", async () => {
     const { tablas } = referencias();
     expect(tablas.size).toBeGreaterThan(10);
 
-    expect(faltantes(tablas, await relacionesDe(produccion))).toEqual([]);
+    // Falla por lo que es un DEFECTO. La brecha de despliegue —lo que sí crea una
+    // migración escrita y sellada, pero todavía sin aplicar— la afirma entera el
+    // test de más abajo, para que no se silencie ni se pueda colar nada adentro.
+    const { sinProductor } = clasificarFaltantes(tablas, await relacionesDe(produccion));
+    expect(sinProductor).toEqual([]);
+  });
+
+  it("la brecha de despliegue está ENTERA a la vista, y es exactamente la que el libro explica", async () => {
+    /**
+     * ESTE TEST ES LO QUE HACE QUE SEPARAR LAS DOS CLASES NO AFLOJE NADA.
+     *
+     * Los dos de arriba fallan por lo que es un defecto y dejan pasar lo que es
+     * "producción va atrás". Si eso quedara ahí, un objeto nuevo podría colarse
+     * dentro de la brecha y nadie lo vería hasta el día del despliegue.
+     *
+     * Acá se afirma la brecha COMPLETA, con nombre y archivo, y se comprueba que
+     * cada cosa que la compone la explique una migración que el libro declara
+     * PENDIENTE y SELLADA. Sellada importa: una pendiente sin checksum es una que
+     * todavía se está escribiendo, y apoyar la app en algo que aún cambia no es
+     * una brecha, es trabajo a medias.
+     *
+     * No hay ninguna lista escrita a mano: todo sale del libro. El día que las
+     * migraciones se apliquen, el libro cambia y la brecha se vacía sola.
+     */
+    const libro = cargarLibroDeProduccion();
+    const selladas = new Set(
+      libro.entradas.filter((e) => e.estado === "PENDIENTE" && e.sha256 !== null).map((e) => e.archivo),
+    );
+
+    const { rpcs, tablas } = referencias();
+    const deTablas = clasificarFaltantes(tablas, await relacionesDe(produccion)).brechaDeDespliegue;
+    const deFunciones = clasificarFaltantes(rpcs, await funcionesDe(produccion)).brechaDeDespliegue;
+    const brecha = [...deTablas, ...deFunciones].sort();
+
+    // Cada renglón nombra su migración: se exige que esa migración sea una
+    // pendiente SELLADA del libro y no cualquier otra cosa.
+    const sinRespaldo = brecha.filter((linea) => {
+      const m = linea.match(/la crea ([0-9a-z_.]+\.sql)/);
+      return m === null || !selladas.has(m[1]!);
+    });
+    expect(
+      sinRespaldo,
+      "estos objetos faltan en producción y la migración que los explicaría no está sellada en el libro",
+    ).toEqual([]);
+
+    // Y la otra dirección: si el libro no declara ninguna pendiente, no puede
+    // haber brecha. Sin esto, el test pasaría por vacuidad el día que alguien
+    // rompiera `migracionPendienteQueCrea` y todo cayera en "brecha".
+    if (selladas.size === 0) expect(brecha).toEqual([]);
+
+    // Queda ESCRITO en la salida de la corrida, no solo comprobado: quien mire
+    // el CI tiene que poder leer qué le falta a producción sin abrir el libro.
+    if (brecha.length > 0) {
+      console.log(
+        [
+          "",
+          `BRECHA DE DESPLIEGUE — ${brecha.length} objeto(s) que la app usa y producción todavía no tiene:`,
+          ...brecha.map((l) => `  · ${l}`),
+          `Se cierra aplicando: ${[...selladas].join(", ")}`,
+          "",
+        ].join(String.fromCharCode(10)),
+      );
+    }
   });
 });

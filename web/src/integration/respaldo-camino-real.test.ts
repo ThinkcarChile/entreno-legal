@@ -385,6 +385,86 @@ describe("--destino supabase: el camino real, ejecutado de verdad", () => {
 // 2. LO QUE PGLITE NO PUEDE PROBAR, PREGUNTADO ANTES DE BORRAR
 // ===========================================================================
 
+describe("las restricciones NOT VALID no impiden restaurar", () => {
+  /**
+   * EL RESPALDO DE PRODUCCIÓN NO SE PODÍA RESTAURAR, Y ESO SE DESCUBRIÓ TARDE.
+   *
+   * `add constraint ... check (...) NOT VALID` significa: no revises lo que ya
+   * está, revisa todo lo que venga. Es como se agrega una regla sin declarar
+   * inválido el pasado, y este repo lo usa a propósito (la 0038 exime a los
+   * consumos anteriores a los registros de servicio; la 0040 a los objetivos).
+   *
+   * Al restaurar, esas filas exentas dejan de ser "las que ya estaban" y pasan a
+   * ser INSERTs. La restricción las revisa y las rechaza. Medido el 2026-09-03
+   * contra el respaldo real: 8 filas de `consumption_logs` tumbaban la carga
+   * entera con `intake_log_inventory_iff_served`. El respaldo se escribía, decía
+   * estar bien, y la única salida era reescribir historia clínica para que
+   * pasara una regla nacida después.
+   *
+   * Este bloque lo reproduce en chico, con la misma forma: una tabla con filas
+   * que la regla exime, la regla puesta NOT VALID encima, y una restauración que
+   * tiene que devolverlas TODAS y dejar la regla como estaba.
+   */
+  it("una fila exenta por NOT VALID vuelve, y la regla queda puesta igual", async () => {
+    const db = destino!.db;
+    await db.exec(`
+      create table public.regla_tardia (id int primary key, marca boolean not null, prueba uuid);
+      insert into public.regla_tardia (id, marca, prueba) values (1, true, null), (2, false, null);
+      alter table public.regla_tardia
+        add constraint regla_tardia_marca_iff_prueba
+        check ((prueba is not null) = marca) not valid;
+    `);
+
+    // La fila 1 viola la regla y existe: es exactamente el caso de producción.
+    const antes = await db.query<{ n: number }>(
+      "select count(*)::int as n from public.regla_tardia where (prueba is not null) <> marca",
+    );
+    expect(antes.rows[0]!.n, "el montaje no reprodujo el caso: no hay fila exenta").toBe(1);
+
+    // Un INSERT nuevo de esa misma fila SÍ se revisa: eso es lo que rompía.
+    await expect(
+      db.exec("insert into public.regla_tardia (id, marca, prueba) values (3, true, null);"),
+    ).rejects.toThrow(/regla_tardia_marca_iff_prueba/);
+
+    // Y ahora el camino real: soltar, cargar, reponer.
+    const ejecutor = lib.ejecutorPglite(db, "destino de mentira");
+    const noValidadas = await ejecutor.ejecutar(
+      `select c.conname, n.nspname, t.relname, pg_get_constraintdef(c.oid) as definicion
+         from pg_constraint c
+         join pg_class t on t.oid = c.conrelid
+         join pg_namespace n on n.oid = t.relnamespace
+        where c.contype = 'c' and not c.convalidated and n.nspname = 'public'
+          and t.relname = 'regla_tardia'`,
+    );
+    expect(noValidadas.length, "la consulta no encontró la restricción NOT VALID").toBe(1);
+
+    const c = noValidadas[0] as { conname: string; nspname: string; relname: string; definicion: string };
+    await ejecutor.escribir(`alter table ${c.nspname}.${c.relname} drop constraint ${c.conname};`);
+    await ejecutor.escribir(
+      "delete from public.regla_tardia; insert into public.regla_tardia (id, marca, prueba) values (1, true, null), (2, false, null);",
+    );
+    await ejecutor.escribir(
+      `alter table ${c.nspname}.${c.relname} add constraint ${c.conname} ${c.definicion} not valid;`,
+    );
+
+    // Las dos filas volvieron, incluida la exenta.
+    const despues = await db.query<{ n: number }>("select count(*)::int as n from public.regla_tardia");
+    expect(despues.rows[0]!.n, "la restauración perdió filas").toBe(2);
+
+    // Y la regla quedó puesta, y sigue siendo NOT VALID: ni más floja ni más
+    // dura que en el origen. Si volviera VALIDADA, rechazaría la fila 1 que
+    // acabamos de restaurar; si no volviera, el destino sería otra base.
+    const regla = await db.query<{ n: number; validada: boolean }>(
+      `select count(*)::int as n, bool_or(convalidated) as validada
+         from pg_constraint where conname = 'regla_tardia_marca_iff_prueba'`,
+    );
+    expect(regla.rows[0]!.n, "la restauración no repuso la restricción").toBe(1);
+    expect(regla.rows[0]!.validada, "la repuso VALIDADA: rechazaría la fila que exime").toBe(false);
+
+    await db.exec("drop table public.regla_tardia;");
+  }, 60_000);
+});
+
 describe("el permiso para apagar las llaves foráneas se pregunta ANTES de borrar", () => {
   it("interpretarSonda distingue los cuatro casos, y ninguno se redondea a «sí»", () => {
     expect(lib.interpretarSonda([]).permitido).toBe(false);

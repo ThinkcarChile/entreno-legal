@@ -564,6 +564,55 @@ export async function restaurar({
   ];
   const plan = planDeCarga({ orden, esquemaRespaldo, porNombre, columnasDeUsuario, mapaUsuarios });
 
+  // --- 7-bis. Las restricciones NOT VALID, apagadas mientras se carga -------
+  //
+  // UNA RESTAURACIÓN QUE NO PUEDE RESTAURAR NO ES UNA RESTAURACIÓN.
+  //
+  // `alter table ... add constraint ... check (...) NOT VALID` significa una cosa
+  // muy precisa en PostgreSQL: no revises las filas que YA ESTÁN, pero revisa
+  // todas las que vengan. Es como se agrega una regla nueva sin declarar
+  // inválido el pasado, y este repositorio lo usa a propósito: la 0038 exime así
+  // a los consumos anteriores al modelo de registros de servicio, y la 0040 hace
+  // lo mismo con los objetivos.
+  //
+  // Al restaurar, esas filas viejas dejan de ser "las que ya estaban" y pasan a
+  // ser INSERTs nuevos. La restricción las revisa y las rechaza. Medido contra el
+  // respaldo real de producción: 8 filas de `consumption_logs` con
+  // `serving_record_id` nulo y `affects_inventory` verdadero —consumo legítimo,
+  // anterior a que existieran los registros de servicio— tumbaban la carga
+  // entera con `intake_log_inventory_iff_served`. O sea: el respaldo se escribía,
+  // decía estar bien, y no se podía restaurar. La única salida que quedaba era
+  // reescribir historia clínica para que pasara una regla que nació después.
+  //
+  // Acá se suelta la restricción antes de cargar y se vuelve a poner IGUAL
+  // —también NOT VALID— al terminar. No se afloja nada: el destino queda con
+  // exactamente la misma regla y el mismo alcance que el origen, que es la
+  // definición de una restauración fiel. Las que están VALIDADAS no se tocan: si
+  // una de esas rechaza una fila, el respaldo tiene un problema de verdad y
+  // tiene que doler.
+  const noValidadas = seco
+    ? []
+    : await ejecutor.ejecutar(
+        `select c.conname, n.nspname, t.relname,
+                pg_get_constraintdef(c.oid) as definicion
+           from pg_constraint c
+           join pg_class t on t.oid = c.conrelid
+           join pg_namespace n on n.oid = t.relnamespace
+          where c.contype = 'c' and not c.convalidated and n.nspname = 'public'
+          order by t.relname, c.conname`,
+      );
+
+  if (noValidadas.length > 0) {
+    log("");
+    log(`Restricciones NOT VALID que se sueltan para cargar y se reponen igual: ${noValidadas.length}`);
+    for (const c of noValidadas) log(`  · ${c.relname}.${c.conname}`);
+    for (const c of noValidadas) {
+      await ejecutor.escribir(
+        `alter table ${c.nspname}.${c.relname} drop constraint ${c.conname};`,
+      );
+    }
+  }
+
   // --- 8. Cargar ------------------------------------------------------------
   log("");
   log(seco ? "Generando las sentencias (EN SECO: no se escribe nada)…" : "Restaurando…");
@@ -639,6 +688,25 @@ export async function restaurar({
       esquemaComparadas: comparadas.length,
       esquemaNoComparadas: noComparadas,
     };
+  }
+
+  // --- 8-bis. Reponer las restricciones NOT VALID, EXACTAMENTE igual --------
+  //
+  // Con la misma definición y el mismo NOT VALID. Si se repusieran validadas,
+  // Postgres revisaría las filas que se acaban de cargar y volvería a rechazar
+  // justo las que la regla exime a propósito; si no se repusieran, el destino
+  // quedaría más flojo que el origen y una restauración que afloja reglas no es
+  // una restauración, es otra base.
+  //
+  // Va ANTES de verificar, para que los hashes y los huérfanos se cuenten sobre
+  // una base con sus reglas puestas.
+  if (noValidadas.length > 0) {
+    for (const c of noValidadas) {
+      await ejecutor.escribir(
+        `alter table ${c.nspname}.${c.relname} add constraint ${c.conname} ${c.definicion} not valid;`,
+      );
+    }
+    log(`Restricciones repuestas: ${noValidadas.length} (con su NOT VALID, igual que en el origen).`);
   }
 
   // --- 9. Verificar: hashes, huérfanos ------------------------------------
