@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { registrarError } from "@/lib/observabilidad";
 import { extractFromText } from "@/domain/clinical/extraction";
 import { evaluateMeal, persistMealAssessment } from "./assess-service";
 import { loadDocument } from "./queries";
@@ -74,12 +75,12 @@ export async function uploadExam(formData: FormData): Promise<ActionResult> {
     const retiro = await supabase.storage.from(BUCKET).remove([path]);
     const quedoHuerfano = Boolean(retiro.error) || (retiro.data ?? []).length === 0;
     if (quedoHuerfano) {
-      console.error("[health.uploadExam] archivo huérfano en el bucket médico", {
+      registrarError("salud.examen.archivo_huerfano", {
         bucket: BUCKET,
-        path,
+        ruta: path,
         memberId,
-        errorRegistro: error.message,
-        errorBorrado: retiro.error?.message ?? "el borrado no retiró ningún objeto",
+        codigoRegistro: error.code,
+        borrado: retiro.error ? "FALLO" : "NO_RETIRO_NADA",
       });
       return {
         ok: false,

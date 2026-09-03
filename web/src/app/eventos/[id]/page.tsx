@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/ui";
 import { loadHouseholdMembers } from "@/app/family/nutrition-queries";
 import { diaCivilDelHogar } from "@/app/comi/historia-queries";
 import {
+  cargarComidasCubiertas,
   cargarEvento,
   cargarInvitadosDelHogar,
   cargarMenu,
@@ -56,24 +57,28 @@ export default async function EventoPage({ params }: Props) {
   // familia. La RLS decide y nosotros mostramos "no está".
   if (evento === null) notFound();
 
-  const [participantes, menu, invitados, revision, { hoy }, relevosDelHogar] = await Promise.all([
-    cargarParticipantes(supabase, id, evento.fecha),
-    cargarMenu(supabase, id),
-    cargarInvitadosDelHogar(supabase, householdId),
-    cargarRevisionVigente(supabase, id),
-    diaCivilDelHogar(supabase, householdId, new Date()),
-    // H20: qué comidas del plan está relevando ESTE evento, hoy, de verdad. Se
-    // lee de la base y no se deduce de la configuración: que el evento tenga
-    // comida declarada no basta —hace falta además estar confirmado y tener
-    // gente del hogar en el roster—, y decir "reemplaza el almuerzo" cuando no
-    // lo reemplaza es justo la sensación de estar resuelto que costó el sprint.
-    cargarRelevosDeEventos(
-      supabase,
-      members.map((m) => m.id),
-      evento.fecha,
-      evento.fechaFin ?? evento.fecha,
-    ),
-  ]);
+  const [participantes, menu, invitados, revision, { hoy }, relevosDelHogar, comidasCubiertas] =
+    await Promise.all([
+      cargarParticipantes(supabase, id, evento.fecha),
+      cargarMenu(supabase, id),
+      cargarInvitadosDelHogar(supabase, householdId),
+      cargarRevisionVigente(supabase, id),
+      diaCivilDelHogar(supabase, householdId, new Date()),
+      // H20: qué comidas del plan está relevando ESTE evento, hoy, de verdad. Se
+      // lee de la base y no se deduce de la configuración: que el evento tenga
+      // comida declarada no basta —hace falta además estar confirmado y tener
+      // gente del hogar en el roster—, y decir "reemplaza el almuerzo" cuando no
+      // lo reemplaza es justo la sensación de estar resuelto que costó el sprint.
+      cargarRelevosDeEventos(
+        supabase,
+        members.map((m) => m.id),
+        evento.fecha,
+        evento.fechaFin ?? evento.fecha,
+      ),
+      // TODAS las comidas que el evento reemplaza. `evento.comida` sólo trae la
+      // primera (0061): decidir con ella es cómo se compraba dos veces la cena.
+      cargarComidasCubiertas(supabase, id),
+    ]);
   const relevos = relevosDelHogar.filter((r) => r.eventoId === id);
 
   return (
@@ -89,6 +94,7 @@ export default async function EventoPage({ params }: Props) {
           miembros={members.map((m) => ({ id: m.id, nombre: m.displayName }))}
           revision={revision}
           relevos={relevos}
+          comidasCubiertas={comidasCubiertas}
         />
       </div>
     </AppShell>

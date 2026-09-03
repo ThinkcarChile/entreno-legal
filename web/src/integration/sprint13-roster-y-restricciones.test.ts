@@ -382,7 +382,18 @@ describe("[ALTO] las restricciones registradas del hogar llegan al cálculo", ()
 
   it("el vecino no puede preguntar por el evento de otra casa", async () => {
     const id = await eventoDelArmador("Asado ajeno");
-    await expect(bloqueos(USER_VECINO, id)).rejects.toThrow(/no es de tu hogar/);
+    // "no autorizado", NO "no es de tu hogar". La 0062 unificó los dos mensajes
+    // a propósito: decirle a un desconocido "ese evento no es de tu hogar" le
+    // confirma que el evento EXISTE, que es justo lo que un oráculo de
+    // existencia regala. Ahora la respuesta es la misma para un id ajeno y para
+    // uno inventado, y este test afirma esa propiedad en vez de la redacción
+    // vieja.
+    await expect(bloqueos(USER_VECINO, id)).rejects.toThrow(/no autorizado/i);
+    // Y la otra mitad, que es la que hace que valga: un id que NO EXISTE tiene
+    // que contestar exactamente igual. Si algún día difieren, el oráculo volvió.
+    await expect(
+      bloqueos(USER_VECINO, "00000000-0000-4000-8000-000000000000"),
+    ).rejects.toThrow(/no autorizado/i);
     expect(vecino.householdId).not.toBe(hogar.householdId);
   });
 });

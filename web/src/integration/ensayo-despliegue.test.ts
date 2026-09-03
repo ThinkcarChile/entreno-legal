@@ -404,13 +404,20 @@ describe("ensayo del despliegue, con la base ocupada", () => {
    * Las razones de hoy salieron de contar filas en la producción real.
    */
   const NO_SE_SIEMBRAN: Readonly<Record<string, string>> = {
-    // Producción tiene 0 filas: no hay datos viejos que una migración pueda romper.
-    household_observed_yields: "producción no tiene ninguna (0 filas): no hay dato viejo que romper",
-    meal_serving_records: "producción no tiene ninguna (0 filas)",
-    // La invitación es un objeto de ciclo de vida corto y las pendientes sólo le
-    // agregan columnas nullable; sembrarla exigiría un segundo usuario y un token
-    // vivo, que es andamiaje sin nada que atrapar.
-    invitations: "sólo recibe columnas nullable; sembrar una exige un token vivo y no atrapa nada",
+    // Vacío A PROPÓSITO, y eso es una afirmación, no un olvido.
+    //
+    // Las pendientes de hoy (0061 eventos, 0062 seguridad) alteran UNA sola
+    // tabla que ya existía: `nutrition_events`. El ensayo la siembra, así que no
+    // hay nada que eximir.
+    //
+    // Las tres exenciones que vivían acá —household_observed_yields,
+    // meal_serving_records e invitations— se escribieron para el conjunto de
+    // pendientes ANTERIOR, el de las 19 que ya se aplicaron. Al cambiar el
+    // conjunto dejaron de corresponder a nada, y el segundo test de este bloque
+    // las marcó como sobrantes. Se borran en vez de conservarse: una exención
+    // que no aplica a ninguna migración pendiente se lee como "este caso está
+    // pensado" cuando en realidad quedó colgando de un trabajo terminado, y la
+    // próxima persona confía en ella sin motivo.
   };
 
   describe("el ensayo cubre TODAS las tablas que las pendientes alteran", () => {

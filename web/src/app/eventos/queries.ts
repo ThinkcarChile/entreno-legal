@@ -97,9 +97,14 @@ export interface Evento {
   tipo: TipoEvento | null;
   tipoCrudo: string;
   /**
-   * QUÉ COMIDA DEL PLAN REEMPLAZA ESTE EVENTO (H20).
+   * LA PRIMERA COMIDA DEL PLAN QUE REEMPLAZA ESTE EVENTO (H20), no la única.
    *
-   * `null` = todavía no se declaró, y eso NO significa "todas": sin esta
+   * Desde la 0061 esta columna es el ESPEJO de `event_covered_meals`: un asado
+   * que cubre almuerzo y cena la trae en 'LUNCH'. Para saber TODO lo que cubre
+   * hay que usar `cargarComidasCubiertas` — decidir con este campo solo es
+   * exactamente cómo se compraba dos veces la cena.
+   *
+   * `null` = todavía no se declaró ninguna, y eso NO significa "todas": sin esa
    * respuesta el evento no releva nada y el sábado del asado se compra también
    * el almuerzo. La pantalla lo dice con esas palabras en vez de asumir.
    */
@@ -197,6 +202,58 @@ export async function cargarEvento(db: Db, eventoId: string): Promise<Evento | n
   if (error) throw new DataAccessError("evento", error);
   if (data === null) return null;
   return mapearEvento(parseRow(eventoColumnas, data, "evento"));
+}
+
+// ---------------------------------------------------------------------------
+// Comidas cubiertas (0061)
+// ---------------------------------------------------------------------------
+
+/**
+ * Qué comidas del plan reemplaza el evento, TODAS.
+ *
+ * Se lee de `public.event_covered_meals` y no de `nutrition_events.meal_type`,
+ * que desde la 0061 es sólo el espejo de la PRIMERA. Un asado que da almuerzo y
+ * cena leído por el espejo se ve como si diera sólo almuerzo, y la pantalla que
+ * pregunta "¿qué reemplaza?" mostraría media respuesta: la persona vuelve a
+ * marcar la cena, no pasa nada visible, y termina comprando igual "por si
+ * acaso".
+ *
+ * Una comida que esta versión de la app no conoce NO se descarta: viaja cruda y
+ * la pantalla la muestra tal cual. Descartarla sería mostrar menos cobertura de
+ * la que hay, y esa diferencia es lo que alguien compra de más.
+ */
+export interface ComidaCubierta {
+  comida: MealType | null;
+  comidaCruda: string;
+}
+
+const comidaCubiertaColumnas = z.object({ meal_type: z.string() });
+
+export async function cargarComidasCubiertas(
+  db: Db,
+  eventoId: string,
+): Promise<ComidaCubierta[]> {
+  const { data, error } = await db
+    .from("event_covered_meals")
+    .select(columnsOf(comidaCubiertaColumnas))
+    .eq("event_id", eventoId);
+  if (error) throw new DataAccessError("comidas que cubre el evento", error);
+
+  const filas = parseRows(comidaCubiertaColumnas, data, "comidas que cubre el evento").map((f) => ({
+    comida: (MEAL_TYPES as readonly string[]).includes(f.meal_type)
+      ? (f.meal_type as MealType)
+      : null,
+    comidaCruda: f.meal_type,
+  }));
+
+  // En orden de día, que es el del catálogo: la pantalla las lista como
+  // transcurre el día y no como PostgREST las devolvió. Las desconocidas van al
+  // final, sin inventarles una posición.
+  return filas.sort((a, b) => {
+    const ia = a.comida === null ? MEAL_TYPES.length : MEAL_TYPES.indexOf(a.comida);
+    const ib = b.comida === null ? MEAL_TYPES.length : MEAL_TYPES.indexOf(b.comida);
+    return ia - ib || a.comidaCruda.localeCompare(b.comidaCruda);
+  });
 }
 
 // ---------------------------------------------------------------------------

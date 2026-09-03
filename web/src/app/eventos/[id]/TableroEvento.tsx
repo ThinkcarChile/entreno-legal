@@ -21,19 +21,22 @@ import {
   ToggleChip,
 } from "@/components/ui";
 import {
+  agregarComidaCubierta,
   agregarInvitadoExistente,
   agregarItemMenu,
   agregarMiembro,
   ajustarApetito,
+  borrarBorrador,
   calcularEstimacion,
   cambiarEstado,
   guardarConfiguracion,
   guardarDistribucion,
+  quitarComidaCubierta,
   quitarItemMenu,
   quitarParticipante,
   type ResultadoAccion,
 } from "../actions";
-import type { Evento, Invitado, ItemMenu, Participante } from "../queries";
+import type { ComidaCubierta, Evento, Invitado, ItemMenu, Participante } from "../queries";
 import type { Revision } from "../contrato-estimacion";
 import {
   formatearRango,
@@ -96,6 +99,7 @@ export function TableroEvento({
   miembros,
   revision,
   relevos,
+  comidasCubiertas,
 }: {
   evento: Evento;
   hoy: string;
@@ -112,6 +116,14 @@ export function TableroEvento({
    * distingue los casos en vez de mostrar un silencio que se lee como "listo".
    */
   relevos: RelevoDeEvento[];
+  /**
+   * TODAS las comidas del plan que el evento reemplaza (0061). Llega aparte y
+   * no dentro de `evento` porque `evento.comida` es sólo la PRIMERA: dibujar el
+   * selector con ese campo mostraría el asado de almuerzo y cena como si
+   * cubriera sólo el almuerzo, y la persona marcaría la cena de nuevo sin que
+   * pase nada visible.
+   */
+  comidasCubiertas: ComidaCubierta[];
 }) {
   const router = useRouter();
   const [pendiente, empezar] = useTransition();
@@ -169,6 +181,17 @@ export function TableroEvento({
     sinMarcar: participantes.filter((p) => p.asistencia === "CONFIRMED").length,
   });
 
+  // Las comidas cubiertas, partidas en dos: las que esta versión sabe dibujar y
+  // las que no. Una comida guardada con un código que la app no conoce NO se
+  // esconde — esconderla mostraría menos cobertura de la que hay, y esa
+  // diferencia es exactamente lo que alguien termina comprando de más.
+  const cubiertas = new Set(
+    comidasCubiertas.filter((c) => c.comida !== null).map((c) => c.comida as string),
+  );
+  const cubiertasDesconocidas = comidasCubiertas
+    .filter((c) => c.comida === null)
+    .map((c) => c.comidaCruda);
+
   const esHoy = evento.fecha === hoy;
   const yaPaso = evento.fecha < hoy;
 
@@ -193,6 +216,31 @@ export function TableroEvento({
             >
               Dejarlo planificado
             </Button>
+          )}
+          {/*
+            BORRAR sólo aparece en borrador, y es lo único de esta pantalla que
+            destruye una fila. Después de "Dejarlo planificado" ya no está: desde
+            ahí la salida es cancelar, que conserva todo. Quien lo aprieta con un
+            borrador que ya pidió comida o ya sirvió recibe el mensaje de la base
+            —"este evento ya dejó rastro (…): cancélalo, no lo borres"— entero,
+            que es lo único que le dice qué hacer a continuación.
+          */}
+          {evento.estado === "DRAFT" && (
+            <ButtonOutline
+              disabled={pendiente}
+              onClick={() =>
+                empezar(async () => {
+                  const r = await borrarBorrador({ eventoId: evento.id });
+                  if (!r.ok) {
+                    setError(r.error ?? "No se pudo borrar el borrador.");
+                    return;
+                  }
+                  router.push("/eventos");
+                })
+              }
+            >
+              Borrar borrador
+            </ButtonOutline>
           )}
           {(evento.estado === "PLANNED" || evento.estado === "CONFIRMED") && (
             <ButtonOutline
@@ -422,23 +470,23 @@ export function TableroEvento({
       </Section>
 
       <Section
-        title="Qué comida del plan reemplaza"
+        title="Qué comidas del plan reemplaza"
         hint="Sin esta respuesta se compra dos veces: el evento Y la comida de ese día."
       >
         <Card className="space-y-md p-md">
-          <ElegirUno
+          <ElegirVarias
             titulo="Este evento reemplaza…"
-            hint="La comida del plan de ese día que la gente que va NO se va a servir."
+            hint="Marca TODAS las comidas de ese día que la gente que va no se va a servir. Un asado que empieza a la una y sigue de noche reemplaza el almuerzo Y la cena; si sólo marcas el almuerzo, la cena se compra igual."
             opciones={MEAL_TYPES.map((m) => ({ valor: m, texto: MEAL_TYPE_LABELS[m] }))}
-            actual={evento.comida}
+            marcadas={cubiertas}
+            desconocidas={cubiertasDesconocidas}
             pendiente={pendiente}
-            onElegir={(valor) =>
-              correr(() =>
-                guardarConfiguracion({
-                  eventoId: evento.id,
-                  comida: valor as (typeof MEAL_TYPES)[number] | null,
-                }),
-              )
+            bloqueado={evento.estado === "COMPLETED" || evento.estado === "CANCELLED"}
+            onMarcar={(valor) =>
+              correr(() => agregarComidaCubierta({ eventoId: evento.id, comida: valor }))
+            }
+            onDesmarcar={(valor) =>
+              correr(() => quitarComidaCubierta({ eventoId: evento.id, comida: valor }))
             }
           />
           {relevos.length > 0 ? (
@@ -456,8 +504,8 @@ export function TableroEvento({
             <Notice icon="shopping_cart">
               <p className="font-semibold">Este evento todavía no reemplaza ninguna comida.</p>
               <p className="mt-0.5">
-                {evento.comida === null
-                  ? "Falta decir qué comida reemplaza: mientras no se diga, ese día se compra el evento Y la comida del plan."
+                {comidasCubiertas.length === 0
+                  ? "Falta decir qué comidas reemplaza: mientras no se diga, ese día se compra el evento Y la comida del plan."
                   : evento.estado !== "CONFIRMED" && evento.estado !== "IN_PROGRESS"
                     ? "El plan se libera al CONFIRMAR el evento. Hasta entonces la comida de ese día sigue en la lista de compras, que es lo correcto: todavía puede no ocurrir."
                     : "Nadie del hogar figura yendo, o ese día no hay una comida confirmada en el plan. Un evento releva a personas, no a fechas."}
@@ -853,6 +901,89 @@ function FormularioItemMenu({
         Agregar al menú
       </Button>
     </Card>
+  );
+}
+
+/**
+ * Una pregunta de VARIAS respuestas, cada clic un hecho.
+ *
+ * Gemela de `ElegirUno` en aspecto y opuesta en semántica, y la diferencia
+ * importa: acá marcar una casilla no desmarca las otras. Un asado que da
+ * almuerzo y cena son dos declaraciones, no una elección entre dos.
+ *
+ * NO acumula estado propio ni manda la lista entera. Cada toque llama a marcar
+ * o a desmarcar UNA comida y la pantalla se recarga con lo que la base dijo.
+ * Un componente que guardara la selección en memoria y la enviara completa
+ * tendría que resolver la diferencia contra una lectura que puede tener diez
+ * segundos: dos personas marcando casillas a la vez terminan con una pisando lo
+ * de la otra, y lo que se pisa es qué se compra.
+ *
+ * `desconocidas` son las comidas que la base tiene y esta versión de la app no
+ * sabe nombrar. Se muestran con su código y sin poder tocarlas: esconderlas
+ * mostraría menos cobertura de la que hay, y de esa diferencia sale una compra
+ * de más.
+ */
+function ElegirVarias({
+  titulo,
+  hint,
+  opciones,
+  marcadas,
+  desconocidas,
+  pendiente,
+  bloqueado,
+  onMarcar,
+  onDesmarcar,
+}: {
+  titulo: string;
+  hint?: string;
+  opciones: { valor: string; texto: string }[];
+  marcadas: Set<string>;
+  desconocidas: string[];
+  pendiente: boolean;
+  bloqueado: boolean;
+  onMarcar: (valor: string) => void;
+  onDesmarcar: (valor: string) => void;
+}) {
+  return (
+    <div>
+      <p className="font-body-sm text-body-sm text-on-surface-variant">{titulo}</p>
+      {hint && <p className="font-body-sm text-body-sm text-outline">{hint}</p>}
+      <div className="mt-sm flex flex-wrap gap-sm">
+        {opciones.map((o) => (
+          <ToggleChip
+            key={o.valor}
+            activo={marcadas.has(o.valor)}
+            disabled={pendiente || bloqueado}
+            onClick={() => (marcadas.has(o.valor) ? onDesmarcar(o.valor) : onMarcar(o.valor))}
+          >
+            {o.texto}
+          </ToggleChip>
+        ))}
+        {desconocidas.map((codigo) => (
+          <ToggleChip
+            key={codigo}
+            activo
+            disabled
+            title="Comida guardada con un código que esta versión no conoce"
+            onClick={() => undefined}
+          >
+            {codigo}
+          </ToggleChip>
+        ))}
+      </div>
+      {marcadas.size === 0 && desconocidas.length === 0 && (
+        <p className="mt-1 font-body-sm text-body-sm text-outline">
+          <Icon name="help" className="text-[14px]" /> {SIN_INFORMACION}: ese día se compra el
+          evento Y la comida del plan.
+        </p>
+      )}
+      {bloqueado && (marcadas.size > 0 || desconocidas.length > 0) && (
+        <p className="mt-1 font-body-sm text-body-sm text-outline">
+          <Icon name="lock" className="text-[14px]" /> El evento ya está cerrado: lo que cubrió es
+          historia y no se cambia.
+        </p>
+      )}
+    </div>
   );
 }
 

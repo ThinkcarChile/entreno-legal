@@ -160,12 +160,15 @@ const configuracionSchema = z.object({
   fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   titulo: z.string().trim().min(1).max(120).optional(),
   /**
-   * La comida del plan que el evento reemplaza. Es la LLAVE del relevo
-   * (`app.apply_event_meal_coverage` la compara contra `meal_assignments`), y
-   * hasta este sprint ninguna ruta de la aplicación la escribía: todo evento
-   * nacía con NULL, el relevo no se intentaba nunca y la compra salía doble.
+   * `comida` YA NO VIVE ACÁ (0061). Qué comidas del plan reemplaza el evento lo
+   * escriben `agregarComidaCubierta` y `quitarComidaCubierta` sobre
+   * `public.event_covered_meals`, que es su dueño desde esa migración.
+   *
+   * Dejarla también en este paso sería dos caminos de la aplicación escribiendo
+   * el mismo hecho, y el que sólo sabe de UNA comida se llevaría la otra por
+   * delante sin decirlo: el asado que cubría almuerzo Y cena volvería a cubrir
+   * sólo el almuerzo por haber tocado cualquier otro campo del formulario.
    */
-  comida: z.enum(MEAL_TYPES).nullable().optional(),
   enCasa: z.boolean().optional(),
   lugar: z.string().trim().max(200).nullable().optional(),
   /** "HH:MM". `null` cuando la persona no la sabe todavía — no se rellena. */
@@ -193,7 +196,6 @@ export async function guardarConfiguracion(entrada: unknown): Promise<ResultadoA
   if (campos.lugar !== undefined) fila.location_note = campos.lugar;
   if (campos.horaDeServir !== undefined) fila.serving_time = campos.horaDeServir;
   if (campos.duracionHoras !== undefined) fila.duration_hours = campos.duracionHoras;
-  if (campos.comida !== undefined) fila.meal_type = campos.comida;
   if (campos.contextoComida !== undefined) fila.meal_context = campos.contextoComida;
   if (campos.nivelAcompanamiento !== undefined) fila.sides_level = campos.nivelAcompanamiento;
   if (campos.sobranteDeseado !== undefined) fila.desired_leftover_kind = campos.sobranteDeseado;
@@ -208,6 +210,58 @@ export async function guardarConfiguracion(entrada: unknown): Promise<ResultadoA
 
   refrescar(eventoId);
   return { ok: true, message: "Guardado." };
+}
+
+// ---------------------------------------------------------------------------
+// Qué comidas del plan cubre el evento (0061)
+// ---------------------------------------------------------------------------
+//
+// Son DOS acciones y no una que reciba la lista entera, y vale la pena decir
+// por qué. Una acción "guardar estas cuatro comidas" tiene que resolver la
+// diferencia contra lo que hay, y esa diferencia se calcula en el navegador
+// sobre una lectura que puede tener diez segundos: dos personas marcando
+// casillas a la vez terminan con una pisando lo de la otra. Marcar y desmarcar
+// una comida a la vez es un hecho por clic, la PK compuesta lo hace idempotente
+// y el doble toque no duplica nada.
+
+const comidaCubiertaSchema = z.object({ eventoId: uuid, comida: z.enum(MEAL_TYPES) });
+
+/** Declara que el evento también cubre esta comida del plan. */
+export async function agregarComidaCubierta(entrada: unknown): Promise<ResultadoAccion> {
+  const validado = comidaCubiertaSchema.safeParse(entrada);
+  if (!validado.success) return { ok: false, error: "Esa comida no existe." };
+  const supabase = await cliente();
+
+  // `upsert` con `ignoreDuplicates` y no `insert`: el segundo toque de la misma
+  // casilla —o el mismo formulario enviado dos veces— no puede terminar en un
+  // error rojo por un clic de más. La PK (event_id, meal_type) es la que manda.
+  const { error } = await supabase
+    .from("event_covered_meals")
+    .upsert(
+      { event_id: validado.data.eventoId, meal_type: validado.data.comida },
+      { onConflict: "event_id,meal_type", ignoreDuplicates: true },
+    );
+  if (error) return { ok: false, error: `No se pudo guardar — ${textoDelError(error)}` };
+
+  refrescar(validado.data.eventoId);
+  return { ok: true, message: "Guardado: esa comida ya no se compra por separado." };
+}
+
+/** Retira una comida: vuelve a comprarse aparte. */
+export async function quitarComidaCubierta(entrada: unknown): Promise<ResultadoAccion> {
+  const validado = comidaCubiertaSchema.safeParse(entrada);
+  if (!validado.success) return { ok: false, error: "Esa comida no existe." };
+  const supabase = await cliente();
+
+  const { error } = await supabase
+    .from("event_covered_meals")
+    .delete()
+    .eq("event_id", validado.data.eventoId)
+    .eq("meal_type", validado.data.comida);
+  if (error) return { ok: false, error: `No se pudo guardar — ${textoDelError(error)}` };
+
+  refrescar(validado.data.eventoId);
+  return { ok: true, message: "Listo: esa comida vuelve a la lista de compras." };
 }
 
 const cambioEstadoSchema = z.object({ eventoId: uuid, estado: z.enum(ESTADOS_EVENTO) });
@@ -227,6 +281,40 @@ export async function cambiarEstado(entrada: unknown): Promise<ResultadoAccion> 
 
   refrescar(validado.data.eventoId);
   return { ok: true, message: "Estado actualizado." };
+}
+
+const borrarBorradorSchema = z.object({ eventoId: uuid });
+
+/**
+ * Borra un evento que todavía es borrador y no dejó nada atrás.
+ *
+ * ES LA ÚNICA ACCIÓN DE ESTA SUPERFICIE QUE DESTRUYE UNA FILA, y por eso el
+ * candado no está acá sino en la base (`app.event_history_guard`): fuera del
+ * borrador rebota, y dentro del borrador rebota igual si el evento ya pidió
+ * comida, sirvió, o relevó algo que después se sirvió. Ponerlo acá dejaría la
+ * puerta de PostgREST abierta al lado.
+ *
+ * El error del servidor se muestra ENTERO —"este evento ya dejó rastro (tiene
+ * líneas en la lista de compras): cancélalo, no lo borres"— porque es lo único
+ * que le dice a la persona qué hacer a continuación. Un "no se pudo borrar"
+ * seco manda a adivinar, y adivinando se termina cancelando un evento que sí se
+ * podía sacar, o borrando a mano por SQL.
+ *
+ * Se vuelve a /eventos y no se queda en la ficha: la ficha ya no existe.
+ */
+export async function borrarBorrador(entrada: unknown): Promise<ResultadoAccion> {
+  const validado = borrarBorradorSchema.safeParse(entrada);
+  if (!validado.success) return { ok: false, error: "Falta el evento." };
+  const supabase = await cliente();
+
+  const { error } = await supabase
+    .from("nutrition_events")
+    .delete()
+    .eq("id", validado.data.eventoId);
+  if (error) return { ok: false, error: textoDelError(error) };
+
+  refrescar();
+  return { ok: true, message: "Borrador eliminado." };
 }
 
 // ---------------------------------------------------------------------------

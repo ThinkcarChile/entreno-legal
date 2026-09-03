@@ -147,6 +147,13 @@ export const MIGRACIONES = [
   // que omitia PUBLIC, tres politicas que dejaban editar perfiles ajenos, y tres
   // guardianes mas de la clase cascada.
   "supabase/migrations/0060_cierre_prevuelo.sql",
+  // Cierre v1. La 0061 cambia el default del estado de un evento a DRAFT (para
+  // que uno creado por error se pueda borrar) y modela las comidas cubiertas
+  // como una tabla, en vez de deducirlas de la duración. La 0062 cierra el
+  // EXECUTE de anon sobre las funciones SECURITY DEFINER y unifica los mensajes
+  // que distinguían "no existe" de "no es tuyo".
+  "supabase/migrations/0061_eventos_borrador_y_comidas_cubiertas.sql",
+  "supabase/migrations/0062_cierre_seguridad.sql",
 ];
 
 /**

@@ -652,6 +652,19 @@ export async function saveEvent(input: {
       // adivine mirando una lista vacía (0041, member_scope).
       member_scope:
         (input.memberIds ?? []).length > 0 ? "DECLARED_ROSTER" : "LEGACY_EMPTY_MEANS_ALL",
+      // EN BORRADOR, Y ESCRITO. Hasta la 0061 este insert no mandaba `status` y
+      // se llevaba el default de la 0041, que era 'PLANNED': el evento nacía
+      // fuera del borrador y `app.event_history_guard` no lo dejaba borrar NUNCA
+      // MÁS. El botón "borrar evento" de esta misma pantalla contestaba "este
+      // evento ya salió del borrador" para algo creado hace diez segundos, y el
+      // rollback de más abajo —el que deshace el evento cuando no se pudo
+      // guardar a quiénes afecta— rebotaba igual, dejando en pantalla un
+      // "bórralo a mano desde el plan" que a mano tampoco se podía.
+      //
+      // Se manda aunque el default de la 0061 ya sea 'DRAFT': quien lee este
+      // insert tiene que poder saber en qué estado nace el evento sin ir a
+      // buscar un default a una migración.
+      status: "DRAFT",
     })
     .select("id")
     .single();

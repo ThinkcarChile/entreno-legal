@@ -21,6 +21,15 @@ const ROOT = path.resolve(__dirname, "../../..");
 const MIGRACIONES = path.join(ROOT, "supabase", "migrations");
 const SEEDS = path.join(ROOT, "supabase", "seed");
 const CLINICO = path.resolve(__dirname, "..");
+/** Todo el código de la app, no solo el clínico (§49). */
+const FUENTE = path.resolve(__dirname, "..");
+/**
+ * Este archivo DECLARA los patrones de mojibake, así que se encuentra a sí
+ * mismo. Excluirlo es lo único honesto: la alternativa —escribir los patrones
+ * con escapes `\uXXXX` para esquivar el propio guardián— haría ilegible justo la
+ * lista que hay que poder leer para saber qué se vigila.
+ */
+const YO = path.join(FUENTE, "integration", "utf8-guard.test.ts");
 
 /** Secuencias que delatan UTF-8 leído como Latin-1/CP1252 (mojibake). */
 const MOJIBAKE = [
@@ -106,6 +115,28 @@ describe("§8 — guardián de codificación", () => {
     for (const ruta of objetivos) {
       for (const p of revisar(ruta)) {
         fallos.push(`${path.relative(CLINICO, ruta)} · ${p}`);
+      }
+    }
+    expect(fallos).toEqual([]);
+  });
+
+  /**
+   * §49 — el mismo guardián, pero sobre TODO `web/src`.
+   *
+   * El test de arriba nació mirando solo lo clínico porque el incidente de la
+   * 0026/0027 fue clínico. Pero el portapapeles de Windows no distingue módulos:
+   * el botón de una tarjeta de finanzas con los acentos mutilados es el mismo
+   * defecto —texto que la persona no puede leer— en otra pantalla. Se queda el
+   * de arriba porque nombra la cicatriz; éste es el que cubre.
+   */
+  it("TODO el código de web/src está limpio, con archivo y línea", () => {
+    const fallos: string[] = [];
+    const objetivos = archivos(FUENTE, (n) => /\.tsx?$/.test(n)).filter((r) => r !== YO);
+    // Sin esto, un error en `archivos` daría lista vacía y verde eterno.
+    expect(objetivos.length).toBeGreaterThan(100);
+    for (const ruta of objetivos) {
+      for (const p of revisar(ruta)) {
+        fallos.push(`${path.relative(ROOT, ruta).split(path.sep).join("/")}:${p}`);
       }
     }
     expect(fallos).toEqual([]);

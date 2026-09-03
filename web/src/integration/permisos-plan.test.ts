@@ -336,10 +336,17 @@ describe("escribir la semana pide can_edit_plan", () => {
     // Y LA OTRA MITAD, para que quede escrito que el permiso no es lo que corta
     // fuera del borrador: al PLANNER —que sí puede editar la semana— la regla de
     // ciclo de vida le niega el borrado igual, y la salida es cancelar.
+    // EL ESTADO SE DECLARA, NO SE HEREDA DEL DEFAULT. Antes este insert omitía
+    // `status` y se apoyaba en que el default fuera 'PLANNED'. La 0061 lo cambió
+    // a 'DRAFT' —para que un evento creado por error se pueda borrar— y este
+    // caso pasó a crear un borrador, con lo que el borrado SÍ procedía y el test
+    // acusaba que "se perdió la historia" de un evento que no tenía ninguna.
+    // Lo que acá se prueba es la regla de ciclo de vida FUERA del borrador, así
+    // que el estado es parte del caso y se escribe.
     const yaPlaneado = await h.como(USER_PLANNER, async () => {
       const fila = await h.fila<{ id: string }>(
-        `insert into public.nutrition_events (household_id, event_date, event_type, title)
-         values ($1, $2, 'BARBECUE', 'Asado ya planeado') returning id`,
+        `insert into public.nutrition_events (household_id, event_date, event_type, title, status)
+         values ($1, $2, 'BARBECUE', 'Asado ya planeado', 'PLANNED') returning id`,
         [hogar.householdId, LUNES],
       );
       return fila!.id;

@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { registrarError } from "@/lib/observabilidad";
 import { loadHouseholdMembers } from "@/app/family/nutrition-queries";
 import { extractReceiptFromText } from "@/domain/finance/receipt-extraction";
 import { parseMinor } from "@/domain/finance/money";
@@ -162,12 +163,17 @@ export async function uploadReceipt(formData: FormData): Promise<ActionResult> {
     const quedoHuerfano =
       retiro.error !== null || retirados === null || retirados.length === 0;
     if (quedoHuerfano) {
-      console.error("[finanzas.uploadReceipt] archivo huérfano en el bucket de boletas", {
+      // §50: al log van el DÓNDE y el CÓDIGO, jamás los mensajes. Un
+      // `error.message` de PostgREST puede venir redactado por PostgreSQL con la
+      // fila adentro (`Key (…)=(…)`), y una boleta trae el detalle de una
+      // compra. `registrarError` lo filtraría igual; no se le pasa, y así la
+      // línea dice sola qué sale.
+      registrarError("finanzas.boleta.archivo_huerfano", {
         bucket: BUCKET,
         ruta,
         householdId,
-        errorRegistro: error.message,
-        errorBorrado: retiro.error?.message ?? "el borrado no retiró ningún objeto",
+        codigoRegistro: error.code,
+        borrado: retiro.error !== null ? "FALLO" : "NO_RETIRO_NADA",
       });
       return {
         ok: false,
@@ -563,10 +569,12 @@ export async function archiveReceipt(receiptId: string): Promise<ActionResult> {
   if (r.fileDeleted && r.storagePath !== null) {
     const retiro = await supabase.storage.from(BUCKET).remove([r.storagePath]);
     if (retiro.error) {
-      console.error("[finanzas.archiveReceipt] la fila se archivó y el objeto quedó", {
+      registrarError("finanzas.boleta.objeto_no_borrado", {
         receiptId,
         ruta: r.storagePath,
-        error: retiro.error.message,
+        // El mensaje del almacenamiento no entra al log (§50): lo que hace
+        // falta para limpiarlo a mano es la ruta, y esa sí está.
+        borrado: "FALLO",
       });
       return {
         ok: false,

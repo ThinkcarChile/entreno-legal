@@ -1515,7 +1515,22 @@ describe("[H20 · la app] el relevo llega hasta la lista de compras", () => {
 // ===========================================================================
 
 describe("[H20 · la llave] la app declara qué comida reemplaza el evento", () => {
-  it("crear y editar el evento escriben meal_type", () => {
+  it("crear y editar el evento escriben qué comidas reemplaza", () => {
+    // ACTUALIZADO POR LA 0061, Y VALE LA PENA DECIR QUÉ CAMBIÓ.
+    //
+    // Este guardián nació para impedir que la llave del relevo se quedara sin
+    // escritor: hasta el sprint 13 ninguna ruta de la app escribía `meal_type`,
+    // todo evento nacía en NULL y la compra salía doble. Eso sigue siendo lo
+    // que se protege; cambió DÓNDE vive la llave.
+    //
+    // Desde la 0061 el dueño es `public.event_covered_meals` —un evento puede
+    // reemplazar el almuerzo Y la cena— y `nutrition_events.meal_type` quedó
+    // como espejo de la primera. `guardarConfiguracion` DEJÓ de escribirla a
+    // propósito: dos caminos de la app escribiendo el mismo hecho terminaban
+    // con el que sólo sabe de una comida borrando la otra en silencio.
+    //
+    // Así que la afirmación se muda con la llave, en vez de borrarse: lo que no
+    // puede pasar es que ninguna ruta declare qué reemplaza el evento.
     const acciones = fuenteDe("web/src/app/eventos/actions.ts");
     expect(
       acciones,
@@ -1523,14 +1538,22 @@ describe("[H20 · la llave] la app declara qué comida reemplaza el evento", () 
     ).toContain("meal_type: validado.data.comida");
     expect(
       acciones,
-      "guardarConfiguracion no escribe meal_type: la comida del evento no se puede declarar",
-    ).toContain("fila.meal_type = campos.comida");
+      "ninguna acción escribe event_covered_meals: las comidas que reemplaza el evento quedan sin escritor",
+    ).toContain('.from("event_covered_meals")');
+    expect(
+      acciones,
+      "guardarConfiguracion volvió a escribir meal_type: son dos dueños del mismo hecho y el que sabe de una comida borra la otra",
+    ).not.toContain("fila.meal_type = campos.comida");
 
     const tablero = fuenteDe("web/src/app/eventos/[id]/TableroEvento.tsx");
     expect(
       tablero,
-      "la pantalla del evento no pregunta qué comida reemplaza: la llave del relevo queda sin escritor",
-    ).toContain("comida: valor as (typeof MEAL_TYPES)[number] | null");
+      "la pantalla del evento no pregunta qué comidas reemplaza: la llave del relevo queda sin escritor",
+    ).toContain("agregarComidaCubierta({ eventoId: evento.id, comida: valor })");
+    expect(
+      tablero,
+      "la pantalla no deja SACAR una comida cubierta: declarar de más no se podría deshacer y esa comida no se compraría nunca",
+    ).toContain("quitarComidaCubierta({ eventoId: evento.id, comida: valor })");
 
     // Y se pregunta ya al crearlo, que es donde la persona está pensando en el
     // día. El armador puede dejarla sin responder —no se rellena con "almuerzo"

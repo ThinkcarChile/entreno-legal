@@ -194,8 +194,31 @@ function fuente(relativa: string): string {
   return readFileSync(path.join(RAIZ, relativa), "utf8");
 }
 
+/**
+ * La 0061, aplicada acá si el arnés todavía no la trae.
+ *
+ * El caso [F] de este archivo prueba conducta que sólo existe con esa migración
+ * puesta (las comidas cubiertas). Mientras se escribe no está enganchada a
+ * `MIGRACIONES`; cuando lo esté, aplicarla dos veces moriría con "ya existe" y
+ * el archivo entero se saltaría con un rojo que no habla de compras. Se
+ * pregunta primero.
+ */
+async function asegurar0061(): Promise<void> {
+  const ya = await h.fila<{ existe: boolean }>(
+    "select to_regclass('public.event_covered_meals') is not null as existe",
+  );
+  if (ya!.existe) return;
+  await h.db.exec(
+    readFileSync(
+      path.join(RAIZ, "supabase/migrations/0061_eventos_borrador_y_comidas_cubiertas.sql"),
+      "utf8",
+    ),
+  );
+}
+
 beforeAll(async () => {
   h = await levantarBase();
+  await asegurar0061();
 
   hogar = await crearHogar(h, USER_ANA, "Hogar del ataque", "Ana");
 
@@ -510,14 +533,16 @@ describe("[E] la compra del evento sale desde PLANNED y el relevo recien en CONF
 });
 
 // ===========================================================================
-// [F] EL ASADO CUBRE EL ALMUERZO PERO NO LA CENA DEL MISMO DIA
+// [F] EL ASADO DE NUEVE HORAS: LA CENA SE DECLARA, NO SE ADIVINA
 // ===========================================================================
 
-describe("[F] el asado que dura hasta la noche releva una sola comida", () => {
-  it("la cena del dia del asado sigue pidiendo comida para todos", async () => {
+let guardado: { asado: string; dia: string } | null = null;
+
+describe("[F] el asado que dura hasta la noche cubre lo que declara, ni mas ni menos", () => {
+  it("sin declarar la cena, la cena del dia del asado sigue pidiendo comida para todos", async () => {
     // Un asado que empieza a las 13:00 y dura nueve horas: la familia come
-    // almuerzo Y once ahi. `meal_type` es UNA sola comida, asi que la cena de
-    // ese dia sigue entera en la demanda y se compra igual.
+    // almuerzo Y once ahi. La DURACION no releva nada por su cuenta — la cena
+    // de ese dia sigue entera en la demanda y se compra igual.
     const dia = await h.comoAdmin(() =>
       h.fila<{ id: string }>(
         "select id from public.weekly_plan_days where plan_id = $1 and plan_date = $2",
@@ -574,28 +599,71 @@ describe("[F] el asado que dura hasta la noche releva una sola comida", () => {
       ),
     );
 
-    // LA CENA SIGUE ABIERTA, Y ESO ES LO CORRECTO HOY.
+    // LA DURACION NO RELEVA. Este bloque estaba escrito a mitad de camino entre
+    // dos ideas —su encabezado decia que el asado cubre el almuerzo pero no la
+    // cena, y su asercion exigia lo contrario— y se resolvio a favor de dejar
+    // la cena en la lista, con la pregunta de producto anotada al lado: "un
+    // asado de nueve horas que empieza a las 13:00 probablemente SI da de
+    // cenar".
     //
-    // Este bloque estaba escrito a mitad de camino entre dos ideas: su
-    // encabezado dice "EL ASADO CUBRE EL ALMUERZO PERO NO LA CENA DEL MISMO
-    // DIA", su titulo dice "releva una sola comida" y su comentario de arriba
-    // dice que la cena "sigue entera en la demanda y se compra igual" — pero la
-    // asercion exigia lo contrario. Las dos mitades no podian tener razon.
+    // La 0061 contesta esa pregunta, y no con la duracion: SE DECLARA. Que el
+    // asado dure nueve horas sigue sin relevar nada, y eso es lo que mide esta
+    // primera mitad. La segunda mitad, abajo, mide lo que pasa cuando la
+    // familia lo dice.
     //
-    // Se resuelve a favor de la mitad que coincide con el diseno: `meal_type` es
-    // UNA sola comida a proposito, y relevar una segunda a partir de la duracion
-    // seria una regla nueva que hoy no existe en ninguna parte.
-    //
-    // Y la asimetria manda: comprar de mas cuesta plata y comida botada; comprar
-    // de menos significa que el sabado alguien no come. Este mismo sprint lo
-    // dejo escrito al mover un evento de dia — de los dos errores, el que no se
-    // deshace a las dos de la tarde es el segundo. Ante la duda, la cena queda
-    // en la lista.
-    //
-    // Queda la pregunta de producto, que no se decide dentro de un test: un
-    // asado de nueve horas que empieza a las 13:00 probablemente SI da de cenar,
-    // y sostenerlo pide ventanas horarias por comida que el esquema todavia no
-    // tiene.
+    // La asimetria manda y por eso el orden es este: comprar de mas cuesta
+    // plata; comprar de menos significa que el sabado alguien no come, y ese
+    // error no se deshace a las dos de la tarde. Adivinar "cubre la cena" a
+    // partir del reloj es exactamente ese segundo error esperando ocurrir.
     expect(cena.map((c) => c.member_id)).toEqual([hogar.memberId, beto].sort());
+    guardado = { asado: asado!.id, dia: dia!.id };
+  });
+
+  it("declarada la cena, el asado la releva y deja de comprarse", async () => {
+    // LA MISMA NOCHE, DICHA. La familia marca la cena en el tablero del evento
+    // (`agregarComidaCubierta`) y recien ahi el plan la suelta.
+    expect(guardado, "el caso anterior no dejo el asado del sabado").not.toBeNull();
+    const { asado } = guardado!;
+
+    await h.comoAdmin(() =>
+      h.db.query(
+        `insert into public.event_covered_meals (event_id, meal_type)
+         values ($1, 'DINNER') on conflict do nothing`,
+        [asado],
+      ),
+    );
+
+    const comidas = await h.comoAdmin(() =>
+      h.filas<{ meal_type: string }>(
+        "select meal_type from public.event_covered_meals where event_id = $1 order by meal_type",
+        [asado],
+      ),
+    );
+    expect(comidas.map((c) => c.meal_type)).toEqual(["LUNCH", "DINNER"]);
+
+    const cena = await h.comoAdmin(() =>
+      h.filas<{ member_id: string }>(
+        `select p.member_id
+           from public.member_serving_projections p
+          where p.serving_date = $1::date and p.meal_type = 'DINNER'
+            and p.status = 'PLANNED' and p.covered_by_event_id is null
+          order by p.member_id`,
+        [SABADO],
+      ),
+    );
+    expect(
+      cena.map((c) => c.member_id),
+      "se declaro que el asado da de cenar y la cena se sigue comprando: se paga y se cocina dos veces",
+    ).toEqual([]);
+
+    // Y el espejo se queda en la PRIMERA comida del dia, no en la ultima
+    // declarada: `meal_type` describe por donde empieza el evento, no todo lo
+    // que cubre.
+    const espejo = await h.comoAdmin(() =>
+      h.fila<{ meal_type: string }>("select meal_type from public.nutrition_events where id = $1", [
+        asado,
+      ]),
+    );
+    expect(espejo!.meal_type).toBe("LUNCH");
   });
 });

@@ -34,7 +34,15 @@ import { weekdayName } from "@/domain/nutrition/calendar";
 type Db = SupabaseClient;
 
 /**
- * Un evento que releva comidas del plan, con lo que releva.
+ * UNA COMIDA relevada por un evento, no un evento.
+ *
+ * La distinción es del cierre v1 (0061): desde `event_covered_meals` un mismo
+ * evento puede relevar varias comidas del mismo día —el asado que empieza a la
+ * una y sigue de noche cubre el almuerzo Y la cena—, así que un asado así
+ * produce DOS de estos, uno por comida. El agrupado de más abajo ya trabajaba
+ * por `(evento, fecha, comida)` y por eso sigue siendo correcto sin tocarlo:
+ * la comida sale de la PORCIÓN relevada, no de la columna del evento (que
+ * desde la 0061 sólo conoce la primera).
  *
  * `comida` es `null` cuando la base trae un valor de enum que esta versión no
  * conoce; el texto crudo viaja al lado y la pantalla lo muestra tal cual. Un
