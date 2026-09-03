@@ -4,6 +4,7 @@
  *
  *   node scripts/publicar-recetario.mjs            (revisa; no escribe nada)
  *   node scripts/publicar-recetario.mjs --aplicar
+ *   node scripts/publicar-recetario.mjs --ref <proyecto> --aplicar   (otro proyecto: staging)
  *
  * Francisco aprobó que las 452 recetas entren a producción sabiendo lo que eso
  * significa, y conviene que quede escrito acá y no solo en una conversación:
@@ -39,7 +40,52 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const APLICAR = process.argv.includes("--aplicar");
+
+/**
+ * `--ref <proyecto>`: publicar el recetario en OTRO proyecto (staging). SIN la
+ * opción, el ref sale de NEXT_PUBLIC_SUPABASE_URL como siempre: el
+ * comportamiento por defecto no cambia. Lo usa `scripts/staging-bootstrap.mjs`,
+ * que necesita las mismas 452 recetas —y los mismos testigos por seed, que son
+ * lo que hace idempotente la corrida— en el proyecto de pruebas.
+ *
+ * Un `--ref` sin valor corta en vez de caer a producción.
+ */
+function extraerRef(argv) {
+  const resto = [];
+  let ref = null;
+  for (let i = 0; i < argv.length; i += 1) {
+    const a = argv[i];
+    if (a === "--ref") {
+      ref = argv[i + 1];
+      i += 1;
+      if (ref === undefined || ref.startsWith("--")) {
+        throw new Error("--ref necesita el ref del proyecto a continuación (por ejemplo --ref abcdefghijklmnopqrst).");
+      }
+    } else if (a.startsWith("--ref=")) {
+      ref = a.slice("--ref=".length);
+    } else {
+      resto.push(a);
+    }
+  }
+  if (ref !== null && !/^[a-z0-9]+$/.test(ref)) {
+    throw new Error(
+      `--ref recibió "${ref}", que no tiene la forma de un ref de Supabase (solo minúsculas y dígitos).`,
+    );
+  }
+  return { ref, resto };
+}
+
+let REF_EXPLICITO = null;
+let ARGUMENTOS = [];
+try {
+  ({ ref: REF_EXPLICITO, resto: ARGUMENTOS } = extraerRef(process.argv.slice(2)));
+} catch (e) {
+  // Antes de cualquier fetch: acá process.exit no deja sockets a medio cerrar.
+  console.error(`\n${e instanceof Error ? e.message : String(e)}\n`);
+  process.exit(1);
+}
+
+const APLICAR = ARGUMENTOS.includes("--aplicar");
 
 /** Lee una variable de un archivo de entorno sin volcarlo a memoria global. */
 function delArchivo(archivo, clave) {
@@ -60,7 +106,11 @@ const URL_SUPABASE =
   process.env.NEXT_PUBLIC_SUPABASE_URL ??
   delArchivo(path.join(RAIZ, "web", ".env.local"), "NEXT_PUBLIC_SUPABASE_URL") ??
   "";
-const REF = URL_SUPABASE.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1] ?? null;
+const REF = REF_EXPLICITO ?? URL_SUPABASE.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1] ?? null;
+// Cómo se llama el proyecto en los mensajes: sin --ref es producción y se dice
+// así; con --ref se nombra el ref, porque "Producción ahora: 0 recetas" leído
+// sobre staging manda a alguien a revisar la base equivocada.
+const NOMBRE_DEL_PROYECTO = REF_EXPLICITO ? `Proyecto ${REF} (--ref)` : "Producción";
 
 if (!TOKEN || !REF) {
   console.error("\nFalta el token (.env.deploy) o la URL del proyecto (web/.env.local).\n");
@@ -161,7 +211,7 @@ async function retrato() {
 
 const antes = await retrato();
 console.log(
-  `\nProducción ahora: ${antes.alimentos} alimentos · ${antes.recetas} recetas publicadas` +
+  `\n${NOMBRE_DEL_PROYECTO} ahora: ${antes.alimentos} alimentos · ${antes.recetas} recetas publicadas` +
     `\n${antes.sin_factor} de los dos alimentos clave siguen sin porción comestible.`,
 );
 
@@ -205,7 +255,7 @@ for (const c of CORRECCIONES) {
 
 const despues = await retrato();
 console.log(
-  `\nProducción ahora: ${despues.alimentos} alimentos · ${despues.recetas} recetas publicadas.`,
+  `\n${NOMBRE_DEL_PROYECTO} ahora: ${despues.alimentos} alimentos · ${despues.recetas} recetas publicadas.`,
 );
 if (despues.sin_factor > 0) {
   // ERROR != VACÍO: si las correcciones no pegaron, se dice. Un "listo" sobre

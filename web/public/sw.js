@@ -24,16 +24,42 @@
  *     vieja. No es teórico: al cambiar el color de marca de #2f7d4f a #3a684d,
  *     la versión anterior de este worker dejaba a cualquiera que ya tuviera la
  *     app instalada con el icono viejo pegado hasta que borrara los datos del
- *     sitio, porque VERSION es un literal que ningún paso de build sube y el
- *     `activate` entonces nunca borra nada. Con la revalidación el archivo
+ *     sitio, porque VERSION era un literal que ningún paso de build subía y el
+ *     `activate` entonces nunca borraba nada. Con la revalidación el archivo
  *     nuevo entra al caché solo y aparece en la carga siguiente, sin depender
  *     de que alguien se acuerde de subir un número al desplegar.
+ *
+ * QUÉ NO SE GUARDA NUNCA, Y POR QUÉ. Cada guarda tiene su caso en
+ * sw-no-cachea-datos.test.ts o en lib/pwa.test.ts, comprobado por mutación:
+ *
+ *  - Nada de OTRO ORIGEN. Supabase Storage entrega los documentos médicos y
+ *    las boletas por URL firmada (el token de acceso va en la URL), PostgREST
+ *    entrega la despensa y el plan, Auth entrega la sesión. Una copia de
+ *    cualquiera de esas es un dato viejo o un secreto escrito en el disco de
+ *    un celular: no se toca ni se inspecciona, se deja pasar derecho.
+ *  - Ningún archivo bajo /health, /salud ni /finanzas (PREFIJOS_PRIVADOS),
+ *    tenga la extensión que tenga: son exámenes y boletas, y un documento
+ *    médico en el caché de un celular compartido no se arregla después.
+ *  - Nada de /api ni ningún payload RSC (`?_rsc=`): son datos, no archivos.
+ *  - Ninguna pantalla (HTML): la navegación es red o /sin-conexion.html.
+ *  - Ninguna respuesta que el servidor marque `Cache-Control: no-store` o
+ *    `private` (ver `sirveParaGuardar`): es la red de seguridad para una ruta
+ *    privada que nadie listó, porque Next marca así todo lo que renderiza con
+ *    sesión.
+ *  - Nada que no sea GET: las mutaciones (server actions) van por POST.
  */
 
 /**
- * Sube esto A MANO solo para forzar un borrón y cuenta nueva (por ejemplo si un
- * caché quedó corrupto). NO es el mecanismo de actualización: de eso se encarga
- * la revalidación en segundo plano, justamente porque nadie se acuerda.
+ * En este FUENTE, VERSION es siempre "v1". No es la versión: es el MARCADOR
+ * que scripts/empaquetar-pwa.mjs reemplaza EN LA COPIA del bundle por
+ * `<version de package.json>-<sha corto>` al empaquetar. Así cada despliegue
+ * estrena nombres de caché y el `activate` bota los del despliegue anterior
+ * (antes ningún build subía este número y los cachés viejos vivían para
+ * siempre). La revalidación en segundo plano se queda igual: cubre un archivo
+ * sin hash reemplazado a mano en el servidor sin volver a empaquetar.
+ *
+ * No lo cambies a mano: lib/pwa.test.ts vigila que esta línea exista tal cual,
+ * exactamente una vez, y el empaquetador se niega a estampar si no la encuentra.
  */
 const VERSION = "v1";
 const CACHE_ARMAZON = `nutrifamilia-armazon-${VERSION}`;
@@ -96,9 +122,65 @@ function esInmutable(url) {
   return url.pathname.startsWith("/_next/static/");
 }
 
-/** Solo se guarda lo que llegó completo y del propio origen. */
+/**
+ * Rutas del propio origen bajo las que NO se guarda ningún archivo, tenga la
+ * URL la extensión que tenga:
+ *
+ *  - /health y /salud: los exámenes y documentos médicos de la familia.
+ *  - /finanzas: las boletas.
+ *
+ * Los documentos en sí viven en Supabase Storage (otro origen, ya excluido);
+ * esta lista cubre lo que el propio servidor pudiera contestar bajo esas rutas
+ * —una miniatura, una imagen generada, una exportación— y que `esEstatico`
+ * tomaría por un archivo del sitio por la pura extensión. Un examen o una
+ * boleta guardados en el caché de un celular compartido son un dato privado
+ * fuera de la app, y eso no se arregla después: por eso la guarda es por
+ * prefijo, antes de mirar la extensión.
+ *
+ * /api no está acá porque tiene su guarda propia más arriba en `fetch`: esa
+ * rige también para navegaciones y payloads RSC, y esta solo para archivos.
+ *
+ * Esta lista es una lista, o sea incompleta por naturaleza: la red de
+ * seguridad para una ruta privada que nadie anotó es `sirveParaGuardar`, que
+ * mira lo que el servidor declara en Cache-Control.
+ */
+const PREFIJOS_PRIVADOS = ["/health", "/salud", "/finanzas"];
+
+function esRutaPrivada(url) {
+  return PREFIJOS_PRIVADOS.some(
+    (prefijo) => url.pathname === prefijo || url.pathname.startsWith(`${prefijo}/`),
+  );
+}
+
+/**
+ * Lee una cabecera de la respuesta, o "" si no viene.
+ *
+ * En el navegador `headers` existe siempre; el doble de prueba de
+ * sw-no-cachea-datos.test.ts entrega respuestas sin cabeceras. Sin cabecera no
+ * hay directiva, y sin directiva rigen las demás reglas: no es un desconocido
+ * tapado, es la ausencia de una orden del servidor.
+ */
+function cabecera(respuesta, nombre) {
+  const cabeceras = respuesta.headers;
+  if (!cabeceras || typeof cabeceras.get !== "function") return "";
+  return cabeceras.get(nombre) ?? "";
+}
+
+/**
+ * Solo se guarda lo que llegó completo, del propio origen y que el servidor NO
+ * marcó como privado.
+ *
+ * Lo tercero es la red de seguridad de PREFIJOS_PRIVADOS: Next contesta toda
+ * pantalla y todo route handler que lee la sesión con
+ * `Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate`, y
+ * los archivos de public/ y de /_next/static nunca llevan eso. Así una ruta
+ * privada nueva que nadie agregó a la lista igual queda fuera del caché, porque
+ * lo dice el servidor y no una lista escrita a mano.
+ */
 function sirveParaGuardar(respuesta) {
-  return respuesta.ok && respuesta.type === "basic";
+  if (!respuesta.ok || respuesta.type !== "basic") return false;
+  const control = cabecera(respuesta, "cache-control").toLowerCase();
+  return !control.includes("no-store") && !control.includes("private");
 }
 
 /**
@@ -280,7 +362,12 @@ self.addEventListener("fetch", (evento) => {
     return;
   }
 
-  if (!esEstatico(url)) return;
+  // Un archivo bajo una ruta privada (PREFIJOS_PRIVADOS) no se guarda ni se
+  // sirve del caché, tenga la extensión que tenga: pasa derecho al navegador.
+  // Va DESPUÉS de la rama de navegación a propósito: abrir /finanzas sin red
+  // tiene que seguir mostrando /sin-conexion.html, no el error del navegador.
+  // Lo vigila lib/pwa.test.ts en los dos sentidos.
+  if (esRutaPrivada(url) || !esEstatico(url)) return;
 
   evento.respondWith(
     (async () => {

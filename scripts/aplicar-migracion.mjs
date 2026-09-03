@@ -6,6 +6,7 @@
  *   node scripts/aplicar-migracion.mjs ../seed/dev_catalog_seed.sql
  *   node scripts/aplicar-migracion.mjs --check        (solo credenciales)
  *   node scripts/aplicar-migracion.mjs --pendientes   (delega, ver abajo)
+ *   node scripts/aplicar-migracion.mjs --ref <proyecto> 0001_family.sql   (otro proyecto: staging)
  *
  * Nace del incidente de codificación del Sprint 11: el portapapeles de Windows
  * reescribía el UTF-8 y llegaban acentos rotos a una base clínica. Este camino
@@ -102,6 +103,48 @@ function delArchivo(archivo, clave) {
 const delEnvLocal = (clave) => delArchivo(ENV_LOCAL, clave);
 
 /**
+ * `--ref <proyecto>` (o `--ref=<proyecto>`): a qué proyecto de Supabase hablarle.
+ *
+ * SIN la opción, el ref sale de NEXT_PUBLIC_SUPABASE_URL como siempre: ese es el
+ * comportamiento por defecto y NO cambia. La opción existe para STAGING
+ * (`scripts/staging-bootstrap.mjs` la pasa en cada llamada). Antes, la única
+ * forma de apuntar este script a otro proyecto era editar web/.env.local —o sea
+ * desconfigurar la app de desarrollo para configurar un script— y dejarla
+ * apuntando a staging por accidente hasta que alguien lo notara.
+ *
+ * Devuelve el ref y los argumentos restantes SIN `--ref` ni su valor: si el
+ * valor quedara en la lista, el posicional siguiente sería "el archivo".
+ *
+ * Un `--ref` sin valor NO cae al proyecto por defecto: caer a producción por
+ * un argumento a medio escribir es exactamente el accidente que la opción vino
+ * a evitar. Se corta con error.
+ */
+function extraerRef(argv) {
+  const resto = [];
+  let ref = null;
+  for (let i = 0; i < argv.length; i += 1) {
+    const a = argv[i];
+    if (a === "--ref") {
+      ref = argv[i + 1];
+      i += 1;
+      if (ref === undefined || ref.startsWith("--")) {
+        throw new Error("--ref necesita el ref del proyecto a continuación (por ejemplo --ref abcdefghijklmnopqrst).");
+      }
+    } else if (a.startsWith("--ref=")) {
+      ref = a.slice("--ref=".length);
+    } else {
+      resto.push(a);
+    }
+  }
+  if (ref !== null && !/^[a-z0-9]+$/.test(ref)) {
+    throw new Error(
+      `--ref recibió "${ref}", que no tiene la forma de un ref de Supabase (solo minúsculas y dígitos).`,
+    );
+  }
+  return { ref, resto };
+}
+
+/**
  * Corta la corrida con un código de salida, SIN `process.exit()`.
  *
  * `process.exit()` mata el proceso con el socket de `fetch` todavía abierto, y
@@ -126,8 +169,13 @@ function salir(mensaje, codigo = 1) {
   throw new SalidaLimpia(codigo);
 }
 
-/** Token + ref del proyecto, o corta explicando cuál de los dos falta. */
-function credenciales() {
+/**
+ * Token + ref del proyecto, o corta explicando cuál de los dos falta.
+ *
+ * `refExplicito` es el de `--ref`; con él puesto no se mira ninguna URL de
+ * entorno, así que apuntar a staging no depende de cómo esté web/.env.local.
+ */
+function credenciales(refExplicito = null) {
   const token =
     process.env.SUPABASE_ACCESS_TOKEN ?? delArchivo(ENV_DESPLIEGUE, "SUPABASE_ACCESS_TOKEN");
 
@@ -166,6 +214,8 @@ function credenciales() {
     );
   }
 
+  if (refExplicito) return { token, ref: refExplicito, origenDelRef: "--ref" };
+
   const url =
     process.env.NEXT_PUBLIC_SUPABASE_URL ??
     delArchivo(ENV_DESPLIEGUE, "NEXT_PUBLIC_SUPABASE_URL") ??
@@ -174,7 +224,7 @@ function credenciales() {
   const ref = url.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1] ?? null;
   if (!ref) salir("No se pudo deducir el ref del proyecto desde NEXT_PUBLIC_SUPABASE_URL.");
 
-  return { token, ref };
+  return { token, ref, origenDelRef: "NEXT_PUBLIC_SUPABASE_URL" };
 }
 
 /** Ejecuta SQL en el proyecto. Devuelve las filas que la consulta produzca. */
@@ -239,7 +289,7 @@ function delegarPendientes(extra) {
   process.exitCode = r.status;
 }
 
-async function aplicarArchivo(arg) {
+async function aplicarArchivo(arg, refExplicito) {
   const ruta = path.isAbsolute(arg) ? arg : path.join(MIGRACIONES, arg);
   if (!existsSync(ruta)) salir(`No existe ${ruta}`);
 
@@ -257,11 +307,13 @@ async function aplicarArchivo(arg) {
     salir(`${path.basename(ruta)}: el archivo tiene mojibake o caracteres perdidos. No se aplica.`);
   }
 
-  const creds = credenciales();
+  const creds = credenciales(refExplicito);
 
   console.log(`Aplicando ${path.basename(ruta)}`);
   console.log(`  SHA-256: ${sha}`);
-  console.log(`  Proyecto: ${creds.ref}`);
+  // Se dice DE DÓNDE salió el ref: quien lee la corrida tiene que poder ver si
+  // fue a producción por defecto o a otro proyecto por --ref.
+  console.log(`  Proyecto: ${creds.ref} (${creds.origenDelRef})`);
 
   try {
     const resultado = await ejecutar(creds, sql);
@@ -277,13 +329,20 @@ async function aplicarArchivo(arg) {
 }
 
 async function principal() {
-  const arg = process.argv[2];
+  let ref = null;
+  let resto = [];
+  try {
+    ({ ref, resto } = extraerRef(process.argv.slice(2)));
+  } catch (e) {
+    salir(e instanceof Error ? e.message : String(e));
+  }
+  const arg = resto[0];
 
   if (arg === "--check") {
-    const creds = credenciales();
+    const creds = credenciales(ref);
     try {
       const filas = await ejecutar(creds, "select current_database() as db, version() as v");
-      console.log(`Conectado a ${creds.ref}: ${JSON.stringify(filas)}`);
+      console.log(`Conectado a ${creds.ref} (${creds.origenDelRef}): ${JSON.stringify(filas)}`);
     } catch (e) {
       // Con mensaje y sin traza: quien corre --check está averiguando si el
       // token sirve, y una pila de Node no le contesta esa pregunta.
@@ -293,14 +352,18 @@ async function principal() {
   }
 
   if (arg === "--pendientes") {
-    delegarPendientes(process.argv.slice(3));
+    // El --ref viaja al verificador tal cual: contra otro proyecto, él informa
+    // y se niega a escribir el libro (que describe producción).
+    delegarPendientes([...resto.slice(1), ...(ref ? ["--ref", ref] : [])]);
     return;
   }
 
   if (!arg) {
     salir(
       [
-        "Uso: node scripts/aplicar-migracion.mjs <archivo.sql> | --check | --pendientes",
+        "Uso: node scripts/aplicar-migracion.mjs <archivo.sql> | --check | --pendientes  [--ref <proyecto>]",
+        "",
+        "--ref apunta a OTRO proyecto (staging). Sin --ref va al de NEXT_PUBLIC_SUPABASE_URL.",
         "",
         "Este script aplica UN archivo. Para la cadena, en el orden real (que no es el",
         "alfabético: la 0036 va después de la 0037): node scripts/poner-al-dia.mjs",
@@ -309,7 +372,7 @@ async function principal() {
     );
   }
 
-  await aplicarArchivo(arg);
+  await aplicarArchivo(arg, ref);
 }
 
 try {

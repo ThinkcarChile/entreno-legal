@@ -4,6 +4,7 @@
  *
  *   node scripts/poner-al-dia.mjs                      (revisa; no toca nada)
  *   node scripts/poner-al-dia.mjs --aplicar 0036 0038  (aplica SOLO esas)
+ *   node scripts/poner-al-dia.mjs --ref <proyecto> --aplicar 0001 0002  (otro proyecto: staging)
  *
  * POR QUÉ EXISTE: el estado de producción se había separado del repositorio sin
  * que nada lo notara. El código de la aplicación ya consultaba
@@ -66,13 +67,59 @@ const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIGRACIONES = path.join(RAIZ, "supabase", "migrations");
 const HARNESS = path.join(RAIZ, "web", "src", "integration", "harness.ts");
 
-const APLICAR = process.argv.includes("--aplicar");
-const PENDIENTES = process.argv.includes("--pendientes");
-const SELLAR = process.argv.includes("--sellar");
-const PEDIDAS = process.argv
-  .slice(2)
-  .filter((a) => !a.startsWith("--"))
-  .map((a) => a.trim());
+/**
+ * `--ref <proyecto>`: a qué proyecto hablarle. SIN la opción, el ref lo deduce
+ * `aplicar-migracion.mjs` de NEXT_PUBLIC_SUPABASE_URL, como siempre. Con ella,
+ * se le reenvía en cada llamada (la comprobación y cada migración).
+ *
+ * Existe para STAGING: `scripts/staging-bootstrap.mjs` construye el proyecto de
+ * pruebas con ESTE script, para que la cadena que recibe staging sea la misma
+ * secuencia que ejercitan las pruebas y que recibe producción — un segundo
+ * aplicador "para staging" es un segundo orden.
+ *
+ * El valor se saca de la lista ANTES de leer los posicionales: si quedara, el
+ * ref pasaría por un número de migración y el script se negaría con "no hay
+ * ninguna migración que empiece por ...". Y un `--ref` sin valor corta: caer a
+ * producción por un argumento a medio escribir es justo lo que hay que evitar.
+ */
+function extraerRef(argv) {
+  const resto = [];
+  let ref = null;
+  for (let i = 0; i < argv.length; i += 1) {
+    const a = argv[i];
+    if (a === "--ref") {
+      ref = argv[i + 1];
+      i += 1;
+      if (ref === undefined || ref.startsWith("--")) {
+        throw new Error("--ref necesita el ref del proyecto a continuación (por ejemplo --ref abcdefghijklmnopqrst).");
+      }
+    } else if (a.startsWith("--ref=")) {
+      ref = a.slice("--ref=".length);
+    } else {
+      resto.push(a);
+    }
+  }
+  if (ref !== null && !/^[a-z0-9]+$/.test(ref)) {
+    throw new Error(
+      `--ref recibió "${ref}", que no tiene la forma de un ref de Supabase (solo minúsculas y dígitos).`,
+    );
+  }
+  return { ref, resto };
+}
+
+let REF_EXPLICITO = null;
+let ARGUMENTOS = [];
+try {
+  ({ ref: REF_EXPLICITO, resto: ARGUMENTOS } = extraerRef(process.argv.slice(2)));
+} catch (e) {
+  console.error(`\n${e instanceof Error ? e.message : String(e)}\n`);
+  process.exit(1);
+}
+
+const APLICAR = ARGUMENTOS.includes("--aplicar");
+const PENDIENTES = ARGUMENTOS.includes("--pendientes");
+const SELLAR = ARGUMENTOS.includes("--sellar");
+const PEDIDAS = ARGUMENTOS.filter((a) => !a.startsWith("--")).map((a) => a.trim());
 
 /**
  * El orden sale del arnés de pruebas. Si no se puede leer, este script NO
@@ -170,11 +217,22 @@ function pendientesDelLibro(orden) {
 const sha = (archivo) =>
   createHash("sha256").update(readFileSync(path.join(MIGRACIONES, archivo))).digest("hex");
 
+// El --ref viaja en CADA llamada al aplicador, no solo en la primera: si se
+// reenviara únicamente en la comprobación, la conexión se probaría contra
+// staging y las migraciones irían a producción.
 const correr = (args) =>
-  execFileSync("node", [path.join(RAIZ, "scripts", "aplicar-migracion.mjs"), ...args], {
-    encoding: "utf8",
-    cwd: RAIZ,
-  });
+  execFileSync(
+    "node",
+    [
+      path.join(RAIZ, "scripts", "aplicar-migracion.mjs"),
+      ...(REF_EXPLICITO ? ["--ref", REF_EXPLICITO] : []),
+      ...args,
+    ],
+    {
+      encoding: "utf8",
+      cwd: RAIZ,
+    },
+  );
 
 const linea = (xs) => xs.join("\n");
 
@@ -217,6 +275,26 @@ if (sueltas.length > 0) {
 
 console.log(linea(["", `Orden de aplicación (${orden.length}, tomado del arnés de pruebas):`, ""]));
 for (const f of orden) console.log(`   ${f}  ${sha(f).slice(0, 12)}…`);
+
+if (REF_EXPLICITO) {
+  console.log(linea(["", `Proyecto: ${REF_EXPLICITO} (por --ref; NO es el de web/.env.local).`]));
+  if (PENDIENTES) {
+    // El libro describe PRODUCCIÓN: qué declara pendiente no dice nada de otro
+    // proyecto. Contra staging se nombran las migraciones a mano, y quien sabe
+    // cuáles le faltan a staging es el bootstrap (con los testigos en vivo).
+    console.error(
+      linea([
+        "",
+        "--pendientes no se combina con --ref: supabase/estado-produccion.json describe",
+        "producción, y lo que ahí está PENDIENTE no dice qué le falta a otro proyecto.",
+        "Contra staging nombra las migraciones a mano (--aplicar 0001 0002 …) o deja",
+        "que scripts/staging-bootstrap.mjs las resuelva con los testigos en vivo.",
+        "",
+      ]),
+    );
+    process.exit(1);
+  }
+}
 
 /**
  * `aplicar-migracion.mjs --check` CONECTA BIEN Y DESPUÉS SE CAE AL SALIR.

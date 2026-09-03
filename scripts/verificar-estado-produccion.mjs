@@ -5,6 +5,7 @@
  *
  *   node scripts/verificar-estado-produccion.mjs             (solo informa)
  *   node scripts/verificar-estado-produccion.mjs --escribir  (informa y anota)
+ *   node scripts/verificar-estado-produccion.mjs --ref <proyecto>  (otro proyecto: solo informa)
  *
  * POR QUÉ EXISTE. `gate-schema-parity.test.ts` decía por escrito que garantizaba
  * "schema de test == schema de producción" y levantaba la base con la cadena
@@ -105,6 +106,43 @@ function salir(mensaje, codigo = 1) {
 
 const ESCRIBIR = process.argv.includes("--escribir");
 
+/**
+ * `--ref <proyecto>`: preguntarle a OTRO proyecto (staging) qué tiene puesto.
+ *
+ * SIN la opción, el ref sale de NEXT_PUBLIC_SUPABASE_URL como siempre: el
+ * comportamiento por defecto no cambia. Con ella, este script SOLO INFORMA:
+ * el libro describe producción (`libro.proyecto`), y anotar en él lo que
+ * contesta otro proyecto sería escribir el estado de staging bajo el nombre de
+ * producción — `--escribir` se niega antes de preguntar nada.
+ *
+ * Lo usa `scripts/staging-bootstrap.mjs` como humo: contra un staging recién
+ * construido, TODOS los testigos tienen que dar verdadero.
+ */
+export function extraerRef(argv) {
+  const resto = [];
+  let ref = null;
+  for (let i = 0; i < argv.length; i += 1) {
+    const a = argv[i];
+    if (a === "--ref") {
+      ref = argv[i + 1];
+      i += 1;
+      if (ref === undefined || ref.startsWith("--")) {
+        throw new Error("--ref necesita el ref del proyecto a continuación (por ejemplo --ref abcdefghijklmnopqrst).");
+      }
+    } else if (a.startsWith("--ref=")) {
+      ref = a.slice("--ref=".length);
+    } else {
+      resto.push(a);
+    }
+  }
+  if (ref !== null && !/^[a-z0-9]+$/.test(ref)) {
+    throw new Error(
+      `--ref recibió "${ref}", que no tiene la forma de un ref de Supabase (solo minúsculas y dígitos).`,
+    );
+  }
+  return { ref, resto };
+}
+
 const TOKEN =
   process.env.SUPABASE_ACCESS_TOKEN ?? delArchivo(ENV_DESPLIEGUE, "SUPABASE_ACCESS_TOKEN");
 const URL_SUPABASE =
@@ -112,7 +150,12 @@ const URL_SUPABASE =
   delArchivo(ENV_DESPLIEGUE, "NEXT_PUBLIC_SUPABASE_URL") ??
   delArchivo(ENV_LOCAL, "NEXT_PUBLIC_SUPABASE_URL") ??
   "";
-const REF = URL_SUPABASE.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1] ?? null;
+// `let`, no `const`: `principal()` lo reemplaza si llegó `--ref`. Se resuelve
+// recién ahí —y no al importar— porque el test importa este módulo para
+// ejecutar sus funciones, y leer argv en la importación adivinaría sobre los
+// argumentos de vitest.
+let REF = URL_SUPABASE.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1] ?? null;
+let REF_EXPLICITO = null;
 
 async function ejecutar(sql) {
   const r = await fetch(`https://api.supabase.com/v1/projects/${REF}/database/query`, {
@@ -397,6 +440,13 @@ function hoyISO(d = new Date()) {
 }
 
 async function principal() {
+  try {
+    ({ ref: REF_EXPLICITO } = extraerRef(process.argv.slice(2)));
+  } catch (e) {
+    salir(e instanceof Error ? e.message : String(e));
+  }
+  if (REF_EXPLICITO) REF = REF_EXPLICITO;
+
   if (!TOKEN) {
     salir(
       [
@@ -415,6 +465,27 @@ async function principal() {
   if (!REF) salir("No se pudo deducir el ref del proyecto desde NEXT_PUBLIC_SUPABASE_URL.");
 
   const libro = JSON.parse(readFileSync(LIBRO, "utf8"));
+
+  // -------------------------------------------------------------------------
+  // Con --ref a OTRO proyecto, este script informa y nada más. El libro lleva
+  // el nombre de producción; anotarle las respuestas de staging lo convertiría
+  // en un libro que describe dos bases y no describe ninguna. Se corta ANTES de
+  // preguntar: no hay motivo para gastar la consulta si igual no se anota.
+  // -------------------------------------------------------------------------
+  if (REF_EXPLICITO && REF_EXPLICITO !== libro.proyecto) {
+    if (ESCRIBIR) {
+      salir(
+        [
+          `--escribir se niega: el libro describe el proyecto ${libro.proyecto} y --ref apunta a ${REF_EXPLICITO}.`,
+          "supabase/estado-produccion.json es el libro de PRODUCCIÓN. Contra otro proyecto",
+          "este script solo informa (sin --escribir).",
+        ].join(SALTO),
+      );
+    }
+    console.log(
+      `AVISO: el libro describe ${libro.proyecto}; esto es un informe contra ${REF_EXPLICITO} (--ref). No se anota nada.`,
+    );
+  }
 
   // -------------------------------------------------------------------------
   // Primero la FORMA, antes de armar una sola sentencia: una entrada sin

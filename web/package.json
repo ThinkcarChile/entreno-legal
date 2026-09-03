@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "eslint src public scripts --max-warnings 0",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "e2e:staging": "playwright test --project=staging",
+    "pwa:empaquetar": "node ../scripts/empaquetar-pwa.mjs",
+    "pwa:validar": "node ../scripts/empaquetar-pwa.mjs --solo-validar"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
@@ -23,6 +27,7 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.7",
     "@eslint/js": "^9.18.0",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.10.0",
     "@types/qrcode": "^1.5.6",

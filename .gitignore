@@ -14,3 +14,13 @@ node_modules/
 # Next.js carga ese archivo dentro del proceso del servidor web, y este token
 # puede correr SQL arbitrario sobre toda la cuenta.
 .env.deploy
+
+# Paquetes de la PWA para el servidor propio (los escribe scripts/empaquetar-pwa.mjs).
+# Un zip de ~70 MB por commit no va en la historia: se rearma con `npm run pwa:empaquetar`.
+dist/
+web/dist/
+
+# Salida de Playwright: capturas, trazas y el informe HTML de cada corrida.
+# Aparecen como sin confirmar despues de cualquier E2E y se colarian en un commit.
+web/e2e/salida/
+web/e2e/informe/

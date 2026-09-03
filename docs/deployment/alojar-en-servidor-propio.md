@@ -42,39 +42,96 @@ archivos (el HTML/PHP clásico de cPanel) no alcanza.
 `web/.next/standalone/` un servidor Node autocontenido —`server.js`,
 `package.json` y solo las dependencias que de verdad se usan—.
 
-**Verificado el 2026-09-02**: el build corre limpio (`✓ Compiled successfully`),
-genera **59 rutas** y el bundle armado pesa **68 MB**.
+**Verificado el 2026-09-02 con `npm run pwa:empaquetar`**: el build corre limpio
+(`✓ Compiled successfully`), genera **49 rutas** (48 dinámicas y `/_not-found`),
+el bundle armado pesa **63,0 MB en 2172 archivos** (56,2 MB son `node_modules`)
+y el zip queda en **18,6 MB con 2646 entradas**. Los números salen del resumen
+que imprime el script, no de memoria: si al leer esto cambiaron, el script los
+vuelve a imprimir.
 
 #### Cómo se arma, exactamente
 
-El standalone NO se basta solo: Next deja fuera los estáticos y `public/`, y sin
-ellos la app carga sin estilos, sin íconos y sin PWA instalable. Son tres copias
-después del build:
+Un solo comando, desde `web/`:
 
 ```bash
 cd web
-npx next build
-cp -r public              .next/standalone/public
-mkdir -p                  .next/standalone/.next
-cp -r .next/static        .next/standalone/.next/static
+npm run pwa:empaquetar               # compila, arma, valida y deja el zip
+npm run pwa:empaquetar -- --limpio   # lo mismo, pero antes borra .next y corre npm ci
+npm run pwa:validar                  # revisa un bundle ya armado, sin compilar
 ```
 
-Lo que queda en `web/.next/standalone/` es lo que se sube tal cual.
+Desde un checkout limpio (sin `node_modules`): `git clone …`, `cd web`,
+`npm run pwa:empaquetar -- --limpio`. Necesita `web/.env.local` con
+`NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`: `next build`
+hornea esos dos valores en el bundle del cliente, así que el proyecto con el que
+se compila tiene que ser el mismo al que apunta el servidor. Si faltan, el
+script se niega a compilar.
+
+Lo que hace `scripts/empaquetar-pwa.mjs`, en orden, y FALLA en cualquier paso:
+
+1. `next build`. Si el build falla, se detiene: no sigue con un bundle viejo.
+2. Arma `web/.next/standalone/`: copia `.next/static` a
+   `standalone/.next/static` y `public/` a `standalone/public`. El standalone
+   NO se basta solo: sin esas dos copias la app carga sin estilos, sin íconos y
+   sin PWA instalable. Antes eran tres `cp -r` escritos en este documento, o
+   sea tres oportunidades de subir un bundle cojo sin que nada avisara.
+3. Estampa la versión del service worker EN LA COPIA: reemplaza
+   `const VERSION = "v1";` por `<versión de package.json>-<sha corto de git>`
+   (por ejemplo `0.1.0-a873a10`). El fuente `web/public/sw.js` sigue diciendo
+   `v1`. Con eso cada despliegue estrena nombres de caché y el `activate` del
+   worker bota los del despliegue anterior: el icono viejo ya no queda pegado
+   en los celulares que tenían la app instalada. Si el árbol tiene cambios sin
+   commit, la estampa lleva `-sucio-<fecha-hora>` y el zip `-sucio`: se
+   declara, no se esconde.
+4. Valida el bundle: `server.js`, `package.json`, `.next/BUILD_ID`,
+   `node_modules`, `.next/static` con contenido, y `public/` con el manifiesto
+   (JSON válido; `name`, `short_name`, `start_url`, `scope`,
+   `display: standalone`, `theme_color`, `background_color`; PNG de 192 y 512
+   con purpose `any` y `maskable`; cada icono existiendo de verdad en disco),
+   `sw.js` estampado y `sin-conexion.html`. Si falta cualquiera, NO escribe el
+   zip.
+5. Escribe en `dist/` (raíz del repo, ignorado por git):
+   - `nutrifamilia-pwa-<sha>.zip`: el bundle entero, con `server.js` en la
+     raíz; se sube y se descomprime tal cual. Lo arma con `tar.exe` (bsdtar,
+     viene con Windows 10+) o con `zip` en Linux, y después lo LISTA: tiene
+     que traer `server.js` y ninguna ruta con barra invertida
+     (`Compress-Archive` de PowerShell 5.1 las escribe así, y en un servidor
+     Linux salen archivos sueltos llamados `.next\static\…`).
+   - `VARIABLES-DE-ENTORNO.md`: la lista exacta de variables que el servidor
+     necesita y cuál JAMÁS va, generada de la misma lista que usa el script.
+6. Imprime el resumen: sha, estampa, tamaños (bundle, static, public,
+   node_modules) y el zip con su cantidad de entradas.
+
+`web/src/lib/pwa.test.ts` vigila las dos puntas: que el fuente traiga
+exactamente lo que el script busca (el marcador de versión, una sola vez; los
+campos e iconos del manifiesto) y que el validador del script de verdad falle
+cuando falta cada pieza.
 
 #### El tropiezo que cuesta una reconstrucción
 
-**No corras el servidor de desarrollo después de compilar.** `npm run dev`
+**No corras el servidor de desarrollo después de empaquetar.** `npm run dev`
 reescribe `.next` entero y se lleva `standalone/` por delante — el directorio
-simplemente desaparece, sin ningún aviso, y el error aparece recién cuando vas a
-subir y no hay nada que subir. Compilar y armar es lo último que se hace antes de
-subir; si hubo que volver a desarrollo, se vuelve a compilar.
+simplemente desaparece, sin ningún aviso. El zip en `dist/` sobrevive (está
+fuera de `.next`), pero `npm run pwa:validar` ya no tiene qué revisar y un zip
+sin bundle al lado no se puede volver a comprobar. Empaquetar es lo último que
+se hace antes de subir; si hubo que volver a desarrollo, se vuelve a empaquetar.
 
-#### Lo que el bundle sí trae
+#### Lo que el bundle sí trae, y qué guarda el service worker
 
-`public/` lleva `manifest.webmanifest`, `sw.js` (el service worker),
-`sin-conexion.html` (la pantalla sin conexión), `icon.svg`,
+`public/` lleva `manifest.webmanifest`, `sw.js` (el service worker, ya
+estampado), `sin-conexion.html` (la pantalla sin conexión), `icon.svg`,
 `apple-touch-icon.png` y la carpeta `icons/`. O sea: **la PWA completa**, lista
 para instalarse desde cualquier origen HTTPS.
+
+El worker guarda SOLO el armazón (`sin-conexion.html`, manifiesto, iconos) y
+los estáticos de `/_next/static` (llevan el hash del contenido en el nombre).
+No guarda nunca: nada de otro origen (Supabase Storage con sus URL firmadas,
+PostgREST, Auth), ningún archivo bajo `/api`, `/health`, `/salud` ni
+`/finanzas`, ninguna pantalla, ningún payload RSC, ni ninguna respuesta que el
+servidor marque `Cache-Control: no-store` o `private`. Documentos médicos y
+boletas jamás tocan el caché. Está escrito en la cabecera de
+`web/public/sw.js` y comprobado por mutación en
+`web/src/app/sw-no-cachea-datos.test.ts` y `web/src/lib/pwa.test.ts`.
 
 ---
 
@@ -87,14 +144,19 @@ y busca *Setup Node.js App* o *Node.js Selector* en la sección de Software.
 **Si está**, el camino es:
 
 1. Crear la aplicación con Node 20 o superior (la app se desarrolla en 24).
-2. Subir el contenido de `web/.next/standalone/`, más `web/.next/static/` dentro
-   de `.next/static/` y `web/public/` tal cual. Esos dos NO van dentro del
-   standalone y sin ellos la app carga sin estilos ni íconos.
+2. Subir `dist/nutrifamilia-pwa-<sha>.zip` (lo deja `npm run pwa:empaquetar`)
+   y descomprimirlo en la raíz de la aplicación: `server.js` tiene que quedar en
+   esa raíz, con `.next/`, `public/` y `node_modules/` al lado. No hay que
+   copiar nada más a mano: el zip ya trae `.next/static` y `public/` adentro, y
+   el script se negó a escribirlo si faltaba algo.
 3. Application startup file: `server.js`.
-4. Variables de entorno: `NEXT_PUBLIC_SUPABASE_URL`,
-   `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `PORT` (el que asigne cPanel) y
-   `NODE_ENV=production`. **`SUPABASE_ACCESS_TOKEN` NO va acá** — ese token corre
-   SQL arbitrario sobre toda la cuenta y la app no lo necesita nunca.
+4. Variables de entorno: las de `dist/VARIABLES-DE-ENTORNO.md`, que el script
+   genera junto al zip: `NEXT_PUBLIC_SUPABASE_URL` y
+   `NEXT_PUBLIC_SUPABASE_ANON_KEY` (las MISMAS con las que se compiló), `PORT`
+   (el que asigne cPanel), `HOSTNAME` (`0.0.0.0` salvo que el hosting exija
+   otra) y `NODE_ENV=production`. **`SUPABASE_ACCESS_TOKEN` NO va acá** — ese
+   token corre SQL arbitrario sobre toda la cuenta y la app no lo necesita
+   nunca. Tampoco `SUPABASE_SERVICE_ROLE_KEY`: salta las políticas RLS.
 5. HTTPS con el certificado del dominio (AutoSSL sirve). Sin HTTPS no hay PWA
    instalable: el service worker no se registra.
 
