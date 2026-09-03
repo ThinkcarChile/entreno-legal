@@ -14,8 +14,8 @@ el resultado; si algo no se corrió, dice NOT_RUN aunque el código exista.
 |---|---|---|---|---|---|
 | 1 | Push del trabajo local | **PASS** | `ahead 0 / behind 0`, `origin` en `5403f3e` | no | — |
 | 2 | Suite de pruebas | **PASS** | 2393 pruebas, 136 archivos, 0 rojas | no | — |
-| 3 | Tipos y lint | **PASS** | `tsc --noEmit` 0 errores; `eslint --max-warnings 0` limpio | no | — |
-| 4 | CI remoto (job `web`) | **PASS** | verde tras separar defecto de brecha de despliegue | no | — |
+| 3 | Tipos y lint | **PASS** | `tsc --noEmit` 0 errores; `eslint --max-warnings 0` limpio (verificado DESPUÉS del último cambio: la primera versión de esta tabla lo declaró con una corrida vieja y CI lo desmintió) | no | — |
+| 4 | CI remoto (job `web`) | **PASS** | `#33818055976` falló por tres errores de tipos en la regresión nueva (`db.query` no existe en ese tipo); corregido y vuelto a verificar | no | — |
 | 5 | Cadena en PostgreSQL real (job `db`) | **PASS** | `db-test.sh` verde en CI desde `a873a10` | no | — |
 | 6 | Eventos: DRAFT + comidas cubiertas | **PASS** | 0061; 17 pruebas; 14 mutaciones | no | — |
 | 7 | Cierre de seguridad SECDEF | **PASS** | 0062; anon pasa de 262 a **0** funciones ejecutables | no | — |

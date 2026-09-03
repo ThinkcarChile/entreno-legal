@@ -416,10 +416,11 @@ describe("las restricciones NOT VALID no impiden restaurar", () => {
     `);
 
     // La fila 1 viola la regla y existe: es exactamente el caso de producción.
-    const antes = await db.query<{ n: number }>(
+    const ejecutor = lib.ejecutorPglite(db, "destino de mentira");
+    const antes = (await ejecutor.ejecutar(
       "select count(*)::int as n from public.regla_tardia where (prueba is not null) <> marca",
-    );
-    expect(antes.rows[0]!.n, "el montaje no reprodujo el caso: no hay fila exenta").toBe(1);
+    )) as { n: number }[];
+    expect(antes[0]!.n, "el montaje no reprodujo el caso: no hay fila exenta").toBe(1);
 
     // Un INSERT nuevo de esa misma fila SÍ se revisa: eso es lo que rompía.
     await expect(
@@ -427,7 +428,6 @@ describe("las restricciones NOT VALID no impiden restaurar", () => {
     ).rejects.toThrow(/regla_tardia_marca_iff_prueba/);
 
     // Y ahora el camino real: soltar, cargar, reponer.
-    const ejecutor = lib.ejecutorPglite(db, "destino de mentira");
     const noValidadas = await ejecutor.ejecutar(
       `select c.conname, n.nspname, t.relname, pg_get_constraintdef(c.oid) as definicion
          from pg_constraint c
@@ -448,18 +448,20 @@ describe("las restricciones NOT VALID no impiden restaurar", () => {
     );
 
     // Las dos filas volvieron, incluida la exenta.
-    const despues = await db.query<{ n: number }>("select count(*)::int as n from public.regla_tardia");
-    expect(despues.rows[0]!.n, "la restauración perdió filas").toBe(2);
+    const despues = (await ejecutor.ejecutar(
+      "select count(*)::int as n from public.regla_tardia",
+    )) as { n: number }[];
+    expect(despues[0]!.n, "la restauración perdió filas").toBe(2);
 
     // Y la regla quedó puesta, y sigue siendo NOT VALID: ni más floja ni más
     // dura que en el origen. Si volviera VALIDADA, rechazaría la fila 1 que
     // acabamos de restaurar; si no volviera, el destino sería otra base.
-    const regla = await db.query<{ n: number; validada: boolean }>(
+    const regla = (await ejecutor.ejecutar(
       `select count(*)::int as n, bool_or(convalidated) as validada
          from pg_constraint where conname = 'regla_tardia_marca_iff_prueba'`,
-    );
-    expect(regla.rows[0]!.n, "la restauración no repuso la restricción").toBe(1);
-    expect(regla.rows[0]!.validada, "la repuso VALIDADA: rechazaría la fila que exime").toBe(false);
+    )) as { n: number; validada: boolean }[];
+    expect(regla[0]!.n, "la restauración no repuso la restricción").toBe(1);
+    expect(regla[0]!.validada, "la repuso VALIDADA: rechazaría la fila que exime").toBe(false);
 
     await db.exec("drop table public.regla_tardia;");
   }, 60_000);
