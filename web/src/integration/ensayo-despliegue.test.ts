@@ -1,7 +1,14 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { crearHogar, levantarBase, MIGRACIONES, migracionesDeProduccion, type Harness } from "./harness";
+import {
+  acotarHasta,
+  crearHogar,
+  levantarBase,
+  MIGRACIONES,
+  migracionesDeProduccion,
+  type Harness,
+} from "./harness";
 import { pathToFileURL } from "node:url";
 import { cargarLibroDeProduccion } from "./estado-produccion";
 
@@ -60,8 +67,10 @@ function pendientes(): string[] {
   const faltan = MIGRACIONES.filter((m) => !puestas.has(m));
   const hasta = process.env.ENSAYO_HASTA;
   if (!hasta) return faltan;
-  const numero = (m: string) => (m.split("/").pop() ?? m).slice(0, 4);
-  const acotadas = faltan.filter((m) => numero(m) <= hasta);
+  // La regla de cortar por número vive en el arnés, no acá: dos copias de la
+  // misma regla terminan discrepando, y la que discrepe hará que un ensayo diga
+  // que probó algo que no probó.
+  const acotadas = acotarHasta(faltan, hasta);
   // ERROR != VACÍO: pedir un ensayo acotado a un número que no está pendiente es
   // un error de quien lo pide, no un ensayo de cero migraciones que pasa solo.
   if (acotadas.length === 0) {

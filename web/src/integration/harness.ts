@@ -165,6 +165,28 @@ export const MIGRACIONES = [
  * Quien la llama y no puede saber el estado de producción recibe una excepción
  * con nombre y apellido, jamás una lista a medias.
  */
+/**
+ * Corta una lista de migraciones HASTA un número, inclusive.
+ *
+ * UN SOLO DUEÑO DE ESTA REGLA. Nació duplicada —una copia en `levantarBase`
+ * para cortar la CADENA y otra en el ensayo de despliegue para cortar las
+ * PENDIENTES— y dos copias de la misma regla terminan discrepando: basta que una
+ * compare por nombre completo y la otra por prefijo para que un ensayo diga que
+ * probó algo que no probó.
+ *
+ * Compara los cuatro dígitos del nombre como TEXTO, y eso es correcto porque los
+ * números están rellenos con ceros a la izquierda: "0060" < "0061" < "0100". Sin
+ * el relleno habría que parsear, y el repo no tiene ninguno sin él — lo comprueba
+ * su propia prueba.
+ *
+ * El ORDEN de la lista de entrada se respeta tal cual: es el orden del arnés,
+ * donde la 0036 va DESPUÉS de la 0037. Filtrar nunca reordena.
+ */
+export function acotarHasta(migraciones: string[], hasta: string): string[] {
+  const numero = (m: string) => (m.split("/").pop() ?? m).slice(0, 4);
+  return migraciones.filter((m) => numero(m) <= hasta);
+}
+
 export function migracionesDeProduccion(): string[] {
   return soloLoQueProduccionTiene(MIGRACIONES);
 }
@@ -388,10 +410,7 @@ export async function levantarBase(
   } = {},
 ): Promise<Harness> {
   const base = opciones.soloProduccion === true ? migracionesDeProduccion() : MIGRACIONES;
-  const cadena =
-    opciones.hasta === undefined
-      ? base
-      : base.filter((m) => (m.split("/").pop() ?? m).slice(0, 4) <= opciones.hasta!);
+  const cadena = opciones.hasta === undefined ? base : acotarHasta(base, opciones.hasta);
   const db = await abrirBase(cadena, opciones.conSeeds !== false);
 
   const filas = async <T,>(sql: string, params: unknown[] = []) =>
