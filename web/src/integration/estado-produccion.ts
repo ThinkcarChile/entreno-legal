@@ -169,6 +169,14 @@ function hoyISO(): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
+/**
+ * El sha256 de una migración por su NOMBRE de archivo, para quien no quiere
+ * saber dónde vive el directorio. Misma normalización a LF que el resto.
+ */
+export function sha256DeMigracion(archivo: string): string {
+  return sha256De(path.join(DIR_MIGRACIONES, archivo));
+}
+
 function sha256De(ruta: string): string {
   // SE HASHEA EL CONTENIDO NORMALIZADO A LF, NO LOS BYTES DEL DISCO.
   //

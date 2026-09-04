@@ -1,7 +1,14 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { levantarBase, migracionesDeProduccion, MIGRACIONES, type Harness } from "./harness";
+import {
+  armarEstadoDelContrato,
+  clasificarObjetos,
+  demostrarQueCreanLasPendientes,
+  type DemostracionDePendientes,
+  type ObjetoDelContrato,
+} from "./contrato-schema";
 import {
   cargarLibroDeProduccion,
   consultaDelTestigo,
@@ -157,6 +164,16 @@ function clasificarFaltantes(
 let completa: Harness;
 let produccion: Harness;
 
+const ARTEFACTO = path.resolve(__dirname, "../../../supabase/schema-contract-status.json");
+
+let demostracion: DemostracionDePendientes;
+/**
+ * ¿El contrato contra la CADENA COMPLETA pasa? (§3). Es la condición 7: si el
+ * repo no garantiza el objeto ni con todo aplicado, prometer que "ya viene" es
+ * prometer algo que no existe. Lo calculan los tests de §3 y lo lee §3-bis.
+ */
+let targetSchemaPasa = true;
+
 beforeAll(async () => {
   // SIN seeds las dos: exactamente lo que las migraciones pueden producir.
   completa = await levantarBase({ conSeeds: false });
@@ -164,7 +181,10 @@ beforeAll(async () => {
   // revienta acá con el motivo escrito. ERROR != VACÍO: el archivo entero se
   // pone rojo antes que dejar pasar una comparación contra una base inventada.
   produccion = await levantarBase({ conSeeds: false, soloProduccion: true });
-}, 60_000);
+  // QUIÉN CREA QUÉ SE DEMUESTRA, NO SE ADIVINA: se aplican las pendientes sobre
+  // el estado de producción y se observa qué objeto aparece con cada una.
+  demostracion = await demostrarQueCreanLasPendientes();
+}, 180_000);
 
 afterAll(async () => {
   await completa?.cerrar();
@@ -176,14 +196,24 @@ describe("§3 — la app solo depende de schema producible por migraciones", () 
     const { rpcs } = referencias();
     expect(rpcs.size).toBeGreaterThan(5); // el scanner encontró algo real
 
-    expect(faltantes(rpcs, await funcionesDe(completa))).toEqual([]);
+    const rotos = faltantes(rpcs, await funcionesDe(completa));
+    // La condición 7 del contrato se MIDE acá, no se supone: si la cadena
+    // completa no sostiene lo que la app pide, §3-bis no puede clasificar nada
+    // como "ya viene en camino".
+    if (rotos.length > 0) targetSchemaPasa = false;
+    expect(rotos).toEqual([]);
   });
 
   it("toda tabla/vista que la app lee con .from() existe SIN seeds", async () => {
     const { tablas } = referencias();
     expect(tablas.size).toBeGreaterThan(10);
 
-    expect(faltantes(tablas, await relacionesDe(completa))).toEqual([]);
+    const rotos = faltantes(tablas, await relacionesDe(completa));
+    // La condición 7 del contrato se MIDE acá, no se supone: si la cadena
+    // completa no sostiene lo que la app pide, §3-bis no puede clasificar nada
+    // como "ya viene en camino".
+    if (rotos.length > 0) targetSchemaPasa = false;
+    expect(rotos).toEqual([]);
   });
 
   it("los seeds ya no definen objetos permanentes de schema", () => {
@@ -300,80 +330,152 @@ describe("§3-bis — la app solo depende de lo que producción tiene puesto HOY
     expect(presentes).toEqual([]);
   });
 
-  it("toda función que la app invoca con .rpc() existe en producción", async () => {
-    const { rpcs } = referencias();
-    expect(rpcs.size).toBeGreaterThan(5);
-
-    // Falla por lo que es un DEFECTO. La brecha de despliegue —lo que sí crea una
-    // migración escrita y sellada, pero todavía sin aplicar— la afirma entera el
-    // test de más abajo, para que no se silencie ni se pueda colar nada adentro.
-    const { sinProductor } = clasificarFaltantes(rpcs, await funcionesDe(produccion));
-    expect(sinProductor).toEqual([]);
-  });
-
-  it("toda tabla/vista que la app lee con .from() existe en producción", async () => {
-    const { tablas } = referencias();
-    expect(tablas.size).toBeGreaterThan(10);
-
-    // Falla por lo que es un DEFECTO. La brecha de despliegue —lo que sí crea una
-    // migración escrita y sellada, pero todavía sin aplicar— la afirma entera el
-    // test de más abajo, para que no se silencie ni se pueda colar nada adentro.
-    const { sinProductor } = clasificarFaltantes(tablas, await relacionesDe(produccion));
-    expect(sinProductor).toEqual([]);
-  });
-
-  it("la brecha de despliegue está ENTERA a la vista, y es exactamente la que el libro explica", async () => {
+  it("CONTRACT_DEFECT: ningún objeto que la app usa se queda sin quien lo cree", async () => {
     /**
-     * ESTE TEST ES LO QUE HACE QUE SEPARAR LAS DOS CLASES NO AFLOJE NADA.
+     * LA COMPUERTA DURA, Y LA ÚNICA QUE FALLA.
      *
-     * Los dos de arriba fallan por lo que es un defecto y dejan pasar lo que es
-     * "producción va atrás". Si eso quedara ahí, un objeto nuevo podría colarse
-     * dentro de la brecha y nadie lo vería hasta el día del despliegue.
+     * Un objeto entra acá cuando falta en producción Y alguna de las siete
+     * condiciones del contrato no se cumple. Cada motivo viene escrito, así que
+     * el rojo dice CUÁL falló y no un "no cumple" que obliga a adivinar:
      *
-     * Acá se afirma la brecha COMPLETA, con nombre y archivo, y se comprueba que
-     * cada cosa que la compone la explique una migración que el libro declara
-     * PENDIENTE y SELLADA. Sellada importa: una pendiente sin checksum es una que
-     * todavía se está escribiendo, y apoyar la app en algo que aún cambia no es
-     * una brecha, es trabajo a medias.
+     *   1. nadie lo crea (se aplicaron las pendientes y no apareció)
+     *   2. quien lo crea revienta al aplicarse
+     *   3. no tiene entrada en el libro
+     *   4. el libro la da por APLICADA y producción no la tiene
+     *   5. no está sellada
+     *   6. su checksum cambió después de sellarse
+     *   7. el contrato contra la cadena completa no pasa
      *
-     * No hay ninguna lista escrita a mano: todo sale del libro. El día que las
-     * migraciones se apliquen, el libro cambia y la brecha se vacía sola.
+     * Nada de esto se degrada a aviso. Es el defecto que este gate existe para
+     * gritar: la app pedía `meal_serving_record_items`, la 0036 no estaba
+     * aplicada, y todo salía verde.
      */
+    const { rpcs, tablas } = referencias();
+    const objetos = [
+      ...clasificarObjetos(tablas, "tabla", await relacionesDe(produccion), demostracion, targetSchemaPasa),
+      ...clasificarObjetos(rpcs, "funcion", await funcionesDe(produccion), demostracion, targetSchemaPasa),
+    ];
+    const defectos = objetos
+      .filter((o) => o.estado === "CONTRACT_DEFECT")
+      .map((o) => `${o.objeto} (${o.tipo}) — ${o.motivo} — usada en ${o.usado_en.join(", ")}`);
+    expect(defectos).toEqual([]);
+  });
+
+  it("ninguna migración pendiente revienta al aplicarse sobre producción", () => {
+    // Condición 6 del contrato, aislada: si una pendiente no aplica, no está en
+    // camino a ninguna parte y todo lo que prometía es un defecto. Se afirma
+    // aparte para que el rojo diga "esta migración no aplica" en vez de
+    // aparecer como N objetos sin productor.
+    expect(
+      demostracion.fallaronAlAplicar.map((f) => `${f.archivo}: ${f.error}`),
+      "una migración pendiente falla al aplicarse sobre el estado real de producción",
+    ).toEqual([]);
+  });
+
+  it("el artefacto schema-contract-status.json dice la verdad y está al día", async () => {
+    /**
+     * NO UNA LÍNEA AMARILLA: UN ARTEFACTO.
+     *
+     * Un aviso en la salida de CI se ignora en tres días. Esto es un archivo
+     * versionado: para que cambie hay que confirmarlo, y quien lo revise ve qué
+     * objeto quedó pendiente, de qué migración, con qué checksum y en qué estado
+     * está producción.
+     *
+     * Se REGENERA con `REGENERAR_CONTRATO=1 npx vitest run gate-schema-parity`,
+     * el mismo patrón que el vocabulario del catálogo. Si el archivo quedó
+     * atrás, este test se pone rojo y dice el comando.
+     */
+    const { rpcs, tablas } = referencias();
+    const objetos: ObjetoDelContrato[] = [
+      ...clasificarObjetos(tablas, "tabla", await relacionesDe(produccion), demostracion, targetSchemaPasa),
+      ...clasificarObjetos(rpcs, "funcion", await funcionesDe(produccion), demostracion, targetSchemaPasa),
+    ];
     const libro = cargarLibroDeProduccion();
-    const selladas = new Set(
-      libro.entradas.filter((e) => e.estado === "PENDIENTE" && e.sha256 !== null).map((e) => e.archivo),
+    const anterior = existsSync(ARTEFACTO)
+      ? (JSON.parse(readFileSync(ARTEFACTO, "utf8")) as { release_candidate_declarado?: boolean })
+      : {};
+    const estado = armarEstadoDelContrato(
+      objetos,
+      targetSchemaPasa,
+      // Lo declara una PERSONA y se conserva entre corridas: el gate no puede
+      // ponerlo ni quitarlo solo, o el candado no sería un candado.
+      anterior.release_candidate_declarado === true,
+      libro.proyecto,
     );
 
-    const { rpcs, tablas } = referencias();
-    const deTablas = clasificarFaltantes(tablas, await relacionesDe(produccion)).brechaDeDespliegue;
-    const deFunciones = clasificarFaltantes(rpcs, await funcionesDe(produccion)).brechaDeDespliegue;
-    const brecha = [...deTablas, ...deFunciones].sort();
-
-    // Cada renglón nombra su migración: se exige que esa migración sea una
-    // pendiente SELLADA del libro y no cualquier otra cosa.
-    const sinRespaldo = brecha.filter((linea) => {
-      const m = linea.match(/la crea ([0-9a-z_.]+\.sql)/);
-      return m === null || !selladas.has(m[1]!);
-    });
+    const texto = `${JSON.stringify(estado, null, 2)}${String.fromCharCode(10)}`;
+    if (process.env.REGENERAR_CONTRATO === "1") {
+      writeFileSync(ARTEFACTO, texto, "utf8");
+      return;
+    }
     expect(
-      sinRespaldo,
-      "estos objetos faltan en producción y la migración que los explicaría no está sellada en el libro",
-    ).toEqual([]);
+      existsSync(ARTEFACTO) ? readFileSync(ARTEFACTO, "utf8").split(String.fromCharCode(13, 10)).join(String.fromCharCode(10)) : "",
+      "supabase/schema-contract-status.json quedó atrás. Regenéralo: " +
+        "  cd web && REGENERAR_CONTRATO=1 npx vitest run src/integration/gate-schema-parity.test.ts",
+    ).toBe(texto);
+  });
 
-    // Y la otra dirección: si el libro no declara ninguna pendiente, no puede
-    // haber brecha. Sin esto, el test pasaría por vacuidad el día que alguien
-    // rompiera `migracionPendienteQueCrea` y todo cayera en "brecha".
-    if (selladas.size === 0) expect(brecha).toEqual([]);
+  it("RELEASE GATE: bloqueado mientras haya UN objeto pendiente de desplegar", async () => {
+    /**
+     * QUE CI PASE NO SIGNIFICA QUE SE PUEDA LANZAR.
+     *
+     * Esa confusión ya costó una vez —"CI verde con producción vieja"— y este
+     * test es el candado. Separa las dos realidades y no las mezcla nunca en un
+     * solo booleano:
+     *
+     *   TARGET SCHEMA      repo + cadena limpia + app  →  tiene que PASAR
+     *   PRODUCTION SCHEMA  app vs lo que producción tiene HOY  →  IN_SYNC o
+     *                      BLOCKED_PENDING_DEPLOYMENT
+     *
+     * Y sobre todo: `release_candidate_declarado` sólo puede ser `true` cuando
+     * el despliegue está READY. Declararlo con una brecha abierta pone esto
+     * rojo, que es exactamente lo que se pidió: que un Release Candidate no se
+     * pueda declarar de paso.
+     */
+    const estado = JSON.parse(readFileSync(ARTEFACTO, "utf8")) as {
+      target_schema: string;
+      production_schema: string;
+      release_deployment_state: string;
+      release_candidate_declarado: boolean;
+      pending_objects: ObjetoDelContrato[];
+    };
 
-    // Queda ESCRITO en la salida de la corrida, no solo comprobado: quien mire
-    // el CI tiene que poder leer qué le falta a producción sin abrir el libro.
-    if (brecha.length > 0) {
+    expect(estado.target_schema, "el contrato contra la cadena completa NO pasa").toBe("PASS");
+
+    if (estado.pending_objects.length > 0) {
+      expect(
+        estado.release_deployment_state,
+        "hay objetos pendientes de desplegar y el despliegue NO figura bloqueado",
+      ).toBe("BLOCKED");
+    }
+
+    expect(
+      estado.release_candidate_declarado && estado.release_deployment_state !== "READY",
+      "SE DECLARÓ RELEASE CANDIDATE CON UNA BRECHA ABIERTA. Aplica las pendientes " +
+        "(node scripts/poner-al-dia.mjs --pendientes --aplicar), verifica " +
+        "(node scripts/verificar-estado-produccion.mjs --escribir) y recién ahí decláralo.",
+    ).toBe(false);
+
+    if (estado.pending_objects.length > 0) {
       console.log(
         [
           "",
-          `BRECHA DE DESPLIEGUE — ${brecha.length} objeto(s) que la app usa y producción todavía no tiene:`,
-          ...brecha.map((l) => `  · ${l}`),
-          `Se cierra aplicando: ${[...selladas].join(", ")}`,
+          `TARGET_SCHEMA: ${estado.target_schema}`,
+          `PRODUCTION_SCHEMA: ${estado.production_schema}`,
+          "",
+          "Pending:",
+          ...estado.pending_objects.map(
+            (o: ObjetoDelContrato) =>
+              [
+                `- ${o.objeto}`,
+                `  provided_by: ${o.provisto_por}`,
+                `  sealed: ${o.sellada ? "yes" : "no"}`,
+                `  checksum: ${o.checksum}`,
+                `  creation_demonstrated: ${o.creacion_demostrada ? "yes" : "no"}`,
+              ].join(String.fromCharCode(10)),
+          ),
+          "",
+          `CI: PASS      DEPLOYMENT: ${estado.release_deployment_state}`,
           "",
         ].join(String.fromCharCode(10)),
       );
