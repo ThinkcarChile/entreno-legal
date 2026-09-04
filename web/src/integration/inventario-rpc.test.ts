@@ -379,6 +379,29 @@ describe("antes de la 0062 esto MISMO estaba abierto", () => {
     await vieja?.cerrar();
   });
 
+  it("§10 — para `authenticated`, el antes y el después son IDÉNTICOS", async () => {
+    /**
+     * La compatibilidad, medida en vez de supuesta.
+     *
+     * Un endurecimiento que además cierre algo a quien SÍ tiene sesión rompe
+     * pantallas, y se descubriría en producción con la familia adentro. Se
+     * compara la lista completa de RPC ejecutables por `authenticated` antes y
+     * después: tienen que ser la misma, nombre por nombre.
+     *
+     * El test de arriba ya afirma que después están todas abiertas; éste afirma
+     * que ninguna se abrió de más, que es el otro modo de falla.
+     */
+    const usadas = [...new Set(llamadas().resueltas.map((l) => l.rpc))].sort();
+    const consulta = `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname = any($1)
+          and has_function_privilege('authenticated', p.oid, 'execute')
+        order by 1`;
+    const antes = (await vieja.filas<{ proname: string }>(consulta, [usadas])).map((f) => f.proname);
+    const despues = (await base.filas<{ proname: string }>(consulta, [usadas])).map((f) => f.proname);
+    expect(antes.length, "no se comparó nada").toBeGreaterThan(60);
+    expect(despues, "la 0062 le cambió a `authenticated` lo que puede ejecutar").toEqual(antes);
+  });
+
   it("sobre la base en 0061, anon SÍ podía ejecutar RPC de la app", async () => {
     const usadas = [...new Set(llamadas().resueltas.map((l) => l.rpc))].sort();
     const abiertas = await vieja.filas<{ proname: string }>(

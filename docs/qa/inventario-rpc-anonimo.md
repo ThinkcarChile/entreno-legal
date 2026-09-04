@@ -84,7 +84,7 @@ la función, que es donde no se puede saltar desde el cliente.
 
 ## §7 — La regresión que pone rojo el CI
 
-`web/src/integration/inventario-rpc.test.ts`, 12 pruebas. No es un framework:
+`web/src/integration/inventario-rpc.test.ts`, 13 pruebas. No es un framework:
 es un archivo que barre `src/app` y `src/lib`, arma el inventario y lo afirma
 contra una base con la cadena completa.
 
@@ -104,6 +104,16 @@ cero y las demás pasarían por no haber mirado nada.
 Una RPC nueva no se puede colar: si se llama con literal, entra sola al
 inventario y tiene que estar cerrada a `anon`; si se llama con variable, el
 primer test la exige declarada.
+
+## §10 — Compatibilidad: `authenticated` no perdió nada
+
+Un endurecimiento que además cierre algo a quien **sí** tiene sesión rompe
+pantallas, y eso se descubriría en producción con la familia adentro.
+
+Se compara la lista completa de RPC ejecutables por `authenticated` sobre las dos
+cadenas —hasta 0061 y hasta 0062— nombre por nombre: **las 82, idénticas**. El
+otro test afirma que después están todas abiertas; éste afirma que ninguna se
+abrió de más, que es el modo de falla contrario.
 
 ## §13 — Intentos de mutación anónima, ejecutados
 
@@ -130,7 +140,7 @@ importa — que no salga ni una fila.
 
 ## Cómo se sabe que estos tests sirven
 
-Seis mutaciones, cada una roja:
+Siete mutaciones, cada una roja:
 
 | mutación | qué se puso rojo |
 |---|---|
@@ -140,6 +150,7 @@ Seis mutaciones, cada una roja:
 | `grant insert` a `anon` sobre `households` | **nada** — la RLS igual rechazó |
 | `grant insert` + `disable row level security` | el censo, con las 123 tablas |
 | correr el "antes" contra la cadena **con** 0062 | 0 abiertas en vez de >20 |
+| quitarle a `authenticated` **un solo** `grant` | la comparación de §10, 81 contra 82 |
 
 La cuarta merece leerse dos veces: el permiso a secas no alcanzó para escribir,
 porque la RLS es una segunda capa. Hizo falta apagar las dos para abrir la
