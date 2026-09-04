@@ -13,12 +13,12 @@ el resultado; si algo no se corrió, dice NOT_RUN aunque el código exista.
 | # | Compuerta | Estado | Evidencia | ¿Bloquea? | Acción |
 |---|---|---|---|---|---|
 | 1 | Push del trabajo local | **PASS** | `ahead 0 / behind 0`, `origin` en `5403f3e` | no | — |
-| 2 | Suite de pruebas | **PASS** | 2393 pruebas, 136 archivos, 0 rojas | no | — |
+| 2 | Suite de pruebas | **PASS** | 2422 pruebas, 138 archivos, 0 rojas | no | — |
 | 3 | Tipos y lint | **PASS** | `tsc --noEmit` 0 errores; `eslint --max-warnings 0` limpio (verificado DESPUÉS del último cambio: la primera versión de esta tabla lo declaró con una corrida vieja y CI lo desmintió) | no | — |
 | 4 | CI remoto (job `web`) | **PASS** | `#33818055976` falló por tres errores de tipos en la regresión nueva (`db.query` no existe en ese tipo); corregido y vuelto a verificar | no | — |
 | 5 | Cadena en PostgreSQL real (job `db`) | **PASS** | `db-test.sh` verde en CI desde `a873a10` | no | — |
 | 6 | Eventos: DRAFT + comidas cubiertas | **PASS** | 0061; 17 pruebas; 14 mutaciones | no | — |
-| 7 | Cierre de seguridad SECDEF | **PASS** | 0062; anon pasa de 262 a **0** funciones ejecutables | no | — |
+| 7 | Cierre de seguridad SECDEF | **PASS** | 0062 aplicada; anon pasa a **0** funciones ejecutables. Inventario de las 82 RPC de la app, oráculo de las 12 redefinidas e intentos de mutación anónima: `docs/qa/inventario-rpc-anonimo.md` | no | — |
 | 8 | Respaldo → restauración → verificación | **PASS** | 12.161 filas, 123/123 hashes, 394 FK, 0 huérfanos | no | — |
 | 9 | Empaquetado de la PWA | **PASS** | `npm run pwa:empaquetar`; valida y falla si falta algo | no | — |
 | 10 | Service worker: qué no cachea | **PASS** | sin orígenes cruzados, sin `/api/`, sin URLs firmadas | no | — |
@@ -26,7 +26,7 @@ el resultado; si algo no se corrió, dice NOT_RUN aunque el código exista.
 | 12 | Suite E2E implementada | **PASS** | 15 archivos, 142 casos × 4 anchos = 568; `--list` los lista | no | — |
 | 13 | **E2E ejecutados** | **NOT_RUN** | no existe staging; se saltan con motivo | **SÍ** | crear staging |
 | 14 | Proyecto de staging | **BLOCKED** | el token no lee la organización: plan y costo desconocidos | **SÍ** | el dueño mira el plan y decide |
-| 15 | 0061 y 0062 en producción | **BLOCKED** | selladas, sin aplicar; acción irreversible | **SÍ** | autorización del dueño |
+| 15 | 0061 y 0062 en producción | **PASS** | ambas aplicadas; libro en 61 aplicadas / 0 pendientes / 0 desacuerdos | no | — |
 | 16 | Hosting elegido | **BLOCKED** | faltan las respuestas de los proveedores | **SÍ** | `hosting-checklist.md` |
 | 17 | Auth de producción (dominio) | **BLOCKED** | `site_url` en `localhost:3000`, redirects vacíos | **SÍ** | depende del hosting |
 | 18 | Confirm Email | **BLOCKED** | `mailer_autoconfirm = true` (desactivado) | **SÍ** | depende del dominio |
@@ -34,17 +34,22 @@ el resultado; si algo no se corrió, dice NOT_RUN aunque el código exista.
 | 20 | Prueba en teléfono real | **NOT_RUN** | Playwright emula, no reemplaza | no | checklist de lanzamiento |
 | 21 | Revisión visual de las pantallas nuevas | **NOT_RUN** | verificado por tipos y guardianes, no en un navegador | no | el dueño mira |
 
-## Los seis bloqueantes, en el orden en que se destraban
+## Los cinco bloqueantes, en el orden en que se destraban
+
+Los cuatro primeros son **decisiones o manos de Francisco**; ninguno se puede
+cerrar desde acá.
 
 1. **Decidir el hosting** (#16) → con eso se define el dominio.
 2. **Dominio en Auth** (#17) y **activar Confirm Email** (#18). Mientras
    `mailer_autoconfirm` siga en `true`, cualquiera se registra con un correo que
    no es suyo. El lanzamiento público está bloqueado por esto.
-3. **Crear staging** (#14), sabiendo el costo. Sin staging no hay #13.
-4. **Ejecutar los E2E** (#13). Recién ahí se sabe si los 142 casos pasan; hoy sólo
-   se sabe que compilan y se listan.
-5. **Aplicar 0061 y 0062** (#15). El ensayo con datos ya está probado para las
-   migraciones anteriores; para estas dos hay que correrlo antes.
+3. **Crear staging** (#14), sabiendo el costo.
+4. **Ejecutar los E2E** (#13), que necesitan staging. Recién ahí se sabe si los
+   142 casos pasan; hoy sólo se sabe que compilan y se listan.
+
+**Aplicar 0061 y 0062 ya no está en esta lista**: las dos están en producción, y
+el libro dice 61 aplicadas / 0 pendientes / 0 desacuerdos, verificado con
+testigos contra la base real.
 
 ## Lo que esta ronda encontró y cerró
 

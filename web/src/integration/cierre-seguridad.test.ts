@@ -163,6 +163,10 @@ let eventoA: string;
 let participanteA: string;
 let listaA: string;
 let versionA: string;
+let productoProveedorA: string;
+let compraA: string;
+let trazaA: string;
+let gateDirecto: boolean;
 
 beforeAll(async () => {
   // Sin seeds: acá no se prueba ningún dato de demo, se prueba el schema.
@@ -187,6 +191,51 @@ beforeAll(async () => {
        values ($1, 'HOUSEHOLD_MEMBER', $2) returning id`,
       [eventoA, A.memberId],
     ))!.id;
+
+    // Los cuatro objetos que le faltaban a la tabla de mas abajo. Se siembran
+    // como admin porque lo que se prueba NO es como se crean, sino que B no
+    // pueda distinguirlos de algo inexistente. Son datos sinteticos.
+    const categoria = (await h.fila<{ id: string }>(
+      `insert into public.ingredient_categories (code, name) values ('SINT', 'Sintetica')
+       on conflict (code) do update set name = excluded.name returning id`,
+    ))!.id;
+    const alimento = (await h.fila<{ id: string }>(
+      `insert into public.ingredients (canonical_name, display_name, category_id)
+       values ('sintetico-a', 'Sintetico A', $1) returning id`,
+      [categoria],
+    ))!.id;
+    const proveedor = (await h.fila<{ id: string }>(
+      `insert into public.suppliers (household_id, name) values ($1, 'Proveedor de A') returning id`,
+      [A.householdId],
+    ))!.id;
+    productoProveedorA = (await h.fila<{ id: string }>(
+      `insert into public.supplier_products
+         (supplier_id, ingredient_id, presentation, package_quantity, unit)
+       values ($1, $2, 'Bolsa 1 kg', 1000, 'G') returning id`,
+      [proveedor, alimento],
+    ))!.id;
+    compraA = (await h.fila<{ id: string }>(
+      `insert into public.purchases
+         (household_id, channel, source, merchant_key, merchant_name, purchased_on,
+          currency, allocation_policy_version, allocation_policy_snapshot)
+       values ($1, 'SUPERMARKET', 'MANUAL', 'sintetico', 'Comercio Sintetico',
+               current_date, 'CLP', 'v1', '{}'::jsonb) returning id`,
+      [A.householdId],
+    ))!.id;
+    trazaA = "traza-de-a-" + A.householdId;
+    await h.db.query(
+      `insert into public.assistant_usage (household_id, member_id, trace_id, capa)
+       values ($1, $2, $3, 1)`,
+      [A.householdId, A.memberId, trazaA],
+    );
+
+    // app.event_actual_gate es INTERNA: la app nunca la llama. Se mide si
+    // `authenticated` puede siquiera invocarla, porque de eso depende que
+    // probarla directo signifique algo (ver el test dedicado mas abajo).
+    gateDirecto = (await h.fila<{ p: boolean }>(
+      `select has_schema_privilege('authenticated', 'app', 'usage')
+              and has_function_privilege('authenticated', 'app.event_actual_gate(uuid)', 'execute') as p`,
+    ))!.p;
   });
 
   await h.como(USER_A, async () => {
@@ -322,31 +371,21 @@ async function respuesta(sql: string, params: unknown[]): Promise<string> {
 }
 
 /**
- * HUECO DECLARADO, NO TAPADO.
+ * LAS DOCE, TODAS CON ORACULO DE CONDUCTA.
  *
- * La 0062 redefine DOCE funciones para cerrar el mismo oráculo. Acá se prueba la
- * conducta de SEIS: cinco por la tabla de abajo más `apply_clinical_shopping_delta`.
- * Las otras seis —`reconcile_purchase` (finanzas), `set_supplier_product_price`
- * (proveedores), `assistant_usage_settle` (asistente),
- * `save_event_estimate_revision`, `record_event_guest_observation` y
- * `app.event_actual_gate`— NO tienen prueba de conducta.
+ * La 0062 redefine doce funciones para cerrar el mismo oraculo: que "no existe"
+ * y "no es tuyo" se contesten IGUAL. Once estan en la tabla de abajo; la
+ * doceava, `apply_clinical_shopping_delta`, tiene su propio test porque su fuga
+ * no era un mensaje distinto sino un `status` clinico devuelto sin error.
  *
- * Lo que SÍ está verificado de las doce, leyendo el SQL una por una: todas usan
- * la misma forma `if <fila> is null or not <permiso> then` — una sola rama para
- * "no existe" y para "no es tuyo", que es la propiedad que cierra el oráculo.
- * Dos de ellas (`assistant_usage_settle` y `apply_clinical_shopping_delta`) usan
- * un mensaje propio del dominio en vez del genérico "no autorizado", y eso está
- * bien: lo que importa es que las dos respuestas sean IGUALES, no que el texto
- * sea el mismo en todo el repo.
- *
- * Por qué el hueco sigue abierto: sembrar una compra, un producto de proveedor y
- * una traza de asistente en esta base —que se levanta SIN seeds— exige crear
- * antes categoría, alimento, proveedor y hogar con permiso financiero. Se
- * intentó y el andamiaje resultó más grande que lo que prueba. Queda escrito acá
- * en vez de en la cabeza de alguien: cuando este archivo gane un fixture de
- * hogar completo, estas seis entran a la tabla de abajo sin más trabajo.
+ * Antes esto decia "seis sin probar" y explicaba por que: sembrar una compra, un
+ * producto de proveedor y una traza de asistente parecia exigir un fixture de
+ * hogar completo. Resulto ser mucho menos —cinco inserts de columnas escalares—
+ * y ademas, al ir a cerrarlo, la base desmintio una premisa que se habia dado
+ * por buena sobre `app.event_actual_gate` (ver el test del esquema `app`). El
+ * hueco estaba ESCRITO, y eso es lo unico que permitio volver a mirarlo.
  */
-describe("§48(c) — cinco RPC: un id ajeno y un id inventado dicen lo mismo", () => {
+describe("§48(c) — once RPC: un id ajeno y un id inventado dicen lo mismo", () => {
   const casos: [string, string, (id: string) => [string, unknown[]]][] = [
     [
       "set_event_status",
@@ -376,16 +415,63 @@ describe("§48(c) — cinco RPC: un id ajeno y un id inventado dicen lo mismo", 
       "version",
       (id) => ["select public.create_draft_from_version($1)", [id]],
     ],
+    [
+      "record_event_guest_observation",
+      "participante",
+      (id) => ["select public.record_event_guest_observation($1, 'ATE_NORMAL')", [id]],
+    ],
+    [
+      "save_event_estimate_revision",
+      "evento",
+      (id) => [
+        `select public.save_event_estimate_revision($1, 'firma', 'motor', 'politica',
+           '{}'::jsonb, '[]'::jsonb, '[]'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb)`,
+        [id],
+      ],
+    ],
+    [
+      "reconcile_purchase",
+      "compra",
+      (id) => ["select public.reconcile_purchase($1)", [id]],
+    ],
+    [
+      "set_supplier_product_price",
+      "productoProveedor",
+      (id) => ["select public.set_supplier_product_price($1, 1000)", [id]],
+    ],
+    [
+      "assistant_usage_settle",
+      "traza",
+      (id) => ["select public.assistant_usage_settle($1, 1, 1, 0)", [id]],
+    ],
+    [
+      // La doceava. Vive en el esquema interno `app` y la app nunca la llama…
+      // pero `authenticated` SI puede invocarla (lo afirma el test de mas
+      // abajo), asi que necesita su propio oraculo como cualquier otra.
+      "app.event_actual_gate",
+      "evento",
+      (id) => ["select app.event_actual_gate($1)", [id]],
+    ],
   ];
 
-  const idReal = (que: string): string =>
-    que === "evento"
-      ? eventoA
-      : que === "participante"
-        ? participanteA
-        : que === "lista"
-          ? listaA
-          : versionA;
+  // Se resuelve DENTRO del `it` y no al armar la tabla: estos ids nacen en el
+  // beforeAll, y capturarlos antes daria `undefined` en las diez entradas.
+  const idReal = (que: string): string => {
+    const porNombre: Record<string, string> = {
+      evento: eventoA,
+      participante: participanteA,
+      lista: listaA,
+      version: versionA,
+      compra: compraA,
+      productoProveedor: productoProveedorA,
+      traza: trazaA,
+    };
+    const id = porNombre[que];
+    // Un `undefined` acá haria que la consulta preguntara por null y que las dos
+    // respuestas coincidieran por vacuidad: verde sin haber probado nada.
+    if (id === undefined) throw new Error(`el caso pide un id '${que}' que nadie siembra`);
+    return id;
+  };
 
   for (const [nombre, que, arma] of casos) {
     it(`${nombre}: el ${que} de A y uno inventado dan la MISMA respuesta`, async () => {
@@ -401,6 +487,31 @@ describe("§48(c) — cinco RPC: un id ajeno y un id inventado dicen lo mismo", 
       expect(inventado).toBe(ajeno);
     });
   }
+
+  it("el esquema `app` esta cerrado a anon pero ABIERTO a authenticated", async () => {
+    /**
+     * ESTE TEST NACIO AFIRMANDO LO CONTRARIO Y LA BASE LO DESMINTIO.
+     *
+     * Se escribio dando por hecho que `app.event_actual_gate` era inalcanzable
+     * desde una sesion, para justificar dejarla fuera de la tabla de arriba. Se
+     * midio y es falso: `authenticated` tiene `usage` sobre `app` y `execute`
+     * sobre la funcion. Por eso la doceava esta ahora EN la tabla, con su
+     * oraculo propio como las demas.
+     *
+     * Que `authenticated` llegue al esquema interno no es una brecha —para ser
+     * `authenticated` hay que tener sesion, y las funciones de `app` comprueban
+     * pertenencia igual— pero cambia quien tiene que probarlas: no alcanza con
+     * decir "es interna, no la llama nadie". La 0062 cerro `anon`, que era el
+     * agujero; `authenticated` sigue siendo un rol con acceso al esquema.
+     */
+    const r = await h.fila<{ anon: boolean; auth: boolean }>(
+      `select has_schema_privilege('anon', 'app', 'usage') as anon,
+              has_schema_privilege('authenticated', 'app', 'usage') as auth`,
+    );
+    expect(r?.anon, "anon recupero el esquema interno").toBe(false);
+    expect(gateDirecto, "authenticated dejo de alcanzar app.event_actual_gate").toBe(true);
+    expect(r?.auth).toBe(true);
+  });
 
   it("apply_clinical_shopping_delta no devuelve el estado de una revisión ajena", async () => {
     // La única de las doce que no lanzaba nada: DEVOLVÍA el `status` de una
