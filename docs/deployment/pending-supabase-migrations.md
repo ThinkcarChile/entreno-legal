@@ -9,7 +9,7 @@
 
 <!-- ESTADO:INICIO — generado, no editar a mano -->
 
-**Proyecto:** `smwyxfnlxoohenhsdcjx` · **60 aplicadas** · **1 pendientes**
+**Proyecto:** `smwyxfnlxoohenhsdcjx` · **61 aplicadas** · **0 pendientes**
 
 Método: `TESTIGOS_EN_VIVO` · verificado el 2026-09-04 · vale hasta el 2026-12-03.
 
@@ -22,16 +22,9 @@ node scripts/verificar-estado-produccion.mjs --escribir
 node scripts/estado-a-documento.mjs --escribir
 ```
 
-**Pendientes de aplicar, en el orden en que van:**
+**No queda ninguna pendiente:** producción tiene la cadena completa.
 
-- `0062_cierre_seguridad.sql`
-
-```bash
-node scripts/poner-al-dia.mjs --pendientes            # muestra el plan, no toca nada
-node scripts/poner-al-dia.mjs --pendientes --aplicar
-```
-
-<sub>Aplicadas: 0001, 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0037, 0036, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0050, 0051, 0052, 0053, 0054, 0055, 0056, 0057, 0058, 0059, 0060, 0061</sub>
+<sub>Aplicadas: 0001, 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0037, 0036, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0050, 0051, 0052, 0053, 0054, 0055, 0056, 0057, 0058, 0059, 0060, 0061, 0062</sub>
 
 <!-- ESTADO:FIN -->
 

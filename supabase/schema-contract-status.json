@@ -2,18 +2,10 @@
   "proyecto": "smwyxfnlxoohenhsdcjx",
   "target_schema": "PASS",
   "production_schema": "IN_SYNC",
-  "release_deployment_state": "BLOCKED",
-  "release_blocked_by": [
-    "PENDING_MIGRATION_0062"
-  ],
+  "release_deployment_state": "READY",
+  "release_blocked_by": [],
   "release_candidate_declarado": false,
   "contract_defects": [],
   "pending_objects": [],
-  "pending_migrations": [
-    {
-      "archivo": "0062_cierre_seguridad.sql",
-      "sellada": true,
-      "checksum": "d5166fbd6824df920b44e65da04cef1ee79bd03a30c7d1987272afe0decb25a9"
-    }
-  ]
+  "pending_migrations": []
 }

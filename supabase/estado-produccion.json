@@ -413,7 +413,7 @@
       "prueba": "las dos mitades del cierre de eventos a la vez: la tabla duena de las comidas cubiertas y el default nuevo del estado. Mira una TABLA y un DEFAULT, no el cuerpo de una funcion, porque un cuerpo lo puede reescribir cualquier migracion posterior y el testigo empezaria a mentir sin que nadie lo note (paso con la 0022 y con la 0023)."
     },
     "0062_cierre_seguridad.sql": {
-      "estado": "PENDIENTE",
+      "estado": "APLICADA",
       "sha256": "d5166fbd6824df920b44e65da04cef1ee79bd03a30c7d1987272afe0decb25a9",
       "testigo": "not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where p.prosecdef and n.nspname in ('public','app') and has_function_privilege('anon', p.oid, 'execute')) and not has_schema_privilege('anon', 'app', 'usage')",
       "prueba": "que NINGUNA funcion SECURITY DEFINER de public o app sea ejecutable por anon, y que anon ya no pueda ni entrar al esquema app. Es una propiedad del PERMISO, no de un objeto: sigue siendo verdadera aunque una migracion futura agregue funciones, y se vuelve falsa en cuanto alguna nazca abierta -- que es exactamente el defecto que la 0062 vino a cerrar (el revoke de la 0054 nombraba anon y authenticated y olvidaba PUBLIC)."
