@@ -321,6 +321,31 @@ async function respuesta(sql: string, params: unknown[]): Promise<string> {
     .catch((e: Error) => e.message);
 }
 
+/**
+ * HUECO DECLARADO, NO TAPADO.
+ *
+ * La 0062 redefine DOCE funciones para cerrar el mismo oráculo. Acá se prueba la
+ * conducta de SEIS: cinco por la tabla de abajo más `apply_clinical_shopping_delta`.
+ * Las otras seis —`reconcile_purchase` (finanzas), `set_supplier_product_price`
+ * (proveedores), `assistant_usage_settle` (asistente),
+ * `save_event_estimate_revision`, `record_event_guest_observation` y
+ * `app.event_actual_gate`— NO tienen prueba de conducta.
+ *
+ * Lo que SÍ está verificado de las doce, leyendo el SQL una por una: todas usan
+ * la misma forma `if <fila> is null or not <permiso> then` — una sola rama para
+ * "no existe" y para "no es tuyo", que es la propiedad que cierra el oráculo.
+ * Dos de ellas (`assistant_usage_settle` y `apply_clinical_shopping_delta`) usan
+ * un mensaje propio del dominio en vez del genérico "no autorizado", y eso está
+ * bien: lo que importa es que las dos respuestas sean IGUALES, no que el texto
+ * sea el mismo en todo el repo.
+ *
+ * Por qué el hueco sigue abierto: sembrar una compra, un producto de proveedor y
+ * una traza de asistente en esta base —que se levanta SIN seeds— exige crear
+ * antes categoría, alimento, proveedor y hogar con permiso financiero. Se
+ * intentó y el andamiaje resultó más grande que lo que prueba. Queda escrito acá
+ * en vez de en la cabeza de alguien: cuando este archivo gane un fixture de
+ * hogar completo, estas seis entran a la tabla de abajo sin más trabajo.
+ */
 describe("§48(c) — cinco RPC: un id ajeno y un id inventado dicen lo mismo", () => {
   const casos: [string, string, (id: string) => [string, unknown[]]][] = [
     [
