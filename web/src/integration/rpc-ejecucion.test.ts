@@ -55,17 +55,31 @@ async function llamadasGeneradas(): Promise<{ rpc: string; sql: string }[]> {
     .map((f) => ({ rpc: f.proname, sql: f.sql }));
 }
 
-async function censo(): Promise<Record<string, number>> {
+/**
+ * CENSO POR CONTENIDO, no sólo por cantidad.
+ *
+ * La primera versión contaba filas, y contar filas NO VE UN `UPDATE`: si una de
+ * las 84 llamadas hubiera modificado una fila en vez de crearla o borrarla, el
+ * censo daba idéntico y el test pasaba en verde sobre una escritura real. Se
+ * agrega el hash del contenido de cada tabla, que es lo que de verdad hace falta
+ * para poder afirmar "antes == después".
+ */
+async function censo(): Promise<Record<string, string>> {
   const ts = (
     await base.filas<{ t: string }>(
       `select tablename as t from pg_tables where schemaname = 'public' order by 1`,
     )
   ).map((r) => r.t);
   const sql = ts
-    .map((t) => `select '${t}' as t, count(*)::int as n from public.${t}`)
+    .map(
+      (t) =>
+        `select '${t}' as t, count(*)::text || ':' ||
+                coalesce(md5(string_agg(x::text, '|' order by x::text)), 'vacia') as huella
+           from public.${t} x`,
+    )
     .join(" union all ");
-  const f = await base.filas<{ t: string; n: number }>(sql);
-  return Object.fromEntries(f.map((r) => [r.t, r.n]));
+  const f = await base.filas<{ t: string; huella: string }>(sql);
+  return Object.fromEntries(f.map((r) => [r.t, r.huella]));
 }
 
 /** Corre `sql` con el rol indicado y devuelve el mensaje de error, o "" si pasó. */
@@ -122,7 +136,9 @@ describe("§2 — anon llama TODAS las RPC del contrato y no consigue nada", () 
       noBloqueadas,
       "anon llegó a estas RPC sin que la base lo frenara por privilegio",
     ).toEqual([]);
-    expect(await censo(), "el censo cambió: anon escribió algo").toEqual(antes);
+    const despues = await censo();
+    const cambiadas = Object.keys(antes).filter((t) => antes[t] !== despues[t]);
+    expect(cambiadas, "estas tablas cambiaron de contenido: anon escribió").toEqual([]);
   });
 });
 

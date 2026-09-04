@@ -384,7 +384,7 @@ describe("§13 — anon intenta mutar y no lo consigue", () => {
    * hogar real ni datos clínicos de nadie.
    */
 
-  let censoAntes: Record<string, number>;
+  let censoAntes: Record<string, string>;
   let hogar: { householdId: string; memberId: string };
 
   async function tablas(): Promise<string[]> {
@@ -394,11 +394,28 @@ describe("§13 — anon intenta mutar y no lo consigue", () => {
     return f.map((r) => r.t);
   }
 
-  async function censo(): Promise<Record<string, number>> {
+  /**
+   * POR CONTENIDO, no por cantidad.
+   *
+   * La primera version contaba filas — y este mismo bloque intenta
+   * `update public.households set name = 'robado'`. Contar filas NO VE UN
+   * UPDATE: si ese intento hubiera funcionado, el censo daba identico y el test
+   * pasaba en verde sobre una escritura real, justo en el caso que existe para
+   * atrapar. El hash del contenido es lo que hace falta para poder decir
+   * "antes == despues".
+   */
+  async function censo(): Promise<Record<string, string>> {
     const ts = await tablas();
-    const sql = ts.map((t) => `select '${t}' as t, count(*)::int as n from public.${t}`).join(" union all ");
-    const f = await base.filas<{ t: string; n: number }>(sql);
-    return Object.fromEntries(f.map((r) => [r.t, r.n]));
+    const sql = ts
+      .map(
+        (t) =>
+          `select '${t}' as t, count(*)::text || ':' ||
+                  coalesce(md5(string_agg(x::text, '|' order by x::text)), 'vacia') as huella
+             from public.${t} x`,
+      )
+      .join(" union all ");
+    const f = await base.filas<{ t: string; huella: string }>(sql);
+    return Object.fromEntries(f.map((r) => [r.t, r.huella]));
   }
 
   beforeAll(async () => {
@@ -409,8 +426,8 @@ describe("§13 — anon intenta mutar y no lo consigue", () => {
   it("hay filas que perder: el censo no está vacío", async () => {
     // UN CENSO EN CERO SE CONSERVA SOLO. Sin esto, "antes == después" sería
     // cierto por no haber nada, y el test aprobaría una base sin protección.
-    const total = Object.values(censoAntes).reduce((a, b) => a + b, 0);
-    expect(total, "no se sembró nada: el test no puede probar que nada se perdió").toBeGreaterThan(5);
+    const conFilas = Object.values(censoAntes).filter((h) => !h.startsWith("0:")).length;
+    expect(conFilas, "no se sembro nada: el test no puede probar que nada se perdio").toBeGreaterThan(3);
   });
 
   it("anon: toda escritura y toda RPC FALLAN, y el censo queda idéntico", async () => {
@@ -461,7 +478,8 @@ describe("§13 — anon intenta mutar y no lo consigue", () => {
     ).toEqual([]);
 
     const censoDespues = await censo();
-    expect(censoDespues, "el censo cambió: anon consiguió escribir").toEqual(censoAntes);
+    const cambiadas = Object.keys(censoAntes).filter((t) => censoAntes[t] !== censoDespues[t]);
+    expect(cambiadas, "estas tablas cambiaron de contenido: anon consiguió escribir").toEqual([]);
   });
 
   it("anon: los SELECT no devuelven ni una fila del hogar", async () => {
