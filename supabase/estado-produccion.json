@@ -25,8 +25,8 @@
     "que exista, porque una migracion sin entrada es una migracion de estado desconocido)."
   ],
   "proyecto": "smwyxfnlxoohenhsdcjx",
-  "verificado_el": "2026-09-02",
-  "caduca_el": "2026-12-01",
+  "verificado_el": "2026-09-04",
+  "caduca_el": "2026-12-03",
   "metodo": "TESTIGOS_EN_VIVO",
   "metodo_nota": "MANIFIESTO = el estado sale del registro de aplicacion del repo (docs/deployment/pending-supabase-migrations.md, verificacion en vivo del 2026-08-25 por la Management API) y los checksums estan recomprobados contra los archivos. TESTIGOS_EN_VIVO = los testigos de aca abajo se corrieron contra la base real. El script es el unico que escribe TESTIGOS_EN_VIVO; a mano no se pone.",
   "caducidad_nota": "Una verificacion vieja no es conocimiento, es un recuerdo. Pasado caduca_el el gate se pone rojo diciendo que NO PUEDE SABER el estado de produccion, y se arregla corriendo el script. ERROR != VACIO: mejor un rojo que pide una comprobacion de un minuto que un verde que no significa nada.",
@@ -407,7 +407,7 @@
       "prueba": "que authenticated NO pueda ejecutar purge_assistant_conversations. Es la propiedad [16] de la 0060, y discrimina de verdad: antes de aplicarla produccion contestaba TRUE. Si una migracion futura vuelve a abrir ese EXECUTE, este testigo se pone falso y eso es correcto."
     },
     "0061_eventos_borrador_y_comidas_cubiertas.sql": {
-      "estado": "PENDIENTE",
+      "estado": "APLICADA",
       "sha256": "5da4ddc872ab53949f5805e1dc13d1fe76224f5b4247cb36555bf5fd165d5a23",
       "testigo": "to_regclass('public.event_covered_meals') is not null and (select column_default from information_schema.columns where table_schema = 'public' and table_name = 'nutrition_events' and column_name = 'status') like '%DRAFT%'",
       "prueba": "las dos mitades del cierre de eventos a la vez: la tabla duena de las comidas cubiertas y el default nuevo del estado. Mira una TABLA y un DEFAULT, no el cuerpo de una funcion, porque un cuerpo lo puede reescribir cualquier migracion posterior y el testigo empezaria a mentir sin que nadie lo note (paso con la 0022 y con la 0023)."

@@ -42,10 +42,34 @@ const escritor = (await import(
 )) as { sqlDeTodosLosTestigos: (e: [string, { testigo: string }][]) => string };
 const USUARIO = "11111111-1111-4111-8111-111111111111";
 
-/** Las que faltan: la diferencia entre la cadena del repo y lo que produccion tiene. */
+/**
+ * Las que faltan: la diferencia entre la cadena del repo y lo que produccion
+ * tiene.
+ *
+ * `ENSAYO_HASTA=0061` acota el ensayo a las pendientes HASTA ese número
+ * inclusive. Existe para el despliegue CONTROLADO: cuando se va a aplicar una
+ * sola migración —porque la siguiente pertenece a otro frente de trabajo y no
+ * corresponde mezclarla— el ensayo tiene que probar exactamente eso y no "todo
+ * lo pendiente". Ensayar de más es tan engañoso como ensayar de menos: diría
+ * que probamos algo que no vamos a hacer.
+ *
+ * Sin la variable, el comportamiento es el de siempre: todas las pendientes.
+ */
 function pendientes(): string[] {
   const puestas = new Set(migracionesDeProduccion());
-  return MIGRACIONES.filter((m) => !puestas.has(m));
+  const faltan = MIGRACIONES.filter((m) => !puestas.has(m));
+  const hasta = process.env.ENSAYO_HASTA;
+  if (!hasta) return faltan;
+  const numero = (m: string) => (m.split("/").pop() ?? m).slice(0, 4);
+  const acotadas = faltan.filter((m) => numero(m) <= hasta);
+  // ERROR != VACÍO: pedir un ensayo acotado a un número que no está pendiente es
+  // un error de quien lo pide, no un ensayo de cero migraciones que pasa solo.
+  if (acotadas.length === 0) {
+    throw new Error(
+      `ENSAYO_HASTA=${hasta} no deja ninguna pendiente que ensayar. Pendientes: ${faltan.join(", ")}`,
+    );
+  }
+  return acotadas;
 }
 
 let base!: Harness;
@@ -337,8 +361,10 @@ describe("ensayo del despliegue, con la base ocupada", () => {
   // aplicaron. Un test que miente en su título hace perder tiempo al leer un
   // informe de CI.
   it("las pendientes se aplican sobre datos, no sobre una base vacía", async () => {
-    const puestas = new Set(migracionesDeProduccion());
-    const faltan = MIGRACIONES.filter((m) => !puestas.has(m));
+    // UN SOLO DUEÑO del conjunto pendiente: `pendientes()`. Calcularlo acá
+    // de nuevo dejaba a este ensayo fuera de ENSAYO_HASTA, o sea aplicando
+    // migraciones que el despliegue controlado NO va a aplicar.
+    const faltan = pendientes();
     const aplicadas: string[] = [];
 
     for (const archivo of faltan) {
@@ -384,9 +410,20 @@ describe("ensayo del despliegue, con la base ocupada", () => {
      * este proyecto ya salió una vez.
      */
     const libro = cargarLibroDeProduccion();
+    // EL ENSAYO PUEDE ESTAR ACOTADO, Y ENTONCES NO TODOS LOS TESTIGOS DEBEN DAR
+    // VERDADERO. Con `ENSAYO_HASTA` se aplican sólo algunas pendientes; el
+    // testigo de una que NO se aplicó tiene que dar FALSO, y exigirle verdadero
+    // sería exigirle que mienta. Se parte en dos grupos y se afirman los dos:
+    // los aplicados en verdadero, los no aplicados en falso — esa segunda mitad
+    // es la que demuestra que el acotado funcionó de verdad y no aplicó de más.
+    const aplicadasEnElEnsayo = new Set(
+      pendientes().map((m) => m.split("/").pop() ?? m),
+    );
     const entradas = libro.entradas.map(
       (e) => [e.archivo, { testigo: e.testigo }] as [string, { testigo: string }],
     );
+    const deberiaDarVerdadero = (archivo: string): boolean =>
+      libro.aplicadas.has(archivo) || aplicadasEnElEnsayo.has(archivo);
     const resultados = await base.db.exec(escritor.sqlDeTodosLosTestigos(entradas));
     const ultimo = resultados[resultados.length - 1];
     const filas = (ultimo?.rows ?? []) as unknown as { archivo: string; presente: unknown }[];
@@ -396,7 +433,7 @@ describe("ensayo del despliegue, con la base ocupada", () => {
     expect(filas.length, "no contestaron todos los testigos").toBe(entradas.length);
 
     const mienten = filas
-      .filter((f) => f.presente !== true)
+      .filter((f) => deberiaDarVerdadero(f.archivo) && f.presente !== true)
       .map(
         (f) =>
           `${f.archivo} — contestó ${f.presente === null ? "NULL" : "FALSO"} después del ensayo: ` +
@@ -404,6 +441,15 @@ describe("ensayo del despliegue, con la base ocupada", () => {
       )
       .sort();
     expect(mienten).toEqual([]);
+
+    // La otra mitad: lo que NO se aplicó no puede dar verdadero. Un testigo que
+    // dice "sí" sobre una migración ausente daría por desplegado algo que no
+    // está, que es peor que no tener testigo.
+    const mientenAlReves = filas
+      .filter((f) => !deberiaDarVerdadero(f.archivo) && f.presente === true)
+      .map((f) => `${f.archivo} — contestó VERDADERO sin haberse aplicado en este ensayo`)
+      .sort();
+    expect(mientenAlReves).toEqual([]);
   });
 
   it("y los datos que ya estaban siguen ahí, con su valor DESCONOCIDO y no en cero", async () => {
@@ -477,8 +523,10 @@ describe("ensayo del despliegue, con la base ocupada", () => {
 
   describe("el ensayo cubre TODAS las tablas que las pendientes alteran", () => {
     it("ninguna tabla alterada se queda sin filas por olvido", async () => {
-      const puestas = new Set(migracionesDeProduccion());
-      const faltan = MIGRACIONES.filter((m) => !puestas.has(m));
+      // UN SOLO DUEÑO del conjunto pendiente: `pendientes()`. Calcularlo acá
+      // de nuevo dejaba a este ensayo fuera de ENSAYO_HASTA, o sea aplicando
+      // migraciones que el despliegue controlado NO va a aplicar.
+      const faltan = pendientes();
       const alteradas = tablasQueAlteranLasPendientes(faltan);
 
       // SIN PENDIENTES NO HAY NADA QUE CUBRIR, Y ESO ES LA META, NO UNA FALLA.
@@ -527,8 +575,10 @@ describe("ensayo del despliegue, con la base ocupada", () => {
     it("lo declarado como no-sembrado sigue existiendo y sigue siendo alterado", () => {
       // Una exención que ya no corresponde a nada es peor que ninguna: se lee como
       // que el caso está pensado cuando en realidad quedó colgando.
-      const puestas = new Set(migracionesDeProduccion());
-      const faltan = MIGRACIONES.filter((m) => !puestas.has(m));
+      // UN SOLO DUEÑO del conjunto pendiente: `pendientes()`. Calcularlo acá
+      // de nuevo dejaba a este ensayo fuera de ENSAYO_HASTA, o sea aplicando
+      // migraciones que el despliegue controlado NO va a aplicar.
+      const faltan = pendientes();
       const alteradas = new Set(tablasQueAlteranLasPendientes(faltan));
       // Mientras NO haya pendientes, las exenciones no sobran: quedan guardadas
       // esperando a la próxima migración. Revisarlas contra una lista vacía las

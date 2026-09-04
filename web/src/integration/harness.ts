@@ -372,9 +372,26 @@ export async function levantarBase(
      * `EstadoDeProduccionDesconocido` en vez de devolver una base a medias.
      */
     soloProduccion?: boolean;
+    /**
+     * Levanta la cadena HASTA ese número de migración, inclusive.
+     *
+     * Existe para los ensayos que necesitan el estado ANTERIOR a una migración
+     * concreta. Antes eso se conseguía con `soloProduccion`, y funcionaba sólo
+     * mientras producción estuviera atrás: el día que la migración se aplicó, el
+     * "antes" pasó a incluirla y el ensayo comparó el estado nuevo contra sí
+     * mismo — verde sin probar nada. Pasó con la 0061 el 2026-09-04.
+     *
+     * El "antes" de una migración es una propiedad de la CADENA, no de dónde
+     * esté producción hoy, y así se declara.
+     */
+    hasta?: string;
   } = {},
 ): Promise<Harness> {
-  const cadena = opciones.soloProduccion === true ? migracionesDeProduccion() : MIGRACIONES;
+  const base = opciones.soloProduccion === true ? migracionesDeProduccion() : MIGRACIONES;
+  const cadena =
+    opciones.hasta === undefined
+      ? base
+      : base.filter((m) => (m.split("/").pop() ?? m).slice(0, 4) <= opciones.hasta!);
   const db = await abrirBase(cadena, opciones.conSeeds !== false);
 
   const filas = async <T,>(sql: string, params: unknown[] = []) =>

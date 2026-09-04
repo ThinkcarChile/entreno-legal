@@ -269,11 +269,31 @@ export function clasificarObjetos(
     .sort((a, b) => a.objeto.localeCompare(b.objeto));
 }
 
+/** Una migración que el repo tiene y producción todavía no. */
+export interface MigracionPendiente {
+  archivo: string;
+  sellada: boolean;
+  checksum: string | null;
+}
+
 export interface EstadoDelContrato {
   proyecto: string;
   target_schema: "PASS" | "FAIL";
   production_schema: "IN_SYNC" | "BLOCKED_PENDING_DEPLOYMENT" | "CONTRACT_DEFECT";
   release_deployment_state: "READY" | "BLOCKED";
+  /**
+   * POR QUÉ está bloqueado, estructurado. Vacío sólo cuando está READY.
+   *
+   * Existe por un agujero real: el 2026-09-04 se aplicó la 0061 y el contrato
+   * pasó a IN_SYNC / READY con la 0062 —el endurecimiento que le quita a `anon`
+   * el EXECUTE sobre 269 funciones SECURITY DEFINER— todavía sin aplicar. El
+   * contrato sólo miraba objetos que la APP REFERENCIA, y una postura de
+   * seguridad no es un objeto referenciado: quedaba invisible. Producción atrás
+   * del repo es una brecha de despliegue aunque el frontend no la note.
+   */
+  release_blocked_by: string[];
+  /** Todo lo que el repo tiene y producción no, lo referencie la app o no. */
+  pending_migrations: MigracionPendiente[];
   /**
    * Lo pone una persona a mano, y por eso existe: mientras
    * `release_deployment_state` sea BLOCKED, declararlo `true` pone rojo el
@@ -289,6 +309,7 @@ export function armarEstadoDelContrato(
   targetSchemaPasa: boolean,
   releaseCandidateDeclarado: boolean,
   proyecto: string,
+  pendientesDelLibro: MigracionPendiente[] = [],
 ): EstadoDelContrato {
   const contract_defects = objetos.filter((o) => o.estado === "CONTRACT_DEFECT");
   const pending_objects = objetos.filter((o) => o.estado === "EXPECTED_PENDING_DEPLOYMENT");
@@ -300,16 +321,28 @@ export function armarEstadoDelContrato(
         ? "BLOCKED_PENDING_DEPLOYMENT"
         : "IN_SYNC";
 
+  // BLOQUEADO mientras haya UNA sola cosa pendiente, del tipo que sea. Que CI
+  // pase no significa que se pueda lanzar: es exactamente la confusión que dejó
+  // "CI verde con producción vieja" la última vez.
+  const release_blocked_by: string[] = [];
+  if (!targetSchemaPasa) release_blocked_by.push("TARGET_SCHEMA_FAIL");
+  if (contract_defects.length > 0) release_blocked_by.push("CONTRACT_DEFECT");
+  if (pending_objects.length > 0) release_blocked_by.push("PENDING_DEPLOYMENT_SCHEMA");
+  // Y las migraciones pendientes que la app NO referencia: seguridad, permisos,
+  // operación. Son las que se escapaban.
+  for (const m of pendientesDelLibro) {
+    release_blocked_by.push(`PENDING_MIGRATION_${m.archivo.slice(0, 4)}`);
+  }
+
   return {
     proyecto,
     target_schema: targetSchemaPasa ? "PASS" : "FAIL",
     production_schema,
-    // BLOQUEADO mientras haya UNA sola cosa pendiente. Que CI pase no significa
-    // que se pueda lanzar: es exactamente la confusión que dejó "CI verde con
-    // producción vieja" la última vez.
-    release_deployment_state: production_schema === "IN_SYNC" && targetSchemaPasa ? "READY" : "BLOCKED",
+    release_deployment_state: release_blocked_by.length === 0 ? "READY" : "BLOCKED",
+    release_blocked_by,
     release_candidate_declarado: releaseCandidateDeclarado,
     contract_defects,
     pending_objects,
+    pending_migrations: pendientesDelLibro,
   };
 }

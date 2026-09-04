@@ -1,25 +1,19 @@
 {
   "proyecto": "smwyxfnlxoohenhsdcjx",
   "target_schema": "PASS",
-  "production_schema": "BLOCKED_PENDING_DEPLOYMENT",
+  "production_schema": "IN_SYNC",
   "release_deployment_state": "BLOCKED",
+  "release_blocked_by": [
+    "PENDING_MIGRATION_0062"
+  ],
   "release_candidate_declarado": false,
   "contract_defects": [],
-  "pending_objects": [
+  "pending_objects": [],
+  "pending_migrations": [
     {
-      "objeto": "event_covered_meals",
-      "tipo": "tabla",
-      "usado_en": [
-        "eventos/actions.ts",
-        "eventos/queries.ts"
-      ],
-      "estado": "EXPECTED_PENDING_DEPLOYMENT",
-      "provisto_por": "0061_eventos_borrador_y_comidas_cubiertas.sql",
+      "archivo": "0062_cierre_seguridad.sql",
       "sellada": true,
-      "checksum": "5da4ddc872ab53949f5805e1dc13d1fe76224f5b4247cb36555bf5fd165d5a23",
-      "checksum_coincide": true,
-      "creacion_demostrada": true,
-      "motivo": null
+      "checksum": "d5166fbd6824df920b44e65da04cef1ee79bd03a30c7d1987272afe0decb25a9"
     }
   ]
 }

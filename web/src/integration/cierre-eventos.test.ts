@@ -821,7 +821,12 @@ describe("la 0061 aplicada encima de eventos que ya existían", () => {
     // `soloProduccion` levanta exactamente lo que la base real tiene puesto hoy
     // (0001→0060, con la 0061 todavía PENDIENTE en el libro), que es la
     // definición correcta de "antes" y se mueve sola el día que se aplique.
-    vieja = await levantarBase({ conSeeds: false, soloProduccion: true });
+    // HASTA LA 0060: el "antes" de la 0061 es una propiedad de la CADENA, no de
+    // dónde esté producción hoy. Con `soloProduccion` funcionaba sólo mientras
+    // la 0061 estuviera pendiente; el día que se aplicó (2026-09-04), el "antes"
+    // pasó a incluirla y este ensayo comparó el estado nuevo contra sí mismo.
+    // Su propia aserción lo dijo: "el ensayo no arrancó desde el estado viejo".
+    vieja = await levantarBase({ conSeeds: false, hasta: "0060" });
     hogarViejo = await crearHogar(vieja, USER_VIEJO, "Hogar de antes", "Antes");
 
     // Los dos casos que hay en la base real: uno con la comida declarada y uno

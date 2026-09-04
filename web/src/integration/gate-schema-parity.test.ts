@@ -401,6 +401,11 @@ describe("§3-bis — la app solo depende de lo que producción tiene puesto HOY
       // ponerlo ni quitarlo solo, o el candado no sería un candado.
       anterior.release_candidate_declarado === true,
       libro.proyecto,
+      // TODAS las pendientes del libro, no sólo las que la app referencia: la
+      // 0062 es endurecimiento de seguridad y ningún `.from()` la nombra.
+      libro.entradas
+        .filter((e) => e.estado === "PENDIENTE")
+        .map((e) => ({ archivo: e.archivo, sellada: e.sha256 !== null, checksum: e.sha256 })),
     );
 
     const texto = `${JSON.stringify(estado, null, 2)}${String.fromCharCode(10)}`;
