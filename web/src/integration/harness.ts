@@ -247,8 +247,20 @@ const ENTORNO_SUPABASE = `
   create or replace function auth.uid() returns uuid language sql stable as $$
     select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   grant usage on schema public to anon, authenticated;
+  -- ANON TAMBIEN, y no es un detalle: Supabase le da a anon los mismos
+  -- privilegios de TABLA que a authenticated, y deja que la RLS sea la que
+  -- protege. Aca estuvo mucho tiempo solo authenticated, y esa diferencia
+  -- volvia optimista toda prueba de seguridad: un select de anon moria en el
+  -- privilegio de tabla, la politica de RLS nunca se evaluaba, y una politica
+  -- rota para anon era invisible.
+  --
+  -- Costo encontrar un defecto real asi: /api/health lee households como anon,
+  -- la politica households_select no lleva clausula TO (o sea, nace TO PUBLIC,
+  -- y PUBLIC incluye a anon), y llama a app.is_household_member. La 0062 le
+  -- quito a anon el USAGE sobre el esquema app. En produccion eso es un 503; en
+  -- este arnes no se veia, porque anon no llegaba ni a evaluar la politica.
   alter default privileges in schema public
-    grant select, insert, update, delete on tables to authenticated;
+    grant select, insert, update, delete on tables to anon, authenticated;
 `;
 
 export interface Harness {

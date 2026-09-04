@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -33,17 +33,49 @@ const EJEMPLO = path.join(WEB, ".env.example");
 /** Este mismo archivo NOMBRA los secretos para prohibirlos: no se escanea a sí mismo. */
 const YO = path.join(SRC, "lib", "entorno.test.ts");
 
-function fuentes(raiz: string): string[] {
+function fuentes(raiz: string, extensiones = /\.tsx?$/): string[] {
   const out: string[] = [];
+  if (!existsSync(raiz)) return out;
   for (const nombre of readdirSync(raiz)) {
     const ruta = path.join(raiz, nombre);
-    if (statSync(ruta).isDirectory()) out.push(...fuentes(ruta));
-    else if (/\.tsx?$/.test(nombre)) out.push(ruta);
+    if (statSync(ruta).isDirectory()) {
+      if (nombre === "node_modules" || nombre === ".next") continue;
+      out.push(...fuentes(ruta, extensiones));
+    } else if (extensiones.test(nombre)) out.push(ruta);
   }
   return out;
 }
 
+/**
+ * DONDE BUSCAR UNA CREDENCIAL PEGADA. No alcanza con `web/src`.
+ *
+ * El barrido miraba sólo el código de la app y `.env.example`, y dejaba afuera
+ * las dos carpetas donde de verdad se manipulan secretos: `scripts/` —ahí vive
+ * `staging-bootstrap.mjs`, el único código del repo que le PIDE la service_role
+ * a la Management API— y `web/e2e/`, cuyos fixtures se autentican. Un token
+ * pegado en cualquiera de esas dos se versionaba sin que nadie chistara.
+ */
+const DONDE_BUSCAR = (): string[] => [
+  ...fuentes(SRC),
+  ...fuentes(path.join(RAIZ, "scripts"), /\.(mjs|js|tsx?)$/),
+  ...fuentes(path.join(WEB, "e2e"), /\.(mjs|js|tsx?)$/),
+  EJEMPLO,
+];
+
 const rel = (p: string) => path.relative(RAIZ, p).split(path.sep).join("/");
+
+const FORMAS: [string, RegExp][] = [
+  ["token de la Management API (sbp_…)", /\bsbp_[0-9a-f]{40}\b/],
+  ["JWT largo (anon o service_role)", /\beyJ[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{30,}\./],
+  // LAS DOS DE ARRIBA NO ALCANZABAN. Supabase emitio un formato nuevo y
+  // este proyecto YA lo usa: la llave publicable que viaja en el bundle
+  // compilado empieza con el prefijo publicable nuevo. O sea que este
+  // guardian estaba vigilando la ORTOGRAFIA VIEJA de la credencial: una
+  // llave secreta del formato nuevo pegada en el codigo pasaba en verde.
+  ["llave SECRETA de Supabase, formato nuevo", /\bsb_secret_[A-Za-z0-9_-]{20,}/],
+  ["llave publicable de Supabase, formato nuevo", /\bsb_publishable_[A-Za-z0-9_-]{20,}/],
+];
+
 
 /** Las variables que el código de PRODUCCIÓN lee de verdad (los tests no cuentan). */
 function variablesQueLeeLaApp(): Map<string, string[]> {
@@ -114,12 +146,8 @@ describe("§46 — los secretos que no pueden entrar al servidor web", () => {
     // un fixture no lleva su nombre al lado, y ése es el que de verdad se filtra.
     //   sbp_ + 40 hex  — token de la Management API de Supabase.
     //   eyJ… . eyJ… .  — un JWT; la clave `service_role` viaja así.
-    const FORMAS: [string, RegExp][] = [
-      ["token de la Management API (sbp_…)", /\bsbp_[0-9a-f]{40}\b/],
-      ["JWT largo (anon o service_role)", /\beyJ[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{30,}\./],
-    ];
     const ofensas: string[] = [];
-    for (const archivo of [...fuentes(SRC), EJEMPLO]) {
+    for (const archivo of DONDE_BUSCAR()) {
       if (archivo === YO) continue;
       const fuente = readFileSync(archivo, "utf8");
       for (const [que, forma] of FORMAS) {
@@ -131,13 +159,53 @@ describe("§46 — los secretos que no pueden entrar al servidor web", () => {
     expect(ofensas).toEqual([]);
   });
 
-  it("el guardián de FORMAS reconoce una credencial de verdad", () => {
-    // Los fixtures del repo usan tokens de mentira ("sbp_estonoesuntokendeverdad"),
-    // que NO tienen la forma real. Si el patrón estuviera mal escrito, el test de
-    // arriba pasaría en verde sobre un repo con el token de verdad adentro.
-    const sbp = /\bsbp_[0-9a-f]{40}\b/;
-    expect(sbp.test(`sbp_${"a1".repeat(20)}`)).toBe(true);
-    expect(sbp.test("sbp_estonoesuntokendeverdad")).toBe(false);
+  it("CADA forma reconoce un ejemplo sintético, y rechaza uno de mentira", () => {
+    /**
+     * ESTE TEST EXISTE PORQUE UNA DE LAS FORMAS ESTUVO ROTA Y NADIE SE ENTERÓ.
+     *
+     * Al agregar los formatos nuevos, el `\b` del patrón entró al archivo
+     * como un byte de retroceso (0x08) en vez de como el borde de palabra del
+     * regex. El patrón quedó en `/<retroceso>sb_secret_.../`, que no calza con
+     * nada — y el barrido siguió en VERDE, porque un guardián que no encuentra
+     * nada y uno que no puede encontrar nada se ven exactamente igual. El byte
+     * ni siquiera se veía con `grep`: hizo falta `cat -A`.
+     *
+     * Un test que sólo dice "el repo está limpio" nunca distingue esos dos
+     * casos. Éste sí: le da a cada patrón algo que TIENE que reconocer.
+     */
+    const positivos: [string, string][] = [
+      ["token de la Management API", `sbp_${"a1".repeat(20)}`],
+      ["JWT", `eyJ${"a".repeat(40)}.${"b".repeat(40)}.firma`],
+      // Se arman por pedazos para que el propio barrido no acuse a este archivo.
+      ["llave SECRETA", "sb" + "_secret_" + "x".repeat(24)],
+      ["llave publicable", "sb" + "_publishable_" + "y".repeat(24)],
+    ];
+    expect(positivos.length, "hay formas sin ejemplo: agregarlo").toBe(FORMAS.length);
+
+    for (const [que, ejemplo] of positivos) {
+      expect(
+        FORMAS.some(([, forma]) => forma.test(ejemplo)),
+        `ninguna forma reconoce ${que}: el patrón está roto`,
+      ).toBe(true);
+    }
+
+    // Y que no acuse de más: los fixtures del repo usan tokens de mentira.
+    for (const falso of ["sbp_estonoesuntokendeverdad", "sb" + "_secret_" + "corta", "const x = 1;"]) {
+      expect(
+        FORMAS.some(([, forma]) => forma.test(falso)),
+        `una forma acusa a "${falso}", que no es una credencial`,
+      ).toBe(false);
+    }
+  });
+
+  it("el barrido mira scripts/ y web/e2e/, no sólo la app", () => {
+    // Sin esto, alguien vuelve a acotar el alcance a `web/src` y el barrido
+    // sigue en verde sobre un repo con un token en `scripts/` — que es donde
+    // vive el único código que manipula la llave de servicio de verdad.
+    const mirados = DONDE_BUSCAR().map(rel);
+    expect(mirados.some((r) => r.startsWith("scripts/")), "scripts/ salió del barrido").toBe(true);
+    expect(mirados.some((r) => r.startsWith("web/e2e/")), "web/e2e/ salió del barrido").toBe(true);
+    expect(mirados.length, "el barrido se quedó sin archivos").toBeGreaterThan(100);
   });
 
   it("ninguna variable NEXT_PUBLIC_* tiene nombre de secreto", () => {
