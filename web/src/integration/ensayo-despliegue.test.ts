@@ -2,6 +2,9 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { crearHogar, levantarBase, MIGRACIONES, migracionesDeProduccion, type Harness } from "./harness";
+import { pathToFileURL } from "node:url";
+import { cargarLibroDeProduccion } from "./estado-produccion";
+
 
 /**
  * EL ENSAYO DEL DESPLIEGUE.
@@ -10,8 +13,8 @@ import { crearHogar, levantarBase, MIGRACIONES, migracionesDeProduccion, type Ha
  * responde una pregunta: "¿esto funciona si aplicamos todo de una?". No es la
  * pregunta del despliegue.
  *
- * Producción no está en cero. Tiene 38 migraciones puestas y le faltan 19. Lo
- * que va a pasar el día que se apliquen no es "la cadena entera sobre una base
+ * Producción no está en cero: tiene una parte de la cadena puesta y le faltan
+ * las demás (el libro dice cuáles, y cambia solo al aplicar). Lo que va a pasar
  * vacía" sino "estas 19, en orden, ENCIMA de lo que ya hay" — y esas dos cosas
  * pueden diferir. Una migración que crea una tabla sin `if not exists` funciona
  * desde cero y muere sobre una base que ya la tiene. Un `alter table ... add
@@ -28,6 +31,15 @@ import { crearHogar, levantarBase, MIGRACIONES, migracionesDeProduccion, type Ha
  */
 
 const RAIZ = path.resolve(__dirname, "../../..");
+
+/**
+ * El escritor del SQL de los testigos se IMPORTA del script, no se reescribe:
+ * si el test armara su propia consulta, probaría su copia y no la que corre
+ * contra producción de verdad.
+ */
+const escritor = (await import(
+  pathToFileURL(path.join(RAIZ, "scripts", "verificar-estado-produccion.mjs")).href
+)) as { sqlDeTodosLosTestigos: (e: [string, { testigo: string }][]) => string };
 const USUARIO = "11111111-1111-4111-8111-111111111111";
 
 /** Las que faltan: la diferencia entre la cadena del repo y lo que produccion tiene. */
@@ -321,7 +333,10 @@ describe("ensayo del despliegue, con la base ocupada", () => {
     expect(Number(conteo!.gente)).toBeGreaterThan(0);
   });
 
-  it("las 19 se aplican sobre datos, no sobre una base vacía", async () => {
+  // El nombre NO dice cuántas: decía "las 19" y quedó viejo el día que se
+  // aplicaron. Un test que miente en su título hace perder tiempo al leer un
+  // informe de CI.
+  it("las pendientes se aplican sobre datos, no sobre una base vacía", async () => {
     const puestas = new Set(migracionesDeProduccion());
     const faltan = MIGRACIONES.filter((m) => !puestas.has(m));
     const aplicadas: string[] = [];
@@ -349,6 +364,46 @@ describe("ensayo del despliegue, con la base ocupada", () => {
       }
     }
     expect(aplicadas).toEqual(faltan);
+  });
+
+  it("los TESTIGOS del libro sobreviven al ensayo, no sólo el schema", async () => {
+    /**
+     * DESPUÉS DE APLICAR, CADA MIGRACIÓN TIENE QUE PODER RECONOCERSE.
+     *
+     * El test de arriba comprueba que las pendientes se aplican y que los datos
+     * siguen ahí. Eso todavía no dice que el DÍA DEL DESPLIEGUE vayamos a poder
+     * saber qué quedó puesto: eso lo dicen los testigos, y un testigo puede
+     * quedar falso aunque la migración se haya aplicado perfecto — pasó dos
+     * veces, con la 0022 y la 0023, cuando una migración posterior reescribió
+     * justo lo que el testigo miraba.
+     *
+     * Acá se corren los 61 sobre la base del ensayo —estado de producción, con
+     * datos, y las pendientes aplicadas encima— y se exige que TODOS contesten
+     * verdadero. Si alguno no, el libro no va a poder decir qué tiene producción
+     * después de desplegar, que es exactamente el estado "no se sabe" del que
+     * este proyecto ya salió una vez.
+     */
+    const libro = cargarLibroDeProduccion();
+    const entradas = libro.entradas.map(
+      (e) => [e.archivo, { testigo: e.testigo }] as [string, { testigo: string }],
+    );
+    const resultados = await base.db.exec(escritor.sqlDeTodosLosTestigos(entradas));
+    const ultimo = resultados[resultados.length - 1];
+    const filas = (ultimo?.rows ?? []) as unknown as { archivo: string; presente: unknown }[];
+
+    // Contestaron TODOS: sin esto, cero filas dejaría la lista de mentirosos
+    // vacía y el test verde por no haber mirado.
+    expect(filas.length, "no contestaron todos los testigos").toBe(entradas.length);
+
+    const mienten = filas
+      .filter((f) => f.presente !== true)
+      .map(
+        (f) =>
+          `${f.archivo} — contestó ${f.presente === null ? "NULL" : "FALSO"} después del ensayo: ` +
+          "tras desplegar, el libro no podría reconocer esta migración",
+      )
+      .sort();
+    expect(mienten).toEqual([]);
   });
 
   it("y los datos que ya estaban siguen ahí, con su valor DESCONOCIDO y no en cero", async () => {
