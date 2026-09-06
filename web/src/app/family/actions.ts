@@ -9,22 +9,21 @@ import {
   invitationExpiry,
 } from "@/domain/family/invitations";
 import { creacionDeHogarAbierta } from "./politica-hogar";
+import { alFamily } from "./avisos";
 
 export async function createHousehold(formData: FormData): Promise<void> {
   // La política se pregunta ACÁ además de en la página: una server action es
   // un POST alcanzable sin pasar por la página, y el formulario escondido no
   // cierra nada por sí solo. Ver politica-hogar.ts.
   if (!creacionDeHogarAbierta()) {
-    redirect(
-      `/family?error=${encodeURIComponent("Los hogares nuevos están cerrados: entra con una invitación de tu familia.")}`,
-    );
+    redirect(alFamily("hogares-cerrados"));
   }
   const parsed = createHouseholdSchema.safeParse({
     householdName: formData.get("householdName"),
     displayName: formData.get("displayName"),
   });
   if (!parsed.success) {
-    redirect(`/family?error=${encodeURIComponent(parsed.error.issues[0]?.message ?? "Datos inválidos")}`);
+    redirect(alFamily("datos-hogar"));
   }
 
   const supabase = await createSupabaseServer();
@@ -33,7 +32,7 @@ export async function createHousehold(formData: FormData): Promise<void> {
     p_display_name: parsed.data.displayName,
   });
   if (error) {
-    redirect(`/family?error=${encodeURIComponent("No se pudo crear el hogar")}`);
+    redirect(alFamily("no-se-creo"));
   }
   redirect("/family");
 }
@@ -45,7 +44,7 @@ export async function createInvitation(formData: FormData): Promise<void> {
     email: formData.get("email") ?? "",
   });
   if (typeof householdId !== "string" || !parsed.success) {
-    redirect(`/family?error=${encodeURIComponent("Datos de invitación inválidos")}`);
+    redirect(alFamily("datos-invitacion"));
     return;
   }
 
@@ -59,7 +58,7 @@ export async function createInvitation(formData: FormData): Promise<void> {
     expires_at: invitationExpiry().toISOString(),
   });
   if (error) {
-    redirect(`/family?error=${encodeURIComponent("Solo el administrador puede invitar")}`);
+    redirect(alFamily("solo-admin"));
   }
   // El token viaja una sola vez, para compartir el link; solo su hash queda almacenado.
   redirect(`/family?invite=${encodeURIComponent(token)}`);

@@ -13,8 +13,12 @@ import { ButtonOutline, Card, ErrorNote, Icon, Notice } from "@/components/ui";
  *
  * El componente vive en su archivo para poder renderizarse en un test sin
  * levantar la página entera de la familia.
+ *
+ * `mensaje` es SIEMPRE texto de nuestra lista de avisos (avisos.ts), resuelto
+ * por la página desde un código; nunca texto libre de la URL. Antes recibía
+ * `?error=` crudo y era una caja roja donde se podía pintar cualquier frase.
  */
-export function SinHogar({ error }: { error?: string }) {
+export function SinHogar({ mensaje }: { mensaje?: string | null }) {
   return (
     <AppShell
       active="family"
@@ -22,7 +26,7 @@ export function SinHogar({ error }: { error?: string }) {
       subtitle="Para entrar necesitas una invitación de tu familia."
     >
       <div className="mt-md space-y-md">
-        {error ? <ErrorNote>{error}</ErrorNote> : null}
+        {mensaje ? <ErrorNote>{mensaje}</ErrorNote> : null}
         <Notice icon="mail" tono="info">
           <p className="font-semibold">Pide una invitación</p>
           <p className="mt-1">

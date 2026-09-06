@@ -20,13 +20,14 @@ import {
 import { DemoFamilyButton } from "./DemoFamilyButton";
 import { createHousehold, createInvitation } from "./actions";
 import { creacionDeHogarAbierta } from "./politica-hogar";
+import { avisoFamiliaDe } from "./avisos";
 import { SinHogar } from "./SinHogar";
 import { origenPublico } from "@/lib/auth/origen";
 
 export const dynamic = "force-dynamic";
 
 interface Props {
-  searchParams: Promise<{ error?: string; invite?: string }>;
+  searchParams: Promise<{ aviso?: string; invite?: string }>;
 }
 
 /**
@@ -62,7 +63,11 @@ const oneHogar = z
   .transform((v) => (Array.isArray(v) ? (v[0] ?? null) : v));
 
 export default async function FamilyPage({ searchParams }: Props) {
-  const { error, invite } = await searchParams;
+  // `aviso` es un CÓDIGO de nuestra lista (avisos.ts); nunca texto libre de
+  // la URL. Así `/family?aviso=…` no puede pintar una frase de estafa en la caja
+  // roja, ni siquiera encadenado desde /login?next=.
+  const { aviso, invite } = await searchParams;
+  const mensaje = avisoFamiliaDe(aviso);
   const supabase = await createSupabaseServer();
 
   const {
@@ -81,7 +86,7 @@ export default async function FamilyPage({ searchParams }: Props) {
     // En la beta familiar se entra por invitación: sin hogar no hay formulario
     // de crear uno, hay un estado controlado. `politica-hogar.ts` decide, y la
     // acción `createHousehold` vuelve a preguntarle antes de escribir.
-    if (!creacionDeHogarAbierta()) return <SinHogar error={error} />;
+    if (!creacionDeHogarAbierta()) return <SinHogar mensaje={mensaje} />;
     return (
       <AppShell
         active="family"
@@ -89,7 +94,7 @@ export default async function FamilyPage({ searchParams }: Props) {
         subtitle="Tu familia parte aquí. Después podrás invitar a los demás integrantes."
       >
         <div className="mt-md space-y-md">
-          {error ? <ErrorNote>{error}</ErrorNote> : null}
+          {mensaje ? <ErrorNote>{mensaje}</ErrorNote> : null}
           <Card as="section">
             <form action={createHousehold} className="space-y-md p-md">
               <label className="block">
@@ -173,9 +178,9 @@ export default async function FamilyPage({ searchParams }: Props) {
         </ShellAction>
       }
     >
-      {error || invite ? (
+      {mensaje || invite ? (
         <div className="mt-md space-y-md">
-          {error ? <ErrorNote>{error}</ErrorNote> : null}
+          {mensaje ? <ErrorNote>{mensaje}</ErrorNote> : null}
           {invite ? <InviteLink enlace={`${await origenPublico()}/invite/${invite}`} /> : null}
         </div>
       ) : null}
@@ -220,7 +225,15 @@ export default async function FamilyPage({ searchParams }: Props) {
         )}
       </Section>
 
-      <DemoFamilyButton householdId={membership.householdId} />
+      {/* La familia de demostración BORRA y reescribe metas y patrones de comida
+          reales (seed_demo_family_profiles, 0024): a quien la aprieta y a
+          cualquier integrante que se llame Paula, Sebastián, Constanza o
+          Ricardo. Es una ayuda de desarrollo, no algo para la mesa real, así
+          que se esconde en producción tras el mismo interruptor que la creación
+          de hogares. */}
+      {creacionDeHogarAbierta() ? (
+        <DemoFamilyButton householdId={membership.householdId} />
+      ) : null}
 
       <Section
         title="Invitar integrante"

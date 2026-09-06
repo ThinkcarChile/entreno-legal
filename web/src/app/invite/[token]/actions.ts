@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { acceptInvitationSchema } from "@/domain/family/schemas";
 import { hashInvitationToken } from "@/domain/family/invitations";
+import { alFamily } from "@/app/family/avisos";
 
 export async function acceptInvitation(formData: FormData): Promise<void> {
   const parsed = acceptInvitationSchema.safeParse({
@@ -11,7 +12,7 @@ export async function acceptInvitation(formData: FormData): Promise<void> {
     displayName: formData.get("displayName") ?? "Integrante",
   });
   if (!parsed.success) {
-    redirect("/family?error=" + encodeURIComponent("Invitación inválida"));
+    redirect(alFamily("invitacion-invalida"));
     return;
   }
 
@@ -21,7 +22,7 @@ export async function acceptInvitation(formData: FormData): Promise<void> {
     p_display_name: parsed.data.displayName,
   });
   if (error) {
-    redirect("/family?error=" + encodeURIComponent("Invitación inválida o expirada"));
+    redirect(alFamily("invitacion-invalida"));
   }
   redirect("/family");
 }

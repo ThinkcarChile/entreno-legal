@@ -13,7 +13,7 @@ el resultado; si algo no se corrió, dice NOT_RUN aunque el código exista.
 | # | Compuerta | Estado | Evidencia | ¿Bloquea? | Acción |
 |---|---|---|---|---|---|
 | 1 | Push del trabajo local | **PASS** | `ahead 0 / behind 0`, `origin` en `5403f3e` | no | — |
-| 2 | Suite de pruebas | **PASS** | 2441 pruebas, 140 archivos, 0 rojas | no | — |
+| 2 | Suite de pruebas | **PASS** | 2540 pruebas, 148 archivos, 0 rojas | no | — |
 | 3 | Tipos y lint | **PASS** | `tsc --noEmit` 0 errores; `eslint --max-warnings 0` limpio (verificado DESPUÉS del último cambio: la primera versión de esta tabla lo declaró con una corrida vieja y CI lo desmintió) | no | — |
 | 4 | CI remoto (job `web`) | **PASS** | `#33818055976` falló por tres errores de tipos en la regresión nueva (`db.query` no existe en ese tipo); corregido y vuelto a verificar | no | — |
 | 5 | Cadena en PostgreSQL real (job `db`) | **PASS** | `db-test.sh` verde en CI desde `a873a10` | no | — |
@@ -35,6 +35,7 @@ el resultado; si algo no se corrió, dice NOT_RUN aunque el código exista.
 | 22 | `/api/health` contra producción | **PASS** | HTTP 200 `ok:true` (2026-09-05). La sonda lee `ingredient_categories`, cuya única política es `to authenticated`: anon no evalúa nada. Vigilado por `sonda-de-vida.test.ts` en las dos puntas | no | — |
 | 23 | Rutas de recuperar clave / confirmar correo / auth callback | **PASS** | `/auth/callback` (code y token_hash), `/recuperar`, `/nueva-contrasena` con sesión de recuperación exigida; 78 pruebas de auth; `docs/deployment/auth-produccion.md` | no | configurar Supabase cuando haya dominio |
 | 24 | Destinos internos (`?next=`) | **PASS** | un solo validador (`lib/auth/destino.ts`); rechaza `//`, `/\`, codificados y absolutos; 4 mutaciones rojas | no | — |
+| 26 | Auditoría adversarial del auth | **PASS** | panel de 4 lentes + verificación; 3 arreglados (reflejado, demo destructivo, log), resto documentado; `docs/qa/auditoria-auth-2026-09-05.md` | no | — |
 | 25 | Política de la beta: entrar por invitación | **PASS** | una cuenta sin hogar ve un estado controlado y no crea hogar (`HOGAR_CREACION_ABIERTA` cerrado por omisión) | no | — |
 | 21 | Revisión visual de las pantallas nuevas | **NOT_RUN** | verificado por tipos y guardianes, no en un navegador | no | el dueño mira |
 

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -38,6 +40,7 @@ vi.mock("next/navigation", () => ({
 import { createHousehold } from "./actions";
 import { creacionDeHogarAbierta } from "./politica-hogar";
 import { SinHogar } from "./SinHogar";
+import { avisoFamiliaDe } from "./avisos";
 
 function formulario(campos: Record<string, string>): FormData {
   const f = new FormData();
@@ -77,10 +80,10 @@ describe("la política", () => {
 describe("createHousehold, la acción", () => {
   const DATOS = { householdName: "Casa Nueva", displayName: "Intruso" };
 
-  it("con la política cerrada NO llama a create_household y vuelve con un aviso", async () => {
+  it("con la política cerrada NO llama a create_household y vuelve con un aviso por código", async () => {
     const destino = await destinoDe(createHousehold(formulario(DATOS)));
-    expect(destino.startsWith("/family?error=")).toBe(true);
-    expect(decodeURIComponent(destino)).toContain("invitación");
+    // Por CÓDIGO, no por texto libre: el mismo vector que se cerró en /login.
+    expect(destino).toBe("/family?aviso=hogares-cerrados");
     expect(puente.rpc, "la acción escribió con la política cerrada").toEqual([]);
   });
 
@@ -95,7 +98,7 @@ describe("createHousehold, la acción", () => {
 
 describe("SinHogar, la pantalla", () => {
   it("dice qué falta y cómo conseguirlo, y deja cerrar sesión; no ofrece crear hogar", () => {
-    const html = renderToStaticMarkup(createElement(SinHogar, {}));
+    const html = renderToStaticMarkup(createElement(SinHogar, { mensaje: null }));
     expect(html).toContain("Todavía no tienes hogar");
     expect(html).toContain("invitación");
     expect(html).toContain("Cerrar sesión");
@@ -103,8 +106,32 @@ describe("SinHogar, la pantalla", () => {
     expect(html).not.toContain("householdName");
   });
 
-  it("muestra el aviso que le llegue, si llega", () => {
-    const html = renderToStaticMarkup(createElement(SinHogar, { error: "Los hogares nuevos están cerrados" }));
+  it("sólo muestra un mensaje de NUESTRA lista, nunca texto libre de la URL", () => {
+    // Antes recibía `?error=` crudo: una caja roja para cualquier frase. Ahora
+    // la página resuelve un código a texto nuestro y le pasa ESO. El texto de
+    // estafa de un atacante nunca llega hasta acá porque nunca es un código.
+    const html = renderToStaticMarkup(
+      createElement(SinHogar, { mensaje: avisoFamiliaDe("hogares-cerrados") }),
+    );
     expect(html).toContain("Los hogares nuevos están cerrados");
+    // Un código inventado se resuelve a null y no pinta nada.
+    const vacio = renderToStaticMarkup(
+      createElement(SinHogar, { mensaje: avisoFamiliaDe("Tu cuenta fue bloqueada, llama al 600") }),
+    );
+    expect(vacio).not.toContain("bloqueada");
+  });
+});
+
+describe("ninguna acción de familia ni de invitación pinta texto libre en la URL", () => {
+  it("los avisos van por código, no por `?error=`", () => {
+    // El vector que cerró avisos.ts en /login, cerrado también acá: si alguien
+    // vuelve a escribir `?error=<texto>` en una redirección, este test lo dice.
+    for (const a of [
+      path.resolve(__dirname, "actions.ts"),
+      path.resolve(__dirname, "../invite/[token]/actions.ts"),
+    ]) {
+      const fuente = readFileSync(a, "utf8");
+      expect(fuente, `${a} redirige con texto libre en ?error=`).not.toMatch(/\?error=/);
+    }
   });
 });

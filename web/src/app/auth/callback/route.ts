@@ -56,10 +56,12 @@ export async function GET(request: NextRequest) {
   // usado). Se registra el código y nada más.
   const errorDelProveedor = url.searchParams.get("error");
   if (errorDelProveedor !== null) {
-    registrarError("auth.callback.proveedor", {
-      ruta: "/auth/callback",
-      codigo: url.searchParams.get("error_code") ?? errorDelProveedor,
-    });
+    // El `error_code` lo elige quien arma la URL: se ACOTA a una forma corta
+    // conocida antes de registrarlo, para que este log no sea un tablón donde
+    // cualquiera escribe. Lo que no calce entra como "otro".
+    const crudo = url.searchParams.get("error_code") ?? errorDelProveedor;
+    const codigo = /^[a-z_]{1,40}$/.test(crudo) ? crudo : "otro";
+    registrarError("auth.callback.proveedor", { ruta: "/auth/callback", codigo });
     return aLogin("enlace-invalido");
   }
 
