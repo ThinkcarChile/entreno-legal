@@ -31,7 +31,7 @@ describe("reclamacionesDe: leer el cuerpo de un JWT", () => {
 describe("esRecuperacionVigente: sólo un canje de recuperación reciente habilita", () => {
   it("recovery hace un minuto → vigente", () => {
     const r = reclamacionesDe(
-      tokenCon({ amr: [{ method: "recovery", timestamp: seg(AHORA) - 60 }] }),
+      tokenCon({ amr: [{ method: "otp", timestamp: seg(AHORA) - 60 }] }),
     );
     expect(esRecuperacionVigente(r, AHORA)).toBe(true);
   });
@@ -39,10 +39,10 @@ describe("esRecuperacionVigente: sólo un canje de recuperación reciente habili
   it("recovery justo dentro de la ventana → vigente; un segundo después → no", () => {
     const limite = VENTANA_RECUPERACION_MIN * 60;
     const dentro = reclamacionesDe(
-      tokenCon({ amr: [{ method: "recovery", timestamp: seg(AHORA) - limite }] }),
+      tokenCon({ amr: [{ method: "otp", timestamp: seg(AHORA) - limite }] }),
     );
     const fuera = reclamacionesDe(
-      tokenCon({ amr: [{ method: "recovery", timestamp: seg(AHORA) - limite - 1 }] }),
+      tokenCon({ amr: [{ method: "otp", timestamp: seg(AHORA) - limite - 1 }] }),
     );
     expect(esRecuperacionVigente(dentro, AHORA)).toBe(true);
     expect(esRecuperacionVigente(fuera, AHORA)).toBe(false);
@@ -59,7 +59,7 @@ describe("esRecuperacionVigente: sólo un canje de recuperación reciente habili
     const r = reclamacionesDe(
       tokenCon({
         amr: [
-          { method: "recovery", timestamp: seg(AHORA) - 10 * 24 * 3600 },
+          { method: "otp", timestamp: seg(AHORA) - 10 * 24 * 3600 },
           { method: "password", timestamp: seg(AHORA) },
         ],
       }),
@@ -72,7 +72,7 @@ describe("esRecuperacionVigente: sólo un canje de recuperación reciente habili
     expect(esRecuperacionVigente(reclamacionesDe(tokenCon({ amr: [] })), AHORA)).toBe(false);
     expect(esRecuperacionVigente(reclamacionesDe(tokenCon({ amr: "recovery" })), AHORA)).toBe(false);
     expect(
-      esRecuperacionVigente(reclamacionesDe(tokenCon({ amr: [{ method: "recovery" }] })), AHORA),
+      esRecuperacionVigente(reclamacionesDe(tokenCon({ amr: [{ method: "otp" }] })), AHORA),
     ).toBe(false);
     expect(esRecuperacionVigente(null, AHORA)).toBe(false);
   });
@@ -80,7 +80,7 @@ describe("esRecuperacionVigente: sólo un canje de recuperación reciente habili
   it("un timestamp en el futuro lejano no cuenta", () => {
     // Un reloj torcido o un token armado a mano no puede "adelantar" la ventana.
     const r = reclamacionesDe(
-      tokenCon({ amr: [{ method: "recovery", timestamp: seg(AHORA) + 3600 }] }),
+      tokenCon({ amr: [{ method: "otp", timestamp: seg(AHORA) + 3600 }] }),
     );
     expect(esRecuperacionVigente(r, AHORA)).toBe(false);
   });

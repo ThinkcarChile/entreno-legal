@@ -109,3 +109,26 @@ Una cuenta nueva con un correo que se pueda leer, en este orden:
 - No se inventan tokens propios para nada de esto: `code`, `token_hash` y `amr`
   son de Supabase.
 - No se manda ningún correo desde la app: los manda Supabase.
+
+
+## Nota del despliegue real (2026-09-06)
+
+Desplegada en Vercel (Hobby, equipo `app comida`) en
+**https://mesa-familiar-ten.vercel.app**. Site URL y Redirect URLs de Supabase ya
+apuntan ahí. Dos cosas que el despliegue real enseñó:
+
+1. **`amr` de recuperación es `otp`, no `recovery`.** Al canjear el enlace con
+   `verifyOtp({type:"recovery"})`, Supabase emite la sesión con
+   `amr:[{method:"otp"}]`. La guarda de `/nueva-contrasena` buscaba `"recovery"`
+   y rechazaba TODA recuperación legítima. Corregido en `lib/auth/recuperacion.ts`.
+   Como la app no usa magic link para entrar, `otp` sólo puede venir del enlace
+   de recuperación.
+
+2. **Vercel Deployment Protection.** Un proyecto nuevo nace con `ssoProtection`
+   activa, que pone el login de Vercel delante de toda URL `.vercel.app`. Para un
+   dominio público hay que apagarla (hecho); la seguridad real es Supabase Auth +
+   RLS.
+
+Callback, confirmación (token_hash) y recuperación validados end-to-end contra la
+URL real con enlaces de administración y un cambio de clave completo. Falta sólo
+la prueba de correo REAL: ver el SMTP abajo.

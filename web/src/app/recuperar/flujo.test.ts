@@ -143,7 +143,7 @@ describe("actualizarContrasena (nueva contraseña)", () => {
   const CLAVE = { password: "clave-nueva-123", confirmacion: "clave-nueva-123" };
 
   it("con sesión de recuperación reciente → actualiza, cierra sesión y manda al login", async () => {
-    sesion(tokenCon([{ method: "recovery", timestamp: ahora() - 60 }]));
+    sesion(tokenCon([{ method: "otp", timestamp: ahora() - 60 }]));
     puente.auth.updateUser = async () => ({ data: {}, error: null });
     puente.auth.signOut = async () => ({ error: null });
     expect(await destinoDe(actualizarContrasena(formulario(CLAVE)))).toBe(
@@ -177,7 +177,7 @@ describe("actualizarContrasena (nueva contraseña)", () => {
 
   it("recuperación VENCIDA → rechazada", async () => {
     sesion(
-      tokenCon([{ method: "recovery", timestamp: ahora() - VENTANA_RECUPERACION_MIN * 60 - 5 }]),
+      tokenCon([{ method: "otp", timestamp: ahora() - VENTANA_RECUPERACION_MIN * 60 - 5 }]),
     );
     expect(await destinoDe(actualizarContrasena(formulario(CLAVE)))).toBe(
       "/login?aviso=recuperacion-invalida",
@@ -193,7 +193,7 @@ describe("actualizarContrasena (nueva contraseña)", () => {
   });
 
   it("claves que no coinciden o cortas → «clave rechazada», sin llamar a updateUser", async () => {
-    sesion(tokenCon([{ method: "recovery", timestamp: ahora() }]));
+    sesion(tokenCon([{ method: "otp", timestamp: ahora() }]));
     expect(
       await destinoDe(
         actualizarContrasena(formulario({ password: "clave-nueva-123", confirmacion: "otra" })),
@@ -206,7 +206,7 @@ describe("actualizarContrasena (nueva contraseña)", () => {
   });
 
   it("Supabase rechaza la clave → «clave rechazada», y la sesión sigue (puede reintentar)", async () => {
-    sesion(tokenCon([{ method: "recovery", timestamp: ahora() }]));
+    sesion(tokenCon([{ method: "otp", timestamp: ahora() }]));
     puente.auth.updateUser = async () => ({
       data: {},
       error: { message: "Password should be different", code: "same_password" },

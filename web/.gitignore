@@ -1,0 +1,6 @@
+# Creado al enlazar el proyecto con Vercel. Afinado a mano: el CLI dejó `.env*`,
+# que además de los secretos ocultaría `.env.example` y `.env.staging.example`,
+# que SÍ van versionados (son el contrato que revisa `src/lib/entorno.test.ts`).
+# Por eso se ignora sólo lo que lleva valores reales.
+.vercel
+.env*.local

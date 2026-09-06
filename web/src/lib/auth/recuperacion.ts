@@ -8,10 +8,23 @@
  * Supabase mandó al correo, y eso Supabase lo deja escrito en el token.
  *
  * El token de acceso (un JWT) lleva la reclamación `amr`: la lista de cómo se
- * autenticó esta sesión, con método y momento. Un canje de código de
- * recuperación produce `{ method: "recovery", timestamp: <segundos> }`. Acá se
- * exige eso, y que sea RECIENTE: un enlace de recuperación abierto hace tres
- * días no puede seguir sirviendo para cambiar la clave.
+ * autenticó esta sesión, con método y momento. Acá se exige que el método sea
+ * de un solo uso por enlace (`otp`) y RECIENTE: un enlace de recuperación
+ * abierto hace tres días no puede seguir sirviendo para cambiar la clave.
+ *
+ * POR QUÉ `otp` Y NO `recovery`. Lo natural sería buscar `method: "recovery"`,
+ * y así estuvo escrito hasta que el despliegue real lo desmintió: al canjear un
+ * enlace de recuperación con `verifyOtp({ type: "recovery", token_hash })`,
+ * Supabase emite la sesión con `amr: [{ method: "otp", timestamp }]`, no
+ * "recovery". Con el método equivocado, esta guarda rechazaba TODA recuperación
+ * legítima (probado contra la app en Vercel: caía en "recuperación inválida").
+ *
+ * ¿Es seguro aceptar `otp`? Un inicio de sesión con clave produce
+ * `method: "password"`; sólo un enlace de un solo uso produce `otp`. Esta app
+ * NO usa magic link para entrar (login es siempre correo + clave), así que la
+ * ÚNICA fuente de una sesión `otp` es el enlace de recuperación. Si algún día se
+ * agrega magic link, hay que volver a distinguir acá (ver el test). El `amr` va
+ * DENTRO del JWT firmado por Supabase: no se puede falsificar como una cookie.
  *
  * No se inventa ningún token propio: se lee lo que Supabase firmó. Y no se
  * verifica la firma acá porque no hace falta: quien llama pasa antes por
@@ -54,8 +67,10 @@ function entradasAmr(reclamaciones: Record<string, unknown> | null): EntradaAmr[
 }
 
 /**
- * `true` sólo si el token dice "recovery" y ese momento cae dentro de la
- * ventana. `ahoraMs` se recibe para poder probar el vencimiento sin esperar.
+ * `true` sólo si la sesión se estableció por un enlace de un solo uso (`otp`,
+ * que en esta app significa recuperación) y ese momento cae dentro de la
+ * ventana. Un login con clave (`password`) nunca califica. `ahoraMs` se recibe
+ * para poder probar el vencimiento sin esperar.
  */
 export function esRecuperacionVigente(
   reclamaciones: Record<string, unknown> | null,
@@ -63,6 +78,6 @@ export function esRecuperacionVigente(
 ): boolean {
   const limite = VENTANA_RECUPERACION_MIN * 60;
   return entradasAmr(reclamaciones).some(
-    (e) => e.method === "recovery" && ahoraMs / 1000 - e.timestamp <= limite && e.timestamp <= ahoraMs / 1000 + 60,
+    (e) => e.method === "otp" && ahoraMs / 1000 - e.timestamp <= limite && e.timestamp <= ahoraMs / 1000 + 60,
   );
 }
