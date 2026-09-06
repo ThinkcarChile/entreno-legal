@@ -14,9 +14,15 @@ import { crearHogar, levantarBase, type Harness } from "./harness";
  * `TO PUBLIC`, y PUBLIC incluye a `anon`. Así que anon SÍ las evalúa, y
  * evaluarlas llama a `app.is_household_member` — que anon ya no puede ejecutar.
  *
- * Resultado medido en producción el 2026-09-04: `/api/health` devuelve
- * **HTTP 503**. La app corriendo contra la base real contesta
+ * Resultado medido en producción el 2026-09-04: `/api/health` devolvía
+ * **HTTP 503**. La app corriendo contra la base real contestaba
  * `{"ok":false,"version":null,"schema":null}`.
+ *
+ * LA SONDA YA NO DEPENDE DE ESTO: el mismo día se movió a
+ * `ingredient_categories`, cuya única política lleva `to authenticated`, y la
+ * vigila `sonda-de-vida.test.ts`. Lo que queda acá es la DEUDA de fondo: las 12
+ * políticas sin TO siguen reventando para anon, y cualquier lectura anónima
+ * futura sobre esas tablas volvería a dar 503.
  *
  * La 0062 escribió como premisa que "no hay ni una sola `to anon` en las
  * migraciones, así que anon no evalúa ninguna política". Es una inferencia
@@ -97,24 +103,19 @@ describe("anon contra la RLS: el arnés ahora emula lo que Supabase da de verdad
     expect(leidas, "anon leyó filas del hogar").toEqual([]);
   });
 
-  it.fails("DEFECTO ABIERTO: anon debería poder sondear la vida de la base y hoy no puede", async () => {
+  it.fails("DEUDA REGISTRADA: las 12 políticas sin TO siguen reventando para anon", async () => {
     /**
      * ESTE TEST ESTÁ MARCADO `it.fails` A PROPÓSITO, Y NO ES UN TEST APAGADO.
      *
-     * Afirma la propiedad que QUEREMOS —que la sonda de vida funcione— sabiendo
-     * que hoy no se cumple. Mientras el defecto siga abierto, `it.fails` lo deja
-     * registrado sin teñir el CI de rojo de forma crónica, que es como un
-     * guardián pierde su autoridad. Y el día que alguien lo arregle, este test
-     * se pone ROJO por haber pasado, y obliga a venir acá a borrarlo.
+     * Afirma la propiedad que QUERRÍAMOS —que una lectura anónima sobre el
+     * núcleo familiar devuelva vacío y no error— sabiendo que hoy no se cumple.
+     * `it.fails` lo deja registrado sin teñir el CI de rojo de forma crónica, y
+     * el día que alguien lo arregle (una 0063 con `to authenticated` en las 12
+     * políticas de 0001_family.sql), este test se pone ROJO por haber pasado y
+     * obliga a venir acá a borrarlo. Un `it.skip` se quedaría mudo para siempre.
      *
-     * Un `it.skip` no haría eso: se quedaría en silencio para siempre.
-     *
-     * QUÉ HAY QUE DECIDIR (no se toca sin que Francisco elija):
-     *   a) que /api/health no consulte una tabla con RLS — no necesita
-     *      migración, es una línea del route handler;
-     *   b) una 0063 que le ponga `to authenticated` a las 12 políticas de
-     *      0001_family.sql — más limpio de raíz, pero toca la RLS del núcleo
-     *      familiar y eso se aplica con el protocolo completo.
+     * La sonda de vida ya NO depende de esto: se movió a `ingredient_categories`
+     * el 2026-09-04. Esto es deuda de fondo, no un incidente abierto.
      */
     await comoAnon(async () => {
       await base.filas("select count(*) from public.households");

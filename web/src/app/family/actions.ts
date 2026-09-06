@@ -8,8 +8,17 @@ import {
   hashInvitationToken,
   invitationExpiry,
 } from "@/domain/family/invitations";
+import { creacionDeHogarAbierta } from "./politica-hogar";
 
 export async function createHousehold(formData: FormData): Promise<void> {
+  // La política se pregunta ACÁ además de en la página: una server action es
+  // un POST alcanzable sin pasar por la página, y el formulario escondido no
+  // cierra nada por sí solo. Ver politica-hogar.ts.
+  if (!creacionDeHogarAbierta()) {
+    redirect(
+      `/family?error=${encodeURIComponent("Los hogares nuevos están cerrados: entra con una invitación de tu familia.")}`,
+    );
+  }
   const parsed = createHouseholdSchema.safeParse({
     householdName: formData.get("householdName"),
     displayName: formData.get("displayName"),

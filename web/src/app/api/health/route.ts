@@ -21,8 +21,23 @@ export const dynamic = "force-dynamic";
  * POR QUÉ TOCA LA BASE. "El proceso de Node responde" no es "la app funciona":
  * la familia se queda sin nada si Supabase está caído y el proceso sigue vivo.
  * La sonda es una lectura como `anon` sobre una tabla con RLS: devuelve CERO
- * filas siempre —anon no tiene ninguna política a su favor en las 59
- * migraciones— así que prueba que PostgREST contesta sin exponer ni una fila.
+ * filas siempre, así que prueba que PostgREST contesta sin exponer ni una fila.
+ *
+ * QUÉ TABLA, Y POR QUÉ NO CUALQUIERA. Hasta el 2026-09-04 esto leía
+ * `households`, y desde la 0062 devolvía 503 en producción. La política de
+ * `households` se escribió sin cláusula TO —nace TO PUBLIC, y PUBLIC incluye a
+ * anon— así que anon SÍ la evaluaba, y evaluarla llama a
+ * `app.is_household_member`, que la 0062 le cerró a anon con toda razón. La
+ * versión anterior de este comentario decía "anon no tiene ninguna política a
+ * su favor" y confundía dos cosas: que ninguna política le DÉ acceso no
+ * significa que no EVALÚE ninguna.
+ *
+ * `ingredient_categories` tiene una sola política, `to authenticated using
+ * (true)`: anon no tiene política aplicable, la RLS deniega SIN evaluar ninguna
+ * expresión y sin llamar a nada, y la consulta contesta 0 filas. Además existe
+ * desde la 0002, son nombres de categoría ("Carnes", "Frutas") y no depende de
+ * ninguna función. Lo vigila `sonda-de-vida.test.ts`: cambiar la tabla por una
+ * que anon evalúe vuelve a poner esto en 503, y ese test lo dice antes.
  *
  * POR QUÉ `version` Y `schema` PUEDEN SER null. Las declara el despliegue en
  * `APP_VERSION` y `SCHEMA_VERSION` (ver `docs/deployment/entornos.md`). Si no
@@ -51,7 +66,7 @@ export async function GET() {
     // base CONTESTE, no qué contesta, así que un conteo con cabecera responde lo
     // mismo sin traer una sola fila de nadie.
     const { error } = await supabase
-      .from("households")
+      .from("ingredient_categories")
       .select("id", { count: "exact", head: true });
     if (error) {
       registrarError("health.base_no_responde", { ruta: "/api/health", codigo: error.code });

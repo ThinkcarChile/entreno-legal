@@ -178,11 +178,14 @@ export function derivarPasos(hechos: HechosOnboarding): PasoOnboarding[] {
     {
       clave: "hogar",
       numero: 1,
-      titulo: "Crea tu hogar",
+      // En la beta familiar se ENTRA POR INVITACIÓN (family/politica-hogar.ts):
+      // una cuenta sin hogar no crea uno, se une al de su familia. El paso lo
+      // dice así para no mandar a nadie a un formulario que está cerrado.
+      titulo: hayHogar ? "Tu hogar" : "Únete a tu hogar",
       porQue:
         "Es la caja donde viven tu gente, tus recetas y tu semana. Sin hogar, el resto de la aplicación no tiene dónde guardar nada.",
       detalle: !hayHogar
-        ? "Todavía no tienes hogar. Es lo primero: todo lo demás cuelga de acá."
+        ? "Todavía no perteneces a ningún hogar. Pide a tu familia un enlace de invitación y ábrelo con esta misma cuenta."
         : hechos.nombreHogar !== null
           ? `Tu hogar se llama «${hechos.nombreHogar}».`
           : // Sabemos que existe (de ahí salió tu ficha), pero su fila no volvió.
@@ -190,7 +193,7 @@ export function derivarPasos(hechos: HechosOnboarding): PasoOnboarding[] {
             "Tu hogar ya existe, pero no pudimos leer su ficha, así que no te podemos decir cómo se llama.",
       estado: hogarListo(hechos) ? "LISTO" : "PENDIENTE",
       destino: "/family",
-      accion: hayHogar ? "Ver mi hogar" : "Crear hogar",
+      accion: hayHogar ? "Ver mi hogar" : "Cómo unirme",
       icono: "add_home",
       disponible: true,
       esencial: true,

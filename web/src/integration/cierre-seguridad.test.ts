@@ -57,6 +57,13 @@ const RUTAS_SIN_SESION: Record<string, string> = {
   "api/health/route.ts":
     "la sonda de vida (§51): un monitor no tiene sesión. Devuelve tres campos y " +
     "ninguno viene de la base — ver el porqué en el propio archivo",
+  "auth/callback/route.ts":
+    "la vuelta de los correos de Supabase (confirmar cuenta, recuperar clave): " +
+    "llega SIN sesión porque su trabajo es crearla. No llama ninguna RPC; canjea " +
+    "un código de un solo uso y redirige a un destino validado por destinoInterno",
+  "recuperar/page.tsx":
+    "«olvidé mi contraseña»: quien llega acá es porque no puede entrar. Un " +
+    "formulario con un correo; la respuesta es la misma exista o no la cuenta",
 };
 
 /** Archivos que Next usa como entrada de una ruta. */
@@ -83,7 +90,10 @@ const rel = (p: string) => path.relative(APP, p).split(path.sep).join("/");
  */
 function exigeSesion(fuente: string): boolean {
   const mira = /auth\.getUser\(\)/.test(fuente);
-  const echa = /redirect\(\s*[`"']\/login/.test(fuente);
+  // `alLogin(...)` es el mismo gate con un solo dueno de la URL (lib/auth/avisos):
+  // la pagina de nueva contrasena redirige asi, y no se le pide duplicar el
+  // literal para que este guardian la reconozca.
+  const echa = /redirect\(\s*(?:[`"']\/login|alLogin\()/.test(fuente);
   const cuatroCeroUno = /status:\s*401/.test(fuente);
   return mira && (echa || cuatroCeroUno);
 }

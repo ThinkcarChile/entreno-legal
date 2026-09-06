@@ -1,14 +1,23 @@
-import { Card, ErrorNote, Icon } from "@/components/ui";
+import Link from "next/link";
+import { Card, ErrorNote, Icon, Notice } from "@/components/ui";
+import { avisoDe } from "@/lib/auth/avisos";
+import { destinoInterno } from "@/lib/auth/destino";
 import { signIn, signUp } from "./actions";
 
 interface Props {
-  searchParams: Promise<{ error?: string; next?: string }>;
+  searchParams: Promise<{ aviso?: string; next?: string }>;
 }
 
 /**
  * Puerta de entrada: una sola columna centrada, sin navegación (todavía no hay
  * sesión que navegar). Campos de 48 px y botones a lo ancho — esto se abre
  * parado, con una mano.
+ *
+ * Lo que se muestra arriba del formulario sale de `?aviso=<código>` y de una
+ * lista nuestra (`lib/auth/avisos.ts`): un código desconocido no pinta nada. El
+ * `next` se valida ANTES de ponerlo en el campo oculto, así que lo que viaja de
+ * vuelta ya es interno; la acción lo vuelve a validar igual, porque un campo
+ * oculto se edita con dos clics.
  */
 const CAMPO =
   "w-full min-h-[48px] rounded-xl border border-outline-variant bg-surface-container-lowest px-md py-3 font-body-md text-body-md text-on-surface";
@@ -16,7 +25,9 @@ const CAMPO =
 const ETIQUETA = "mb-1 block font-body-sm text-body-sm font-semibold text-on-surface";
 
 export default async function LoginPage({ searchParams }: Props) {
-  const { error, next } = await searchParams;
+  const { aviso, next } = await searchParams;
+  const mensaje = avisoDe(aviso);
+  const destino = destinoInterno(next);
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-container-margin py-xl">
@@ -41,15 +52,21 @@ export default async function LoginPage({ searchParams }: Props) {
           </p>
         </div>
 
-        {error ? (
+        {mensaje ? (
           <div className="mt-md">
-            <ErrorNote>{error}</ErrorNote>
+            {mensaje.tono === "error" ? (
+              <ErrorNote>{mensaje.texto}</ErrorNote>
+            ) : (
+              <Notice icon="mark_email_read" tono="info">
+                {mensaje.texto}
+              </Notice>
+            )}
           </div>
         ) : null}
 
         <Card className="mt-lg">
           <form className="space-y-md p-md">
-            <input type="hidden" name="next" value={next ?? "/family"} />
+            <input type="hidden" name="next" value={destino} />
             <label className="block">
               <span className={ETIQUETA}>Correo</span>
               <input
@@ -91,6 +108,12 @@ export default async function LoginPage({ searchParams }: Props) {
             </div>
           </form>
         </Card>
+
+        <p className="mt-md text-center font-body-sm text-body-sm">
+          <Link href="/recuperar" className="text-primary underline underline-offset-4">
+            Olvidé mi contraseña
+          </Link>
+        </p>
       </div>
     </main>
   );

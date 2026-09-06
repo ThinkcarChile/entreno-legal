@@ -115,6 +115,17 @@ export const VARIABLES_OPCIONALES = [
   { nombre: "ASSISTANT_API_URL", valor: "URL del proveedor (solo con ASSISTANT_PROVIDER=remoto)" },
   { nombre: "ASSISTANT_API_KEY", valor: "clave del proveedor (solo con ASSISTANT_PROVIDER=remoto)" },
   { nombre: "ASSISTANT_MODEL", valor: "modelo del proveedor (opcional)" },
+  {
+    nombre: "SITE_URL",
+    valor:
+      "URL publica del sitio, sin barra final (p. ej. https://familia.ejemplo.cl). " +
+      "La usan los correos de Auth para volver a /auth/callback y el enlace de invitacion. " +
+      "Opcional en el codigo, OBLIGATORIA en produccion: sin ella se deduce del Host, que un proxy puede mentir",
+  },
+  {
+    nombre: "HOGAR_CREACION_ABIERTA",
+    valor: "`1` permite crear hogares nuevos desde /family. Cerrado por omision: la beta entra solo por invitacion",
+  },
 ];
 
 /** Lo que JAMÁS va en el servidor web. */

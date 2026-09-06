@@ -32,8 +32,10 @@ el resultado; si algo no se corrió, dice NOT_RUN aunque el código exista.
 | 18 | Confirm Email | **BLOCKED** | `mailer_autoconfirm = true` (desactivado) | **SÍ** | depende del dominio |
 | 19 | Restauración contra Supabase real | **NOT_RUN** | el ensayo fue contra PGlite | no | se cierra con staging |
 | 20 | Prueba en teléfono real | **NOT_RUN** | Playwright emula, no reemplaza | no | checklist de lanzamiento |
-| 22 | `/api/health` contra producción | **FAIL** | HTTP 503: la 0062 le quitó a anon el `usage` sobre `app`, y 12 políticas sin cláusula `TO` lo hacen evaluar `app.is_household_member`. Es de disponibilidad, no de confidencialidad | no | Francisco elige entre (a) que la sonda no lea una tabla con RLS o (b) una 0063 |
-| 23 | Rutas de recuperar clave / confirmar correo / auth callback | **FAIL** | no existen en el repo: cero `exchangeCodeForSession`, `verifyOtp`, `resetPasswordForEmail` | **SÍ** | hay que escribirlas ANTES de activar Confirm Email (#18) |
+| 22 | `/api/health` contra producción | **PASS** | HTTP 200 `ok:true` (2026-09-05). La sonda lee `ingredient_categories`, cuya única política es `to authenticated`: anon no evalúa nada. Vigilado por `sonda-de-vida.test.ts` en las dos puntas | no | — |
+| 23 | Rutas de recuperar clave / confirmar correo / auth callback | **PASS** | `/auth/callback` (code y token_hash), `/recuperar`, `/nueva-contrasena` con sesión de recuperación exigida; 78 pruebas de auth; `docs/deployment/auth-produccion.md` | no | configurar Supabase cuando haya dominio |
+| 24 | Destinos internos (`?next=`) | **PASS** | un solo validador (`lib/auth/destino.ts`); rechaza `//`, `/\`, codificados y absolutos; 4 mutaciones rojas | no | — |
+| 25 | Política de la beta: entrar por invitación | **PASS** | una cuenta sin hogar ve un estado controlado y no crea hogar (`HOGAR_CREACION_ABIERTA` cerrado por omisión) | no | — |
 | 21 | Revisión visual de las pantallas nuevas | **NOT_RUN** | verificado por tipos y guardianes, no en un navegador | no | el dueño mira |
 
 ## Los cinco bloqueantes, en el orden en que se destraban
@@ -46,9 +48,9 @@ cerrar desde acá.
    `mailer_autoconfirm` siga en `true`, cualquiera se registra con un correo que
    no es suyo. El lanzamiento público está bloqueado por esto.
 
-   **OJO CON EL ORDEN**: activar Confirm Email exige antes escribir la ruta de
-   auth callback (#23), que hoy no existe. Activarlo primero deja a la gente sin
-   poder terminar de registrarse.
+   **OJO CON EL ORDEN**: la ruta de auth callback (#23) ya existe. Lo que
+   falta es configurar Supabase con el dominio (Site URL, Redirect URLs) ANTES
+   de activar Confirm Email; el orden exacto está en `auth-produccion.md`.
 3. **Crear staging** (#14), sabiendo el costo.
 4. **Ejecutar los E2E** (#13), que necesitan staging. Recién ahí se sabe si los
    142 casos pasan; hoy sólo se sabe que compilan y se listan.

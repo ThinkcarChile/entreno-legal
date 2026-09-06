@@ -19,6 +19,9 @@ import {
 } from "@/components/ui";
 import { DemoFamilyButton } from "./DemoFamilyButton";
 import { createHousehold, createInvitation } from "./actions";
+import { creacionDeHogarAbierta } from "./politica-hogar";
+import { SinHogar } from "./SinHogar";
+import { origenPublico } from "@/lib/auth/origen";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +78,10 @@ export default async function FamilyPage({ searchParams }: Props) {
   const membership = await loadCurrentMembership(supabase, user.id, "households ( name )");
 
   if (!membership) {
+    // En la beta familiar se entra por invitación: sin hogar no hay formulario
+    // de crear uno, hay un estado controlado. `politica-hogar.ts` decide, y la
+    // acción `createHousehold` vuelve a preguntarle antes de escribir.
+    if (!creacionDeHogarAbierta()) return <SinHogar error={error} />;
     return (
       <AppShell
         active="family"
@@ -169,7 +176,7 @@ export default async function FamilyPage({ searchParams }: Props) {
       {error || invite ? (
         <div className="mt-md space-y-md">
           {error ? <ErrorNote>{error}</ErrorNote> : null}
-          {invite ? <InviteLink token={invite} /> : null}
+          {invite ? <InviteLink enlace={`${await origenPublico()}/invite/${invite}`} /> : null}
         </div>
       ) : null}
 
@@ -259,14 +266,22 @@ export default async function FamilyPage({ searchParams }: Props) {
   );
 }
 
-function InviteLink({ token }: { token: string }) {
-  const path = `/invite/${token}`;
+/**
+ * El enlace COMPLETO, con dominio. Antes se mostraba la ruta relativa
+ * (`/invite/…`) y quien la copiaba tenía que adivinar el dominio: una
+ * invitación que no se puede pegar tal cual en un mensaje no es una invitación.
+ * El dominio sale de `SITE_URL` o de las cabeceras del pedido (lib/auth/origen).
+ */
+function InviteLink({ enlace }: { enlace: string }) {
   return (
     <Notice icon="link" tono="info">
       <p className="font-semibold">Invitación creada</p>
       <p className="mt-1 break-all">
-        Comparte este link (se muestra una sola vez):{" "}
-        <code className="rounded bg-surface-container px-1 py-0.5 text-on-surface">{path}</code>
+        Comparte este enlace (se muestra una sola vez; vale 7 días y un solo uso):{" "}
+        <code className="rounded bg-surface-container px-1 py-0.5 text-on-surface">{enlace}</code>
+      </p>
+      <p className="mt-1">
+        Quien lo abra tiene que entrar con su cuenta —o crearla— y queda adentro del hogar.
       </p>
     </Notice>
   );

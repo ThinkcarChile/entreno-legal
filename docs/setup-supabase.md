@@ -221,9 +221,10 @@ En **Authentication → Providers → Email**: debe estar habilitado (lo está p
 En **Authentication → Sign In / Providers** (o **Settings**), busca **Confirm email**:
 
 - **Desactívalo mientras desarrollamos.** Si queda activo, al registrarte Supabase no te
-  entrega sesión hasta que hagas clic en un correo de confirmación, y la app te va a
-  devolver al login como si la clave estuviera mala.
-- Antes de que esto lo use gente de verdad, se vuelve a activar.
+  entrega sesión hasta que hagas clic en un correo de confirmación.
+- Desde 2026-09-05 la app SÍ sabe manejarlo (te dice «revisa tu correo» y el
+  enlace vuelve por `/auth/callback`), pero activarlo exige antes configurar el
+  dominio. El orden exacto está en `docs/deployment/auth-produccion.md`.
 
 En **Authentication → URL Configuration**, agrega a **Redirect URLs**:
 
