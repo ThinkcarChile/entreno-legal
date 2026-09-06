@@ -212,7 +212,11 @@ async function stockInputDesdeBase(): Promise<StockInput> {
       weightBasis: (w as unknown as { weight_basis: string }).weight_basis as "RAW",
       quantity: Number(w.quantity),
       estimatedCost: w.estimated_cost === null ? null : Number(w.estimated_cost),
-      date: w.created_at.slice(0, 10),
+      // El DIA DEL HOGAR, igual que el cargador real (queries.ts fechaEnHogar,
+      // que envuelve este mismo effectiveDate). Recortar
+      // el timestamp era tomar la fecha en la zona de la SESION: en CI (UTC) una
+      // compra hecha a las 21:30 de Santiago caia 'manana' y salia de la ventana.
+      date: effectiveDate(new Date(w.created_at), "America/Santiago"),
     }));
 
     const purchases = (
@@ -226,7 +230,7 @@ async function stockInputDesdeBase(): Promise<StockInput> {
       unit: p.unit as "G",
       weightBasis: (p as unknown as { weight_basis: string }).weight_basis as "RAW",
       quantity: Number(p.quantity),
-      date: p.created_at.slice(0, 10),
+      date: effectiveDate(new Date(p.created_at), "America/Santiago"),
     }));
 
     const targets = (
