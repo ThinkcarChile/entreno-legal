@@ -35,19 +35,12 @@ Qué está construido y qué falta, en orden de dependencia.
 - [x] Pantalla central del trabajo asignado, con acciones según estado y rol
 - [x] Notificaciones in-app con indicador de no leídas
 - [x] Semilla de demostración multi-región
-- [x] 83 comprobaciones automatizadas en `npm run db:test`
+- [x] Comprobaciones automatizadas en `npm run db:test` (hoy 112, con inventario y contraste código–esquema)
 
-## Etapa 3 — Validación contra Supabase real (conectada, esquema NO aplicado)
+## Etapa 3 — Validación contra Supabase real (completada)
 
-El proyecto alojado ya existe: `hagotufila-dev`, ref `xwgobslgldxzatjrcxhl`,
-región `sa-east-1`. La aplicación está conectada a él y lo confirma el indicador
-de origen de datos, que en desarrollo muestra
-«Supabase conectado · xwgobslgldxzatjrcxhl.supabase.co».
-
-**Falta aplicar el esquema**, y eso necesita una credencial que el repositorio no
-tiene ni debe tener: un token de acceso personal (`sbp_…`) o la contraseña de la
-base. Hasta entonces el proyecto responde `PGRST205` —"no existe la tabla"— a
-cada consulta, que es exactamente lo que se ve hoy.
+Proyecto `hagotufila-dev`, ref `xwgobslgldxzatjrcxhl`, región `sa-east-1`. El
+esquema está aplicado y el recorrido completo se ejecutó contra él.
 
 Construido y verificado:
 
@@ -57,50 +50,81 @@ Construido y verificado:
 - [x] Migraciones repetibles donde el proyecto de destino puede traer el objeto
 - [x] Carga de fotografía de perfil a Storage, con nombre generado por la aplicación
 - [x] Indicador de origen de datos visible solo en desarrollo
-- [x] `npm run verify:supabase`: 49 comprobaciones del recorrido completo por API (36 de camino feliz y 13 de operaciones que deben fallar)
-- [x] `npm run e2e`: recorrido por navegador con Playwright
-- [x] Inventario del esquema dentro de `npm run db:test`
+- [x] `npm run db:push:hosted`: las 19 migraciones aplicadas por HTTPS
+- [x] `npm run db:seed:hosted`: 1 país, 16 regiones, 346 comunas
+- [x] `npm run verify:schema:hosted`: inventario, RLS, `security_invoker`, grants
+      de `anon`, `search_path`, publicación de Realtime, URLs de retorno y advisors
+- [x] `npm run verify:supabase`: 49 de 49 comprobaciones
+- [x] `npm run e2e`: 11 de 11, con las siete del marketplace ejecutándose de verdad
+- [x] `npm run db:test`: 112 comprobaciones contra PostgreSQL 16 local
+- [x] Recorrido a mano con dos ventanas: 19 de 21 pasos (los dos restantes
+      necesitan que el navegador alcance Supabase, ver abajo)
 - [x] `docs/DESPLIEGUE-SUPABASE.md` con los pasos exactos
 
-Añadido al conectar el proyecto real:
+## Etapa 2.5 — Lo que apareció al ejecutarlo de verdad (completada)
 
-- [x] Proyecto `hagotufila-dev` creado y alcanzable; clave pública verificada
-      contra `/auth/v1/settings` y `/rest/v1/`
-- [x] `.env.local` con la URL y la clave pública; la aplicación cambia a modo
-      Supabase y lo muestra en el indicador
-- [x] Corregido: una variable presente pero vacía (`SUPABASE_SECRET_KEY=`, como
-      pide la propia plantilla) hacía fallar la validación de entorno y devolvía
-      500 en todas las páginas. Ahora vacío equivale a ausente
-- [x] `npm run db:push:hosted`: aplica las migraciones del repositorio por HTTPS
-      cuando el puerto de PostgreSQL está cerrado. Probado de extremo a extremo
-      contra un PostgreSQL 16 local: 18 migraciones, 32 tablas, 5 vistas,
-      16 funciones, 73 políticas, 19 enums, y la segunda ejecución no repite nada
-- [x] `npm run db:seed:hosted`: la semilla geográfica oficial por HTTPS, con
-      cinco salvaguardas comprobadas por la máquina. Probado: niega producción,
-      niega el ref equivocado, niega la falta de confirmación, aplica 1 país /
-      16 regiones / 346 comunas, repite sin duplicar y deja el historial de
-      migraciones en 18
-- [x] `npm run verify:schema:hosted`: inventario del esquema alojado, RLS,
-      `security_invoker`, grants del rol `anon`, `search_path` de las funciones
-      privilegiadas, publicación de Realtime y advisors. 17 comprobaciones,
-      todas verdes contra el esquema real
-- [x] Las ocho credenciales E2E generadas y guardadas solo en `.env.local`
+Nada de esto se veía sin un proyecto alojado y un navegador recorriendo la
+aplicación. Cada punto se corrigió y quedó cubierto por una comprobación
+automática, para que no vuelva en silencio.
 
-Pendiente, y es lo único que cierra la etapa. Todo esto está bloqueado por
-credenciales, no por código:
+- [x] **`anon` podía escribir en las 37 tablas y vistas.** Un proyecto Supabase
+      trae `alter default privileges … grant all on tables to anon`, y la
+      migración de RLS concedía privilegios pero nunca revocaba. RLS lo tapaba,
+      pero la segunda línea de defensa no existía. Migración
+      `20260301000000_hosted_privileges.sql`; lo comprueban V15 y I13
+- [x] **Las 16 RPC se podían ejecutar sin sesión.** PostgreSQL concede EXECUTE a
+      PUBLIC en toda función nueva. Revocado; lo comprueba el advisor
+- [x] **Cuatro funciones de `app_private` sin `search_path`.** Fijado; V16 e I14
+- [x] **`verify:supabase` no podía pasar nunca sus dos pruebas de Realtime.**
+      Lanzaban el `insert` con `void`, y el constructor de PostgREST es perezoso:
+      la petición sale dentro de `then`, así que la escritura nunca ocurría y el
+      error decía «no llegó por Realtime», que apunta al sitio equivocado
+- [x] **Playwright no leía `.env.local`.** Las pruebas del marketplace se
+      omitían en silencio con las credenciales puestas. Cargador de entorno
+      compartido en `scripts/env-local.ts`
+- [x] **La prueba de publicación buscaba un botón «5 h» que no existe.** Los
+      preajustes son 30 min, 1, 2, 4, 6, 8, 12 y 24 h
+- [x] **El servidor de las E2E corría en producción**, donde el proveedor de
+      pagos simulado está prohibido por diseño, así que el pago no se podía
+      recorrer. Ahora corre en desarrollo, y con su propia `NEXT_PUBLIC_SITE_URL`
+      para que la vuelta del pago no caiga en otro puerto
+- [x] **Los formularios de credenciales se enviaban por GET si la página no
+      había hidratado**, dejando correo y contraseña en la URL, en el historial y
+      en el registro del servidor. Ahora son POST
+- [x] **Las dos listas de «mis trabajos» fallaban en cuanto había algo que
+      mostrar**: pasaban funciones de un componente de servidor a uno de cliente.
+      Con la cuenta vacía se ve el estado vacío y no se llegaba a la parte rota,
+      así que ninguna prueba lo tocaba. Corregido y cubierto por la prueba E2E 7
+- [x] **Un mensaje enviado desaparecía de la pantalla de quien lo escribió si el
+      socket de Realtime no estaba vivo.** El hilo dependía de `realtimeEnabled`,
+      que solo dice si hay credenciales, no si la conexión existe. Ahora
+      `sendMessageAction` devuelve la fila creada y el hilo la añade siempre,
+      descartando el duplicado cuando el evento llega
 
-- [ ] Que `SUPABASE_ACCESS_TOKEN` y `SUPABASE_SECRET_KEY` lleguen al entorno
-      donde corren los scripts. Este contenedor es efímero y se clona limpio:
-      editar `.env.local` en otra máquina no lo alcanza. La vía que sí llega son
-      las variables de entorno del entorno de ejecución
-- [ ] `npm run db:push:hosted` — aplicar las 18 migraciones
-- [ ] `npm run db:seed:hosted -- --project-ref xwgobslgldxzatjrcxhl`
-- [ ] `npm run verify:schema:hosted` — inventario y advisors contra el proyecto
-- [ ] `npm run verify:supabase` — 49 comprobaciones del recorrido por API
-- [ ] `npm run e2e` sin omitir las seis pruebas de `marketplace.spec.ts`
-- [ ] Recorrer a mano, con dos navegadores, el flujo de cliente y de trabajador
+También apareció, y se resolvió, la configuración del proyecto que ninguna
+migración puede llevar:
 
----
+- [x] **URLs de retorno de autenticación.** `uri_allow_list` estaba vacía en
+      `hagotufila-dev`: la guía lo pedía como obligatorio desde el principio y
+      nada lo comprobaba. Puestas las tres, y ahora lo comprueba V18
+- [x] **Protección contra contraseñas filtradas.** No se puede activar: Supabase
+      la ofrece desde el plan Pro y el proyecto de desarrollo es Free (la API
+      responde 402). Queda en `AVISOS_ACEPTADOS` con ese motivo y con la
+      instrucción de quitarla al pasar a producción. El mínimo de 8 caracteres
+      lo impone mientras tanto la propia aplicación
+
+Pendiente, y no es código:
+- [ ] **Entrega por Realtime vista en un navegador.** Está probada entre dos
+      sesiones reales por API (`verify:supabase` V25 y V26, entrega en menos de
+      un segundo), pero no desde el navegador: el contenedor donde se ejecutó
+      esto no deja salir tráfico del navegador hacia Supabase —su proxy no
+      admite la actualización a WebSocket—, así que los pasos M15 y M16 del
+      recorrido a mano quedaron sin ejecutar. En una máquina con salida normal
+      son dos ventanas y treinta segundos
+- [ ] **Avisos de rendimiento del advisor**: 215 `multiple_permissive_policies` y
+      39 `auth_rls_initplan`. Son consejos de optimización de RLS —envolver
+      `auth.uid()` en un subselect y unificar políticas permisivas—, no agujeros.
+      Tocan las 73 políticas, así que van en su propia tanda
 
 ## Etapa 4 — Pagos reales
 
@@ -155,12 +179,13 @@ credenciales, no por código:
 
 | Tema | Riesgo | Mitigación prevista |
 |---|---|---|
-| **Sin recorrido contra Supabase real** | El entorno de desarrollo no tiene ni credenciales ni Docker, así que todo se probó contra PostgreSQL más un contraste código–esquema. Las diferencias entre PostgreSQL a secas y Supabase (Auth, Realtime, Storage, permisos sobre `storage.objects`) no se han visto en funcionamiento | Ejecutar `npm run verify:supabase` y `npm run e2e` en cuanto exista el proyecto. Son 49 comprobaciones ya escritas |
-| Políticas de Storage sobre `storage.objects` | En un proyecto alojado esa tabla pertenece a otro rol; si la migración no puede crear las políticas, Storage queda sin reglas | La guía de despliegue lo anticipa y explica cómo crearlas desde el panel |
-| `getClaims()` no ejercitado contra un proyecto real | El cambio está hecho según la documentación vigente y compila, pero no se ha visto validar un token de verdad | Lo cubre `verify:supabase`, que abre cuatro sesiones simultáneas |
+| ~~Sin recorrido contra Supabase real~~ | Resuelto: el esquema está aplicado en `hagotufila-dev` y pasaron `verify:supabase` (49/49), `e2e` (10/10) y el recorrido a mano | — |
+| ~~Políticas de Storage sobre `storage.objects`~~ | Resuelto: la migración `…000900` creó las 11 políticas en el proyecto alojado sin intervención manual, y V07 las cuenta | — |
+| ~~`getClaims()` no ejercitado contra un proyecto real~~ | Resuelto: `verify:supabase` abre cuatro sesiones simultáneas y comprueba que ninguna se cruza | — |
+| Realtime no visto desde un navegador | La entrega funciona entre sesiones reales por API, pero el navegador del entorno donde se validó no alcanza Supabase | Repetir M15 y M16 del recorrido a mano en una máquina con salida normal |
 | `database.types.ts` genérico | Los tipos no reflejan las columnas reales, así que un error de nombre solo lo detecta `db:contract` | Generar los tipos con la CLI al crear el proyecto |
 | Sin pruebas automatizadas del front | La lógica de dominio es pura y testeable, pero no hay pruebas | Añadir Vitest antes de la Etapa 4 |
-| Realtime sin reconexión explícita | Si se corta la conexión, el hilo deja de recibir mensajes hasta recargar | Manejar el estado del canal y reconsultar al reconectar |
+| Realtime sin reconexión explícita | Si se corta la conexión, el hilo deja de recibir mensajes ajenos hasta recargar. Los propios ya se ven siempre | Manejar el estado del canal y reconsultar al reconectar |
 | Notificaciones solo in-app | Un trabajador que no abre la aplicación no se entera de una oferta aceptada | Push y email en la Etapa 6 |
 | Sin límite de frecuencia propio | Se depende del de Supabase Auth; las acciones de negocio no tienen tope | Añadir control por usuario en ofertas y mensajes |
 | Términos y política de privacidad provisionales | Texto de relleno | Redacción legal antes de abrir al público |

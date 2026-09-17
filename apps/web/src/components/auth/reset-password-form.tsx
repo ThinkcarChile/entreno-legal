@@ -41,7 +41,8 @@ export function ResetPasswordForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-5">
+    <form onSubmit={onSubmit} method="post" noValidate className="space-y-5">
+      {/* POST, no GET: ver el comentario en `sign-in-form.tsx`. */}
       <Field label="Correo electrónico" htmlFor="email" required>
         <Input id="email" name="email" type="email" autoComplete="email" inputMode="email" />
       </Field>

@@ -52,11 +52,14 @@ export default async function MyWorkerJobsPage() {
           />
         ) : (
           <BucketTabs
-            buckets={buckets}
-            renderItem={(job) => <WorkerJobCard job={job} />}
-            renderEmpty={(bucket) => (
-              <EmptyState title={bucket.emptyTitle} description={bucket.emptyDescription} />
-            )}
+            buckets={buckets.map((bucket) => ({
+              id: bucket.id,
+              label: bucket.label,
+              items: bucket.items.map((job) => <WorkerJobCard key={job.id} job={job} />),
+              empty: (
+                <EmptyState title={bucket.emptyTitle} description={bucket.emptyDescription} />
+              ),
+            }))}
           />
         )}
       </div>

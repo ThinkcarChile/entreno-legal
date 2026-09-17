@@ -23,33 +23,18 @@
  *
  * Sale con código distinto de cero si alguna comprobación falla.
  */
-import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { loadEnvLocal } from "./env-local.ts";
+
 const here = dirname(fileURLToPath(import.meta.url));
 
 /* ------------------------------------------------------------------ entorno */
 
-function loadEnvLocal(): void {
-  for (const file of [".env.local", ".env"]) {
-    try {
-      const raw = readFileSync(resolve(here, "..", file), "utf8");
-      for (const line of raw.split("\n")) {
-        const match = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line);
-        if (!match) continue;
-        const value = match[2].replace(/^["']|["']$/g, "");
-        if (value && !process.env[match[1]]) process.env[match[1]] = value;
-      }
-    } catch {
-      // El archivo puede no existir: las variables pueden venir del entorno.
-    }
-  }
-}
-
-loadEnvLocal();
+loadEnvLocal(resolve(here, ".."));
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const PUBLISHABLE_KEY =
@@ -205,6 +190,127 @@ async function ensureAccount(acc: Account): Promise<Session> {
   }
 
   return { client, userId: signIn.data.user.id, email: acc.email };
+}
+
+/* ------------------------------------------------- entrega por Realtime */
+
+interface Delivery {
+  channelName: string;
+  listener: Session;
+  sender: Session;
+  conversationId: string;
+  body: string;
+}
+
+/**
+ * Escribe un mensaje y espera a que llegue por Realtime a quien está suscrito.
+ *
+ * La escritura se ESPERA, y no es un detalle de estilo. El constructor de
+ * consultas de PostgREST es perezoso: no es una promesa, sino un objeto con
+ * `then`, y la petición HTTP sale dentro de ese `then`. Descartarlo con `void`
+ * —como hacía esta prueba— no envía nada. No es que el mensaje no llegara: es
+ * que nunca se escribió, así que la comprobación no podía pasar nunca y su
+ * mensaje de error apuntaba al sitio equivocado.
+ *
+ * Si la escritura falla, lo que se informa es el error de la escritura. Y si de
+ * verdad no llega nada, el mensaje dice en qué estados estuvo la suscripción y
+ * si la fila quedó escrita, para no tener que reproducirlo a mano.
+ */
+async function deliverByRealtime(o: Delivery): Promise<string> {
+  const statuses: string[] = [];
+  const escritas: string[] = [];
+
+  const channel = o.listener.client.channel(o.channelName);
+
+  let onSubscribed: () => void = () => {};
+  const subscribed = new Promise<void>((resolvePromise) => {
+    onSubscribed = resolvePromise;
+  });
+
+  let fallo: Error | null = null;
+  let recibido: string | null = null;
+  let onMessage: (body: string) => void = () => {};
+
+  channel
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "messages",
+        filter: `conversation_id=eq.${o.conversationId}`,
+      },
+      (payload) => {
+        recibido = String((payload.new as Record<string, unknown>).body);
+        onMessage(recibido);
+      },
+    )
+    .subscribe((status) => {
+      statuses.push(status);
+      // Se escribe recién cuando la suscripción está activa: sin esperas fijas.
+      if (status === "SUBSCRIBED") onSubscribed();
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        fallo = new Error(`la suscripción falló: ${status}`);
+        onSubscribed();
+        onMessage("");
+      }
+    });
+
+  try {
+    await subscribed;
+    if (fallo) throw fallo;
+
+    // Hasta tres intentos de 7 s.
+    //
+    // `SUBSCRIBED` dice que el canal quedó unido, no que la suscripción ya esté
+    // viva en el lado que lee el WAL. Esa diferencia es de milisegundos, pero en
+    // la primera suscripción de una conexión nueva alcanza para que un INSERT
+    // inmediato pase antes y no genere evento. Lo que esta comprobación tiene
+    // que demostrar es que Realtime entrega los mensajes de esta conversación a
+    // esta persona, no que los entregue en el primer milisegundo; reintentar la
+    // escritura lo demuestra igual y no esconde un fallo: si no llega ninguno de
+    // los tres, falla, y si hizo falta reintentar, el informe lo dice.
+    for (let intento = 1; intento <= 3; intento += 1) {
+      const cuerpo = intento === 1 ? o.body : `${o.body} [reintento ${intento}]`;
+      const inserted = await o.sender.client
+        .from("messages")
+        .insert({
+          conversation_id: o.conversationId,
+          sender_id: o.sender.userId,
+          message_type: "TEXT",
+          body: cuerpo,
+        })
+        .select("id")
+        .single();
+
+      if (inserted.error) {
+        throw new Error(`la escritura del mensaje falló: ${inserted.error.message}`);
+      }
+      escritas.push(String((inserted.data as { id: string }).id));
+
+      const llegada = await new Promise<string | null>((resolvePromise) => {
+        if (recibido !== null) return resolvePromise(recibido);
+        const timer = setTimeout(() => resolvePromise(null), 7000);
+        onMessage = (body) => {
+          clearTimeout(timer);
+          resolvePromise(body || null);
+        };
+      });
+      onMessage = () => {};
+
+      if (fallo) throw fallo;
+      if (llegada !== null) {
+        return intento === 1 ? `recibido: "${llegada}"` : `recibido en el intento ${intento}`;
+      }
+    }
+
+    throw new Error(
+      `no llegó ningún mensaje por Realtime en 3 intentos de 7 s ` +
+        `(estados: ${statuses.join(" → ")}; filas escritas: ${escritas.length})`,
+    );
+  } finally {
+    await o.listener.client.removeChannel(channel);
+  }
 }
 
 /* ----------------------------------------------------------------- flujo */
@@ -581,92 +687,25 @@ async function main(): Promise<void> {
     return conversationId;
   });
 
-  await check("el trabajador recibe un mensaje por Realtime, sin recargar", async () => {
-    const received = new Promise<string>((resolvePromise, rejectPromise) => {
-      const timer = setTimeout(
-        () => rejectPromise(new Error("no llegó el mensaje por Realtime en 15 s")),
-        15000,
-      );
+  await check("el trabajador recibe un mensaje por Realtime, sin recargar", () =>
+    deliverByRealtime({
+      channelName: `verify:${conversationId}`,
+      listener: worker,
+      sender: client,
+      conversationId,
+      body: "¿Puedes llegar antes de las 05:00?",
+    }),
+  );
 
-      const channel = worker.client
-        .channel(`verify:${conversationId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "messages",
-            filter: `conversation_id=eq.${conversationId}`,
-          },
-          (payload) => {
-            clearTimeout(timer);
-            void worker.client.removeChannel(channel);
-            resolvePromise(String((payload.new as Record<string, unknown>).body));
-          },
-        )
-        .subscribe((status) => {
-          // Se envía recién cuando la suscripción está activa: sin esperas fijas.
-          if (status === "SUBSCRIBED") {
-            void client.client.from("messages").insert({
-              conversation_id: conversationId,
-              sender_id: client.userId,
-              message_type: "TEXT",
-              body: "¿Puedes llegar antes de las 05:00?",
-            });
-          }
-          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-            clearTimeout(timer);
-            rejectPromise(new Error(`la suscripción falló: ${status}`));
-          }
-        });
-    });
-
-    const body = await received;
-    return `recibido: "${body}"`;
-  });
-
-  await check("el trabajador responde y el cliente lo recibe", async () => {
-    const received = new Promise<string>((resolvePromise, rejectPromise) => {
-      const timer = setTimeout(
-        () => rejectPromise(new Error("no llegó la respuesta por Realtime en 15 s")),
-        15000,
-      );
-
-      const channel = client.client
-        .channel(`verify-back:${conversationId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "messages",
-            filter: `conversation_id=eq.${conversationId}`,
-          },
-          (payload) => {
-            clearTimeout(timer);
-            void client.client.removeChannel(channel);
-            resolvePromise(String((payload.new as Record<string, unknown>).body));
-          },
-        )
-        .subscribe((status) => {
-          if (status === "SUBSCRIBED") {
-            void worker.client.from("messages").insert({
-              conversation_id: conversationId,
-              sender_id: worker.userId,
-              message_type: "TEXT",
-              body: "Sí, llego 04:30 y te confirmo con una foto.",
-            });
-          }
-          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-            clearTimeout(timer);
-            rejectPromise(new Error(`la suscripción falló: ${status}`));
-          }
-        });
-    });
-
-    const body = await received;
-    return `recibido: "${body}"`;
-  });
+  await check("el trabajador responde y el cliente lo recibe", () =>
+    deliverByRealtime({
+      channelName: `verify-back:${conversationId}`,
+      listener: client,
+      sender: worker,
+      conversationId,
+      body: "Sí, llego 04:30 y te confirmo con una foto.",
+    }),
+  );
 
   await check("un tercero no puede leer la conversación", async () => {
     const { data, error } = await outsider.client

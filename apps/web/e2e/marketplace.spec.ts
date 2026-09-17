@@ -40,6 +40,25 @@ test.describe("marketplace de punta a punta", () => {
     await admin.from("jobs").update({ status: "CANCELLED" }).eq("id", jobId);
   });
 
+  /**
+   * Busca el trabajo recorriendo las pestañas de estado.
+   *
+   * No se fija la pestaña a mano porque el estado del trabajo cambia con el
+   * recorrido, y porque las pestañas se abren en la primera que tenga algo: en
+   * una cuenta de pruebas con historial, esa no es la del trabajo de hoy.
+   */
+  async function expectJobInSomeTab(page: Page, title: string): Promise<void> {
+    const tabs = page.getByRole("tab");
+    const total = await tabs.count();
+    expect(total).toBeGreaterThan(0);
+
+    for (let i = 0; i < total; i += 1) {
+      await tabs.nth(i).click();
+      if (await page.getByText(title).first().isVisible().catch(() => false)) return;
+    }
+    throw new Error(`"${title}" no aparece en ninguna de las ${total} pestañas`);
+  }
+
   async function signIn(page: Page, email: string, password: string): Promise<void> {
     await page.goto("/entrar");
     await page.getByLabel("Correo electrónico").fill(email);
@@ -73,7 +92,10 @@ test.describe("marketplace de punta a punta", () => {
     const date = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
     await page.getByLabel("Fecha").fill(date);
     await page.getByLabel("Hora de inicio").fill("05:00");
-    await page.getByRole("button", { name: "5 h", exact: true }).click();
+    // Cinco horas, de 05:00 a 10:00. No hay preajuste de 5 h —los botones van
+    // 30 min, 1, 2, 4, 6, 8, 12 y 24 h—, así que va por el campo de minutos
+    // exactos, que además conviene ejercitar.
+    await page.getByLabel("O ingresa los minutos exactos").fill("300");
     await page.getByRole("button", { name: "Continuar" }).click();
 
     // Paso 4: descripción
@@ -177,5 +199,25 @@ test.describe("marketplace de punta a punta", () => {
     const { data: job } = await admin.from("jobs").select("status").eq("id", jobId).maybeSingle();
     expect(job).not.toBeNull();
     expect((job as { status: string }).status).toBe("PAID");
+  });
+
+  /**
+   * Las dos listas de "mis trabajos", con contenido.
+   *
+   * Van al final porque necesitan un trabajo ya asignado. Existen porque el
+   * recorrido a mano encontró que ambas fallaban en cuanto había algo que
+   * mostrar —pasaban funciones de un componente de servidor a uno de cliente— y
+   * ninguna prueba las visitaba: con la cuenta vacía se ve el estado vacío y no
+   * se llega a renderizar la parte rota.
+   */
+  test("7. las dos listas de mis trabajos muestran el trabajo", async ({ page }) => {
+    await signIn(page, workerAccount!.email, workerAccount!.password);
+    await page.goto("/mis-trabajos");
+    await expect(page.getByRole("heading", { name: "Mis trabajos" })).toBeVisible();
+    await expectJobInSomeTab(page, jobTitle);
+
+    await signIn(page, clientAccount!.email, clientAccount!.password);
+    await page.goto("/mis-trabajos/publicados");
+    await expectJobInSomeTab(page, jobTitle);
   });
 });

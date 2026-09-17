@@ -124,23 +124,32 @@ export function MessageThread({
         input.value = text;
         return;
       }
-      // Sin realtime (por ejemplo, sin conexión de sockets) el mensaje propio
-      // se agrega igual para que la conversación no se vea vacía.
-      if (!realtimeEnabled) {
-        setMessages((current) => [
+      // El mensaje propio se añade siempre con el id que devolvió el servidor.
+      //
+      // Antes esto dependía de `realtimeEnabled`, que solo dice si hay
+      // credenciales de Supabase, no si el socket está vivo. Con credenciales
+      // pero sin socket —red que no deja pasar WebSocket, proxy corporativo,
+      // túnel caído— el mensaje se guardaba, el optimista se revertía al
+      // terminar la transición y quien lo escribió veía la conversación vacía.
+      //
+      // Si Realtime sí funciona, el evento trae el mismo id y el bloque de
+      // abajo lo descarta por duplicado.
+      setMessages((current) => {
+        if (current.some((m) => m.id === result.data.id)) return current;
+        return [
           ...current,
           {
-            id: `local-${Date.now()}`,
+            id: result.data.id,
             conversationId,
             senderId: currentUserId,
             type: MessageType.TEXT,
             body: text,
             imageUrl: null,
             readAt: null,
-            createdAt: new Date().toISOString(),
+            createdAt: result.data.createdAt,
           },
-        ]);
-      }
+        ];
+      });
     });
   }
 

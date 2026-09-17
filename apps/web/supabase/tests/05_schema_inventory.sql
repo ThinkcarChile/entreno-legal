@@ -79,3 +79,30 @@ select 'I12 vistas sin security_invoker = ' ||
        from pg_options_to_table(c.reloptions)
       where option_name = 'security_invoker'
    ), false);
+
+-- El rol anónimo —el de la clave pública, la que viaja al navegador— no escribe
+-- en ninguna tabla. RLS ya lo impide; esto es la segunda línea, la de
+-- privilegios, y es la que un proyecto Supabase recién creado deshace sin avisar
+-- con sus `alter default privileges`. Lo mismo que comprueba V15 en
+-- `verify:schema:hosted`: aquí, contra el PostgreSQL local.
+select 'I13 tablas con escritura para anon = ' ||
+       coalesce(string_agg(distinct table_name, ', '), 'ninguna')
+       || case when count(*) > 0 then ' FALLO' else '' end
+  from information_schema.role_table_grants
+ where grantee = 'anon'
+   and table_schema = 'public'
+   and privilege_type in ('INSERT', 'UPDATE', 'DELETE');
+
+-- Una función SECURITY DEFINER sin `search_path` fijo deja que quien pueda crear
+-- objetos en otro esquema decida qué se resuelve dentro. Equivalente de V16.
+select 'I14 funciones SECURITY DEFINER sin search_path = ' ||
+       coalesce(string_agg(p.proname, ', '), 'ninguna')
+       || case when count(*) > 0 then ' FALLO' else '' end
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname in ('public', 'app_private')
+   and p.prosecdef
+   and not exists (
+     select 1 from unnest(coalesce(p.proconfig, '{}')) cfg
+      where cfg like 'search_path=%'
+   );

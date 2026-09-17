@@ -159,8 +159,14 @@ usuario: las políticas de Storage lo exigen.
 PGHOST=/tmp PGPORT=55432 PGUSER=postgres npm run db:test
 ```
 
-Aplica el stub de Supabase, las migraciones, la semilla geográfica y 32
-comprobaciones de RLS y de flujo completo. Ver `supabase/tests/`.
+Aplica el stub de Supabase, las 19 migraciones, la semilla geográfica y 112
+comprobaciones de inventario, RLS, flujo completo, concurrencia, semilla de
+demostración y contraste entre el código y el esquema. Ver `supabase/tests/`.
+
+Contra un proyecto Supabase alojado el equivalente es
+`npm run verify:schema:hosted`. Las cifras esperadas son las mismas a propósito;
+lo que solo se ve en un proyecto real son los privilegios que trae de fábrica
+—ver la migración `20260301000000_hosted_privileges.sql`— y los advisors.
 
 ## Semilla de demostración
 

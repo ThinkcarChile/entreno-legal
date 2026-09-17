@@ -32,28 +32,14 @@ import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { loadEnvLocal } from "./env-local.ts";
+
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
 
 /* ------------------------------------------------------------------ entorno */
 
-function loadEnvLocal(): void {
-  for (const file of [".env.local", ".env"]) {
-    try {
-      const raw = readFileSync(resolve(root, file), "utf8");
-      for (const line of raw.split("\n")) {
-        const match = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line);
-        if (!match) continue;
-        const value = match[2].replace(/^["']|["']$/g, "").trim();
-        if (value && !process.env[match[1]]) process.env[match[1]] = value;
-      }
-    } catch {
-      // Puede no existir: las variables pueden venir del entorno.
-    }
-  }
-}
-
-loadEnvLocal();
+loadEnvLocal(root);
 
 const PLAN_ONLY = process.argv.includes("--plan");
 

@@ -19,8 +19,10 @@ Anota el **project ref**: es el identificador que aparece en la URL del panel,
 
 > **Proyecto de desarrollo de HagoTuFila.** Ya existe y no hay que crearlo de
 > nuevo: `hagotufila-dev`, ref `xwgobslgldxzatjrcxhl`, región `sa-east-1`,
-> `https://xwgobslgldxzatjrcxhl.supabase.co`. Para trabajar contra él basta con
-> la sección 2 en adelante.
+> `https://xwgobslgldxzatjrcxhl.supabase.co`. **El esquema ya está aplicado**
+> —19 migraciones y la semilla geográfica—, así que si trabajas contra él,
+> `db:push:hosted` no tendrá nada pendiente. Para ponerte a trabajar basta con
+> la sección 2 y la 8.
 
 ---
 
@@ -170,15 +172,29 @@ npm run verify:schema:hosted
 
 Comprueba contra el proyecto alojado el inventario completo —tablas, vistas,
 funciones, enums, políticas, buckets, políticas de Storage, datos de referencia,
-comisión y las 18 migraciones del historial— y además que ninguna tabla esté sin
+comisión y las 19 migraciones del historial— y además que ninguna tabla esté sin
 RLS, que ninguna vista se salte `security_invoker`, que el rol `anon` no tenga
 escritura en ninguna tabla, que toda función `SECURITY DEFINER` fije su
 `search_path`, y que la publicación de Realtime traiga las cuatro tablas
-esperadas. Termina leyendo los **advisors** de seguridad y rendimiento del
-proyecto. Solo lee; sale con código distinto de cero si algo no cuadra.
+esperadas. Comprueba además que la URL de retorno de autenticación esté
+autorizada en el panel (§4.1), que es lo único de esa sección que se puede
+verificar desde fuera. Termina leyendo los **advisors** de seguridad y
+rendimiento del proyecto. Solo lee; sale con código distinto de cero si algo no
+cuadra.
 
 Un aviso de seguridad cuenta como fallo, y no poder leer el advisor también: no
 haber podido mirar no es lo mismo que estar limpio.
+
+La única excepción es una lista explícita dentro del propio script,
+`AVISOS_ACEPTADOS`: cada aviso aceptado va con su objeto y el motivo por el que
+se acepta. Hoy tiene una sola entrada, las 16 RPC que un usuario con sesión debe
+poder ejecutar. La lista se comprueba en los dos sentidos: un aviso que no esté
+en ella falla aunque sea del mismo tipo que otro ya aceptado —una función nueva
+se revisa antes de aceptarse—, y una entrada que el advisor ya no reporte
+también falla, para que la lista no envejezca sola.
+
+Los avisos del advisor de **rendimiento** se resumen por tipo y no bloquean: son
+consejos de optimización, no agujeros.
 
 Alternativas manuales:
 
@@ -231,11 +247,36 @@ migración, así que quedan documentadas aquí.
 
 - *Site URL*: `http://localhost:3000` en desarrollo, `https://hagotufila.cl` en
   producción.
-- *Redirect URLs*: agrega `http://localhost:3000/auth/callback` y
+- *Redirect URLs*: agrega `http://localhost:3000/auth/callback`,
+  `http://localhost:3100/auth/callback` (el puerto de las pruebas E2E) y
   `https://hagotufila.cl/auth/callback`.
 
 Sin esto, los enlaces de confirmación de correo y de recuperación de contraseña
 llevan al lugar equivocado.
+
+`npm run verify:schema:hosted` lo comprueba y falla si falta. Antes esta sección
+solo lo pedía y nadie lo verificaba: `hagotufila-dev` llevaba la lista vacía sin
+que nada lo dijera, y eso no se nota hasta que alguien pincha el enlace de un
+correo. Ya está puesta.
+
+### 4.1.b Protección contra contraseñas filtradas (obligatorio)
+
+**Authentication → Policies → Password protection**, activar *Prevent use of
+leaked passwords*. Supabase contrasta la contraseña contra HaveIBeenPwned al
+registrarse o al cambiarla.
+
+No se puede dejar en una migración: es configuración del proyecto. Y **solo está
+disponible desde el plan Pro**: en un proyecto Free la Management API responde
+`402`. `hagotufila-dev` es Free, así que el aviso figura en la lista
+`AVISOS_ACEPTADOS` de `verify:schema:hosted` con ese motivo escrito.
+
+Mientras tanto quien cubre el mínimo es la aplicación: exige 8 caracteres al
+registrarse y al cambiar la clave, por encima de los 6 que trae Supabase.
+
+> **Al pasar a producción**, que será un proyecto de pago: activa esta casilla y
+> **quita la entrada de `AVISOS_ACEPTADOS`**. No hay que acordarse: en cuanto
+> esté activa, el advisor deja de reportarla y la verificación falla por tener
+> en la lista algo que ya no corresponde.
 
 ### 4.2 Confirmación de correo (decisión tuya)
 
@@ -362,15 +403,28 @@ Sale con código distinto de cero si algo falla e indica qué.
 ### 8.3 Recorrido por el navegador
 
 ```bash
-npm run build
 npm run e2e
 ```
 
-Sin credenciales, las pruebas del marketplace se omiten indicando el motivo y
-solo corren las de páginas públicas. Con credenciales, recorre: entrar como
-cliente → publicar → entrar como trabajador → ofertar → aceptar → simular pago.
+Son once pruebas: cuatro de páginas públicas y siete del marketplace, que
+recorren entrar como cliente → publicar → entrar como trabajador → ofertar →
+conversar → aceptar → simular pago → ver las dos listas de «mis trabajos».
 
-Si tu entorno ya trae Chromium instalado aparte:
+Playwright levanta el servidor por su cuenta, **en modo desarrollo**. No es un
+descuido ni una comodidad: `npm run start` corre con `NODE_ENV=production`, y
+ahí la aplicación se niega —a propósito— a iniciar un pago con el proveedor
+simulado. Con el servidor en producción el recorrido llegaba hasta el pago y se
+quedaba frente a un botón «Pagar con Webpay» que todavía no hace nada. La
+prohibición es correcta; lo que estaba mal era pedir un pago simulado en un
+entorno que se declara de producción.
+
+Las credenciales salen de `.env.local`, que `playwright.config.ts` carga con el
+mismo lector que los scripts. Si faltan, las siete pruebas del marketplace se
+omiten indicando el motivo. Conviene mirar ese motivo: una omisión silenciosa se
+parece demasiado a un éxito.
+
+Si tu entorno ya trae Chromium instalado aparte, y con una versión distinta a la
+que Playwright espera:
 
 ```bash
 PLAYWRIGHT_CHROMIUM_PATH=/ruta/al/chromium npm run e2e
@@ -391,6 +445,14 @@ enviar oferta → conversar → ser seleccionado → ver el trabajo asignado.
 
 Con las dos ventanas abiertas, escribe desde una: el mensaje debe aparecer en la
 otra sin recargar.
+
+Ese último punto necesita que **el navegador** alcance Supabase por WebSocket, no
+solo el servidor. Es lo primero que falla detrás de un proxy corporativo o en un
+contenedor de integración continua, y se distingue de un defecto de la
+aplicación mirando la consola del navegador: si dice que la conexión al
+`wss://<ref>.supabase.co/realtime/v1/websocket` no se pudo establecer, es la red.
+Tu propio mensaje sí aparece en tu hilo aunque el socket esté caído; lo que no
+llega es el de la otra persona hasta recargar.
 
 ---
 
@@ -421,3 +483,9 @@ otra sin recargar.
 | `db push` se queda colgado sin mensaje | El puerto 5432/6543 está bloqueado en tu red: usa `npm run db:push:hosted` (sección 3.b) |
 | Todas las páginas dan 500 con `PGRST205` | Hay credenciales pero el esquema no está aplicado: la aplicación habla con el proyecto y el proyecto está vacío |
 | "Variables de entorno inválidas" al arrancar | Un valor presente pero mal formado. Una variable *vacía* no da este error: se trata como ausente |
+| Las pruebas del marketplace salen «omitidas» | Playwright no encontró las cuentas. Mira el motivo que imprime: falta alguna `E2E_*` en `.env.local` |
+| `npm run e2e` no encuentra el navegador | La versión de Chromium instalada no es la que espera Playwright: `PLAYWRIGHT_CHROMIUM_PATH=/ruta/al/chromium npm run e2e` |
+| El pago simulado devuelve a un puerto donde no escucha nadie | `NEXT_PUBLIC_SITE_URL` no coincide con la URL real del servidor. La URL de retorno se construye con esa variable |
+| El chat no recibe los mensajes de la otra persona | El navegador no logra abrir el WebSocket con Supabase. Míralo en la consola: si la conexión ni se establece, es la red, no la aplicación |
+| El registro deja el correo y la contraseña en la URL | No debería volver a pasar: los formularios de credenciales van por POST desde la Etapa 2.5. Si lo ves, la página no hidrató Y el formulario perdió su `method` |
+| `verify:schema:hosted` falla con un aviso de seguridad nuevo | Es lo que tiene que hacer. Corrígelo, o —si es correcto por diseño— añádelo a `AVISOS_ACEPTADOS` con su motivo |

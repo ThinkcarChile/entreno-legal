@@ -40,7 +40,8 @@ export function NewPasswordForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-5">
+    <form onSubmit={onSubmit} method="post" noValidate className="space-y-5">
+      {/* POST, no GET: ver el comentario en `sign-in-form.tsx`. */}
       <Field label="Nueva contraseña" htmlFor="password" hint="Mínimo 8 caracteres." required>
         <Input id="password" name="password" type="password" autoComplete="new-password" />
       </Field>

@@ -49,7 +49,15 @@ export function SignInForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-5">
+    <form onSubmit={onSubmit} method="post" noValidate className="space-y-5">
+      {/*
+        `method="post"` aunque el envío lo maneje JavaScript. Si la página aún no
+        ha hidratado —o el bundle falla— el navegador envía el formulario por su
+        cuenta, y el método por defecto es GET: correo y contraseña
+        acabarían en la barra de direcciones, en el historial y en el registro
+        del servidor. Con POST, ese envío no llega a ninguna parte y no deja
+        rastro de las credenciales.
+      */}
       {params.get("registro") === "ok" && (
         <Alert tone="success" title="Cuenta creada">
           Confirma tu correo si te lo pedimos y entra con tus datos.

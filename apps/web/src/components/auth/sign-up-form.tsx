@@ -78,7 +78,8 @@ export function SignUpForm({ defaultIntent = "CLIENT" }: { defaultIntent?: "CLIE
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-5">
+    <form onSubmit={onSubmit} method="post" noValidate className="space-y-5">
+      {/* POST, no GET: ver el comentario en `sign-in-form.tsx`. */}
       <fieldset>
         <legend className="text-sm font-medium text-ink-800">¿Cómo quieres empezar?</legend>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">

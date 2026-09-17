@@ -150,15 +150,19 @@ Lo que **todavía es simulado**:
 | Notificaciones | Solo dentro de la aplicación. Sin push, email ni SMS |
 
 El proyecto Supabase de desarrollo ya existe (`hagotufila-dev`, ref
-`xwgobslgldxzatjrcxhl`) y la aplicación está conectada a él: con la URL y la
-clave pública en `.env.local`, el indicador de desarrollo pasa a
+`xwgobslgldxzatjrcxhl`), **el esquema está aplicado** y la aplicación está
+conectada: el indicador de desarrollo muestra
 «Supabase conectado · xwgobslgldxzatjrcxhl.supabase.co».
 
-Lo que **todavía no se ha ejecutado** es aplicar el esquema a ese proyecto, y con
-ello `npm run verify:supabase` y las pruebas E2E del marketplace. Falta una
-credencial que el repositorio no tiene ni debe tener: un token de acceso personal
-o la contraseña de la base para las migraciones, y `SUPABASE_SECRET_KEY` para las
-cuentas de prueba. Mientras tanto el proyecto responde `PGRST205` a cada consulta,
-porque está vacío. Ver `docs/DESPLIEGUE-SUPABASE.md` §3.
+Contra ese proyecto real ya corrieron, y pasan: las 19 migraciones, la semilla
+geográfica (1 país, 16 regiones, 346 comunas), `npm run verify:schema:hosted`,
+las 49 comprobaciones de `npm run verify:supabase`, las 11 pruebas de
+`npm run e2e` —incluidas las siete del marketplace— y el recorrido a mano de
+`docs/DESPLIEGUE-SUPABASE.md` §8.4.
+
+Lo único que queda del proyecto alojado es la protección contra contraseñas
+filtradas, que Supabase solo ofrece desde el plan Pro: hay que activarla al pasar
+a producción. Está anotada, con su motivo, en la lista de avisos revisados de
+`npm run verify:schema:hosted`. Ver `docs/DESPLIEGUE-SUPABASE.md` §4.
 
 Ver `docs/HOJA-DE-RUTA.md` para el detalle y los riesgos pendientes.

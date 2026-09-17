@@ -32,27 +32,40 @@ export async function openConversationAction(
   }
 }
 
+/**
+ * Envía un mensaje y devuelve la fila creada.
+ *
+ * Devuelve el identificador a propósito: quien escribe lo añade a su hilo sin
+ * esperar a Realtime, y cuando el evento llega se descarta por id. Antes no
+ * devolvía nada y el hilo dependía de que el socket contestara; si no lo hacía,
+ * el mensaje quedaba guardado pero desaparecía de la pantalla de quien lo
+ * escribió hasta recargar.
+ */
 export async function sendMessageAction(
   conversationId: string,
   body: string,
-): Promise<ActionResult<void>> {
+): Promise<ActionResult<{ id: string; createdAt: string }>> {
   const text = body.trim();
   if (!text) return { ok: false, error: "Escribe un mensaje." };
   if (text.length > 4000) return { ok: false, error: "El mensaje es demasiado largo." };
 
   try {
     const { supabase, userId } = await requireSession();
-    const { error } = await supabase.from("messages").insert({
-      conversation_id: conversationId,
-      sender_id: userId,
-      message_type: "TEXT",
-      body: text,
-    });
+    const { data, error } = await supabase
+      .from("messages")
+      .insert({
+        conversation_id: conversationId,
+        sender_id: userId,
+        message_type: "TEXT",
+        body: text,
+      })
+      .select("id,created_at")
+      .single<{ id: string; created_at: string }>();
 
     if (error) return actionError(error, "No pudimos enviar el mensaje.");
 
     revalidatePath(`/mensajes/${conversationId}`);
-    return actionOk();
+    return actionOk({ id: data.id, createdAt: data.created_at });
   } catch (error) {
     return actionError(error, "No pudimos enviar el mensaje.");
   }

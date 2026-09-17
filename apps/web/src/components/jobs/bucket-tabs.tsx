@@ -4,23 +4,28 @@ import { useState } from "react";
 
 import { cn } from "@/lib/utils/cn";
 
-import type { Bucket } from "@/lib/domain/buckets";
-
 /**
  * Pestañas de "mis trabajos".
  *
  * En móvil se desplazan horizontalmente en vez de apilarse: ocupan una línea y
  * dejan el contenido arriba, que es lo que se viene a mirar.
+ *
+ * Recibe el contenido ya construido, no funciones que lo construyan. Este
+ * componente corre en el navegador y las dos páginas que lo usan son de
+ * servidor: una función no cruza esa frontera —React no sabe serializarla— y la
+ * página fallaba con «Functions cannot be passed directly to Client
+ * Components» en cuanto había al menos un trabajo que mostrar. Con la cuenta
+ * vacía no se llegaba a renderizar, que es por lo que había pasado inadvertido.
+ * Un elemento de React sí viaja.
  */
-export function BucketTabs<T>({
-  buckets,
-  renderItem,
-  renderEmpty,
-}: {
-  buckets: readonly Bucket<T>[];
-  renderItem: (item: T) => React.ReactNode;
-  renderEmpty: (bucket: Bucket<T>) => React.ReactNode;
-}) {
+export interface BucketPanel {
+  id: string;
+  label: string;
+  items: readonly React.ReactNode[];
+  empty: React.ReactNode;
+}
+
+export function BucketTabs({ buckets }: { buckets: readonly BucketPanel[] }) {
   const firstWithItems = buckets.find((b) => b.items.length > 0) ?? buckets[0];
   const [active, setActive] = useState(firstWithItems?.id ?? "");
 
@@ -61,12 +66,12 @@ export function BucketTabs<T>({
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {current.items.map((item, index) => (
               <li key={index} className="relative flex">
-                {renderItem(item)}
+                {item}
               </li>
             ))}
           </ul>
         ) : (
-          current && renderEmpty(current)
+          current && current.empty
         )}
       </div>
     </div>

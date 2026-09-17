@@ -14,30 +14,15 @@
  * Sale con código distinto de cero si alguna comprobación falla o si los
  * advisors reportan algún aviso de seguridad.
  */
-import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { loadEnvLocal } from "./env-local.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
 
-function loadEnvLocal(): void {
-  for (const file of [".env.local", ".env"]) {
-    try {
-      const raw = readFileSync(resolve(root, file), "utf8");
-      for (const line of raw.split("\n")) {
-        const match = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line);
-        if (!match) continue;
-        const value = match[2].replace(/^["']|["']$/g, "").trim();
-        if (value && !process.env[match[1]]) process.env[match[1]] = value;
-      }
-    } catch {
-      // Puede no existir.
-    }
-  }
-}
-
-loadEnvLocal();
+loadEnvLocal(root);
 
 const TOKEN = process.env.SUPABASE_ACCESS_TOKEN ?? "";
 const API = process.env.SUPABASE_API_URL ?? "https://api.supabase.com";
@@ -111,6 +96,70 @@ function check(label: string, actual: unknown, expected: unknown): void {
   );
 }
 
+/* --------------------------------------------------- avisos ya revisados */
+
+/**
+ * Avisos del advisor de seguridad que se aceptan, y por qué.
+ *
+ * Silenciar un aviso "porque sí" es peor que no mirarlo: deja el mismo texto
+ * verde con menos información. Aquí cada aviso aceptado va con su objeto y su
+ * motivo, y la lista se comprueba en los dos sentidos:
+ *
+ *   · un aviso que NO esté en la lista es un fallo, aunque sea del mismo tipo
+ *     que otro ya aceptado —una función nueva se revisa antes de aceptarse—;
+ *   · un objeto de la lista que el advisor ya NO reporta también es un fallo,
+ *     para que la lista no envejezca sola.
+ */
+const AVISOS_ACEPTADOS: Record<string, { motivo: string; objetos: readonly string[] }> = {
+  auth_leaked_password_protection: {
+    motivo:
+      "Supabase solo permite activarlo desde el plan Pro (la API responde 402 en " +
+      "Free) y el proyecto de desarrollo es Free. Mientras tanto, el mínimo de 8 " +
+      "caracteres lo impone la propia aplicación al registrarse y al cambiar la " +
+      "clave. EN PRODUCCIÓN, que será de pago, hay que activarlo y quitar esta " +
+      "entrada: en cuanto esté activo el advisor deja de reportarlo y esta lista " +
+      "falla por sobrar, que es justo lo que se quiere",
+    objetos: ["Leaked Password Protection Disabled"],
+  },
+  authenticated_security_definer_function_executable: {
+    motivo:
+      "son las 16 RPC del marketplace: existen justamente para que las llame " +
+      "quien tiene sesión, y cada una comprueba auth.uid() antes de actuar",
+    objetos: [
+      "public.accept_job_offer",
+      "public.cancel_job",
+      "public.complete_onboarding",
+      "public.generate_handoff_code",
+      "public.mark_conversation_read",
+      "public.mark_notifications_read",
+      "public.open_job_conversation",
+      "public.publish_job",
+      "public.request_worker_verification",
+      "public.review_worker_verification",
+      "public.set_account_modes",
+      "public.set_worker_service_areas",
+      "public.start_protected_payment",
+      "public.update_open_job",
+      "public.verify_handoff_code",
+      "public.withdraw_job_offer",
+    ],
+  },
+};
+
+interface Lint {
+  name: string;
+  level: string;
+  title: string;
+  metadata?: { schema?: string; name?: string } | null;
+}
+
+function objetoDe(lint: Lint): string {
+  const esquema = lint.metadata?.schema;
+  const nombre = lint.metadata?.name;
+  if (esquema && nombre) return `${esquema}.${nombre}`;
+  return nombre ?? lint.title;
+}
+
 /* ------------------------------------------------------------------ proceso */
 
 async function main(): Promise<void> {
@@ -147,7 +196,7 @@ async function main(): Promise<void> {
   check("regiones", inv.regiones, 16);
   check("categorías de trabajo", inv.categorias, 9);
   check("comisión (puntos base)", inv.comision_pb, 1400);
-  check("migraciones en el historial", inv.migraciones, 18);
+  check("migraciones en el historial", inv.migraciones, 19);
 
   console.log("\n── Seguridad del esquema ──\n");
 
@@ -223,16 +272,36 @@ async function main(): Promise<void> {
     esperadasRt.join(", "),
   );
 
+  console.log("\n── Configuración del proyecto ──\n");
+
+  // Lo que no cabe en una migración. `docs/DESPLIEGUE-SUPABASE.md` §4.1 lo pide
+  // como obligatorio, y hasta ahora solo lo pedía: nada lo comprobaba, así que
+  // un proyecto sin las URLs de retorno pasaba el inventario entero en verde y
+  // el fallo aparecía recién al pinchar el enlace de un correo.
+  const auth = (await api(`/v1/projects/${REF}/config/auth`)) as {
+    uri_allow_list?: string;
+  };
+  const permitidas = (auth.uri_allow_list ?? "")
+    .split(",")
+    .map((u) => u.trim())
+    .filter(Boolean);
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const callback = `${siteUrl}/auth/callback`;
+  check(
+    "URL de retorno de autenticación autorizada",
+    permitidas.includes(callback) ? callback : `falta ${callback} (hay: ${permitidas.join(", ") || "ninguna"})`,
+    callback,
+  );
+
   console.log("\n── Advisors ──\n");
 
   let securityLeido = false;
+  const aceptadosVistos = new Set<string>();
 
   for (const kind of ["security", "performance"] as const) {
-    let lints: Array<{ name: string; level: string; title: string }> = [];
+    let lints: Lint[] = [];
     try {
-      const body = (await api(`/v1/projects/${REF}/advisors/${kind}`)) as {
-        lints?: Array<{ name: string; level: string; title: string }>;
-      };
+      const body = (await api(`/v1/projects/${REF}/advisors/${kind}`)) as { lints?: Lint[] };
       lints = body.lints ?? [];
       if (kind === "security") securityLeido = true;
     } catch (error) {
@@ -249,20 +318,56 @@ async function main(): Promise<void> {
       `  ${kind}: ${errores.length} errores, ${avisos.length} avisos, ` +
         `${lints.length - errores.length - avisos.length} informativos`,
     );
-    for (const l of [...errores, ...avisos]) {
-      console.log(`     [${l.level}] ${l.name}: ${l.title}`);
+
+    if (kind !== "security") {
+      // El advisor de rendimiento informa, no bloquea: sus avisos son consejos
+      // de optimización, no agujeros. Se resumen por tipo y no se listan uno a
+      // uno, que es lo que antes llenaba la pantalla y escondía lo importante.
+      const porTipo = new Map<string, number>();
+      for (const l of [...errores, ...avisos]) {
+        porTipo.set(l.name, (porTipo.get(l.name) ?? 0) + 1);
+      }
+      for (const [nombre, cuantos] of [...porTipo].sort((a, b) => b[1] - a[1])) {
+        console.log(`     · ${nombre}: ${cuantos}`);
+      }
+      continue;
     }
 
-    // Un aviso de seguridad no se ignora.
-    if (kind === "security" && errores.length + avisos.length > 0) {
-      failures += errores.length + avisos.length;
+    // Seguridad: un aviso no se ignora. O está revisado y en la lista, o falla.
+    for (const l of [...errores, ...avisos]) {
+      const objeto = objetoDe(l);
+      const aceptado = l.level === "WARN" && AVISOS_ACEPTADOS[l.name]?.objetos.includes(objeto);
+      if (aceptado) {
+        aceptadosVistos.add(`${l.name}\u0000${objeto}`);
+        continue;
+      }
+      console.log(`     ✗ [${l.level}] ${l.name}: ${objeto} — ${l.title}`);
+      failures += 1;
+    }
+
+    for (const [nombre, entrada] of Object.entries(AVISOS_ACEPTADOS)) {
+      const vistos = entrada.objetos.filter((o) => aceptadosVistos.has(`${nombre}\u0000${o}`));
+      if (vistos.length > 0) {
+        console.log(`     ~ ${nombre}: ${vistos.length} aceptados — ${entrada.motivo}`);
+      }
+      // Una lista de excepciones que ya no corresponde a nada es una mentira
+      // que se va acumulando. Si el advisor dejó de reportarlo, sobra.
+      for (const objeto of entrada.objetos) {
+        if (!aceptadosVistos.has(`${nombre}\u0000${objeto}`)) {
+          console.log(
+            `     ✗ ${nombre}: ${objeto} está en la lista de aceptados pero el ` +
+              `advisor ya no lo reporta. Quítalo de AVISOS_ACEPTADOS.`,
+          );
+          failures += 1;
+        }
+      }
     }
   }
 
   if (failures === 0) {
     console.log(
       `\n✓ ${n} comprobaciones pasaron` +
-        (securityLeido ? " y el advisor de seguridad no reporta nada" : "") +
+        (securityLeido ? " y el advisor de seguridad no reporta nada sin revisar" : "") +
         ".\n",
     );
   } else {
