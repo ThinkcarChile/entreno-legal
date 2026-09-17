@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+/*
+  Sistema de diseño HagoTuFila.
+
+  Fondo claro, mucho aire, tarjetas, tipografía nítida y una sola familia de color
+  de marca. Sin gradientes decorativos ni efectos innecesarios: la estética
+  comunica confianza, que es el producto.
+*/
+
+@theme {
+  /* Marca: azul profundo, sobrio y legible sobre blanco. */
+  --color-brand-50: #f0f4ff;
+  --color-brand-100: #e0e9ff;
+  --color-brand-200: #c3d4fe;
+  --color-brand-300: #9bb4fc;
+  --color-brand-400: #6e8df8;
+  --color-brand-500: #4a66f0;
+  --color-brand-600: #3049dc;
+  --color-brand-700: #2739b4;
+  --color-brand-800: #24328e;
+  --color-brand-900: #222f72;
+  --color-brand-950: #171e45;
+
+  /* Neutros con un matiz frío, para que el blanco no se vea sucio. */
+  --color-ink-50: #f8fafc;
+  --color-ink-100: #f1f4f8;
+  --color-ink-200: #e3e8ef;
+  --color-ink-300: #cdd5e0;
+  --color-ink-400: #9aa5b6;
+  --color-ink-500: #6b7787;
+  --color-ink-600: #4d5766;
+  --color-ink-700: #3a4250;
+  --color-ink-800: #252c38;
+  --color-ink-900: #161c26;
+  --color-ink-950: #0b1018;
+
+  --color-success-50: #ecfdf5;
+  --color-success-100: #d1fae5;
+  --color-success-500: #10b981;
+  --color-success-600: #059669;
+  --color-success-700: #047857;
+
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+
+  --color-danger-50: #fef2f2;
+  --color-danger-100: #fee2e2;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+
+  --color-surface: #ffffff;
+  --color-canvas: #f7f8fb;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+
+  --radius-card: 1rem;
+  --radius-control: 0.75rem;
+
+  --shadow-card: 0 1px 2px rgb(11 16 24 / 0.04), 0 8px 24px -12px rgb(11 16 24 / 0.12);
+  --shadow-raised: 0 2px 4px rgb(11 16 24 / 0.05), 0 16px 40px -16px rgb(11 16 24 / 0.18);
+
+  /* Altura de la barra inferior móvil, usada para reservar espacio. */
+  --spacing-tabbar: 4.25rem;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink-900);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Foco visible y consistente: requisito de accesibilidad, no un detalle estético. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-600);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background-color: var(--color-brand-100);
+    color: var(--color-brand-900);
+  }
+}
+
+@layer components {
+  /* Contenedor estándar: ancho cómodo en escritorio, márgenes seguros en móvil. */
+  .container-page {
+    width: 100%;
+    margin-inline: auto;
+    max-width: 72rem;
+    padding-inline: 1.25rem;
+  }
+
+  @media (min-width: 1024px) {
+    .container-page {
+      padding-inline: 2rem;
+    }
+  }
+
+  /* Reserva de espacio para la barra de navegación inferior en móvil. */
+  .pb-tabbar {
+    padding-bottom: calc(var(--spacing-tabbar) + env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
