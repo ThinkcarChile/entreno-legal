@@ -107,11 +107,80 @@ posterior desde otra máquina ve las migraciones como aplicadas y no las repite.
 No reconstruye SQL ni omite comprobaciones: si una migración falla, se detiene
 en ese archivo, no la registra y sale con código distinto de cero.
 
-Lo que **no** cubre: la semilla. `--include-seed` no tiene equivalente aquí, así
-que la semilla geográfica hay que aplicarla aparte (sección 5) o pegándola en el
-editor SQL del panel.
+### 3.c Riesgos del token de acceso personal
+
+Un token `sbp_…` no está limitado a un proyecto: da acceso a **todos** los
+proyectos de la cuenta, y a la Management API entera. Trátalo como la contraseña
+de la cuenta, no como una clave de proyecto.
+
+- Vive solo en `.env.local` (ignorado por git) o en el gestor de variables de
+  entorno del servidor. Nunca en el repositorio, en un registro ni en un ticket.
+- Úsalo solo desde el servidor o desde tu máquina, nunca desde el navegador.
+- Es para desplegar en **desarrollo o staging**. En producción el despliegue lo
+  hace el CLI en integración continua, con un token de servicio propio y de vida
+  corta.
+- Si se filtra, revócalo de inmediato en
+  <https://supabase.com/dashboard/account/tokens>. Revocar no rompe la
+  aplicación: ella no usa este token, solo estos dos scripts.
+
+---
+
+### 3.d La semilla geográfica, por HTTPS
+
+`--include-seed` no tiene equivalente en la Management API, y sin las 346
+comunas no se puede publicar un trabajo: `jobs.commune_id` es una clave foránea.
+Para eso está:
+
+```bash
+npm run db:seed:hosted -- --plan                        # lee, no escribe
+npm run db:seed:hosted -- --project-ref <project-ref>   # aplica
+```
+
+Aplica `supabase/seed/001_geo.sql`, el mismo archivo que usan `db push
+--include-seed` y `npm run db:test`, generado desde `src/lib/geo/chile.ts`.
+
+**No se registra en el historial de migraciones**, y es deliberado: las
+migraciones describen el esquema, esto son datos de referencia. Anotarla allí
+haría que `supabase db push` creyera aplicada una migración inexistente.
+
+Salvaguardas, todas comprobadas por la máquina y no solo prometidas:
+
+| Qué impide | Cómo |
+|---|---|
+| Sembrar producción | Se niega con `NODE_ENV=production` |
+| Sembrar el proyecto equivocado | Hay que escribir el ref en la orden, y debe coincidir con el del entorno |
+| Que la semilla haga algo más | Analiza el SQL antes de enviarlo: solo `countries`, `regions` y `communes`; nada de `auth.` ni `storage.`; nada que parezca contraseña o credencial; ningún `drop`/`truncate`/`alter table` |
+| Duplicados al repetir | Exige que cada `insert` traiga `on conflict`; el archivo lo cumple |
+| Filtrar datos por el registro | Solo imprime conteos |
+
+Al terminar comprueba que queden exactamente 1 país, 16 regiones y 346 comunas,
+y falla si no.
+
+> **Nunca en producción.** Ni `--include-seed`, ni `db:seed:hosted`, ni las
+> semillas `002_demo_accounts.sql` / `003_demo_content.sql`: estas dos últimas
+> crean cuentas con una contraseña conocida y publicada en esta misma guía.
 
 ### Comprobar que quedó completo
+
+Lo más rápido, y lo que no se olvida de nada:
+
+```bash
+npm run verify:schema:hosted
+```
+
+Comprueba contra el proyecto alojado el inventario completo —tablas, vistas,
+funciones, enums, políticas, buckets, políticas de Storage, datos de referencia,
+comisión y las 18 migraciones del historial— y además que ninguna tabla esté sin
+RLS, que ninguna vista se salte `security_invoker`, que el rol `anon` no tenga
+escritura en ninguna tabla, que toda función `SECURITY DEFINER` fije su
+`search_path`, y que la publicación de Realtime traiga las cuatro tablas
+esperadas. Termina leyendo los **advisors** de seguridad y rendimiento del
+proyecto. Solo lee; sale con código distinto de cero si algo no cuadra.
+
+Un aviso de seguridad cuenta como fallo, y no poder leer el advisor también: no
+haber podido mirar no es lo mismo que estar limpio.
+
+Alternativas manuales:
 
 ```bash
 npx supabase db push --dry-run     # debe decir que no hay migraciones pendientes

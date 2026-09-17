@@ -469,6 +469,26 @@ seguir su propia plantilla.
 espacios equivale a no definido. La validación sigue siendo ruidosa cuando el
 valor está presente y es inválido, que es cuando de verdad conviene fallar.
 
+### 7.8 La semilla de referencia no es una migración
+
+`db:seed:hosted` aplica `supabase/seed/001_geo.sql` al proyecto alojado, y **no**
+lo anota en `supabase_migrations.schema_migrations`. La distinción no es
+cosmética: las migraciones describen el esquema y el CLI decide por ese historial
+qué falta aplicar. Anotar allí una semilla haría que `supabase db push` creyera
+aplicada una migración que no existe como archivo, y la siguiente migración real
+con ese mismo sello quedaría fuera en silencio.
+
+La separación también permite tratarlas con reglas distintas, que es lo que de
+verdad importa: una migración se aplica en todos los entornos, incluida
+producción; esta semilla se niega a correr con `NODE_ENV=production` y exige que
+quien la ejecute escriba el ref del proyecto de destino.
+
+El script analiza el SQL antes de enviarlo y se niega si toca algo que no sean
+`countries`, `regions` y `communes`, si menciona `auth.` o `storage.`, si parece
+traer contraseñas o credenciales, o si algún `insert` no lleva `on conflict`. Es
+deliberado que sea una comprobación de la máquina: el archivo está generado desde
+`src/lib/geo/chile.ts` y podría cambiar sin que nadie vuelva a leerlo entero.
+
 ## 8. Verificación del esquema
 
 El esquema no se entrega "escrito y sin ejecutar". Se aplica y se prueba contra un
@@ -506,6 +526,7 @@ Ese contraste encontró el defecto descrito en §6.5.
 |---|---|---|
 | `npm run db:test` | PostgreSQL local | Esquema, RLS, flujo, concurrencia, semillas, inventario. 110 comprobaciones |
 | `npm run db:push:hosted -- --plan` | Supabase real | Qué migraciones faltan por aplicar, sin escribir nada |
+| `npm run verify:schema:hosted` | Supabase real | Inventario, RLS, `security_invoker`, grants, Realtime y advisors. 17 comprobaciones |
 | `npm run verify:supabase` | Supabase real | El mismo recorrido por API, más Realtime, Storage y Auth. 49 comprobaciones |
 | `npm run e2e` | Supabase real, por navegador | Entrar, publicar, ofertar, aceptar, pagar |
 

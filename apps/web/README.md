@@ -36,6 +36,8 @@ con datos realistas en pesos chilenos. Es la forma más rápida de revisar la in
 | `npm run db:contract` | Comprueba que el código y el esquema coincidan |
 | `npm run verify:supabase` | Recorre el marketplace completo contra un Supabase real |
 | `npm run db:push:hosted` | Aplica las migraciones a un proyecto alojado por HTTPS, cuando el puerto 5432 está cerrado |
+| `npm run db:seed:hosted` | Aplica la semilla geográfica oficial a un proyecto alojado de desarrollo, por HTTPS |
+| `npm run verify:schema:hosted` | Inventario del esquema alojado y advisors de seguridad y rendimiento |
 | `npm run e2e` | Recorrido por navegador con Playwright |
 
 ---
@@ -82,9 +84,16 @@ Si tu red no deja salir al puerto 5432 y `db push` se queda colgado, hay una ví
 por HTTPS con las mismas migraciones (necesita `SUPABASE_ACCESS_TOKEN`):
 
 ```bash
-npm run db:push:hosted -- --plan   # qué se aplicaría
-npm run db:push:hosted             # aplicar
+npm run db:push:hosted -- --plan                       # qué se aplicaría
+npm run db:push:hosted                                 # aplicar
+npm run db:seed:hosted -- --project-ref <project-ref>  # 16 regiones, 346 comunas
+npm run verify:schema:hosted                           # inventario + advisors
 ```
+
+El token `sbp_…` que usan estos tres da acceso a **todos** los proyectos de la
+cuenta: es para desarrollo, vive solo en `.env.local` y se revoca desde el panel
+si se filtra. Ni `--include-seed` ni las semillas de demostración deben tocar
+producción: crean cuentas con contraseña conocida.
 
 Semillas de demostración, **solo en entornos de prueba** (crean cuentas con
 contraseña conocida):

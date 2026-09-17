@@ -75,17 +75,29 @@ Añadido al conectar el proyecto real:
       cuando el puerto de PostgreSQL está cerrado. Probado de extremo a extremo
       contra un PostgreSQL 16 local: 18 migraciones, 32 tablas, 5 vistas,
       16 funciones, 73 políticas, 19 enums, y la segunda ejecución no repite nada
+- [x] `npm run db:seed:hosted`: la semilla geográfica oficial por HTTPS, con
+      cinco salvaguardas comprobadas por la máquina. Probado: niega producción,
+      niega el ref equivocado, niega la falta de confirmación, aplica 1 país /
+      16 regiones / 346 comunas, repite sin duplicar y deja el historial de
+      migraciones en 18
+- [x] `npm run verify:schema:hosted`: inventario del esquema alojado, RLS,
+      `security_invoker`, grants del rol `anon`, `search_path` de las funciones
+      privilegiadas, publicación de Realtime y advisors. 17 comprobaciones,
+      todas verdes contra el esquema real
+- [x] Las ocho credenciales E2E generadas y guardadas solo en `.env.local`
 
 Pendiente, y es lo único que cierra la etapa. Todo esto está bloqueado por
 credenciales, no por código:
 
-- [ ] Aplicar el esquema al proyecto alojado
-      (`supabase db push --include-seed`, o `npm run db:push:hosted` con
-      `SUPABASE_ACCESS_TOKEN`)
-- [ ] Aplicar la semilla geográfica: sin ella los trabajos no tienen comunas
-- [ ] Poner `SUPABASE_SECRET_KEY` y las cuatro cuentas de prueba en `.env.local`
-- [ ] Ejecutar `npm run verify:supabase` y que pase
-- [ ] Ejecutar `npm run e2e` con credenciales y que pase, sin omitir `marketplace.spec.ts`
+- [ ] Que `SUPABASE_ACCESS_TOKEN` y `SUPABASE_SECRET_KEY` lleguen al entorno
+      donde corren los scripts. Este contenedor es efímero y se clona limpio:
+      editar `.env.local` en otra máquina no lo alcanza. La vía que sí llega son
+      las variables de entorno del entorno de ejecución
+- [ ] `npm run db:push:hosted` — aplicar las 18 migraciones
+- [ ] `npm run db:seed:hosted -- --project-ref xwgobslgldxzatjrcxhl`
+- [ ] `npm run verify:schema:hosted` — inventario y advisors contra el proyecto
+- [ ] `npm run verify:supabase` — 49 comprobaciones del recorrido por API
+- [ ] `npm run e2e` sin omitir las seis pruebas de `marketplace.spec.ts`
 - [ ] Recorrer a mano, con dos navegadores, el flujo de cliente y de trabajador
 
 ---
