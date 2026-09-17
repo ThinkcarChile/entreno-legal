@@ -243,7 +243,114 @@ Regla dura del producto: un trabajo no llega a `IN_PROGRESS` sin un `payment` en
 
 ---
 
-## 6. Verificación del esquema
+## 6. Etapa 2: decisiones nuevas
+
+### 6.1 Modo demostración y modo Supabase, nunca mezclados
+
+`resolveDataSource()` decide una vez y vale para toda la aplicación. El modo
+demostración es de **solo lectura**: no hay sesión, las escrituras lanzan
+`DemoModeError` y una banda superior lo dice en pantalla.
+
+Se corrigió un caso en el que la portada importaba reseñas de demostración
+directamente, con lo que en modo Supabase se habrían mostrado testimonios falsos
+junto a datos reales. Ahora todo sale del mismo repositorio.
+
+### 6.2 La dirección exacta no es pública
+
+Mismo patrón que los datos personales: tabla aparte (`job_private_location`).
+
+| Momento | Qué se ve |
+|---|---|
+| Antes de asignar | Comuna, región, nombre del lugar y un punto redondeado a ~1 km |
+| Después de asignar | Dirección exacta, referencias de acceso y coordenadas precisas |
+
+Sólo el cliente, el trabajador asignado y la administración acceden a la fila
+privada. En el dominio la dirección vive en `location.exact`, que llega en `null`
+cuando no corresponde: si no está, la interfaz no puede filtrarla por descuido.
+
+El motivo es concreto. Un trabajo de fila de madrugada publicado con su
+dirección exacta le dice a cualquiera dónde va a estar sola una persona a las
+cinco de la mañana.
+
+### 6.3 Verificación obligatoria para ofertar, no solo para ser asignado
+
+Un trabajador necesita estar `VERIFIED` para **enviar ofertas**. Quien está
+`PENDING` explora todo el catálogo y prepara su perfil, pero no oferta.
+
+Se eligió así porque un cliente que compara ofertas de personas que quizá nunca
+se verifiquen pierde el tiempo, y porque la regla ya estaba en RLS desde la
+Etapa 1 y probada. La regla vive en un solo lugar del código
+(`src/lib/domain/eligibility.ts`) y en dos de la base
+(`app_private.worker_can_be_assigned` y la política de INSERT de `job_offers`).
+
+### 6.4 Aceptar una oferta es atómico, y se probó con concurrencia
+
+`accept_job_offer` bloquea la fila del trabajo con `FOR UPDATE` y valida cliente,
+estado, elegibilidad y unicidad antes de crear la asignación. Encima hay dos
+defensas más: `assignments.job_id` es `UNIQUE` y existe un índice único parcial
+que admite una sola oferta `ACCEPTED` por trabajo.
+
+La prueba no se limita a llamarla dos veces seguidas: `supabase/tests/03_race_accept.sh`
+lanza dos aceptaciones **en paralelo** sobre el mismo trabajo y comprueba que
+quede exactamente una asignación y una oferta aceptada.
+
+### 6.5 El cliente no escribe sobre las ofertas
+
+Defecto encontrado al escribir las pruebas de esta etapa: la Etapa 1 dejó una
+política que permitía al dueño del trabajo actualizar cualquier fila de
+`job_offers` de ese trabajo, incluido el precio propuesto por el trabajador.
+La intención era que pudiera aceptarlas, pero el permiso es de fila completa.
+
+Se eliminó esa política. Aceptar y rechazar pasan por la función atómica, y el
+importe de una oferta quedó fuera de las columnas escribibles incluso para su
+propio autor: para cambiar de precio se retira la oferta y se envía otra, que es
+además lo transparente de cara al cliente.
+
+### 6.6 La comisión vive en la base, no en el código
+
+`platform_settings.commission_bps` es la fuente de verdad. La usan tanto la
+aplicación (para mostrar el desglose) como la base (para calcular el payout).
+Tenerla en dos sitios garantizaba que tarde o temprano divergieran.
+
+`src/config/platform.ts` conserva los valores por defecto: son la semilla de esa
+tabla y el respaldo del modo demostración. El valor inicial es 1400 puntos base,
+es decir 14 %.
+
+### 6.7 El pago simulado recorre el flujo real
+
+No hay un botón que escriba `PAID` a mano. El botón crea el pago en la base,
+pide una transacción al `PaymentProvider`, redirige y confirma en la ruta de
+retorno `/pagos/retorno`. Con el proveedor simulado esa redirección vuelve a la
+propia aplicación; cuando se integre Webpay Plus cambiará el proveedor y ni la
+acción ni la ruta de retorno se tocan.
+
+Los montos los calcula `start_protected_payment` en la base desde la asignación.
+El navegador nunca envía el total a cobrar.
+
+### 6.8 Estados: se reutilizó el enum existente
+
+No se creó un vocabulario paralelo. La equivalencia con los nombres de producto:
+
+| Producto | Enum |
+|---|---|
+| OPEN | `PUBLISHED` |
+| ASSIGNED | `OFFER_ACCEPTED` |
+| READY | `PAID` |
+
+Las transiciones válidas siguen en `src/lib/domain/state-machines.ts`, y qué
+puede hacer cada parte en `src/lib/domain/job-actions.ts`. Una transición
+inválida falla también en la base: un trigger impide avanzar sin pago confirmado
+y otro congela los campos críticos del trabajo una vez asignado.
+
+### 6.9 Rutas privadas nunca prerenderizadas
+
+Los grupos `(app)` y `admin` declaran `dynamic = "force-dynamic"`. Una página de
+sesión servida desde caché mostraría los datos de otra persona.
+
+`getSession` está envuelta en `cache()` de React para que la cabecera y la página
+no pidan la sesión dos veces en la misma petición.
+
+## 7. Verificación del esquema
 
 El esquema no se entrega "escrito y sin ejecutar". Se aplica y se prueba contra un
 PostgreSQL real:
@@ -268,6 +375,12 @@ esquema: orden de creación de `is_admin`, una dependencia del esquema `extensio
 sin permisos, triggers de protección que bloqueaban al rol de servicio, y esos mismos
 triggers anulando el recálculo de reputación.
 
-## 7. Qué queda fuera de la Etapa 1
+La Etapa 2 sumó a la misma batería el recorrido completo cliente ↔ trabajador, la
+prueba de concurrencia, las comprobaciones sobre la semilla de demostración y un
+contraste entre el código y el esquema (`scripts/check-db-contract.sh`) que verifica
+que cada tabla, vista, función y columna que usa la aplicación exista de verdad.
+Ese contraste encontró el defecto descrito en §6.5.
+
+## 8. Qué queda fuera todavía
 
 Ver `docs/HOJA-DE-RUTA.md`.

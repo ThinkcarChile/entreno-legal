@@ -45,9 +45,10 @@ reset request.jwt.claim.sub;
 set role authenticated;
 set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
 
+-- Desde la Etapa 2 la direccion exacta vive en job_private_location.
 insert into jobs (
   id, client_id, category_id, status, title, description,
-  region_code, commune_code, address_line, starts_at,
+  region_code, commune_code, place_name, starts_at,
   estimated_duration_minutes, objective_type, objective_target_position,
   bonus_amount, bonus_conditions, hourly_rate, published_at
 ) values (
@@ -57,9 +58,12 @@ insert into jobs (
   'PUBLISHED',
   'Fila para entradas de concierto en Costanera Center',
   'Necesito alguien que haga la fila el sabado desde las cinco de la manana hasta las diez.',
-  '13','13-providencia','Av. Andres Bello 2447', now() + interval '3 days',
+  '13','13-providencia','Costanera Center', now() + interval '3 days',
   300, 'WITHIN_FIRST_N', 10, 15000, 'Si queda entre los primeros 10', 10000, now()
 );
+
+insert into job_private_location (job_id, address_line, lat, lng)
+values ('99999999-9999-9999-9999-999999999999', 'Av. Andres Bello 2447', -33.4173, -70.6065);
 
 select 'T08 trabajo publicado = ' || count(*) from jobs;
 
@@ -216,10 +220,8 @@ exception when others then
 end $$;
 reset role; reset request.jwt.claim.sub;
 
--- Payout y disputa: abrir una disputa debe retener el pago.
-insert into payouts (assignment_id, worker_id, gross_amount, commission_amount, bonus_amount, net_amount)
-values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','22222222-2222-2222-2222-222222222222',
-        42500, 6375, 15000, 51125);
+-- El payout lo crea automaticamente el pago confirmado (Etapa 2).
+select 'T21b payout creado automaticamente al pagar = ' || count(*) from payouts;
 
 set role authenticated;
 set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';

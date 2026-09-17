@@ -4,20 +4,30 @@ import { publicDisplayName } from "@/lib/utils/format";
 import { money, proratePerHour } from "@/lib/utils/money";
 
 import type {
+  AssignmentStatus,
   CategoryGroup,
   JobObjectiveType,
   JobStatus,
   JobUrgency,
+  MessageType,
+  NotificationType,
   OfferStatus,
+  PaymentPurpose,
+  PaymentStatus,
   UserRole,
   VerificationStatus,
   WorkerLevel,
 } from "@/lib/domain/enums";
 import type {
+  AppNotification,
+  Assignment,
   Job,
   JobCategory,
   JobOffer,
   JobSummary,
+  Message,
+  Payment,
+  PaymentBreakdown,
   PublicProfile,
   ReputationSnapshot,
   Review,
@@ -99,11 +109,9 @@ export interface JobRow {
   country_code: string;
   region_code: string;
   commune_code: string;
-  address_line: string;
-  address_notes: string | null;
   place_name: string | null;
-  lat: number | null;
-  lng: number | null;
+  approx_lat: number | null;
+  approx_lng: number | null;
   timezone: string | null;
   starts_at: string;
   estimated_duration_minutes: number;
@@ -125,11 +133,21 @@ export interface JobRow {
   suggested_hourly_max: number | null;
 }
 
+/** Fila de `job_private_location`. Solo llega si RLS la deja pasar. */
+export interface JobPrivateLocationRow {
+  job_id: string;
+  address_line: string;
+  address_notes: string | null;
+  lat: number | null;
+  lng: number | null;
+}
+
 export function mapJob(
   row: JobRow,
   category: JobCategory,
   client: PublicProfile,
   images: Job["images"] = [],
+  exactLocation?: JobPrivateLocationRow | null,
 ): Job {
   const timezone = row.timezone ?? timezoneFor(row.region_code, row.commune_code);
   const hourly = money(row.hourly_rate);
@@ -145,16 +163,24 @@ export function mapJob(
     description: row.description,
     instructions: row.instructions,
     location: {
-      addressLine: row.address_line,
-      addressNotes: row.address_notes,
       countryCode: row.country_code,
       regionCode: row.region_code,
       regionName: regionName(row.region_code),
       communeCode: row.commune_code,
       communeName: communeName(row.commune_code),
-      lat: row.lat,
-      lng: row.lng,
       placeName: row.place_name,
+      approxLat: row.approx_lat,
+      approxLng: row.approx_lng,
+      // Si RLS no dejó pasar la fila privada, aquí queda `null` y la interfaz
+      // no tiene de dónde sacar la dirección aunque quisiera.
+      exact: exactLocation
+        ? {
+            addressLine: exactLocation.address_line,
+            addressNotes: exactLocation.address_notes,
+            lat: exactLocation.lat,
+            lng: exactLocation.lng,
+          }
+        : null,
     },
     timezone,
     startsAt: row.starts_at,
@@ -340,6 +366,157 @@ export function mapReview(row: ReviewRow): Review {
     compliance: row.compliance,
     overall: row.overall,
     comment: row.comment,
+    createdAt: row.created_at,
+  };
+}
+
+/* --------------------------------------------------------- Etapa 2: mapeos */
+
+export interface AssignmentRow {
+  id: string;
+  job_id: string;
+  offer_id: string;
+  worker_id: string;
+  client_id: string;
+  status: string;
+  agreed_hourly_rate: number;
+  agreed_duration_minutes: number;
+  agreed_total: number;
+  bonus_amount: number;
+  bonus_awarded: boolean | null;
+  started_at: string | null;
+  checked_in_at: string | null;
+  handoff_completed_at: string | null;
+  completed_at: string | null;
+  dispute_deadline_at: string | null;
+  created_at: string;
+}
+
+export function mapAssignment(row: AssignmentRow): Assignment {
+  return {
+    id: row.id,
+    jobId: row.job_id,
+    offerId: row.offer_id,
+    workerId: row.worker_id,
+    clientId: row.client_id,
+    status: row.status as AssignmentStatus,
+    agreedHourlyRate: money(row.agreed_hourly_rate),
+    agreedDurationMinutes: row.agreed_duration_minutes,
+    agreedTotal: money(row.agreed_total),
+    bonus: row.bonus_amount > 0 ? money(row.bonus_amount) : null,
+    bonusAwarded: row.bonus_awarded,
+    startedAt: row.started_at,
+    checkedInAt: row.checked_in_at,
+    handoffCompletedAt: row.handoff_completed_at,
+    completedAt: row.completed_at,
+    disputeDeadlineAt: row.dispute_deadline_at,
+    createdAt: row.created_at,
+  };
+}
+
+export interface PaymentRow {
+  id: string;
+  job_id: string;
+  assignment_id: string | null;
+  extension_id: string | null;
+  client_id: string;
+  purpose: string;
+  status: string;
+  amount: number;
+  provider: string;
+  provider_transaction_id: string | null;
+  authorized_at: string | null;
+  paid_at: string | null;
+  created_at: string;
+}
+
+export function mapPayment(row: PaymentRow): Payment {
+  return {
+    id: row.id,
+    jobId: row.job_id,
+    assignmentId: row.assignment_id,
+    extensionId: row.extension_id,
+    clientId: row.client_id,
+    purpose: row.purpose as PaymentPurpose,
+    status: row.status as PaymentStatus,
+    amount: money(row.amount),
+    provider: row.provider,
+    providerTransactionId: row.provider_transaction_id,
+    authorizedAt: row.authorized_at,
+    paidAt: row.paid_at,
+    createdAt: row.created_at,
+  };
+}
+
+export interface PaymentSummaryRow {
+  assignment_id: string;
+  service_amount: number;
+  bonus_amount: number;
+  commission_bps: number;
+  commission_amount: number;
+  worker_receives: number;
+  client_total: number;
+  payment_id: string | null;
+  payment_status: string | null;
+}
+
+export function mapPaymentBreakdown(row: PaymentSummaryRow): PaymentBreakdown {
+  return {
+    serviceAmount: money(row.service_amount),
+    bonusAmount: money(row.bonus_amount),
+    commissionAmount: money(row.commission_amount),
+    commissionBps: row.commission_bps,
+    workerReceives: money(row.worker_receives),
+    clientTotal: money(row.client_total),
+  };
+}
+
+export interface MessageRow {
+  id: string;
+  conversation_id: string;
+  sender_id: string | null;
+  message_type: string;
+  body: string | null;
+  image_url: string | null;
+  read_at: string | null;
+  created_at: string;
+}
+
+export function mapMessage(row: MessageRow): Message {
+  return {
+    id: row.id,
+    conversationId: row.conversation_id,
+    senderId: row.sender_id,
+    type: row.message_type as MessageType,
+    body: row.body,
+    imageUrl: row.image_url,
+    readAt: row.read_at,
+    createdAt: row.created_at,
+  };
+}
+
+export interface NotificationRow {
+  id: string;
+  user_id: string;
+  notification_type: string;
+  title: string;
+  body: string;
+  href: string | null;
+  job_id: string | null;
+  read_at: string | null;
+  created_at: string;
+}
+
+export function mapNotification(row: NotificationRow): AppNotification {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    type: row.notification_type as NotificationType,
+    title: row.title,
+    body: row.body,
+    href: row.href,
+    jobId: row.job_id,
+    readAt: row.read_at,
     createdAt: row.created_at,
   };
 }

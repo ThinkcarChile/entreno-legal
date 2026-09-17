@@ -1,65 +1,60 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useTransition } from "react";
 
-import { Loader2 } from "lucide-react";
-
+import { Alert } from "@/components/ui/feedback";
 import { Button, Field, Input } from "@/components/ui";
+import { signInAction } from "@/lib/actions/auth";
 import { signInSchema } from "@/lib/validation/auth";
 
-import { AuthNotice } from "./auth-notice";
-
-export function SignInForm({ enabled }: { enabled: boolean }) {
+export function SignInForm() {
   const router = useRouter();
+  const params = useSearchParams();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [pending, startTransition] = useTransition();
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+  const next = params.get("next") ?? "/trabajos";
+
+  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
 
     const form = new FormData(event.currentTarget);
-    const parsed = signInSchema.safeParse({
-      email: String(form.get("email") ?? ""),
+    const values = {
+      email: String(form.get("email") ?? "").trim(),
       password: String(form.get("password") ?? ""),
-    });
+    };
 
+    const parsed = signInSchema.safeParse(values);
     if (!parsed.success) {
       const next: Record<string, string> = {};
-      for (const issue of parsed.error.issues) {
-        next[String(issue.path[0])] ??= issue.message;
-      }
+      for (const issue of parsed.error.issues) next[String(issue.path[0])] ??= issue.message;
       setErrors(next);
       return;
     }
-
     setErrors({});
-    if (!enabled) {
-      setFormError("La autenticación se habilita al configurar Supabase en este entorno.");
-      return;
-    }
 
-    setLoading(true);
-    try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const { error } = await createClient().auth.signInWithPassword(parsed.data);
-      if (error) {
-        setFormError("No pudimos iniciar sesión. Revisa tu correo y contraseña.");
+    startTransition(async () => {
+      const result = await signInAction(values);
+      if (!result.ok) {
+        setFormError(result.error);
         return;
       }
-      router.push("/trabajos");
+      router.push(next);
       router.refresh();
-    } finally {
-      setLoading(false);
-    }
+    });
   }
 
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-5">
-      {!enabled && <AuthNotice />}
+      {params.get("registro") === "ok" && (
+        <Alert tone="success" title="Cuenta creada">
+          Confirma tu correo si te lo pedimos y entra con tus datos.
+        </Alert>
+      )}
 
       <Field label="Correo electrónico" htmlFor="email" error={errors.email} required>
         <Input
@@ -83,23 +78,25 @@ export function SignInForm({ enabled }: { enabled: boolean }) {
         />
       </Field>
 
-      {formError && (
-        <p className="rounded-[var(--radius-control)] bg-danger-50 px-4 py-3 text-sm text-danger-700" role="alert">
-          {formError}
-        </p>
-      )}
+      {formError && <Alert tone="danger">{formError}</Alert>}
 
-      <Button type="submit" size="lg" fullWidth disabled={loading}>
-        {loading ? <Loader2 size={17} className="animate-spin" aria-hidden="true" /> : null}
-        Entrar
+      <Button type="submit" size="lg" fullWidth disabled={pending}>
+        {pending ? "Entrando…" : "Entrar"}
       </Button>
 
-      <p className="text-center text-sm text-ink-600">
-        ¿No tienes cuenta?{" "}
-        <Link href="/crear-cuenta" className="font-medium text-brand-700 hover:underline">
-          Créala gratis
-        </Link>
-      </p>
+      <div className="space-y-2 text-center text-sm text-ink-600">
+        <p>
+          <Link href="/recuperar-clave" className="font-medium text-brand-700 hover:underline">
+            Olvidé mi contraseña
+          </Link>
+        </p>
+        <p>
+          ¿No tienes cuenta?{" "}
+          <Link href="/crear-cuenta" className="font-medium text-brand-700 hover:underline">
+            Créala gratis
+          </Link>
+        </p>
+      </div>
     </form>
   );
 }

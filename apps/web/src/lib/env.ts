@@ -16,7 +16,12 @@ const serverSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
 
-  /** demo | supabase | auto */
+  /**
+   * demo | supabase | auto
+   *
+   * "auto" elige Supabase si hay credenciales. Los dos modos nunca se mezclan:
+   * o toda la aplicación lee datos reales, o toda lee datos de demostración.
+   */
   NEXT_PUBLIC_DATA_SOURCE: z.enum(["demo", "supabase", "auto"]).default("auto"),
 
   /** mock | transbank */
@@ -25,7 +30,7 @@ const serverSchema = z.object({
   TRANSBANK_COMMERCE_CODE: z.string().optional(),
   TRANSBANK_API_KEY: z.string().optional(),
 
-  PLATFORM_COMMISSION_BPS: z.coerce.number().int().min(0).max(5000).default(1500),
+  PLATFORM_COMMISSION_BPS: z.coerce.number().int().min(0).max(5000).default(1400),
   DISPUTE_WINDOW_HOURS: z.coerce.number().int().min(1).max(720).default(12),
 });
 

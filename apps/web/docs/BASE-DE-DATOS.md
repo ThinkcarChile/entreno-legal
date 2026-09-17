@@ -36,9 +36,29 @@ en orden alfabético.
 | `…000800_rls.sql` | Todas las políticas RLS y los privilegios de tabla y de columna |
 | `…000900_views_functions_storage.sql` | Vistas `public_reviews` y `admin_kpis`, PIN, buckets de Storage |
 
+### Etapa 2
+
+| Archivo | Contenido |
+|---|---|
+| `20260201000000_job_location_privacy.sql` | `job_private_location`, punto aproximado en `jobs`, RLS |
+| `20260201000050_notification_types.sql` | Nuevos valores del enum de notificaciones |
+| `20260201000100_chat_and_notifications.sql` | Conversación por trabajo y trabajador, `notify_user`, avisos automáticos |
+| `20260201000200_job_lifecycle.sql` | `accept_job_offer` atómica, congelado de precio y de campos críticos, pago previo obligatorio |
+| `20260201000300_accounts_and_verification.sql` | Onboarding, modos de cuenta, zonas, solicitud y resolución de verificación |
+| `20260201000400_publish_job.sql` | `publish_job` y `update_open_job` |
+| `20260201000500_settings_and_payments.sql` | `platform_settings`, `start_protected_payment`, payout automático, vista de desglose |
+| `20260201000600_offer_write_scope.sql` | Corrige el permiso que dejaba al cliente reescribir una oferta |
+
 ---
 
 ## Mapa de tablas
+
+### Ubicación
+
+| Tabla | Visibilidad | Notas |
+|---|---|---|
+| `jobs` | Pública mientras está publicado | Comuna, región, lugar y punto redondeado a ~1 km |
+| `job_private_location` | Cliente, trabajador asignado y administración | Dirección exacta, referencias y coordenadas |
 
 ### Identidad
 
@@ -91,6 +111,20 @@ con `security_invoker = true`.
 |---|---|---|
 | `generate_handoff_code(assignment)` | El cliente del trabajo | Crea o recupera el PIN de 4 dígitos |
 | `verify_handoff_code(assignment, code)` | El trabajador asignado | Valida el PIN, marca la entrega y registra evidencia |
+| `complete_onboarding(...)` | Cualquier usuario conectado | Escribe perfil público y datos privados, y fija los modos |
+| `set_account_modes(client, worker)` | Cualquier usuario conectado | Activa o desactiva el modo trabajador |
+| `set_worker_service_areas(jsonb)` | El trabajador | Reemplaza sus zonas en bloque |
+| `request_worker_verification(...)` | El trabajador | Crea la solicitud y deja el estado en `PENDING` |
+| `review_worker_verification(...)` | Administración | Aprueba, rechaza o suspende, y avisa a la persona |
+| `publish_job(jsonb)` | El cliente | Crea el trabajo y su dirección privada en una sola operación |
+| `update_open_job(id, jsonb)` | El cliente | Edita mientras el trabajo siga abierto y avisa a quien ofertó |
+| `cancel_job(id, motivo)` | El cliente | Cancela y rechaza las ofertas pendientes |
+| `accept_job_offer(offer)` | El cliente | **Atómica**: asigna, rechaza el resto, abre chat, audita y notifica |
+| `withdraw_job_offer(offer)` | El trabajador | Retira su propia oferta pendiente |
+| `open_job_conversation(job, worker)` | Cliente o trabajador con oferta | Abre o recupera el hilo del par |
+| `mark_conversation_read(id)` | Participante | Marca leídos los mensajes de la contraparte |
+| `mark_notifications_read(ids)` | Cualquier usuario conectado | Marca leídas sus notificaciones |
+| `start_protected_payment(assignment)` | El cliente | Crea el pago con los montos calculados en la base |
 
 El trabajador **no puede leer** `handoff_codes`: RLS solo permite la lectura al
 cliente. Por eso el PIN sirve como prueba de presencia simultánea.
@@ -127,6 +161,20 @@ PGHOST=/tmp PGPORT=55432 PGUSER=postgres npm run db:test
 
 Aplica el stub de Supabase, las migraciones, la semilla geográfica y 32
 comprobaciones de RLS y de flujo completo. Ver `supabase/tests/`.
+
+## Semilla de demostración
+
+```bash
+psql "$DATABASE_URL" -f supabase/seed/002_demo_accounts.sql
+psql "$DATABASE_URL" -f supabase/seed/003_demo_content.sql
+```
+
+Crea once cuentas (`…@demo.cl`, contraseña `hagotufila2026`), trabajadores con
+distintos niveles de reputación y estados de verificación, trabajos abiertos en
+seis regiones, ofertas, un trabajo asignado y pagado, conversaciones con
+mensajes y una reseña verificada.
+
+**Solo para desarrollo.** Crea usuarios con contraseña conocida.
 
 ## Regenerar la semilla geográfica
 

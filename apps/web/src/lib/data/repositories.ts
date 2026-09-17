@@ -1,14 +1,22 @@
-import type { CategoryGroup, JobUrgency } from "@/lib/domain/enums";
+import type { CategoryGroup, JobUrgency, VerificationStatus } from "@/lib/domain/enums";
 import type {
   AppNotification,
+  AssignmentDetail,
+  ClientJobSummary,
+  ConversationDetail,
+  ConversationSummary,
   Job,
   JobCategory,
   JobOffer,
   JobSummary,
   JobTimelineEntry,
+  PlatformSettings,
   PublicProfile,
   Review,
+  SessionUser,
   UUID,
+  VerificationRequest,
+  WorkerJobSummary,
   WorkerProfile,
 } from "@/lib/domain/types";
 import type { Money } from "@/lib/utils/money";
@@ -17,8 +25,11 @@ import type { Money } from "@/lib/utils/money";
  * Contratos de acceso a datos.
  *
  * La UI depende solo de estas interfaces. Existen dos implementaciones:
- * `demo` (datos de demostración en CLP) y `supabase` (producción). Cambiar de una a
- * otra no altera un solo componente.
+ * `demo` (datos de demostración en CLP, solo lectura) y `supabase` (real).
+ *
+ * Regla de seguridad que se nota en las firmas: ningún método recibe el
+ * identificador del usuario que consulta. Quién pregunta lo determina la sesión,
+ * nunca un parámetro que se pueda cambiar desde fuera.
  */
 
 export interface Page<T> {
@@ -28,7 +39,7 @@ export interface Page<T> {
   offset: number;
 }
 
-export type JobSort = "recent" | "starts_soon" | "budget_desc" | "budget_asc";
+export type JobSort = "recent" | "starts_soon" | "budget_desc" | "budget_asc" | "duration_asc";
 
 export interface JobFilters {
   query?: string;
@@ -38,7 +49,16 @@ export interface JobFilters {
   communeCode?: string;
   /** Tarifa por hora mínima, en unidad mínima de la moneda. */
   minHourlyRate?: number;
+  /** Presupuesto total mínimo. */
+  minTotal?: number;
+  /** Duración máxima en minutos. */
+  maxDurationMinutes?: number;
+  /** Trabajos que comienzan desde esta fecha (ISO, solo día). */
+  fromDate?: string;
+  /** Trabajos que comienzan hasta esta fecha (ISO, solo día). */
+  toDate?: string;
   overnightOnly?: boolean;
+  withBonusOnly?: boolean;
   urgency?: JobUrgency;
   sort?: JobSort;
   limit?: number;
@@ -52,27 +72,58 @@ export interface CategoryRepository {
 }
 
 export interface JobRepository {
+  /** Trabajos abiertos, visibles para cualquiera. Nunca incluye dirección exacta. */
   listOpen(filters?: JobFilters): Promise<Page<JobSummary>>;
+  /**
+   * Un trabajo. La dirección exacta viene en `location.exact` solo si quien
+   * consulta tiene derecho a verla; si no, llega en `null`.
+   */
   getById(id: UUID): Promise<Job | null>;
-  getByReference(reference: string): Promise<Job | null>;
   listOffers(jobId: UUID): Promise<readonly JobOffer[]>;
   getTimeline(jobId: UUID): Promise<readonly JobTimelineEntry[]>;
   countByCategory(): Promise<Readonly<Record<string, number>>>;
+
+  /** Trabajos publicados por el usuario de la sesión. */
+  listMinePublished(): Promise<readonly ClientJobSummary[]>;
+  /** Trabajos en los que el usuario de la sesión ofertó o fue asignado. */
+  listMineAsWorker(): Promise<readonly WorkerJobSummary[]>;
+  /** La oferta del usuario de la sesión para un trabajo, si existe. */
+  getMyOffer(jobId: UUID): Promise<JobOffer | null>;
+
+  /** Pantalla central del trabajo asignado. */
+  getAssignment(assignmentId: UUID): Promise<AssignmentDetail | null>;
+  getAssignmentByJob(jobId: UUID): Promise<AssignmentDetail | null>;
 }
 
 export interface WorkerRepository {
   getByUserId(userId: UUID): Promise<WorkerProfile | null>;
   listFeatured(limit?: number): Promise<readonly WorkerProfile[]>;
   listReviews(workerId: UUID, limit?: number): Promise<readonly Review[]>;
+  /** Reseñas destacadas para la portada. En modo real vienen de la base. */
+  listRecentReviews(limit?: number): Promise<readonly Review[]>;
 }
 
 export interface ProfileRepository {
   getPublicProfile(userId: UUID): Promise<PublicProfile | null>;
 }
 
+export interface SessionRepository {
+  /** Usuario conectado, o `null`. Nunca acepta un identificador por parámetro. */
+  getSessionUser(): Promise<SessionUser | null>;
+}
+
+export interface ConversationRepository {
+  listMine(): Promise<readonly ConversationSummary[]>;
+  getById(conversationId: UUID): Promise<ConversationDetail | null>;
+}
+
 export interface NotificationRepository {
-  listForUser(userId: UUID, limit?: number): Promise<readonly AppNotification[]>;
-  unreadCount(userId: UUID): Promise<number>;
+  listMine(limit?: number): Promise<readonly AppNotification[]>;
+  unreadCount(): Promise<number>;
+}
+
+export interface SettingsRepository {
+  get(): Promise<PlatformSettings>;
 }
 
 export interface PlatformKpis {
@@ -94,6 +145,7 @@ export interface PlatformKpis {
 
 export interface AdminRepository {
   getKpis(): Promise<PlatformKpis>;
+  listVerifications(status?: VerificationStatus): Promise<readonly VerificationRequest[]>;
 }
 
 export interface DataAccess {
@@ -102,6 +154,23 @@ export interface DataAccess {
   readonly jobs: JobRepository;
   readonly workers: WorkerRepository;
   readonly profiles: ProfileRepository;
+  readonly session: SessionRepository;
+  readonly conversations: ConversationRepository;
   readonly notifications: NotificationRepository;
+  readonly settings: SettingsRepository;
   readonly admin: AdminRepository;
+}
+
+/**
+ * El modo demostración es de solo lectura. Cualquier escritura lo dice en voz
+ * alta en vez de fingir que guardó algo.
+ */
+export class DemoModeError extends Error {
+  constructor(action = "Esta acción") {
+    super(
+      `${action} necesita una base de datos real. Estás en modo demostración: ` +
+        "configura Supabase para guardar cambios.",
+    );
+    this.name = "DemoModeError";
+  }
 }

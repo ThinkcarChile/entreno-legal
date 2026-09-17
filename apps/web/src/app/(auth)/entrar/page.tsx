@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { SignInForm } from "@/components/auth/sign-in-form";
-import { hasSupabaseCredentials } from "@/lib/env";
+import { DemoAuthNotice } from "@/components/auth/demo-auth-notice";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
   title: "Entrar",
@@ -16,8 +18,12 @@ export default function SignInPage() {
       <p className="mt-2 text-ink-600">
         Sigue tus trabajos, conversa con trabajadores y revisa tus pagos.
       </p>
-      <div className="mt-8">
-        <SignInForm enabled={hasSupabaseCredentials} />
+
+      <div className="mt-8 space-y-5">
+        <DemoAuthNotice />
+        <Suspense fallback={<Skeleton className="h-72 w-full" />}>
+          <SignInForm />
+        </Suspense>
       </div>
     </div>
   );

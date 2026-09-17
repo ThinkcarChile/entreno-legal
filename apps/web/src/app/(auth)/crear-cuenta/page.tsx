@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
+import { DemoAuthNotice } from "@/components/auth/demo-auth-notice";
 import { SignUpForm } from "@/components/auth/sign-up-form";
-import { hasSupabaseCredentials } from "@/lib/env";
 
 export const metadata: Metadata = {
   title: "Crear cuenta",
@@ -21,8 +21,10 @@ export default async function SignUpPage({ searchParams }: PageProps) {
     <div>
       <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Crea tu cuenta</h1>
       <p className="mt-2 text-ink-600">Es gratis y te toma menos de un minuto.</p>
-      <div className="mt-8">
-        <SignUpForm enabled={hasSupabaseCredentials} defaultIntent={intent} />
+
+      <div className="mt-8 space-y-5">
+        <DemoAuthNotice />
+        <SignUpForm defaultIntent={intent} />
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
 import { PublishWizard } from "@/components/jobs/publish/publish-wizard";
-import { getData } from "@/lib/data";
+import { getSession } from "@/lib/auth/session";
+import { getData, isDemoMode } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "Publicar un trabajo",
@@ -10,8 +11,16 @@ export const metadata: Metadata = {
   alternates: { canonical: "/publicar" },
 };
 
+/**
+ * Publicar es la puerta de entrada del producto, así que no se pide iniciar
+ * sesión antes de empezar: el asistente se completa entero y la cuenta se pide
+ * al final, con el borrador ya guardado en el navegador.
+ */
 export default async function PublishPage() {
-  const categories = await getData().categories.list();
+  const [categories, session] = await Promise.all([
+    getData().categories.list(),
+    getSession(),
+  ]);
 
   return (
     <div className="container-page py-8 sm:py-12">
@@ -25,7 +34,11 @@ export default async function PublishPage() {
       </header>
 
       <div className="mx-auto mt-8 max-w-3xl">
-        <PublishWizard categories={categories} />
+        <PublishWizard
+          categories={categories}
+          canPublish={Boolean(session?.onboardingCompleted)}
+          demoMode={isDemoMode()}
+        />
       </div>
     </div>
   );

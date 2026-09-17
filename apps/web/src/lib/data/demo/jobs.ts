@@ -290,16 +290,17 @@ function buildJob(seed: JobSeed): Job {
     description: seed.description,
     instructions: seed.instructions ?? null,
     location: {
-      addressLine: seed.addressLine,
-      addressNotes: null,
       countryCode: "CL",
       regionCode: seed.regionCode,
       regionName: regionName(seed.regionCode),
       communeCode: seed.communeCode,
       communeName: communeName(seed.communeCode),
-      lat: seed.lat,
-      lng: seed.lng,
       placeName: seed.placeName ?? null,
+      approxLat: Math.round(seed.lat * 100) / 100,
+      approxLng: Math.round(seed.lng * 100) / 100,
+      // En demostración nadie tiene sesión, así que nadie ve la dirección
+      // exacta. Es exactamente lo que verá un visitante en producción.
+      exact: null,
     },
     timezone,
     startsAt: seed.startsAt,

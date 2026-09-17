@@ -14,11 +14,20 @@ create schema if not exists extensions;
 
 create extension if not exists pgcrypto with schema extensions;
 
+-- Columnas equivalentes a las que usa Supabase Auth, para que la semilla de
+-- demostración se pueda aplicar y probar igual que en un proyecto real.
 create table auth.users (
   id uuid primary key default gen_random_uuid(),
-  email text,
+  instance_id uuid default '00000000-0000-0000-0000-000000000000',
+  aud text default 'authenticated',
+  role text default 'authenticated',
+  email text unique,
+  encrypted_password text,
+  email_confirmed_at timestamptz,
+  raw_app_meta_data jsonb default '{"provider":"email","providers":["email"]}'::jsonb,
   raw_user_meta_data jsonb default '{}'::jsonb,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
 );
 
 create or replace function auth.uid() returns uuid

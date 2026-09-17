@@ -7,7 +7,13 @@ import { env } from "@/lib/env";
 export const platform = {
   currency: "CLP" as const,
 
-  /** Comisión de HagoTuFila en puntos base (1500 = 15%). */
+  /**
+   * Comisión de HagoTuFila en puntos base (1400 = 14%).
+   *
+   * Valor por defecto y respaldo del modo demostración. En modo Supabase manda
+   * `platform_settings.commission_bps`, que es lo que usa también la base al
+   * calcular el payout: dos fuentes distintas terminarían divergiendo.
+   */
   commissionBps: env.PLATFORM_COMMISSION_BPS,
 
   /** Ventana para abrir una disputa tras finalizar el trabajo. */

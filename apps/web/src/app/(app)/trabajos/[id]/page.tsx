@@ -7,28 +7,32 @@ import {
   ChevronLeft,
   Gift,
   Info,
-  MapPin,
   Moon,
   ShieldCheck,
   Target,
   Users,
 } from "lucide-react";
 
+import { JobLocationBlock } from "@/components/jobs/job-location";
 import { JobTimeline } from "@/components/jobs/job-timeline";
 import { OfferCard } from "@/components/jobs/offer-card";
+import { OfferForm } from "@/components/jobs/offer-form";
 import { PriceHint } from "@/components/jobs/price-hint";
 import {
   Amount,
   Avatar,
   Badge,
-  Button,
   ButtonLink,
   Card,
   CardContent,
   HourlyRate,
 } from "@/components/ui";
+import { Alert } from "@/components/ui/feedback";
 import { site } from "@/config/site";
-import { JobObjectiveType } from "@/lib/domain/enums";
+import { getSession } from "@/lib/auth/session";
+import { canSendOffers } from "@/lib/domain/eligibility";
+import { isOpen } from "@/lib/domain/job-actions";
+import { JobObjectiveType, UserRole } from "@/lib/domain/enums";
 import { jobStatusLabels, urgencyLabels } from "@/lib/domain/labels";
 import { getData } from "@/lib/data";
 import { getPricingEngine } from "@/lib/pricing";
@@ -64,10 +68,16 @@ export default async function JobDetailPage({ params }: PageProps) {
   const job = await data.jobs.getById(id);
   if (!job) notFound();
 
-  const [offers, timeline] = await Promise.all([
+  const [offers, timeline, session] = await Promise.all([
     data.jobs.listOffers(job.id),
     data.jobs.getTimeline(job.id),
+    getSession(),
   ]);
+
+  const isOwner = session?.id === job.clientId;
+  const myOffer = session && !isOwner ? await data.jobs.getMyOffer(job.id) : null;
+  const eligibility = canSendOffers(session?.worker ?? null);
+  const isWorkerMode = session?.modes.includes(UserRole.WORKER) ?? false;
 
   const suggestion = getPricingEngine().suggest({
     categoryGroup: job.category.group,
@@ -126,23 +136,7 @@ export default async function JobDetailPage({ params }: PageProps) {
 
           <Card>
             <CardContent className="space-y-6">
-              <DetailRow
-                icon={<MapPin size={18} aria-hidden="true" />}
-                label="Dónde"
-                value={
-                  <>
-                    {job.location.placeName && (
-                      <span className="block font-medium text-ink-900">
-                        {job.location.placeName}
-                      </span>
-                    )}
-                    {job.location.addressLine}
-                    <span className="block text-ink-500">
-                      {job.location.communeName}, {job.location.regionName}
-                    </span>
-                  </>
-                }
-              />
+              <JobLocationBlock location={job.location} />
 
               <DetailRow
                 icon={<CalendarClock size={18} aria-hidden="true" />}
@@ -215,25 +209,35 @@ export default async function JobDetailPage({ params }: PageProps) {
             </Card>
           )}
 
-          <section>
-            <h2 className="flex items-center gap-2 text-base font-semibold text-ink-900">
-              <Users size={18} aria-hidden="true" className="text-ink-400" />
-              Ofertas recibidas ({offers.length})
-            </h2>
-            {offers.length === 0 ? (
-              <p className="mt-3 text-sm text-ink-500">
-                Todavía no hay ofertas. Los trabajadores verificados de la zona ya pueden verlo.
-              </p>
-            ) : (
-              <ul className="mt-4 space-y-4">
-                {offers.map((offer) => (
-                  <li key={offer.id}>
-                    <OfferCard offer={offer} timezone={job.timezone} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+          {isOwner && (
+            <section>
+              <h2 className="flex items-center gap-2 text-base font-semibold text-ink-900">
+                <Users size={18} aria-hidden="true" className="text-ink-400" />
+                Ofertas recibidas ({offers.length})
+              </h2>
+              {offers.length === 0 ? (
+                <p className="mt-3 text-sm text-ink-500">
+                  Todavía no hay ofertas. Los trabajadores verificados de la zona ya pueden verlo.
+                </p>
+              ) : (
+                <ul className="mt-4 space-y-4">
+                  {offers.map((offer) => (
+                    <li key={offer.id}>
+                      <OfferCard offer={offer} timezone={job.timezone} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+
+          {!isOwner && (
+            <p className="text-sm text-ink-500">
+              {job.offerCount === 0
+                ? "Todavía nadie ha ofertado. Es un buen momento para postular."
+                : `Ya hay ${job.offerCount} ${job.offerCount === 1 ? "oferta" : "ofertas"} para este trabajo.`}
+            </p>
+          )}
         </div>
 
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
@@ -248,20 +252,68 @@ export default async function JobDetailPage({ params }: PageProps) {
                 {formatDuration(job.estimatedDurationMinutes)}
               </p>
 
-              <div className="mt-5 space-y-2.5">
-                <Button fullWidth size="lg">
-                  Enviar una oferta
-                </Button>
-                <ButtonLink href="/entrar" variant="outline" fullWidth>
-                  Guardar para después
-                </ButtonLink>
+              <div className="mt-5">
+                {isOwner ? (
+                  <ButtonLink href={`/mis-trabajos/publicados/${job.id}`} fullWidth size="lg">
+                    Gestionar mi trabajo
+                  </ButtonLink>
+                ) : !isOpen(job.status) ? (
+                  <Alert tone="info">
+                    Este trabajo ya no está recibiendo ofertas.
+                  </Alert>
+                ) : !session ? (
+                  <div className="space-y-2.5">
+                    <ButtonLink
+                      href={`/entrar?next=/trabajos/${job.id}`}
+                      fullWidth
+                      size="lg"
+                    >
+                      Entrar para ofertar
+                    </ButtonLink>
+                    <ButtonLink
+                      href="/crear-cuenta?modo=trabajador"
+                      variant="outline"
+                      fullWidth
+                    >
+                      Crear cuenta de trabajador
+                    </ButtonLink>
+                  </div>
+                ) : !isWorkerMode ? (
+                  <div className="space-y-3">
+                    <Alert tone="info">
+                      Activa el modo trabajador en tu cuenta para poder ofertar.
+                    </Alert>
+                    <ButtonLink href="/cuenta/trabajador" variant="outline" fullWidth>
+                      Activar modo trabajador
+                    </ButtonLink>
+                  </div>
+                ) : !eligibility.allowed ? (
+                  <div className="space-y-3">
+                    <Alert tone="warning">{eligibility.message}</Alert>
+                    {eligibility.href && (
+                      <ButtonLink href={eligibility.href} variant="outline" fullWidth>
+                        Continuar
+                      </ButtonLink>
+                    )}
+                  </div>
+                ) : (
+                  <OfferForm
+                    jobId={job.id}
+                    workerId={session.id}
+                    durationMinutes={job.estimatedDurationMinutes}
+                    suggestedHourly={suggestion.recommendedHourly.amount}
+                    existingOffer={myOffer}
+                  />
+                )}
               </div>
 
-              <p className="mt-4 flex gap-2 text-xs text-ink-500">
-                <Info size={14} className="mt-px shrink-0" aria-hidden="true" />
-                Puedes proponer tu propia tarifa por hora. El cliente elige entre todas las
-                ofertas recibidas.
-              </p>
+              {!isOwner && isOpen(job.status) && (
+                <p className="mt-4 flex gap-2 text-xs text-ink-500">
+                  <Info size={14} className="mt-px shrink-0" aria-hidden="true" />
+                  Propones tu propia tarifa por hora. El cliente elige entre todas las ofertas
+                  recibidas.
+                </p>
+              )}
             </CardContent>
           </Card>
 

@@ -1,104 +1,102 @@
 # Hoja de ruta — HagoTuFila
 
-Qué quedó construido en la Etapa 1 y qué falta, en orden de dependencia.
+Qué está construido y qué falta, en orden de dependencia.
 
 ---
 
 ## Etapa 1 — Cimientos (completada)
 
-- [x] Análisis de requisitos y decisiones de arquitectura documentadas
-- [x] Esquema de base de datos completo, con RLS, aplicado y probado contra PostgreSQL
-- [x] Estructura de carpetas por capas
-- [x] Clientes de Supabase (navegador, servidor, servicio) y refresco de sesión
-- [x] Autenticación: registro, inicio de sesión, retorno del enlace de confirmación
-- [x] Sistema de diseño y componentes reutilizables
-- [x] Home con todas las secciones pedidas
-- [x] Perfiles públicos de trabajador con Índice de Confianza y niveles
-- [x] Flujo "Publicar trabajo" en siete pasos, mobile-first
-- [x] Listado de trabajos con filtros en la URL
-- [x] Detalle del trabajo con ofertas, línea de tiempo y precio sugerido
+- [x] Arquitectura por capas y decisiones documentadas
+- [x] Esquema con RLS, aplicado y probado contra PostgreSQL real
+- [x] Sistema de diseño, Home, perfiles públicos, listado y detalle de trabajos
 - [x] Motor de precios sugeridos reemplazable
-- [x] `PaymentProvider` con Transbank aislado y proveedor simulado para desarrollo
-- [x] Panel `/admin` con KPIs
-- [x] SEO: metadata, OpenGraph, sitemap, robots, datos estructurados
-- [x] Manifiesto web y bases para PWA
+- [x] `PaymentProvider` con Transbank aislado
+- [x] SEO, sitemap, robots, manifiesto
+
+## Etapa 2 — Marketplace funcional sobre Supabase (completada)
+
+- [x] Conexión real a Supabase: Auth, PostgreSQL, RLS, Storage, Realtime
+- [x] Separación explícita entre modo demostración y modo Supabase, sin mezcla
+- [x] Registro, inicio y cierre de sesión, recuperación de contraseña
+- [x] Rutas protegidas en el servidor, además de RLS
+- [x] Onboarding de cuenta con elección de modo (cliente, trabajador o ambos)
+- [x] Onboarding de trabajador: tarifa, zonas, disponibilidad, términos
+- [x] Solicitud de verificación y resolución desde el panel de administración
+- [x] Publicación real de trabajos, con dirección exacta en tabla privada
+- [x] Edición mientras el trabajo sigue abierto, con aviso a quien ofertó
+- [x] Explorar trabajos con filtros por región, comuna, categoría, fecha, pago,
+      duración, nocturnidad y bono
+- [x] Ofertas: enviar, editar, retirar, comparar
+- [x] Aceptación atómica, probada con concurrencia real
+- [x] Pago Protegido simulado recorriendo el flujo definitivo
+- [x] Comisión configurable en base de datos y función de cálculo central
+- [x] Chat por trabajo con Supabase Realtime y mensajes automáticos del sistema
+- [x] Mis trabajos para cliente y para trabajador, con estados agrupados
+- [x] Pantalla central del trabajo asignado, con acciones según estado y rol
+- [x] Notificaciones in-app con indicador de no leídas
+- [x] Semilla de demostración multi-región
+- [x] 83 comprobaciones automatizadas en `npm run db:test`
 
 ---
 
-## Etapa 2 — Conectar el backend
+## Etapa 3 — Pagos reales
 
-Lo mínimo para que el producto funcione con datos reales.
-
-1. **Crear el proyecto Supabase** y aplicar las diez migraciones más la semilla
-   geográfica. Generar `database.types.ts` con la CLI.
-2. **Publicar un trabajo de verdad**: acción de servidor que valide con
-   `publishJobSchema`, inserte con RLS, calcule el rango sugerido y lo guarde en
-   `suggested_hourly_min` / `suggested_hourly_max`.
-3. **Carga de imágenes** a Storage desde el paso 4 del asistente.
-4. **Ofertas**: enviar, editar, retirar. Aceptar una oferta crea la asignación de
-   forma transaccional y rechaza el resto.
-5. **Perfil propio y onboarding de trabajador**: tarifa, zonas de trabajo,
-   disponibilidad, categorías.
-6. **Verificación de identidad**: carga de documento y selfie al bucket privado, cola
-   de revisión en `/admin/verificaciones`, aprobación y rechazo con motivo.
-7. **Rutas protegidas**: comprobación de sesión y de rol en el servidor, no solo en
-   el proxy.
-
-## Etapa 3 — Pagos
-
-8. **Integrar Webpay Plus** con el SDK oficial vigente de Transbank, en ambiente de
-   integración. Implementar los cuatro métodos de `TransbankPaymentProvider` y mapear
-   sus respuestas a los estados internos. No inventar endpoints.
-9. **Flujo de Pago Protegido completo**: aceptar oferta → crear pago → redirección →
-   confirmación → `PAID` → el trabajo puede comenzar.
-10. **Webhook y conciliación**: reintentos, idempotencia por
-    `provider_transaction_id`, registro en `payment_events`.
-11. **Payouts**: generación automática al completarse el trabajo, aprobación manual en
-    `/admin/payouts` con referencia bancaria, y liberación automática al vencer
-    `DISPUTE_WINDOW_HOURS`.
-12. **Reembolsos**, totales y parciales, según resolución de disputa.
+1. **Integrar Webpay Plus** con el SDK oficial vigente de Transbank, en ambiente
+   de integración. Implementar los cuatro métodos de `TransbankPaymentProvider`
+   y mapear sus respuestas a los estados internos. No inventar endpoints.
+   La acción de servidor y la ruta `/pagos/retorno` ya están escritas para no
+   tener que cambiarlas.
+2. **Conciliación**: idempotencia por `provider_transaction_id`, reintentos y
+   registro completo en `payment_events`.
+3. **Reembolsos** totales y parciales.
+4. **Payouts**: aprobación en `/admin/payouts` con referencia bancaria y
+   liberación automática al vencer `DISPUTE_WINDOW_HOURS`.
 
 ## Etapa 4 — Ejecución del trabajo
 
-13. **Check-in con geolocalización** y evidencia fotográfica desde el teléfono.
-14. **Línea de tiempo en vivo** con Supabase Realtime.
-15. **Chat por trabajo**: texto, imágenes y mensajes automáticos del sistema.
-16. **Extensiones**: solicitud del cliente, aceptación explícita del trabajador, cobro
-    del tiempo adicional antes de continuar.
-17. **PIN de entrega** en la interfaz: generación para el cliente, validación para el
-    trabajador.
-18. **Evaluación del bono por objetivo**, separada del pago por tiempo.
+5. **Carga de imágenes** a Supabase Storage: en el asistente de publicación, en
+   el perfil del trabajador y en la evidencia del trabajo.
+6. **Check-in con geolocalización** desde el teléfono.
+7. **Imágenes en el chat** (el modelo y el bucket ya existen).
+8. **Extensiones de trabajo** de extremo a extremo: solicitud, aceptación
+   explícita del trabajador y cobro del tiempo adicional.
+9. **PIN de entrega** en la interfaz. Las funciones de la base ya están.
+10. **Evaluación del bono por objetivo** al cerrar el trabajo.
+11. **Proceso que marque `EXPIRED`** los trabajos cuya fecha pasó sin asignación.
 
 ## Etapa 5 — Confianza y comunidad
 
-19. **Reseñas** con las cuatro dimensiones, tras completar el trabajo.
-20. **Recálculo periódico** del Índice de Confianza y de los niveles, con la misma
-    función pura que ya usa la interfaz.
-21. **Disputas** de extremo a extremo: apertura, evidencia de ambas partes, mensajería,
-    resolución administrativa y su efecto en el payout.
-22. **Notificaciones in-app** con Realtime y centro de notificaciones.
-23. **FilaPuntos**: acreditación automática y canje como descuento de comisión.
+12. **Reseñas** desde la interfaz, con las cuatro dimensiones.
+13. **Recálculo programado** del Índice de Confianza y de los niveles.
+14. **Disputas** completas: apertura, evidencia de ambas partes y resolución.
+15. **FilaPuntos**: acreditación automática y canje como descuento de comisión.
+16. **Solicitudes de modificación**: hoy los campos críticos se congelan tras la
+    asignación; deben convertirse en una propuesta que el trabajador acepta o
+    rechaza.
 
 ## Etapa 6 — Crecimiento
 
-24. **Páginas regionales** para SEO (`/hacer-fila/santiago`, `/tramites/valparaiso`).
-25. **Búsqueda por cercanía** con PostGIS: columna `geography` generada e índice GIST.
-26. **PWA**: service worker, estrategia de caché, instalación y trabajo sin conexión
-    para el registro de evidencia.
-27. **Push, email y SMS/WhatsApp** como canales del despachador de notificaciones.
-28. **Panel de administración completo**: cada cola con sus acciones y reportes.
-29. **Precios por demanda**: sustituir `RuleBasedPricingEngine` sin tocar la interfaz.
-30. **App nativa**, una vez validado el producto.
+17. **Páginas regionales** para SEO.
+18. **Búsqueda por cercanía** con PostGIS: columna `geography` generada e índice
+    GIST sobre las coordenadas que ya se guardan.
+19. **PWA**: service worker y registro de evidencia sin conexión.
+20. **Push, email y SMS/WhatsApp** como canales del despachador que ya existe.
+21. **Panel de administración completo**: pagos, payouts, disputas y reportes.
+22. **Precios por demanda**: sustituir `RuleBasedPricingEngine` sin tocar la
+    interfaz.
+23. **Aplicación nativa**, una vez validado el producto.
 
 ---
 
-## Deuda consciente que conviene saldar pronto
+## Riesgos técnicos pendientes
 
-| Tema | Estado | Cuándo |
+| Tema | Riesgo | Mitigación prevista |
 |---|---|---|
-| Pruebas automatizadas del front | No hay | Antes de la Etapa 3 |
-| `database.types.ts` genérico | Reemplazar por tipos generados | Al crear el proyecto Supabase |
-| Feriados chilenos en código | Mover a tabla | Etapa 4 |
-| Reputación en tabla, sin recálculo programado | Falta el proceso periódico | Etapa 5 |
-| Términos y política de privacidad | Texto provisional | Antes de abrir al público |
-| Registro de trabajos vencidos | Falta el proceso que marque `EXPIRED` | Etapa 2 |
+| Sin recorrido end-to-end con Supabase real | El entorno de desarrollo no tiene Docker ni proyecto Supabase, así que el flujo se probó contra PostgreSQL y con un contraste código–esquema, no con la aplicación en marcha contra Supabase | Primer paso de la Etapa 3: crear el proyecto, aplicar migraciones y recorrer el flujo con dos cuentas |
+| `database.types.ts` genérico | Los tipos no reflejan las columnas reales, así que un error de nombre solo lo detecta `db:contract` | Generar los tipos con la CLI al crear el proyecto |
+| Sin pruebas automatizadas del front | La lógica de dominio es pura y testeable, pero no hay pruebas | Añadir Vitest antes de la Etapa 4 |
+| Realtime sin reconexión explícita | Si se corta la conexión, el hilo deja de recibir mensajes hasta recargar | Manejar el estado del canal y reconsultar al reconectar |
+| Notificaciones solo in-app | Un trabajador que no abre la aplicación no se entera de una oferta aceptada | Push y email en la Etapa 6 |
+| Sin límite de frecuencia propio | Se depende del de Supabase Auth; las acciones de negocio no tienen tope | Añadir control por usuario en ofertas y mensajes |
+| Términos y política de privacidad provisionales | Texto de relleno | Redacción legal antes de abrir al público |
+| Imágenes sin implementar | Los buckets y las columnas existen, la carga no | Etapa 4 |

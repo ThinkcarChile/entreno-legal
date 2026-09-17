@@ -32,7 +32,8 @@ con datos realistas en pesos chilenos. Es la forma más rápida de revisar la in
 | `npm run typecheck` | TypeScript sin emitir |
 | `npm run check` | Lint + typecheck + build |
 | `npm run seed:geo` | Regenera la semilla de regiones y comunas |
-| `npm run db:test` | Aplica el esquema a un PostgreSQL y corre las pruebas de RLS |
+| `npm run db:test` | Aplica el esquema a un PostgreSQL y corre todas las pruebas |
+| `npm run db:contract` | Comprueba que el código y el esquema coincidan |
 
 ---
 
@@ -51,20 +52,37 @@ Todas en `.env.example`. Ninguna credencial real vive en el repositorio.
 | `TRANSBANK_ENVIRONMENT` | No | `integration` o `production` |
 | `TRANSBANK_COMMERCE_CODE` | Al integrar | Credencial de Transbank |
 | `TRANSBANK_API_KEY` | Al integrar | Credencial de Transbank |
-| `PLATFORM_COMMISSION_BPS` | No | Comisión en puntos base. `1500` = 15% |
+| `PLATFORM_COMMISSION_BPS` | No | Comisión por defecto en puntos base. `1400` = 14%. En modo Supabase manda `platform_settings` |
 | `DISPUTE_WINDOW_HOURS` | No | Plazo para reportar un problema. Por defecto 12 |
 
 `SUPABASE_SERVICE_ROLE_KEY` nunca debe llevar el prefijo `NEXT_PUBLIC_`.
 
 ---
 
-## Base de datos
+## Poner en marcha Supabase
 
 ```bash
-# Con la CLI de Supabase y un proyecto enlazado
+# 1. Crear el proyecto en supabase.com y copiar URL y claves a .env.local
+# 2. Aplicar el esquema
 npx supabase db push
-psql "$DATABASE_URL" -f supabase/seed/001_geo.sql
+
+# 3. Semillas
+psql "$DATABASE_URL" -f supabase/seed/001_geo.sql          # 16 regiones, 346 comunas
+psql "$DATABASE_URL" -f supabase/seed/002_demo_accounts.sql # solo desarrollo
+psql "$DATABASE_URL" -f supabase/seed/003_demo_content.sql  # solo desarrollo
+
+# 4. Tipos de TypeScript
+npx supabase gen types typescript --project-id <id> --schema public \
+  > src/lib/supabase/database.types.ts
 ```
+
+Las cuentas de demostración usan la contraseña `hagotufila2026`. La cuenta
+`admin@demo.cl` entra al panel interno y resuelve verificaciones.
+
+Para que un trabajador pueda ofertar necesita estar verificado: entra como
+administración, abre `/admin/verificaciones` y aprueba la solicitud.
+
+## Base de datos
 
 El esquema se verifica contra un PostgreSQL real, no solo se escribe:
 
@@ -86,10 +104,18 @@ Detalle en [`docs/BASE-DE-DATOS.md`](docs/BASE-DE-DATOS.md).
 
 ## Estado
 
-Etapa 1 completada: cimientos, esquema, sistema de diseño, Home, autenticación,
-perfiles, publicación de trabajos, listado y detalle.
+Etapa 2 completada: el marketplace funciona de extremo a extremo sobre Supabase.
+Un cliente publica, recibe ofertas, conversa, acepta y paga; un trabajador se
+registra, se verifica, explora, oferta, conversa y recibe el trabajo asignado.
 
-Los pagos con Webpay Plus **no están integrados todavía**. La interfaz
-`PaymentProvider` está lista y `TransbankPaymentProvider` define la forma del flujo,
-pero sin llamadas a la red: la integración se hará con el SDK oficial vigente, en
-ambiente de integración.
+Lo que **todavía es simulado**:
+
+| Función | Estado |
+|---|---|
+| Pago con Webpay Plus | Simulado. El flujo es el definitivo, cambia solo el `PaymentProvider` |
+| Verificación de identidad | Real pero manual. La resuelve una persona desde `/admin/verificaciones`, sin proveedor biométrico |
+| Transferencia al trabajador | El payout se calcula y registra; la transferencia es manual |
+| Imágenes | Los buckets y columnas existen; la carga no está implementada |
+| Notificaciones | Solo dentro de la aplicación. Sin push, email ni SMS |
+
+Ver `docs/HOJA-DE-RUTA.md` para el detalle y los riesgos pendientes.

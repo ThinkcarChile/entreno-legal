@@ -10,7 +10,6 @@ import { ProtectedPayment } from "@/components/home/protected-payment";
 import { Testimonials } from "@/components/home/testimonials";
 import { site } from "@/config/site";
 import { getData } from "@/lib/data";
-import { demoFeaturedReviews } from "@/lib/data/demo";
 
 export const metadata: Metadata = {
   title: `${site.name} — ${site.claim}`,
@@ -21,14 +20,14 @@ export const metadata: Metadata = {
 export default async function HomePage() {
   const data = getData();
 
-  const [categories, counts, workers] = await Promise.all([
+  // Todo sale del mismo origen de datos: o todo real, o todo de demostración.
+  // Mezclar los dos haría creer que hay actividad donde no la hay.
+  const [categories, counts, workers, reviews] = await Promise.all([
     data.categories.list(),
     data.jobs.countByCategory(),
     data.workers.listFeatured(4),
+    data.workers.listRecentReviews(3),
   ]);
-
-  // Las reseñas destacadas de portada aún no tienen origen en base de datos.
-  const reviews = demoFeaturedReviews(3);
 
   return (
     <>

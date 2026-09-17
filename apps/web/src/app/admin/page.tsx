@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { AlertTriangle, BadgeCheck, Banknote, ShieldAlert } from "lucide-react";
 
 import { Card, CardContent, Stat } from "@/components/ui";
+import { requireAdmin } from "@/lib/auth/session";
 import { getData, isDemoMode } from "@/lib/data";
 import { formatPercent, formatNumber } from "@/lib/utils/format";
 import { formatMoney } from "@/lib/utils/money";
@@ -13,6 +14,10 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminDashboardPage() {
+  // El panel exige rol de administrador. Esconder el enlace no es una medida de
+  // seguridad; esto sí, y la base lo vuelve a comprobar en cada consulta.
+  await requireAdmin("/admin");
+
   const kpis = await getData().admin.getKpis();
 
   return (

@@ -1,17 +1,28 @@
 import Link from "next/link";
 
-import { BadgeCheck, Clock3, MessageSquare } from "lucide-react";
+import { BadgeCheck, Clock3 } from "lucide-react";
 
 import { LevelBadge } from "@/components/profile/level-badge";
-import { Amount, Avatar, Badge, Button, Card, CardContent, HourlyRate, Rating } from "@/components/ui";
+import { OfferActions } from "@/components/jobs/offer-actions";
+import { Amount, Avatar, Badge, Card, CardContent, HourlyRate, Rating } from "@/components/ui";
 import { OfferStatus, VerificationStatus } from "@/lib/domain/enums";
 import { offerStatusLabels } from "@/lib/domain/labels";
 import { formatTime } from "@/lib/utils/datetime";
 import { formatPercent } from "@/lib/utils/format";
+import { formatMoney } from "@/lib/utils/money";
 
 import type { JobOffer } from "@/lib/domain/types";
 
-export function OfferCard({ offer, timezone }: { offer: JobOffer; timezone: string }) {
+export function OfferCard({
+  offer,
+  timezone,
+  canAccept = false,
+}: {
+  offer: JobOffer;
+  timezone: string;
+  /** El cliente dueño del trabajo puede aceptar mientras siga abierto. */
+  canAccept?: boolean;
+}) {
   const { worker } = offer;
   const verified = worker.verificationStatus === VerificationStatus.VERIFIED;
   const status = offerStatusLabels[offer.status];
@@ -78,14 +89,14 @@ export function OfferCard({ offer, timezone }: { offer: JobOffer; timezone: stri
             </p>
           )}
 
-          {offer.status === OfferStatus.PENDING && (
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">
-                <MessageSquare size={15} aria-hidden="true" />
-                Conversar
-              </Button>
-              <Button size="sm">Aceptar oferta</Button>
-            </div>
+          {canAccept && offer.status === OfferStatus.PENDING && (
+            <OfferActions
+              offerId={offer.id}
+              jobId={offer.jobId}
+              workerId={offer.workerId}
+              workerName={worker.profile.displayName}
+              total={formatMoney(offer.estimatedTotal)}
+            />
           )}
         </div>
       </CardContent>

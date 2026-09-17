@@ -43,3 +43,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     </div>
   );
 }
+
+/**
+ * Estas páginas dependen de quién esté conectado, así que nunca se prerenderizan:
+ * una versión cacheada mostraría la sesión equivocada.
+ */
+export const dynamic = "force-dynamic";

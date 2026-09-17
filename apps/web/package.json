@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run typecheck && npm run build",
     "seed:geo": "node scripts/seed-geo.ts",
-    "db:test": "bash scripts/db-test.sh"
+    "db:test": "bash scripts/db-test.sh",
+    "db:contract": "bash scripts/check-db-contract.sh"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

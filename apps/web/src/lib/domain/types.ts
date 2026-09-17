@@ -123,18 +123,34 @@ export interface JobCategory {
 
 /* ---------------------------------------------------------------- Ubicación */
 
-export interface JobLocation {
+/** Dirección exacta. Solo llega al cliente, al trabajador asignado y a administración. */
+export interface ExactLocation {
   addressLine: string;
   /** Referencia adicional: piso, acceso, punto de encuentro. */
   addressNotes: string | null;
+  lat: number | null;
+  lng: number | null;
+}
+
+/**
+ * Ubicación de un trabajo.
+ *
+ * Lo público es comuna, región, nombre del lugar y un punto aproximado. La
+ * dirección exacta viaja en `exact`, que es `null` mientras quien mira no tenga
+ * derecho a verla. Así la interfaz no puede filtrarla por descuido: si no está,
+ * no se puede pintar.
+ */
+export interface JobLocation {
   countryCode: string;
   regionCode: string;
   regionName: string;
   communeCode: string;
   communeName: string;
-  lat: number | null;
-  lng: number | null;
   placeName: string | null;
+  /** Redondeado a ~1 km. Suficiente para situar el sector. */
+  approxLat: number | null;
+  approxLng: number | null;
+  exact: ExactLocation | null;
 }
 
 /* ----------------------------------------------------------------- Objetivo */
@@ -450,4 +466,129 @@ export interface AuditLogEntry {
   after: Record<string, unknown> | null;
   ipAddress: string | null;
   createdAt: ISODateTime;
+}
+
+
+/* ------------------------------------------------- Etapa 2: sesión y cuenta */
+
+/** Lo que la aplicación necesita saber de quien está conectado. */
+export interface SessionUser {
+  id: UUID;
+  email: string | null;
+  profile: PublicProfile;
+  /** Modos activos de la cuenta. Una cuenta puede tener los dos. */
+  modes: readonly UserRole[];
+  isAdmin: boolean;
+  onboardingCompleted: boolean;
+  /** Presente solo si la cuenta tiene el modo trabajador activo. */
+  worker: WorkerProfile | null;
+  unreadNotifications: number;
+}
+
+/** Datos que el usuario completa al terminar de registrarse. */
+export interface OnboardingInput {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  regionCode: string;
+  communeCode: string;
+  avatarUrl?: string | null;
+  wantsClient: boolean;
+  wantsWorker: boolean;
+}
+
+/* ----------------------------------------------- Etapa 2: mis trabajos */
+
+/** Un trabajo visto por su dueño, con el estado de sus ofertas. */
+export interface ClientJobSummary extends JobSummary {
+  assignmentId: UUID | null;
+  assignmentStatus: AssignmentStatus | null;
+  workerDisplayName: string | null;
+  workerAvatarUrl: string | null;
+  paymentStatus: PaymentStatus | null;
+}
+
+/** Un trabajo visto por el trabajador que ofertó o fue asignado. */
+export interface WorkerJobSummary extends JobSummary {
+  offerId: UUID | null;
+  offerStatus: OfferStatus | null;
+  offerHourlyRate: Money | null;
+  assignmentId: UUID | null;
+  assignmentStatus: AssignmentStatus | null;
+  paymentStatus: PaymentStatus | null;
+}
+
+/** Vista completa de un trabajo ya asignado, para la pantalla central. */
+export interface AssignmentDetail {
+  assignment: Assignment;
+  job: Job;
+  client: PublicProfile;
+  worker: WorkerProfile;
+  payment: Payment | null;
+  conversationId: UUID | null;
+  timeline: readonly JobTimelineEntry[];
+  /** Desglose económico calculado en la base. */
+  settlement: PaymentBreakdown;
+}
+
+/** Desglose que se muestra en la pantalla de Pago Protegido. */
+export interface PaymentBreakdown {
+  serviceAmount: Money;
+  bonusAmount: Money;
+  commissionAmount: Money;
+  commissionBps: number;
+  /** Lo que recibe el trabajador si cumple el objetivo. */
+  workerReceives: Money;
+  /** Lo que paga el cliente. */
+  clientTotal: Money;
+}
+
+/* ----------------------------------------------------- Etapa 2: mensajería */
+
+export interface ConversationSummary {
+  id: UUID;
+  jobId: UUID;
+  jobTitle: string;
+  jobStatus: JobStatus;
+  assignmentId: UUID | null;
+  isPrimary: boolean;
+  /** La contraparte, sea el cliente o el trabajador. */
+  counterpartId: UUID;
+  counterpartName: string;
+  counterpartAvatarUrl: string | null;
+  lastMessage: string | null;
+  lastMessageAt: ISODateTime | null;
+  unreadCount: number;
+}
+
+export interface ConversationDetail {
+  conversation: ConversationSummary;
+  messages: readonly Message[];
+  /** Quién es el usuario actual dentro de esta conversación. */
+  viewerRole: "client" | "worker";
+}
+
+/* ------------------------------------------------ Etapa 2: administración */
+
+export interface VerificationRequest {
+  id: UUID;
+  userId: UUID;
+  status: VerificationStatus;
+  displayName: string;
+  avatarUrl: string | null;
+  documentType: string | null;
+  documentPath: string | null;
+  selfiePath: string | null;
+  rejectionReason: string | null;
+  createdAt: ISODateTime;
+  reviewedAt: ISODateTime | null;
+}
+
+/** Configuración operacional viva en la base. */
+export interface PlatformSettings {
+  commissionBps: number;
+  disputeWindowHours: number;
+  minDurationMinutes: number;
+  loyaltyPointsPer1000: number;
+  currency: string;
 }

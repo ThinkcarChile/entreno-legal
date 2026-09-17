@@ -5,7 +5,7 @@ import { useCallback, useTransition } from "react";
 
 import { Search } from "lucide-react";
 
-import { Input, Select } from "@/components/ui";
+import { Button, Input, Select } from "@/components/ui";
 import { CategoryGroup } from "@/lib/domain/enums";
 import { regions } from "@/lib/geo/chile";
 
@@ -33,8 +33,13 @@ export function JobFilters({ categories }: { categories: readonly JobCategory[] 
     [params, router],
   );
 
+  const clearAll = useCallback(() => {
+    startTransition(() => router.push("/trabajos"));
+  }, [router]);
+
   const selectedRegion = params.get("region") ?? "";
   const communes = regions.find((r) => r.code === selectedRegion)?.communes ?? [];
+  const hasFilters = [...params.keys()].some((key) => key !== "pagina");
 
   return (
     <div
@@ -115,9 +120,109 @@ export function JobFilters({ categories }: { categories: readonly JobCategory[] 
       >
         <option value="recent">Más recientes</option>
         <option value="starts_soon">Comienzan antes</option>
-        <option value="budget_desc">Mayor presupuesto</option>
+        <option value="budget_desc">Mejor pago</option>
         <option value="budget_asc">Menor presupuesto</option>
+        <option value="duration_asc">Más cortos</option>
       </Select>
+
+      <div className="sm:col-span-2 lg:col-span-5">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="w-40">
+            <label htmlFor="desde" className="mb-1 block text-xs font-medium text-ink-600">
+              Desde
+            </label>
+            <Input
+              id="desde"
+              type="date"
+              defaultValue={params.get("desde") ?? ""}
+              onChange={(event) => update("desde", event.target.value)}
+            />
+          </div>
+          <div className="w-40">
+            <label htmlFor="hasta" className="mb-1 block text-xs font-medium text-ink-600">
+              Hasta
+            </label>
+            <Input
+              id="hasta"
+              type="date"
+              defaultValue={params.get("hasta") ?? ""}
+              onChange={(event) => update("hasta", event.target.value)}
+            />
+          </div>
+          <div className="w-44">
+            <label htmlFor="pago-min" className="mb-1 block text-xs font-medium text-ink-600">
+              Pago mínimo por hora
+            </label>
+            <Input
+              id="pago-min"
+              type="number"
+              min={0}
+              step={1000}
+              placeholder="8000"
+              defaultValue={params.get("pagoMin") ?? ""}
+              onChange={(event) => update("pagoMin", event.target.value)}
+            />
+          </div>
+          <div className="w-44">
+            <label htmlFor="duracion-max" className="mb-1 block text-xs font-medium text-ink-600">
+              Duración máxima
+            </label>
+            <Select
+              id="duracion-max"
+              defaultValue={params.get("duracionMax") ?? ""}
+              onChange={(event) => update("duracionMax", event.target.value)}
+            >
+              <option value="">Cualquiera</option>
+              <option value="120">Hasta 2 h</option>
+              <option value="240">Hasta 4 h</option>
+              <option value="480">Hasta 8 h</option>
+              <option value="720">Hasta 12 h</option>
+            </Select>
+          </div>
+
+          <Toggle
+            label="Madrugada u overnight"
+            active={params.get("overnight") === "1"}
+            onToggle={() => update("overnight", params.get("overnight") === "1" ? "" : "1")}
+          />
+          <Toggle
+            label="Con bono"
+            active={params.get("bono") === "1"}
+            onToggle={() => update("bono", params.get("bono") === "1" ? "" : "1")}
+          />
+
+          {hasFilters && (
+            <Button variant="ghost" size="sm" onClick={clearAll}>
+              Limpiar filtros
+            </Button>
+          )}
+        </div>
+      </div>
     </div>
+  );
+}
+
+function Toggle({
+  label,
+  active,
+  onToggle,
+}: {
+  label: string;
+  active: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onToggle}
+      className={
+        active
+          ? "h-11 rounded-full border border-brand-600 bg-brand-600 px-4 text-sm font-medium text-white"
+          : "h-11 rounded-full border border-ink-200 bg-white px-4 text-sm font-medium text-ink-700 hover:border-brand-300"
+      }
+    >
+      {label}
+    </button>
   );
 }

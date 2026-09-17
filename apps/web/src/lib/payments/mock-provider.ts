@@ -48,17 +48,35 @@ export class MockPaymentProvider implements PaymentProvider {
 
   async confirmPayment({ token }: ConfirmPaymentInput): Promise<ConfirmPaymentResult> {
     const entry = this.store.get(token);
+
+    // El estado en memoria no sobrevive a un reinicio del servidor de
+    // desarrollo. Un token con el formato correcto se acepta igual: quien manda
+    // sobre el monto es la fila de `payments`, no este proveedor simulado.
     if (!entry) {
+      if (!token.startsWith("mock-")) {
+        return {
+          providerTransactionId: token,
+          status: PaymentStatus.FAILED,
+          amount: { amount: 0, currency: "CLP" },
+          authorizationCode: null,
+          cardLastDigits: null,
+          paymentTypeCode: null,
+          installments: null,
+          transactionDate: new Date().toISOString(),
+          raw: { mock: true, reason: "token_no_reconocido" },
+        };
+      }
+
       return {
         providerTransactionId: token,
-        status: PaymentStatus.FAILED,
+        status: PaymentStatus.PAID,
         amount: { amount: 0, currency: "CLP" },
-        authorizationCode: null,
-        cardLastDigits: null,
-        paymentTypeCode: null,
-        installments: null,
+        authorizationCode: "MOCK-AUTH",
+        cardLastDigits: "4242",
+        paymentTypeCode: "VD",
+        installments: 0,
         transactionDate: new Date().toISOString(),
-        raw: { mock: true, reason: "token_desconocido" },
+        raw: { mock: true, recovered: true },
       };
     }
 
