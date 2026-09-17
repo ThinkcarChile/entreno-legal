@@ -216,6 +216,24 @@ values
   ('dispute-files', 'dispute-files', false)
 on conflict (id) do nothing;
 
+-- Las políticas de Storage se recrean: así la migración se puede repetir.
+--
+-- Nota para proyectos alojados: `storage.objects` pertenece a
+-- `supabase_storage_admin`. Si el rol que aplica las migraciones no puede crear
+-- políticas sobre esa tabla, el error aparecerá aquí y las políticas se crean
+-- desde el panel (Storage → Policies) con estas mismas reglas.
+drop policy if exists "avatars_public_read" on storage.objects;
+drop policy if exists "avatars_own_write" on storage.objects;
+drop policy if exists "avatars_own_update" on storage.objects;
+drop policy if exists "job_images_public_read" on storage.objects;
+drop policy if exists "job_images_own_write" on storage.objects;
+drop policy if exists "verification_own_write" on storage.objects;
+drop policy if exists "verification_own_read" on storage.objects;
+drop policy if exists "evidence_own_write" on storage.objects;
+drop policy if exists "evidence_read" on storage.objects;
+drop policy if exists "dispute_files_own_write" on storage.objects;
+drop policy if exists "dispute_files_read" on storage.objects;
+
 -- Avatares: lectura pública, escritura en la carpeta propia del usuario.
 create policy "avatars_public_read" on storage.objects
   for select using (bucket_id = 'avatars');

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { PublishWizard } from "@/components/jobs/publish/publish-wizard";
-import { getSession } from "@/lib/auth/session";
+import { getViewer } from "@/lib/auth/session";
 import { getData, isDemoMode } from "@/lib/data";
 
 export const metadata: Metadata = {
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 export default async function PublishPage() {
   const [categories, session] = await Promise.all([
     getData().categories.list(),
-    getSession(),
+    getViewer(),
   ]);
 
   return (

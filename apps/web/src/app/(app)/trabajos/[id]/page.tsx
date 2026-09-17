@@ -29,7 +29,7 @@ import {
 } from "@/components/ui";
 import { Alert } from "@/components/ui/feedback";
 import { site } from "@/config/site";
-import { getSession } from "@/lib/auth/session";
+import { getViewer } from "@/lib/auth/session";
 import { canSendOffers } from "@/lib/domain/eligibility";
 import { isOpen } from "@/lib/domain/job-actions";
 import { JobObjectiveType, UserRole } from "@/lib/domain/enums";
@@ -71,7 +71,7 @@ export default async function JobDetailPage({ params }: PageProps) {
   const [offers, timeline, session] = await Promise.all([
     data.jobs.listOffers(job.id),
     data.jobs.getTimeline(job.id),
-    getSession(),
+    getViewer(),
   ]);
 
   const isOwner = session?.id === job.clientId;

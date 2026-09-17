@@ -116,7 +116,7 @@ create table public.notifications (
 create index notifications_user_idx on public.notifications (user_id, created_at desc);
 create index notifications_unread_idx on public.notifications (user_id) where read_at is null;
 
-alter publication supabase_realtime add table public.notifications;
+select app_private.publish_realtime('public.notifications');
 
 -- -----------------------------------------------------------------------------
 -- Auditoría

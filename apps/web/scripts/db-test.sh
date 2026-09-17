@@ -43,6 +43,11 @@ run -d "$DB_NAME" -f "$ROOT/supabase/seed/001_geo.sql" > /dev/null \
 
 {
   echo ""
+  echo "════ Inventario del esquema ════"
+  psql -d "$DB_NAME" -f "$ROOT/supabase/tests/05_schema_inventory.sql" 2>&1 \
+    | grep -vE "$FILTER" | sed -E 's/^psql:[^ ]+ //; s/^NOTICE:  //'
+
+  echo ""
   echo "════ Etapa 1 · RLS y flujo base ════"
   psql -d "$DB_NAME" -f "$ROOT/supabase/tests/01_rls_and_flow.sql" 2>&1 \
     | grep -vE "$FILTER" | sed -E 's/^psql:[^ ]+ //; s/^NOTICE:  //'
@@ -86,6 +91,6 @@ if grep -qiE "^psql:.*ERROR" "$REPORT"; then
   exit 1
 fi
 
-TOTAL=$(grep -cE "^(T|E|R)[0-9]+[a-z]? (OK|.*=)" "$REPORT")
+TOTAL=$(grep -cE "^(T|E|R|S|I)[0-9]+" "$REPORT")
 echo "✓ $TOTAL comprobaciones pasaron"
 rm -f "$REPORT"

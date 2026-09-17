@@ -6,8 +6,9 @@ import { BadgeCheck, Briefcase, Gift, Star, UserRound } from "lucide-react";
 import { Badge, ButtonLink, Card, CardContent } from "@/components/ui";
 import { Alert } from "@/components/ui/feedback";
 import { AccountModes } from "@/components/account/account-modes";
+import { AvatarUploader } from "@/components/account/avatar-uploader";
 import { site } from "@/config/site";
-import { getSession } from "@/lib/auth/session";
+import { getViewer } from "@/lib/auth/session";
 import { isDemoMode } from "@/lib/data";
 import { UserRole } from "@/lib/domain/enums";
 import { verificationStatusLabels } from "@/lib/domain/labels";
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AccountPage() {
-  const session = await getSession();
+  const session = await getViewer();
 
   if (!session) {
     return (
@@ -58,6 +59,22 @@ export default async function AccountPage() {
       </p>
 
       <Card className="mt-8">
+        <CardContent>
+          <h2 className="font-semibold text-ink-900">Tu fotografía</h2>
+          <p className="mt-1.5 text-sm text-ink-600">
+            Es lo primero que ve la otra persona. Un perfil con foto recibe más respuestas.
+          </p>
+          <div className="mt-5">
+            <AvatarUploader
+              userId={session.id}
+              displayName={session.profile.displayName}
+              currentUrl={session.profile.avatarUrl}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-5">
         <CardContent>
           <h2 className="flex items-center gap-2 font-semibold text-ink-900">
             <UserRound size={18} className="text-brand-600" aria-hidden="true" />

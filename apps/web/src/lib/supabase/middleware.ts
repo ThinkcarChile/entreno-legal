@@ -7,12 +7,18 @@ import { createServerClient } from "@supabase/ssr";
  *
  * Sin esto, los Server Components pueden leer una sesión expirada. Se ejecuta en
  * cada petición que no sea de recursos estáticos.
+ *
+ * `setAll` recibe también las cabeceras de caché que la librería necesita
+ * propagar: sin ellas, un CDN podría cachear una respuesta con la sesión de otra
+ * persona.
  */
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
   let response = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return response;
 
   const supabase = createServerClient(url, key, {
@@ -32,8 +38,9 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     },
   });
 
-  // `getUser` valida el token contra el servidor: no confiar en la cookie sola.
-  await supabase.auth.getUser();
+  // Verifica la firma del token y refresca la sesión si está por vencer.
+  // No se usa `getSession()`: leería la cookie sin revalidarla.
+  await supabase.auth.getClaims();
 
   return response;
 }

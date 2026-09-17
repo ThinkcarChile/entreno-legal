@@ -32,6 +32,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# La plantilla SÍ se versiona: es documentación y no contiene secretos.
+# Sin esta línea, la regla `.env*` de arriba la excluía en silencio y el
+# repositorio quedaba con documentación apuntando a un archivo inexistente.
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +43,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# Instrucciones para agentes que regenera `npm install`. No son del proyecto.
+/AGENTS.md
+/CLAUDE.md

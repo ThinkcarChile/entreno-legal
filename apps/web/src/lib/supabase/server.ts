@@ -2,9 +2,10 @@ import { cookies } from "next/headers";
 
 import { createServerClient } from "@supabase/ssr";
 
-import { env } from "@/lib/env";
+import { env, supabasePublishableKey } from "@/lib/env";
 
 import type { Database } from "./database.types";
+import { getVerifiedUser, type VerifiedUser } from "./verified-user";
 
 /**
  * Cliente de servidor ligado a las cookies de la petición.
@@ -13,13 +14,13 @@ import type { Database } from "./database.types";
 export async function createClient() {
   const cookieStore = await cookies();
 
-  if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  if (!env.NEXT_PUBLIC_SUPABASE_URL || !supabasePublishableKey) {
     throw new Error("Supabase no está configurado en este entorno.");
   }
 
   return createServerClient<Database>(
     env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    supabasePublishableKey,
     {
       cookies: {
         getAll() {
@@ -31,7 +32,7 @@ export async function createClient() {
               cookieStore.set(name, value, options);
             }
           } catch {
-            // Llamado desde un Server Component: el middleware ya refresca la sesión.
+            // Llamado desde un Server Component: el proxy ya refresca la sesión.
           }
         },
       },
@@ -39,10 +40,8 @@ export async function createClient() {
   );
 }
 
-/** Usuario autenticado verificado contra el servidor de Supabase Auth. */
-export async function getCurrentUser() {
+/** Identidad verificada por firma. Ver `verified-user.ts`. */
+export async function getCurrentUser(): Promise<VerifiedUser | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.getUser();
-  if (error) return null;
-  return data.user;
+  return getVerifiedUser(supabase);
 }

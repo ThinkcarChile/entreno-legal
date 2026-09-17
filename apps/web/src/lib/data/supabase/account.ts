@@ -3,6 +3,7 @@ import { UserRole } from "@/lib/domain/enums";
 import { mapProfile, type ProfileRow } from "./mappers";
 import { loadProfiles, loadWorkers } from "./jobs";
 import { currentUserId, PROFILE_COLUMNS, type Client } from "./shared";
+import { getVerifiedUser } from "@/lib/supabase/verified-user";
 
 import type {
   CategoryRepository,
@@ -37,13 +38,13 @@ export class SupabaseSessionRepository implements SessionRepository {
 
   async getSessionUser(): Promise<SessionUser | null> {
     const supabase = await this.getClient();
-    const { data: auth, error } = await supabase.auth.getUser();
-    if (error || !auth.user) return null;
+    const user = await getVerifiedUser(supabase);
+    if (!user) return null;
 
     const { data: profile } = await supabase
       .from("profiles")
       .select(`${PROFILE_COLUMNS},role,onboarding_completed_at,commune_code`)
-      .eq("id", auth.user.id)
+      .eq("id", user.id)
       .maybeSingle<SessionProfileRow>();
 
     if (!profile) return null;
@@ -52,22 +53,22 @@ export class SupabaseSessionRepository implements SessionRepository {
     const isWorker = modes.includes(UserRole.WORKER);
 
     const [workers, unread] = await Promise.all([
-      isWorker ? loadWorkers(supabase, [auth.user.id]) : Promise.resolve(new Map()),
+      isWorker ? loadWorkers(supabase, [user.id]) : Promise.resolve(new Map()),
       supabase
         .from("notifications")
         .select("id", { count: "exact", head: true })
-        .eq("user_id", auth.user.id)
+        .eq("user_id", user.id)
         .is("read_at", null),
     ]);
 
     return {
-      id: auth.user.id,
-      email: auth.user.email ?? null,
+      id: user.id,
+      email: user.email,
       profile: mapProfile(profile),
       modes,
       isAdmin: profile.role === UserRole.ADMIN,
       onboardingCompleted: Boolean(profile.onboarding_completed_at),
-      worker: (workers.get(auth.user.id) as WorkerProfile | undefined) ?? null,
+      worker: (workers.get(user.id) as WorkerProfile | undefined) ?? null,
       unreadNotifications: unread.count ?? 0,
     };
   }

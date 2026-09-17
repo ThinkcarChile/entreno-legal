@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { requireSession } from "./guards";
+import { AVATAR_BUCKET, isOwnAvatarPath } from "@/lib/storage/avatars";
 import { actionError, actionOk, type ActionResult } from "@/lib/utils/errors";
 
 /**
@@ -165,5 +166,40 @@ export async function requestVerificationAction(
     return actionOk();
   } catch (error) {
     return actionError(error, "No pudimos enviar tu solicitud de verificación.");
+  }
+}
+
+
+/**
+ * Registra la foto de perfil recién subida.
+ *
+ * La subida la hace el navegador contra Storage, con la sesión del propio
+ * usuario y sujeta a las políticas del bucket. Aquí solo se guarda la URL, y
+ * antes se comprueba que la ruta sea suya: si no, alguien podría apuntar su
+ * perfil al archivo de otra persona.
+ */
+export async function setAvatarAction(storagePath: string): Promise<ActionResult<{ url: string }>> {
+  try {
+    const { supabase, userId } = await requireSession();
+
+    if (!isOwnAvatarPath(storagePath, userId)) {
+      return { ok: false, error: "Esa ruta de archivo no es válida." };
+    }
+
+    const { data } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(storagePath);
+    const publicUrl = data.publicUrl;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ avatar_url: publicUrl })
+      .eq("id", userId);
+
+    if (error) return actionError(error, "No pudimos guardar tu fotografía.");
+
+    revalidatePath("/", "layout");
+    revalidatePath("/cuenta");
+    return actionOk({ url: publicUrl });
+  } catch (error) {
+    return actionError(error, "No pudimos guardar tu fotografía.");
   }
 }

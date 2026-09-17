@@ -5,7 +5,7 @@ import { Bell } from "lucide-react";
 
 import { MarkAllRead } from "@/components/notifications/mark-all-read";
 import { ButtonLink, Card, CardContent, EmptyState } from "@/components/ui";
-import { getSession } from "@/lib/auth/session";
+import { getViewer } from "@/lib/auth/session";
 import { getData, isDemoMode } from "@/lib/data";
 import { formatRelative } from "@/lib/utils/datetime";
 import { cn } from "@/lib/utils/cn";
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 export default async function NotificationsPage() {
-  const session = await getSession();
+  const session = await getViewer();
 
   if (!session) {
     return (

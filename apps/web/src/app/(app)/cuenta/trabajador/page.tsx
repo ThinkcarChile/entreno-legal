@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { ArrowRight, Info } from "lucide-react";
 
+import { AvatarUploader } from "@/components/account/avatar-uploader";
 import { VerificationPanel } from "@/components/account/verification-panel";
 import { WorkerProfileForm } from "@/components/account/worker-profile-form";
 import { AccountModes } from "@/components/account/account-modes";
@@ -69,7 +70,16 @@ export default async function WorkerAccountPage() {
 
         <Card>
           <CardContent className="sm:p-8">
-            <WorkerProfileForm worker={worker} />
+            <div className="border-b border-ink-100 pb-6">
+              <AvatarUploader
+                userId={session.id}
+                displayName={session.profile.displayName}
+                currentUrl={session.profile.avatarUrl}
+              />
+            </div>
+            <div className="pt-6">
+              <WorkerProfileForm worker={worker} />
+            </div>
           </CardContent>
         </Card>
 

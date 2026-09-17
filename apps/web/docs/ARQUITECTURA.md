@@ -350,7 +350,86 @@ sesión servida desde caché mostraría los datos de otra persona.
 `getSession` está envuelta en `cache()` de React para que la cabecera y la página
 no pidan la sesión dos veces en la misma petición.
 
-## 7. Verificación del esquema
+## 7. Etapa 3: preparación para Supabase alojado
+
+### 7.1 Autorización con `getClaims()`, no con `getUser()` ni `getSession()`
+
+Tres formas de saber quién pregunta, y solo una es la adecuada hoy:
+
+| Método | Qué hace | Sirve para autorizar |
+|---|---|---|
+| `getSession()` | Lee la cookie sin revalidarla | **No.** La cookie se puede fabricar |
+| `getUser()` | Pregunta al servidor de Auth en cada llamada | Sí, pero con un viaje de red cada vez |
+| `getClaims()` | Verifica la firma del token | Sí, y con claves asimétricas sin red |
+
+Se pasó a `getClaims()`, que es lo que recomienda la documentación vigente. Con
+claves asimétricas verifica la firma localmente contra el JWKS cacheado; con
+claves simétricas consulta al servidor igual que `getUser()`. En ambos casos el
+identificador sale de un token verificado y nunca de un parámetro del navegador.
+
+El ayudante propio pasó a llamarse `getViewer()`. Antes se llamaba `getSession()`
+y, aunque por dentro hacía lo correcto, un nombre idéntico al del método inseguro
+de Supabase es una trampa esperando a que alguien cambie uno por otro.
+
+La autorización real sigue siendo RLS. Esto solo decide qué página se pinta.
+
+### 7.2 Claves nuevas de Supabase, con las heredadas como respaldo
+
+Supabase reemplazó `anon` y `service_role` por `publishable` y `secret`, y retira
+las antiguas a fines de 2026. La aplicación acepta las dos parejas y prefiere las
+nuevas:
+
+```
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY  →  NEXT_PUBLIC_SUPABASE_ANON_KEY
+SUPABASE_SECRET_KEY                   →  SUPABASE_SERVICE_ROLE_KEY
+```
+
+La clave privada se lee solo desde `src/lib/supabase/admin.ts`, marcado con
+`server-only`: si alguien la importara desde un componente de cliente, el build
+falla en vez de publicar la credencial.
+
+En el navegador las variables se leen como literales `process.env.NEXT_PUBLIC_…`
+y no a través de una función: Next solo sustituye la forma escrita, y un acceso
+dinámico llegaría como `undefined`.
+
+### 7.3 Migraciones repetibles donde el entorno lo exige
+
+Dos sentencias fallaban si el objeto ya existía en el proyecto de destino:
+
+- `alter publication supabase_realtime add table …`. Un proyecto Supabase trae la
+  publicación creada y puede traer tablas dentro. Ahora pasa por
+  `app_private.publish_realtime()`, que comprueba antes de agregar.
+- Las políticas de Storage. Ahora se hace `drop policy if exists` antes de
+  crearlas.
+
+El resto de las migraciones no es idempotente a propósito: la CLI de Supabase
+lleva su propio registro de cuáles aplicó, y una migración que se pueda reaplicar
+sin querer esconde errores en vez de mostrarlos.
+
+### 7.4 Storage: el nombre del archivo nunca lo decide quien sube
+
+La foto de perfil se guarda en `avatars/<userId>/<uuid>.<ext>`:
+
+- La extensión sale del tipo MIME declarado, no del nombre original. Un archivo
+  llamado `foto.jpg.html` no puede servirse como HTML.
+- El identificador es aleatorio, así que reemplazar la foto no deja la anterior
+  servida desde la caché del CDN.
+- La primera carpeta es el identificador del usuario, que es justo lo que exige
+  la política del bucket. Manipular la ruta desde el navegador no sirve: Storage
+  la rechaza.
+
+La subida va directo del navegador a Storage con la sesión del usuario. El
+servidor solo guarda la URL, y antes comprueba que la ruta sea suya.
+
+### 7.5 Indicador de origen de datos, solo en desarrollo
+
+Una banda arriba de la página dice **Supabase conectado** (verde, con el nombre
+del proyecto) o **Modo demo** (naranja). En producción no se pinta nunca.
+
+Existe por una razón concreta: una prueba de aceptación hecha sin darse cuenta
+contra datos de ejemplo no vale, y es un error fácil de cometer.
+
+## 8. Verificación del esquema
 
 El esquema no se entrega "escrito y sin ejecutar". Se aplica y se prueba contra un
 PostgreSQL real:
@@ -381,6 +460,23 @@ contraste entre el código y el esquema (`scripts/check-db-contract.sh`) que ver
 que cada tabla, vista, función y columna que usa la aplicación exista de verdad.
 Ese contraste encontró el defecto descrito en §6.5.
 
-## 8. Qué queda fuera todavía
+### 8.1 Tres niveles de verificación, con propósitos distintos
+
+| Comando | Contra qué | Qué cubre |
+|---|---|---|
+| `npm run db:test` | PostgreSQL local | Esquema, RLS, flujo, concurrencia, semillas, inventario. 110 comprobaciones |
+| `npm run verify:supabase` | Supabase real | El mismo recorrido por API, más Realtime, Storage y Auth. 49 comprobaciones |
+| `npm run e2e` | Supabase real, por navegador | Entrar, publicar, ofertar, aceptar, pagar |
+
+Los tres se mantienen. El local es rápido y corre siempre, incluso sin
+credenciales; el de integración prueba lo que solo existe en Supabase (Auth,
+Realtime, Storage); el de navegador prueba que la interfaz conecta bien las dos
+cosas. Ninguno reemplaza a los otros.
+
+El inventario del esquema (`05_schema_inventory.sql`) comprueba además que las
+32 tablas tengan RLS activo y que las 5 vistas usen `security_invoker`. Es la
+comprobación que impide que una tabla nueva quede abierta por olvido.
+
+## 9. Qué queda fuera todavía
 
 Ver `docs/HOJA-DE-RUTA.md`.

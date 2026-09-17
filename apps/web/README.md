@@ -34,6 +34,8 @@ con datos realistas en pesos chilenos. Es la forma más rápida de revisar la in
 | `npm run seed:geo` | Regenera la semilla de regiones y comunas |
 | `npm run db:test` | Aplica el esquema a un PostgreSQL y corre todas las pruebas |
 | `npm run db:contract` | Comprueba que el código y el esquema coincidan |
+| `npm run verify:supabase` | Recorre el marketplace completo contra un Supabase real |
+| `npm run e2e` | Recorrido por navegador con Playwright |
 
 ---
 
@@ -45,8 +47,8 @@ Todas en `.env.example`. Ninguna credencial real vive en el repositorio.
 |---|---|---|
 | `NEXT_PUBLIC_SITE_URL` | Recomendada | Metadata, OpenGraph, sitemap, robots |
 | `NEXT_PUBLIC_SUPABASE_URL` | Para datos reales | Proyecto Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Para datos reales | Clave anónima, sujeta a RLS |
-| `SUPABASE_SERVICE_ROLE_KEY` | Solo servidor | Operaciones administrativas. Omite RLS |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Para datos reales | Clave pública, sujeta a RLS. Reemplaza a `ANON_KEY` |
+| `SUPABASE_SECRET_KEY` | Solo servidor | Omite RLS. Reemplaza a `SERVICE_ROLE_KEY`. Nunca con prefijo `NEXT_PUBLIC_` |
 | `NEXT_PUBLIC_DATA_SOURCE` | No | `demo`, `supabase` o `auto` (por defecto) |
 | `PAYMENT_PROVIDER` | No | `mock` o `transbank`. `mock` está prohibido en producción |
 | `TRANSBANK_ENVIRONMENT` | No | `integration` o `production` |
@@ -61,19 +63,26 @@ Todas en `.env.example`. Ninguna credencial real vive en el repositorio.
 
 ## Poner en marcha Supabase
 
+Guía completa, con la configuración del panel que no cabe en una migración:
+[`docs/DESPLIEGUE-SUPABASE.md`](docs/DESPLIEGUE-SUPABASE.md).
+
+Resumen:
+
 ```bash
-# 1. Crear el proyecto en supabase.com y copiar URL y claves a .env.local
-# 2. Aplicar el esquema
-npx supabase db push
+npx supabase login
+npx supabase link --project-ref <project-ref>
+npx supabase db push --include-seed      # esquema + 16 regiones y 346 comunas
 
-# 3. Semillas
-psql "$DATABASE_URL" -f supabase/seed/001_geo.sql          # 16 regiones, 346 comunas
-psql "$DATABASE_URL" -f supabase/seed/002_demo_accounts.sql # solo desarrollo
-psql "$DATABASE_URL" -f supabase/seed/003_demo_content.sql  # solo desarrollo
-
-# 4. Tipos de TypeScript
-npx supabase gen types typescript --project-id <id> --schema public \
+npx supabase gen types typescript --linked --schema public \
   > src/lib/supabase/database.types.ts
+```
+
+Semillas de demostración, **solo en entornos de prueba** (crean cuentas con
+contraseña conocida):
+
+```bash
+psql "$DATABASE_URL" -f supabase/seed/002_demo_accounts.sql
+psql "$DATABASE_URL" -f supabase/seed/003_demo_content.sql
 ```
 
 Las cuentas de demostración usan la contraseña `hagotufila2026`. La cuenta
@@ -81,6 +90,9 @@ Las cuentas de demostración usan la contraseña `hagotufila2026`. La cuenta
 
 Para que un trabajador pueda ofertar necesita estar verificado: entra como
 administración, abre `/admin/verificaciones` y aprueba la solicitud.
+
+En desarrollo, una banda arriba de la página indica si estás sobre **Supabase
+conectado** o en **Modo demo**. En producción no se muestra.
 
 ## Base de datos
 
@@ -98,6 +110,7 @@ Detalle en [`docs/BASE-DE-DATOS.md`](docs/BASE-DE-DATOS.md).
 
 - [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) — capas, decisiones y deuda evitada
 - [`docs/BASE-DE-DATOS.md`](docs/BASE-DE-DATOS.md) — esquema, RLS, funciones, Storage
+- [`docs/DESPLIEGUE-SUPABASE.md`](docs/DESPLIEGUE-SUPABASE.md) — poner el proyecto en marcha
 - [`docs/HOJA-DE-RUTA.md`](docs/HOJA-DE-RUTA.md) — qué falta, por etapas
 
 ---
@@ -117,5 +130,9 @@ Lo que **todavía es simulado**:
 | Transferencia al trabajador | El payout se calcula y registra; la transferencia es manual |
 | Imágenes | Los buckets y columnas existen; la carga no está implementada |
 | Notificaciones | Solo dentro de la aplicación. Sin push, email ni SMS |
+
+La Etapa 3 deja lista la validación contra un proyecto Supabase alojado
+(`npm run verify:supabase` y `npm run e2e`), pero **no se ha ejecutado**: este
+entorno no tiene credenciales. Es el primer paso antes de integrar Transbank.
 
 Ver `docs/HOJA-DE-RUTA.md` para el detalle y los riesgos pendientes.

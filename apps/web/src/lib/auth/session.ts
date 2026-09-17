@@ -18,18 +18,22 @@ import type { SessionUser } from "@/lib/domain/types";
  */
 
 /**
- * `cache` deduplica la llamada dentro de una misma petición.
+ * Quién está mirando la página.
  *
- * Sin esto, una página con cabecera pide la sesión dos o tres veces y cada una
- * es un viaje a Supabase Auth para validar el token.
+ * Se llama `getViewer` y no `getSession` a propósito: `supabase.auth.getSession()`
+ * lee la cookie sin revalidarla y no sirve para autorizar. Con nombres parecidos
+ * es cuestión de tiempo que alguien cambie uno por otro sin notarlo.
+ *
+ * `cache` deduplica la llamada dentro de una misma petición: sin esto, una
+ * página con cabecera pediría la identidad dos o tres veces.
  */
-export const getSession = cache(async (): Promise<SessionUser | null> => {
+export const getViewer = cache(async (): Promise<SessionUser | null> => {
   return getData().session.getSessionUser();
 });
 
 /** Exige sesión. Si no la hay, manda a entrar y vuelve luego a donde estaba. */
 export async function requireUser(returnTo: string): Promise<SessionUser> {
-  const session = await getSession();
+  const session = await getViewer();
   if (!session) {
     redirect(`/entrar?next=${encodeURIComponent(returnTo)}`);
   }

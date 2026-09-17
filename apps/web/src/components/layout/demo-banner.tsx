@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { FlaskConical } from "lucide-react";
 
+import { env } from "@/lib/env";
 import { isDemoMode } from "@/lib/data";
 
 /**
@@ -12,6 +13,9 @@ import { isDemoMode } from "@/lib/data";
  */
 export function DemoBanner() {
   if (!isDemoMode()) return null;
+  // En desarrollo el aviso lo da `ModeIndicator`, que además distingue si hay
+  // Supabase conectado. Dos bandas diciendo lo mismo solo restan atención.
+  if (env.NODE_ENV !== "production") return null;
 
   return (
     <div className="bg-ink-900 text-white">

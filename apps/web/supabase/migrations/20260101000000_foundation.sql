@@ -144,3 +144,30 @@ $$;
 
 comment on function app_private.is_admin is
   'Evita recursión en RLS: las políticas sobre profiles no pueden consultar profiles.';
+
+-- -----------------------------------------------------------------------------
+-- Realtime
+--
+-- `alter publication ... add table` falla si la tabla ya está publicada, y en un
+-- proyecto alojado `supabase_realtime` puede traer tablas de antes. Se hace
+-- idempotente para que `supabase db push` se pueda repetir sin romperse.
+-- -----------------------------------------------------------------------------
+create or replace function app_private.publish_realtime(p_table regclass)
+returns void
+language plpgsql
+as $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+     where pubname = 'supabase_realtime'
+       and schemaname = split_part(p_table::text, '.', 1)
+       and tablename = split_part(p_table::text, '.', 2)
+  ) then
+    execute format('alter publication supabase_realtime add table %s', p_table);
+  end if;
+exception
+  when undefined_object then
+    -- Sin la publicación (PostgreSQL a secas, sin Supabase) no hay nada que hacer.
+    null;
+end;
+$$;

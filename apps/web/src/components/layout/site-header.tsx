@@ -4,7 +4,7 @@ import { Bell, MessageCircle } from "lucide-react";
 
 import { ButtonLink } from "@/components/ui";
 import { site } from "@/config/site";
-import { getSession } from "@/lib/auth/session";
+import { getViewer } from "@/lib/auth/session";
 import { UserRole } from "@/lib/domain/enums";
 
 import { Logo } from "./logo";
@@ -25,7 +25,7 @@ const navigation = [
  * así nadie ve "Entrar" durante un instante estando ya conectado.
  */
 export async function SiteHeader() {
-  const session = await getSession();
+  const session = await getViewer();
   const isWorker = session?.modes.includes(UserRole.WORKER) ?? false;
 
   return (

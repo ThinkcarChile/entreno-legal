@@ -12,7 +12,10 @@
     "check": "npm run lint && npm run typecheck && npm run build",
     "seed:geo": "node scripts/seed-geo.ts",
     "db:test": "bash scripts/db-test.sh",
-    "db:contract": "bash scripts/check-db-contract.sh"
+    "db:contract": "bash scripts/check-db-contract.sh",
+    "verify:supabase": "node scripts/verify-supabase.ts",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -28,6 +31,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

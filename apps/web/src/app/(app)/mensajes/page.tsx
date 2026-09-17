@@ -4,7 +4,7 @@ import Link from "next/link";
 import { MessageCircle } from "lucide-react";
 
 import { Avatar, ButtonLink, Card, CardContent, EmptyState } from "@/components/ui";
-import { getSession } from "@/lib/auth/session";
+import { getViewer } from "@/lib/auth/session";
 import { getData, isDemoMode } from "@/lib/data";
 import { formatRelative } from "@/lib/utils/datetime";
 
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default async function MessagesPage() {
-  const session = await getSession();
+  const session = await getViewer();
 
   if (!session) {
     return (

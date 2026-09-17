@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getPaymentProvider } from "@/lib/payments";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getVerifiedUser } from "@/lib/supabase/verified-user";
 import { resolveDataSource } from "@/lib/env";
 
 /**
@@ -24,8 +25,8 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return NextResponse.redirect(`${origin}/entrar`);
+  const viewer = await getVerifiedUser(supabase);
+  if (!viewer) return NextResponse.redirect(`${origin}/entrar`);
 
   const admin = createAdminClient();
   const { data: payment } = await admin
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
   }
 
   // El pago pertenece a quien lo inició y a nadie más.
-  if (payment.client_id !== auth.user.id) {
+  if (payment.client_id !== viewer.id) {
     return NextResponse.redirect(`${origin}/mis-trabajos/publicados?pago=error`);
   }
 

@@ -120,5 +120,5 @@ create trigger messages_touch_conversation
   for each row execute function app_private.touch_conversation();
 
 -- Realtime: el chat se suscribe a esta tabla.
-alter publication supabase_realtime add table public.messages;
-alter publication supabase_realtime add table public.job_evidence;
+select app_private.publish_realtime('public.messages');
+select app_private.publish_realtime('public.job_evidence');

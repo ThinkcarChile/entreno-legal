@@ -307,4 +307,4 @@ create trigger payments_on_paid
 -- Realtime para el chat y las notificaciones ya está habilitado en la Etapa 1
 -- (messages, job_evidence, notifications). Se suma conversations para que la
 -- bandeja se reordene sola.
-alter publication supabase_realtime add table public.conversations;
+select app_private.publish_realtime('public.conversations');

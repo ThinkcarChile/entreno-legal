@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getVerifiedUser } from "@/lib/supabase/verified-user";
 
 /**
  * Piezas comunes a los repositorios de Supabase.
@@ -37,9 +38,8 @@ export const PAYMENT_COLUMNS =
   "id,job_id,assignment_id,extension_id,client_id,purpose,status,amount,provider," +
   "provider_transaction_id,authorized_at,paid_at,created_at";
 
-/** Identificador del usuario de la sesión, verificado contra el servidor de Auth. */
+/** Identificador del usuario de la sesión, tomado de un token con firma verificada. */
 export async function currentUserId(supabase: Client): Promise<string | null> {
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return null;
-  return data.user.id;
+  const user = await getVerifiedUser(supabase);
+  return user?.id ?? null;
 }

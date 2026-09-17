@@ -13,7 +13,19 @@ const serverSchema = z.object({
   NEXT_PUBLIC_SITE_URL: z.string().url().default("https://hagotufila.cl"),
 
   NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
+
+  /**
+   * Clave pública del proyecto.
+   *
+   * Supabase reemplazó las claves `anon` y `service_role` por `publishable` y
+   * `secret`, y retira las antiguas a fines de 2026. Se aceptan las dos formas y
+   * manda la nueva cuando está presente, para no obligar a migrar de golpe.
+   */
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
+
+  /** Clave privada. Solo servidor: omite RLS. Nunca con prefijo NEXT_PUBLIC_. */
+  SUPABASE_SECRET_KEY: z.string().min(1).optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
 
   /**
@@ -41,7 +53,9 @@ function read(): ServerEnv {
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     NEXT_PUBLIC_DATA_SOURCE: process.env.NEXT_PUBLIC_DATA_SOURCE,
     PAYMENT_PROVIDER: process.env.PAYMENT_PROVIDER,
@@ -66,8 +80,16 @@ function read(): ServerEnv {
 
 export const env: ServerEnv = read();
 
+/** Clave pública efectiva: la nueva si existe, la heredada si no. */
+export const supabasePublishableKey =
+  env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+/** Clave privada efectiva. Solo debe leerse desde código de servidor. */
+export const supabaseSecretKey =
+  env.SUPABASE_SECRET_KEY ?? env.SUPABASE_SERVICE_ROLE_KEY;
+
 export const hasSupabaseCredentials =
-  Boolean(env.NEXT_PUBLIC_SUPABASE_URL) && Boolean(env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  Boolean(env.NEXT_PUBLIC_SUPABASE_URL) && Boolean(supabasePublishableKey);
 
 export function resolveDataSource(): "demo" | "supabase" {
   if (env.NEXT_PUBLIC_DATA_SOURCE === "demo") return "demo";

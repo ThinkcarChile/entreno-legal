@@ -37,9 +37,36 @@ Qué está construido y qué falta, en orden de dependencia.
 - [x] Semilla de demostración multi-región
 - [x] 83 comprobaciones automatizadas en `npm run db:test`
 
+## Etapa 3 — Validación contra Supabase real (preparada, NO ejecutada)
+
+Todo lo necesario está construido y probado hasta donde el entorno lo permite.
+**Falta ejecutarlo contra un proyecto Supabase alojado**, y eso necesita
+credenciales que el repositorio no tiene ni debe tener.
+
+Construido y verificado:
+
+- [x] Autorización con `getClaims()` en lugar de `getUser()` / `getSession()`
+- [x] Soporte de las claves `publishable` y `secret`, con las heredadas de respaldo
+- [x] `supabase/config.toml` para que la CLI aplique migraciones y semilla
+- [x] Migraciones repetibles donde el proyecto de destino puede traer el objeto
+- [x] Carga de fotografía de perfil a Storage, con nombre generado por la aplicación
+- [x] Indicador de origen de datos visible solo en desarrollo
+- [x] `npm run verify:supabase`: 49 comprobaciones del recorrido completo por API (36 de camino feliz y 13 de operaciones que deben fallar)
+- [x] `npm run e2e`: recorrido por navegador con Playwright
+- [x] Inventario del esquema dentro de `npm run db:test`
+- [x] `docs/DESPLIEGUE-SUPABASE.md` con los pasos exactos
+
+Pendiente, y es el único punto que cierra la etapa:
+
+- [ ] Crear el proyecto Supabase y aplicar `supabase db push --include-seed`
+- [ ] Completar las variables de `.env.local` y las cuatro cuentas de prueba
+- [ ] Ejecutar `npm run verify:supabase` y que pase
+- [ ] Ejecutar `npm run e2e` con credenciales y que pase
+- [ ] Recorrer a mano, con dos navegadores, el flujo de cliente y de trabajador
+
 ---
 
-## Etapa 3 — Pagos reales
+## Etapa 4 — Pagos reales
 
 1. **Integrar Webpay Plus** con el SDK oficial vigente de Transbank, en ambiente
    de integración. Implementar los cuatro métodos de `TransbankPaymentProvider`
@@ -52,7 +79,7 @@ Qué está construido y qué falta, en orden de dependencia.
 4. **Payouts**: aprobación en `/admin/payouts` con referencia bancaria y
    liberación automática al vencer `DISPUTE_WINDOW_HOURS`.
 
-## Etapa 4 — Ejecución del trabajo
+## Etapa 5 — Ejecución del trabajo
 
 5. **Carga de imágenes** a Supabase Storage: en el asistente de publicación, en
    el perfil del trabajador y en la evidencia del trabajo.
@@ -64,7 +91,7 @@ Qué está construido y qué falta, en orden de dependencia.
 10. **Evaluación del bono por objetivo** al cerrar el trabajo.
 11. **Proceso que marque `EXPIRED`** los trabajos cuya fecha pasó sin asignación.
 
-## Etapa 5 — Confianza y comunidad
+## Etapa 6 — Confianza y comunidad
 
 12. **Reseñas** desde la interfaz, con las cuatro dimensiones.
 13. **Recálculo programado** del Índice de Confianza y de los niveles.
@@ -74,7 +101,7 @@ Qué está construido y qué falta, en orden de dependencia.
     asignación; deben convertirse en una propuesta que el trabajador acepta o
     rechaza.
 
-## Etapa 6 — Crecimiento
+## Etapa 7 — Crecimiento
 
 17. **Páginas regionales** para SEO.
 18. **Búsqueda por cercanía** con PostGIS: columna `geography` generada e índice
@@ -92,11 +119,13 @@ Qué está construido y qué falta, en orden de dependencia.
 
 | Tema | Riesgo | Mitigación prevista |
 |---|---|---|
-| Sin recorrido end-to-end con Supabase real | El entorno de desarrollo no tiene Docker ni proyecto Supabase, así que el flujo se probó contra PostgreSQL y con un contraste código–esquema, no con la aplicación en marcha contra Supabase | Primer paso de la Etapa 3: crear el proyecto, aplicar migraciones y recorrer el flujo con dos cuentas |
+| **Sin recorrido contra Supabase real** | El entorno de desarrollo no tiene ni credenciales ni Docker, así que todo se probó contra PostgreSQL más un contraste código–esquema. Las diferencias entre PostgreSQL a secas y Supabase (Auth, Realtime, Storage, permisos sobre `storage.objects`) no se han visto en funcionamiento | Ejecutar `npm run verify:supabase` y `npm run e2e` en cuanto exista el proyecto. Son 49 comprobaciones ya escritas |
+| Políticas de Storage sobre `storage.objects` | En un proyecto alojado esa tabla pertenece a otro rol; si la migración no puede crear las políticas, Storage queda sin reglas | La guía de despliegue lo anticipa y explica cómo crearlas desde el panel |
+| `getClaims()` no ejercitado contra un proyecto real | El cambio está hecho según la documentación vigente y compila, pero no se ha visto validar un token de verdad | Lo cubre `verify:supabase`, que abre cuatro sesiones simultáneas |
 | `database.types.ts` genérico | Los tipos no reflejan las columnas reales, así que un error de nombre solo lo detecta `db:contract` | Generar los tipos con la CLI al crear el proyecto |
 | Sin pruebas automatizadas del front | La lógica de dominio es pura y testeable, pero no hay pruebas | Añadir Vitest antes de la Etapa 4 |
 | Realtime sin reconexión explícita | Si se corta la conexión, el hilo deja de recibir mensajes hasta recargar | Manejar el estado del canal y reconsultar al reconectar |
 | Notificaciones solo in-app | Un trabajador que no abre la aplicación no se entera de una oferta aceptada | Push y email en la Etapa 6 |
 | Sin límite de frecuencia propio | Se depende del de Supabase Auth; las acciones de negocio no tienen tope | Añadir control por usuario en ofertas y mensajes |
 | Términos y política de privacidad provisionales | Texto de relleno | Redacción legal antes de abrir al público |
-| Imágenes sin implementar | Los buckets y las columnas existen, la carga no | Etapa 4 |
+| Imágenes de trabajos sin implementar | La foto de perfil ya sube a Storage; las imágenes asociadas a un trabajo no, porque requieren subir antes de crear el trabajo y ampliar `publish_job` | Etapa 5 |
