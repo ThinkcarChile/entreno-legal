@@ -33,6 +33,16 @@ create table auth.users (
 create or replace function auth.uid() returns uuid
 language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 
+-- Un proyecto Supabase real concede esto, y el stub no lo imitaba. Mientras
+-- todas las funciones que llamaban a auth.uid() desde una sesión de usuario eran
+-- SECURITY DEFINER —es decir, corrían como postgres— la diferencia no se notaba.
+-- Se notó al pasar `mark_conversation_read` a SECURITY INVOKER: ahí el llamante
+-- es `authenticated` de verdad, y sin estos grants fallaba en local con
+-- «permission denied for schema auth» mientras funcionaba contra Supabase. Un
+-- stub que miente en un sentido u otro no sirve como red.
+grant usage on schema auth to anon, authenticated, service_role;
+grant execute on function auth.uid() to anon, authenticated, service_role;
+
 create table storage.buckets (
   id text primary key, name text not null, public boolean default false
 );

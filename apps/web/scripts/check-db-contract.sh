@@ -77,6 +77,22 @@ do
   check_column "${pair%%:*}" "${pair##*:}"
 done
 
+# La máquina de estados de la asignación vive en dos sitios a propósito: en
+# TypeScript, para decidir qué ofrece la interfaz, y en un disparador de la base,
+# porque el usuario tiene UPDATE sobre `status` y la interfaz no es una frontera
+# de seguridad. Dos copias solo sirven si no se separan.
+echo "→ Máquina de estados de la asignación"
+CUERPO=$(psql -tAq -d "$DB_NAME" -c \
+  "select prosrc from pg_proc p
+     join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'app_private' and p.proname = 'guard_assignment_transitions'")
+if [ -z "$CUERPO" ]; then
+  echo "FALLO: no existe app_private.guard_assignment_transitions en el esquema"
+  STATUS=1
+elif ! node "$ROOT/scripts/compare-assignment-transitions.mjs" "$CUERPO"; then
+  STATUS=1
+fi
+
 if [ "$STATUS" = "0" ]; then
   echo "✓ La aplicación y el esquema coinciden"
 fi

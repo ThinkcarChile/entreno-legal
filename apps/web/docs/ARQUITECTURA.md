@@ -527,7 +527,7 @@ Ese contraste encontró el defecto descrito en §6.5.
 | `npm run db:test` | PostgreSQL local | Esquema, RLS, flujo, concurrencia, semillas, inventario. 110 comprobaciones |
 | `npm run db:push:hosted -- --plan` | Supabase real | Qué migraciones faltan por aplicar, sin escribir nada |
 | `npm run verify:schema:hosted` | Supabase real | Inventario, RLS, `security_invoker`, grants, Realtime y advisors. 17 comprobaciones |
-| `npm run verify:supabase` | Supabase real | El mismo recorrido por API, más Realtime, Storage y Auth. 49 comprobaciones |
+| `npm run verify:supabase` | Supabase real | El mismo recorrido por API, más Realtime, Storage y Auth, y las escrituras directas que deben fallar. 61 comprobaciones |
 | `npm run e2e` | Supabase real, por navegador | Entrar, publicar, ofertar, aceptar, pagar |
 
 Los tres se mantienen. El local es rápido y corre siempre, incluso sin

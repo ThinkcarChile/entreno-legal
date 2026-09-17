@@ -154,9 +154,9 @@ El proyecto Supabase de desarrollo ya existe (`hagotufila-dev`, ref
 conectada: el indicador de desarrollo muestra
 «Supabase conectado · xwgobslgldxzatjrcxhl.supabase.co».
 
-Contra ese proyecto real ya corrieron, y pasan: las 19 migraciones, la semilla
+Contra ese proyecto real ya corrieron, y pasan: las 21 migraciones, la semilla
 geográfica (1 país, 16 regiones, 346 comunas), `npm run verify:schema:hosted`,
-las 49 comprobaciones de `npm run verify:supabase`, las 11 pruebas de
+las 61 comprobaciones de `npm run verify:supabase`, las 11 pruebas de
 `npm run e2e` —incluidas las siete del marketplace— y el recorrido a mano de
 `docs/DESPLIEGUE-SUPABASE.md` §8.4.
 

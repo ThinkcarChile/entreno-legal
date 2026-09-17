@@ -99,50 +99,80 @@ function check(label: string, actual: unknown, expected: unknown): void {
 /* --------------------------------------------------- avisos ya revisados */
 
 /**
- * Avisos del advisor de seguridad que se aceptan, y por qué.
+ * Avisos del advisor de seguridad que se aceptan, y por qué CADA UNO.
  *
  * Silenciar un aviso "porque sí" es peor que no mirarlo: deja el mismo texto
- * verde con menos información. Aquí cada aviso aceptado va con su objeto y su
- * motivo, y la lista se comprueba en los dos sentidos:
+ * verde con menos información. Y aceptar un grupo entero con un motivo común es
+ * casi lo mismo, porque el motivo deja de decir nada del objeto concreto. Por
+ * eso el motivo va por objeto, no por tipo de aviso.
+ *
+ * La lista se comprueba en los dos sentidos:
  *
  *   · un aviso que NO esté en la lista es un fallo, aunque sea del mismo tipo
- *     que otro ya aceptado —una función nueva se revisa antes de aceptarse—;
+ *     que otro ya aceptado —una función nueva se audita antes de aceptarse—;
  *   · un objeto de la lista que el advisor ya NO reporta también es un fallo,
  *     para que la lista no envejezca sola.
+ *
+ * Las catorce funciones se auditaron una por una en la Etapa 2.5: quién debe
+ * llamarlas, qué escritura concreta les negaría RLS al llamante, qué comprueban
+ * por dentro y qué prueba negativa lo respalda. El detalle está en
+ * `docs/BASE-DE-DATOS.md`. `mark_conversation_read` y `mark_notifications_read`
+ * salieron de esta lista en esa misma auditoría: no necesitaban SECURITY
+ * DEFINER y pasaron a INVOKER.
  */
-const AVISOS_ACEPTADOS: Record<string, { motivo: string; objetos: readonly string[] }> = {
+const AVISOS_ACEPTADOS: Record<string, Record<string, string>> = {
   auth_leaked_password_protection: {
-    motivo:
-      "Supabase solo permite activarlo desde el plan Pro (la API responde 402 en " +
-      "Free) y el proyecto de desarrollo es Free. Mientras tanto, el mínimo de 8 " +
-      "caracteres lo impone la propia aplicación al registrarse y al cambiar la " +
-      "clave. EN PRODUCCIÓN, que será de pago, hay que activarlo y quitar esta " +
-      "entrada: en cuanto esté activo el advisor deja de reportarlo y esta lista " +
-      "falla por sobrar, que es justo lo que se quiere",
-    objetos: ["Leaked Password Protection Disabled"],
+    "Leaked Password Protection Disabled":
+      "Supabase solo permite activarlo desde el plan Pro (la API responde 402 en Free) y el " +
+      "proyecto de desarrollo es Free. El mínimo de 8 caracteres lo impone mientras tanto la " +
+      "aplicación. EN PRODUCCIÓN, que será de pago, hay que activarlo y quitar esta entrada.",
   },
   authenticated_security_definer_function_executable: {
-    motivo:
-      "son las 16 RPC del marketplace: existen justamente para que las llame " +
-      "quien tiene sesión, y cada una comprueba auth.uid() antes de actuar",
-    objetos: [
-      "public.accept_job_offer",
-      "public.cancel_job",
-      "public.complete_onboarding",
-      "public.generate_handoff_code",
-      "public.mark_conversation_read",
-      "public.mark_notifications_read",
-      "public.open_job_conversation",
-      "public.publish_job",
-      "public.request_worker_verification",
-      "public.review_worker_verification",
-      "public.set_account_modes",
-      "public.set_worker_service_areas",
-      "public.start_protected_payment",
-      "public.update_open_job",
-      "public.verify_handoff_code",
-      "public.withdraw_job_offer",
-    ],
+    "public.accept_job_offer":
+      "La llama el cliente dueño del trabajo. Inserta en assignments y conversations, que no " +
+      "tienen política de INSERT para nadie, y escribe audit_logs. Comprueba pertenencia, " +
+      "estado del trabajo y de la oferta, y bloquea la fila del trabajo para serializar.",
+    "public.cancel_job":
+      "La llama el cliente dueño, o la administración. Escribe jobs.status, y desde la " +
+      "migración …000100 el usuario no tiene UPDATE sobre jobs en absoluto.",
+    "public.complete_onboarding":
+      "La llama el propio usuario. Escribe profiles.roles y onboarding_completed_at, que están " +
+      "fuera de su concesión de columna, y crea sus filas de user_private_data y loyalty.",
+    "public.generate_handoff_code":
+      "La llama el cliente de la asignación. Escribe handoff_codes, tabla que solo tiene " +
+      "política de SELECT: el PIN no puede nacer de una escritura del usuario.",
+    "public.open_job_conversation":
+      "La llaman cliente y trabajador con una oferta de por medio. Inserta en conversations, " +
+      "que no tiene política de INSERT, y comprueba que exista esa relación real.",
+    "public.publish_job":
+      "La llama cualquier cliente. Inserta en jobs y job_private_location —el usuario ya no " +
+      "tiene INSERT en ninguna de las dos— y calcula precio y comisión en el servidor.",
+    "public.request_worker_verification":
+      "La llama el trabajador. Inserta en worker_verifications y pone " +
+      "worker_profiles.verification_status en PENDING, columna fuera de su concesión: es " +
+      "justo la que no puede escribirse a mano.",
+    "public.review_worker_verification":
+      "SOLO la administración: primera línea del cuerpo es app_private.is_admin(), que lee " +
+      "profiles.role, columna que ningún usuario puede escribir (ni por UPDATE ni por INSERT). " +
+      "Resuelve la verificación y mueve el nivel del trabajador.",
+    "public.set_account_modes":
+      "La llama el propio usuario. Escribe profiles.roles, fuera de su concesión de columna.",
+    "public.set_worker_service_areas":
+      "La llama el trabajador. Reemplaza sus filas de worker_service_areas, donde el usuario ya " +
+      "no tiene INSERT desde la migración …000100.",
+    "public.start_protected_payment":
+      "La llama el cliente de la asignación. Inserta en payments, tabla sin ninguna vía de " +
+      "escritura para el usuario, y calcula importe y comisión desde la base.",
+    "public.update_open_job":
+      "La llama el cliente dueño mientras el trabajo sigue abierto. Escribe jobs y " +
+      "job_private_location, donde el usuario no tiene UPDATE ni INSERT.",
+    "public.verify_handoff_code":
+      "La llama el trabajador asignado. Necesita LEER handoff_codes, que él no puede leer —el " +
+      "PIN es del cliente— para comparar sin revelarlo, y contar los intentos.",
+    "public.withdraw_job_offer":
+      "La llama el trabajador autor de la oferta. Escribe job_offers.status, columna que quedó " +
+      "fuera de su concesión en la migración …000200 precisamente para que no pueda aceptarse " +
+      "su propia oferta.",
   },
 };
 
@@ -196,7 +226,7 @@ async function main(): Promise<void> {
   check("regiones", inv.regiones, 16);
   check("categorías de trabajo", inv.categorias, 9);
   check("comisión (puntos base)", inv.comision_pb, 1400);
-  check("migraciones en el historial", inv.migraciones, 19);
+  check("migraciones en el historial", inv.migraciones, 21);
 
   console.log("\n── Seguridad del esquema ──\n");
 
@@ -336,7 +366,7 @@ async function main(): Promise<void> {
     // Seguridad: un aviso no se ignora. O está revisado y en la lista, o falla.
     for (const l of [...errores, ...avisos]) {
       const objeto = objetoDe(l);
-      const aceptado = l.level === "WARN" && AVISOS_ACEPTADOS[l.name]?.objetos.includes(objeto);
+      const aceptado = l.level === "WARN" && Boolean(AVISOS_ACEPTADOS[l.name]?.[objeto]);
       if (aceptado) {
         aceptadosVistos.add(`${l.name}\u0000${objeto}`);
         continue;
@@ -345,14 +375,18 @@ async function main(): Promise<void> {
       failures += 1;
     }
 
-    for (const [nombre, entrada] of Object.entries(AVISOS_ACEPTADOS)) {
-      const vistos = entrada.objetos.filter((o) => aceptadosVistos.has(`${nombre}\u0000${o}`));
+    for (const [nombre, objetos] of Object.entries(AVISOS_ACEPTADOS)) {
+      const entradas = Object.entries(objetos);
+      const vistos = entradas.filter(([o]) => aceptadosVistos.has(`${nombre}\u0000${o}`));
       if (vistos.length > 0) {
-        console.log(`     ~ ${nombre}: ${vistos.length} aceptados — ${entrada.motivo}`);
+        console.log(`     ~ ${nombre}: ${vistos.length} revisados uno a uno`);
+        for (const [objeto, motivo] of vistos) {
+          console.log(`        · ${objeto}: ${motivo}`);
+        }
       }
       // Una lista de excepciones que ya no corresponde a nada es una mentira
       // que se va acumulando. Si el advisor dejó de reportarlo, sobra.
-      for (const objeto of entrada.objetos) {
+      for (const [objeto] of entradas) {
         if (!aceptadosVistos.has(`${nombre}\u0000${objeto}`)) {
           console.log(
             `     ✗ ${nombre}: ${objeto} está en la lista de aceptados pero el ` +

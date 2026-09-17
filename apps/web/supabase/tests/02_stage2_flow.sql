@@ -108,9 +108,18 @@ select 'E11 dirección exacta visible para un extraño = ' || count(*)
   from job_private_location where job_id = :'job_id'::uuid;
 select 'E12 el trabajo publicado sí es visible = ' || count(*)
   from jobs where id = :'job_id'::uuid;
+-- Desde la migración …000100 esto ya ni siquiera llega a RLS: `authenticated`
+-- no tiene UPDATE sobre `jobs`. Se acepta cualquiera de las dos formas de
+-- negarlo —error de privilegio, o cero filas por política— y se rechaza que
+-- la fila cambie.
 do $$
 begin
-  update public.jobs set hourly_rate = 1 where id = current_setting('test.job_id')::uuid;
+  begin
+    update public.jobs set hourly_rate = 1 where id = current_setting('test.job_id')::uuid;
+  exception when insufficient_privilege then
+    raise notice 'E13 OK: un extraño no puede modificar el trabajo (sin privilegio)';
+    return;
+  end;
   if found then raise notice 'E13 FALLO: un extraño modificó el trabajo';
   else raise notice 'E13 OK: un extraño no puede modificar el trabajo'; end if;
 end $$;
@@ -290,13 +299,19 @@ end $$;
 
 set role authenticated;
 set request.jwt.claim.sub = :CLIENTE;
+-- Dos capas lo impiden y cualquiera de las dos vale: desde la migración
+-- …000100 el cliente ni siquiera tiene UPDATE sobre `jobs`, y si lo tuviera,
+-- `guard_job_edits` congela el horario una vez que hay asignación.
 do $$
 begin
   update public.jobs set starts_at = now() + interval '9 days'
    where id = current_setting('test.job_id')::uuid;
   raise notice 'E34 FALLO: se cambió el horario de un trabajo ya asignado';
-exception when check_violation then
-  raise notice 'E34 OK: los campos críticos quedan congelados tras asignar';
+exception
+  when insufficient_privilege then
+    raise notice 'E34 OK: los campos críticos quedan congelados tras asignar (sin privilegio)';
+  when check_violation then
+    raise notice 'E34 OK: los campos críticos quedan congelados tras asignar';
 end $$;
 reset role; reset request.jwt.claim.sub;
 

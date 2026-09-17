@@ -35,7 +35,7 @@ Qué está construido y qué falta, en orden de dependencia.
 - [x] Pantalla central del trabajo asignado, con acciones según estado y rol
 - [x] Notificaciones in-app con indicador de no leídas
 - [x] Semilla de demostración multi-región
-- [x] Comprobaciones automatizadas en `npm run db:test` (hoy 112, con inventario y contraste código–esquema)
+- [x] Comprobaciones automatizadas en `npm run db:test` (hoy 122, con inventario y contraste código–esquema)
 
 ## Etapa 3 — Validación contra Supabase real (completada)
 
@@ -50,13 +50,13 @@ Construido y verificado:
 - [x] Migraciones repetibles donde el proyecto de destino puede traer el objeto
 - [x] Carga de fotografía de perfil a Storage, con nombre generado por la aplicación
 - [x] Indicador de origen de datos visible solo en desarrollo
-- [x] `npm run db:push:hosted`: las 19 migraciones aplicadas por HTTPS
+- [x] `npm run db:push:hosted`: las 21 migraciones aplicadas por HTTPS
 - [x] `npm run db:seed:hosted`: 1 país, 16 regiones, 346 comunas
 - [x] `npm run verify:schema:hosted`: inventario, RLS, `security_invoker`, grants
       de `anon`, `search_path`, publicación de Realtime, URLs de retorno y advisors
-- [x] `npm run verify:supabase`: 49 de 49 comprobaciones
+- [x] `npm run verify:supabase`: 61 de 61 comprobaciones
 - [x] `npm run e2e`: 11 de 11, con las siete del marketplace ejecutándose de verdad
-- [x] `npm run db:test`: 112 comprobaciones contra PostgreSQL 16 local
+- [x] `npm run db:test`: 122 comprobaciones contra PostgreSQL 16 local
 - [x] Recorrido a mano con dos ventanas: 19 de 21 pasos (los dos restantes
       necesitan que el navegador alcance Supabase, ver abajo)
 - [x] `docs/DESPLIEGUE-SUPABASE.md` con los pasos exactos
@@ -100,6 +100,56 @@ automática, para que no vuelva en silencio.
       que solo dice si hay credenciales, no si la conexión existe. Ahora
       `sendMessageAction` devuelve la fila creada y el hilo la añade siempre,
       descartando el duplicado cuando el evento llega
+
+## Etapa 2.5 bis — Auditoría individual de las 16 RPC (completada)
+
+El advisor avisa de toda función `SECURITY DEFINER` ejecutable por un usuario con
+sesión. Se auditaron una por una, con su motivo concreto, en vez de aceptarlas en
+bloque. El detalle está en `docs/BASE-DE-DATOS.md` y el motivo de cada una vive
+en `AVISOS_ACEPTADOS`, dentro de `scripts/verify-schema-hosted.ts`.
+
+- [x] **Dos no necesitaban `SECURITY DEFINER`.** `mark_conversation_read` y
+      `mark_notifications_read` solo escriben `read_at` en filas que RLS ya
+      autoriza al llamante. Pasan a `SECURITY INVOKER`, con el privilegio de
+      columna correspondiente. El advisor baja de 16 avisos a 14
+- [x] **Ocho no fallaban sin sesión.** Se apoyaban en `dueño <> auth.uid()`, y
+      con `auth.uid()` nulo esa comparación vale NULL: el `if` no entra en la
+      rama y el único control de autorización se salta solo. Comprobado sobre el
+      esquema real: sin sesión, `cancel_job` cancelaba el trabajo de otro
+      cliente. Guarda explícita añadida a las ocho
+- [x] **Las funciones no eran el único camino, y ese era el agujero de verdad.**
+      Cinco abusos comprobados rodeaban a cinco de las dieciséis escribiendo la
+      tabla a mano: autoverificarse, insertar una oferta ya aceptada, multiplicar
+      por diez el importe pactado, marcar un trabajo como pagado sin pagar y
+      autoaprobarse una verificación. El `UPDATE` estaba restringido por columna
+      desde la Etapa 1; el `INSERT` no lo estaba en ninguna tabla
+- [x] **Tres tablas con `UPDATE` abierto a todas sus columnas.** `job_offers`
+      dejaba al trabajador poner su propia oferta en `ACCEPTED` —y con ello
+      bloquear el trabajo, porque solo cabe una aceptada—; `messages` dejaba a un
+      participante reescribir el texto de lo que dijo el otro, que es prueba en
+      una disputa; `notifications` dejaba reescribir el contenido de los avisos
+- [x] **Las transiciones de la asignación, ahora también en la base.** Estaban
+      solo en TypeScript, y el propio archivo decía que la intención era
+      replicarlas como restricción. `npm run db:contract` compara las dos copias
+      y falla si divergen
+- [x] **El arnés de pruebas se tragaba los errores de SQL.** `db-test.sh` buscaba
+      `^psql:.*ERROR`, pero su propio filtro quita ese prefijo: un archivo de
+      pruebas que reventaba a media ejecución salía en verde con menos
+      comprobaciones. Corregido, y es lo que destapó los dos puntos siguientes
+- [x] **El stub local no imitaba los permisos de Supabase sobre el esquema
+      `auth`.** No se notaba mientras todo lo que llamaba a `auth.uid()` desde
+      una sesión era `SECURITY DEFINER`
+
+Pendiente de esta auditoría, y es de la Etapa 4 porque necesita reembolsos:
+
+- [ ] **`cancel_job` no toca el pago en vuelo.** Si se cancela un trabajo en
+      `PAYMENT_PENDING` y el proveedor confirma el pago después, el disparador
+      `payments_create_payout` crea un payout a favor del trabajador por un
+      trabajo cancelado, y el dinero del cliente queda cobrado sin ruta de
+      devolución. Hoy no se alcanza con el proveedor simulado, que confirma de
+      inmediato. Se cierra al integrar Webpay Plus y la conciliación
+
+---
 
 También apareció, y se resolvió, la configuración del proyecto que ninguna
 migración puede llevar:
@@ -179,7 +229,7 @@ Pendiente, y no es código:
 
 | Tema | Riesgo | Mitigación prevista |
 |---|---|---|
-| ~~Sin recorrido contra Supabase real~~ | Resuelto: el esquema está aplicado en `hagotufila-dev` y pasaron `verify:supabase` (49/49), `e2e` (10/10) y el recorrido a mano | — |
+| ~~Sin recorrido contra Supabase real~~ | Resuelto: el esquema está aplicado en `hagotufila-dev` y pasaron `verify:supabase` (61/61), `e2e` (11/11) y el recorrido a mano | — |
 | ~~Políticas de Storage sobre `storage.objects`~~ | Resuelto: la migración `…000900` creó las 11 políticas en el proyecto alojado sin intervención manual, y V07 las cuenta | — |
 | ~~`getClaims()` no ejercitado contra un proyecto real~~ | Resuelto: `verify:supabase` abre cuatro sesiones simultáneas y comprueba que ninguna se cruza | — |
 | Realtime no visto desde un navegador | La entrega funciona entre sesiones reales por API, pero el navegador del entorno donde se validó no alcanza Supabase | Repetir M15 y M16 del recorrido a mano en una máquina con salida normal |

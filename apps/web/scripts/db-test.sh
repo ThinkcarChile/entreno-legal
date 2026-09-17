@@ -72,6 +72,11 @@ run -d "$DB_NAME" -f "$ROOT/supabase/seed/001_geo.sql" > /dev/null \
     | grep -vE "$FILTER" | sed -E 's/^psql:[^ ]+ //; s/^NOTICE:  //'
 
   echo ""
+  echo "════ Etapa 2.5 · Las RPC no se pueden rodear ════"
+  psql -d "$DB_NAME" -f "$ROOT/supabase/tests/06_rpc_hardening.sql" 2>&1 \
+    | grep -vE "$FILTER" | sed -E 's/^psql:[^ ]+ //; s/^NOTICE:  //'
+
+  echo ""
   echo "════ Contrato entre la aplicación y el esquema ════"
   DB_NAME="$DB_NAME" bash "$ROOT/scripts/check-db-contract.sh"
 } | tee "$REPORT"
@@ -84,13 +89,17 @@ if grep -q "FALLO" "$REPORT"; then
   exit 1
 fi
 
-if grep -qiE "^psql:.*ERROR" "$REPORT"; then
+# El sed de arriba quita el prefijo `psql:…`, así que buscarlo aquí no encontraba
+# nunca nada: un fichero de pruebas que reventaba a media ejecución salía en
+# verde, solo que con menos comprobaciones de las que debía. Se busca la forma
+# que queda DESPUÉS del filtro.
+if grep -qE "^ERROR:" "$REPORT"; then
   echo "✗ Hubo errores de SQL inesperados:"
-  grep -iE "^psql:.*ERROR" "$REPORT"
+  grep -E "^ERROR:" "$REPORT"
   rm -f "$REPORT"
   exit 1
 fi
 
-TOTAL=$(grep -cE "^(T|E|R|S|I)[0-9]+" "$REPORT")
+TOTAL=$(grep -cE "^(T|E|R|S|I|H)[0-9]+" "$REPORT")
 echo "✓ $TOTAL comprobaciones pasaron"
 rm -f "$REPORT"

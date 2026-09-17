@@ -20,7 +20,7 @@ Anota el **project ref**: es el identificador que aparece en la URL del panel,
 > **Proyecto de desarrollo de HagoTuFila.** Ya existe y no hay que crearlo de
 > nuevo: `hagotufila-dev`, ref `xwgobslgldxzatjrcxhl`, región `sa-east-1`,
 > `https://xwgobslgldxzatjrcxhl.supabase.co`. **El esquema ya está aplicado**
-> —19 migraciones y la semilla geográfica—, así que si trabajas contra él,
+> —21 migraciones y la semilla geográfica—, así que si trabajas contra él,
 > `db:push:hosted` no tendrá nada pendiente. Para ponerte a trabajar basta con
 > la sección 2 y la 8.
 
@@ -172,7 +172,7 @@ npm run verify:schema:hosted
 
 Comprueba contra el proyecto alojado el inventario completo —tablas, vistas,
 funciones, enums, políticas, buckets, políticas de Storage, datos de referencia,
-comisión y las 19 migraciones del historial— y además que ninguna tabla esté sin
+comisión y las 21 migraciones del historial— y además que ninguna tabla esté sin
 RLS, que ninguna vista se salte `security_invoker`, que el rol `anon` no tenga
 escritura en ninguna tabla, que toda función `SECURITY DEFINER` fije su
 `search_path`, y que la publicación de Realtime traiga las cuatro tablas

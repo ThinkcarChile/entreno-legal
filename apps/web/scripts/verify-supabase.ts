@@ -120,6 +120,39 @@ async function mustFail(name: string, fn: () => Promise<unknown>): Promise<void>
   }
 }
 
+/**
+ * Comprueba que algo PROHIBIDO falle, y que falle POR EL MOTIVO ESPERADO.
+ *
+ * `mustFail` acepta cualquier error, y eso basta cuando lo único que importa es
+ * que no pase. Para las escrituras directas no basta: un choque de clave
+ * primaria, un enum mal escrito o un `null` en una columna obligatoria también
+ * dan error, y la prueba quedaría verde sin haber demostrado nada. Aquí se
+ * exige el SQLSTATE: 42501 es "sin privilegio", 23514 es una guarda de la base.
+ */
+async function mustFailWith(
+  name: string,
+  codes: readonly string[],
+  // `PromiseLike` y no `Promise`: el constructor de PostgREST no es una promesa,
+  // es un objeto con `then`. Se espera igual, pero no encaja en `Promise<T>`.
+  fn: () => PromiseLike<{ error: { message: string; code?: string } | null }>,
+): Promise<void> {
+  const id = nextId();
+  const { error } = await fn();
+  if (!error) {
+    results.push({ id, name, ok: false, detail: "la operación prohibida fue permitida" });
+    console.log(`  ${id} FALLO ${name} — la operación prohibida fue PERMITIDA`);
+    return;
+  }
+  if (!error.code || !codes.includes(error.code)) {
+    const detail = `falló, pero por otro motivo (${error.code ?? "sin código"}: ${error.message})`;
+    results.push({ id, name, ok: false, detail });
+    console.log(`  ${id} FALLO ${name} — ${detail}`);
+    return;
+  }
+  results.push({ id, name, ok: true, detail: error.code });
+  console.log(`  ${id} OK   ${name} — bloqueado (${error.code})`);
+}
+
 function section(title: string): void {
   console.log(`\n── ${title}`);
 }
@@ -1044,6 +1077,137 @@ async function main(): Promise<void> {
       .select("id", { count: "exact", head: true });
     if ((count ?? 0) === 0) return;
     throw new Error("el borrado no tuvo efecto");
+  });
+
+  section("Escritura directa: las RPC no se pueden rodear");
+
+  // Las 16 funciones SECURITY DEFINER comprueban quién llama, validan
+  // pertenencia y calculan los importes en el servidor. Eso solo sirve si son
+  // el único camino. Estas comprobaciones intentan el atajo: escribir la tabla
+  // a mano, con la sesión del usuario, sin pasar por la función.
+
+  await mustFailWith(
+    "nadie se inserta un perfil de trabajador ya verificado",
+    ["42501"],
+    () =>
+      outsider.client.from("worker_profiles").insert({
+        user_id: outsider.userId,
+        headline: "Intento de autoverificación",
+        verification_status: "VERIFIED",
+        identity_verified: true,
+        level: "EXPERTO",
+        trust_index: 100,
+        completed_jobs: 999,
+        is_accepting_jobs: true,
+      }),
+  );
+
+  await mustFailWith(
+    "nadie se inserta una verificación ya aprobada",
+    ["42501"],
+    () =>
+      outsider.client.from("worker_verifications").insert({
+        user_id: outsider.userId,
+        status: "VERIFIED",
+        document_type: "CEDULA",
+        reviewed_at: new Date().toISOString(),
+      }),
+  );
+
+  await mustFailWith(
+    "un usuario común no se da el rol de administración",
+    ["42501"],
+    () => outsider.client.from("profiles").update({ role: "ADMIN" }).eq("id", outsider.userId),
+  );
+
+  await mustFailWith(
+    "un trabajador no inserta una oferta ya aceptada",
+    ["42501"],
+    () =>
+      worker.client.from("job_offers").insert({
+        job_id: jobId,
+        worker_id: worker.userId,
+        status: "ACCEPTED",
+        hourly_rate: 1,
+        estimated_total: 1,
+      }),
+  );
+
+  await mustFailWith(
+    "el cliente no reescribe el estado de su propio trabajo",
+    ["42501"],
+    () => client.client.from("jobs").update({ status: "COMPLETED" }).eq("id", jobId),
+  );
+
+  await mustFailWith(
+    "un participante no reescribe los importes de su asignación",
+    ["42501"],
+    () =>
+      worker.client
+        .from("assignments")
+        .update({ agreed_total: 1, bonus_awarded: true })
+        .eq("id", assignmentId),
+  );
+
+  await mustFailWith(
+    "la asignación no se salta el orden de los estados",
+    ["23514"],
+    () => worker.client.from("assignments").update({ status: "COMPLETED" }).eq("id", assignmentId),
+  );
+
+  await mustFailWith(
+    "un trabajador no mueve el estado de su propia oferta a mano",
+    ["42501"],
+    () => worker.client.from("job_offers").update({ status: "WITHDRAWN" }).eq("id", offerId),
+  );
+
+  await mustFailWith(
+    "nadie reescribe un mensaje que escribió la otra persona",
+    ["42501"],
+    () =>
+      worker.client
+        .from("messages")
+        .update({ body: "Texto puesto por la contraparte" })
+        .eq("conversation_id", conversationId)
+        .eq("sender_id", client.userId),
+  );
+
+  await mustFailWith(
+    "nadie reescribe el contenido de sus propios avisos",
+    ["42501"],
+    () =>
+      worker.client
+        .from("notifications")
+        .update({ title: "Aviso reescrito", href: "/otro" })
+        .eq("user_id", worker.userId),
+  );
+
+  await check("marcar la conversación como leída sigue funcionando", async () => {
+    const { error } = await worker.client.rpc("mark_conversation_read", {
+      p_conversation_id: conversationId,
+    });
+    if (error) throw new Error(error.message);
+    const { count } = await admin
+      .from("messages")
+      .select("id", { count: "exact", head: true })
+      .eq("conversation_id", conversationId)
+      .neq("sender_id", worker.userId)
+      .is("read_at", null);
+    expect((count ?? 0) === 0, `quedaron ${count} mensajes sin marcar`);
+    return "sin mensajes pendientes, y ya no hace falta SECURITY DEFINER";
+  });
+
+  await check("y el avance legítimo del estado sigue funcionando", async () => {
+    const { error } = await worker.client
+      .from("assignments")
+      .update({ status: "CHECKED_IN", checked_in_at: new Date().toISOString() })
+      .eq("id", assignmentId);
+    if (error) throw new Error(error.message);
+    const row = orThrow(
+      await admin.from("assignments").select("status").eq("id", assignmentId).maybeSingle(),
+    ) as { status: string };
+    expect(row.status === "CHECKED_IN", `la asignación quedó en ${row.status}`);
+    return "ON_THE_WAY → CHECKED_IN";
   });
 
   section("Storage");

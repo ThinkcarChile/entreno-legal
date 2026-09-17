@@ -42,8 +42,12 @@ reset request.jwt.claim.sub;
 -- ---------------------------------------------------------------------------
 -- Publicación de un trabajo por su dueño.
 -- ---------------------------------------------------------------------------
-set role authenticated;
-set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+-- El montaje lo hace el sistema, no un usuario: desde la migración …000100
+-- `authenticated` no inserta en `jobs` ni en `job_private_location`. En la
+-- aplicación ese trabajo lo crea `publish_job`, que es SECURITY DEFINER y corre
+-- como `postgres`. Aquí se reproduce esa misma posición. Las comprobaciones de
+-- quién puede leerlo y modificarlo siguen ejecutándose como usuario.
+reset role; reset request.jwt.claim.sub;
 
 -- Desde la Etapa 2 la direccion exacta vive en job_private_location.
 insert into jobs (
@@ -71,11 +75,22 @@ select 'T08 trabajo publicado = ' || count(*) from jobs;
 reset role; reset request.jwt.claim.sub;
 set role authenticated;
 set request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
-with upd as (
-  update jobs set title = 'Titulo secuestrado por un tercero'
-   where id = '99999999-9999-9999-9999-999999999999' returning 1
-)
-select 'T09 filas modificadas por un tercero = ' || count(*) from upd;
+-- Desde la migración …000100 `authenticated` no tiene UPDATE sobre `jobs`:
+-- esto falla por privilegio antes de que RLS llegue a opinar. Se acepta
+-- cualquiera de las dos negativas y se informa cero filas modificadas.
+do $$
+declare
+  v_filas integer := 0;
+begin
+  begin
+    update jobs set title = 'Titulo secuestrado por un tercero'
+     where id = '99999999-9999-9999-9999-999999999999';
+    get diagnostics v_filas = row_count;
+  exception when insufficient_privilege then
+    v_filas := 0;
+  end;
+  raise notice 'T09 filas modificadas por un tercero = %', v_filas;
+end $$;
 
 -- ---------------------------------------------------------------------------
 -- Ofertas: sin verificación no se puede ofertar.
@@ -164,6 +179,31 @@ values ('99999999-9999-9999-9999-999999999999','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa
 update payments set status = 'PAID', paid_at = now();
 
 select 'T14 eventos de pago registrados = ' || count(*) from payment_events;
+
+-- El trabajador recorre el estado hasta el punto en que se entrega el trabajo.
+-- Antes esta prueba llamaba a `verify_handoff_code` con la asignación todavía en
+-- CONFIRMED, es decir sin que el trabajador hubiera llegado siquiera al lugar.
+-- Pasaba porque nada lo impedía: `verify_handoff_code` no mira el estado de
+-- partida. Desde la migración …000100 lo impide el disparador de transiciones,
+-- así que aquí se recorre el camino real.
+set role authenticated;
+set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+update assignments set status = 'ON_THE_WAY'  where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+update assignments set status = 'CHECKED_IN', checked_in_at = now() where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+update assignments set status = 'IN_PROGRESS', started_at = now() where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+reset role; reset request.jwt.claim.sub;
+
+-- Y no puede saltarse etapas: hacia atrás, o directo al final, se rechaza.
+set role authenticated;
+set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+do $$
+begin
+  update assignments set status = 'CONFIRMED' where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+  raise notice 'T14b FALLO: la asignación retrocedió de IN_PROGRESS a CONFIRMED';
+exception when check_violation then
+  raise notice 'T14b OK: la asignación no retrocede de estado';
+end $$;
+reset role; reset request.jwt.claim.sub;
 
 -- El cliente genera el PIN.
 set role authenticated;

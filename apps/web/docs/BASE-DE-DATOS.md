@@ -122,12 +122,66 @@ con `security_invoker = true`.
 | `accept_job_offer(offer)` | El cliente | **Atómica**: asigna, rechaza el resto, abre chat, audita y notifica |
 | `withdraw_job_offer(offer)` | El trabajador | Retira su propia oferta pendiente |
 | `open_job_conversation(job, worker)` | Cliente o trabajador con oferta | Abre o recupera el hilo del par |
-| `mark_conversation_read(id)` | Participante | Marca leídos los mensajes de la contraparte |
-| `mark_notifications_read(ids)` | Cualquier usuario conectado | Marca leídas sus notificaciones |
+| `mark_conversation_read(id)` | Participante | Marca leídos los mensajes de la contraparte (`SECURITY INVOKER`) |
+| `mark_notifications_read(ids)` | Cualquier usuario conectado | Marca leídas sus notificaciones (`SECURITY INVOKER`) |
 | `start_protected_payment(assignment)` | El cliente | Crea el pago con los montos calculados en la base |
 
 El trabajador **no puede leer** `handoff_codes`: RLS solo permite la lectura al
 cliente. Por eso el PIN sirve como prueba de presencia simultánea.
+
+### Por qué cada una es `SECURITY DEFINER`, una por una
+
+El advisor de seguridad de Supabase avisa de toda función `SECURITY DEFINER` que
+un usuario con sesión pueda ejecutar. Son catorce, y aceptarlas en bloque
+«porque son la API» no es una respuesta: se auditaron una por una en la Etapa
+2.5 y el motivo concreto de cada una está en `AVISOS_ACEPTADOS`, dentro de
+`scripts/verify-schema-hosted.ts`, que además falla si aparece una función nueva
+sin auditar o si sobra una que el advisor ya no reporta.
+
+El criterio es siempre el mismo: **qué escritura le negaría RLS al llamante**.
+Si no hay ninguna, la función no necesita `SECURITY DEFINER`. Dos no la
+necesitaban:
+
+| Función | Era | Es | Por qué |
+|---|---|---|---|
+| `mark_conversation_read` | DEFINER | **INVOKER** | Solo escribe `messages.read_at` en filas que `messages_mark_read` ya autoriza al participante |
+| `mark_notifications_read` | DEFINER | **INVOKER** | Solo escribe `notifications.read_at` de sus propias filas, que es lo que permite `notifications_own_update` |
+
+Pasarlas a `INVOKER` no es cosmética: vuelve a aplicarse RLS, de modo que si
+mañana se endurece una de esas políticas, la RPC hereda el cambio en vez de
+seguir aplicando en silencio la regla antigua.
+
+Las catorce restantes sí la necesitan, y la prueba negativa de cada una está
+en `supabase/tests/06_rpc_hardening.sql` (local) y en la sección «Escritura
+directa» de `scripts/verify-supabase.ts` (contra el proyecto real).
+
+### Las RPC no son el único camino, y ese era el problema
+
+Auditar las funciones dejó claro que estaban razonablemente escritas y que el
+agujero estaba al lado: **no hacía falta llamarlas**. La Etapa 1 restringió con
+cuidado el `UPDATE` por columna, pero el `INSERT` quedó abierto a todas las
+columnas de todas las tablas, y casi todas tienen una política del tipo «inserta
+tus propias filas». Cinco abusos comprobados contra el esquema real, no
+supuestos, y todos rodean a una de las dieciséis:
+
+| Abuso | Rodeaba a | Corregido en |
+|---|---|---|
+| Insertarse un `worker_profiles` ya `VERIFIED`, nivel `EXPERTO` y reputación inventada | `request_worker_verification` + `review_worker_verification` | `…000100` |
+| Insertar una oferta ya `ACCEPTED` | `accept_job_offer` | `…000100` |
+| Multiplicar por diez el `agreed_total` de la propia asignación | `accept_job_offer` (que congela los importes) | `…000100` |
+| Marcar el propio trabajo como `PAID` sin pagar | `start_protected_payment` | `…000100` |
+| Insertarse una verificación ya `VERIFIED` | `review_worker_verification` | `…000100` |
+| Poner la propia oferta en `ACCEPTED` por `UPDATE`, bloqueando el trabajo | `accept_job_offer` | `…000200` |
+| Reescribir el texto de un mensaje de la contraparte | `mark_conversation_read` | `…000200` |
+| Reescribir el contenido de los propios avisos | `mark_notifications_read` | `…000200` |
+
+Y ocho de las dieciséis **no fallaban sin sesión**: se apoyaban en una
+comparación `dueño <> auth.uid()`, y con `auth.uid()` nulo esa expresión vale
+NULL, así que el `if` no entra en la rama y la comprobación se salta sola.
+Comprobado: sin sesión, `cancel_job` cancelaba el trabajo de otro cliente. No
+era alcanzable desde internet —`anon` no tiene `EXECUTE`— pero dejaba la
+autorización en una sola línea de defensa. Corregido en `…000200`, y lo prueba
+`H01` de `supabase/tests/06_rpc_hardening.sql`.
 
 ### Privadas (`app_private`)
 
@@ -159,7 +213,7 @@ usuario: las políticas de Storage lo exigen.
 PGHOST=/tmp PGPORT=55432 PGUSER=postgres npm run db:test
 ```
 
-Aplica el stub de Supabase, las 19 migraciones, la semilla geográfica y 112
+Aplica el stub de Supabase, las 21 migraciones, la semilla geográfica y 122
 comprobaciones de inventario, RLS, flujo completo, concurrencia, semilla de
 demostración y contraste entre el código y el esquema. Ver `supabase/tests/`.
 
