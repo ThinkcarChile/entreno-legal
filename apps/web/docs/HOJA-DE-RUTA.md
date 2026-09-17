@@ -37,11 +37,17 @@ Qué está construido y qué falta, en orden de dependencia.
 - [x] Semilla de demostración multi-región
 - [x] 83 comprobaciones automatizadas en `npm run db:test`
 
-## Etapa 3 — Validación contra Supabase real (preparada, NO ejecutada)
+## Etapa 3 — Validación contra Supabase real (conectada, esquema NO aplicado)
 
-Todo lo necesario está construido y probado hasta donde el entorno lo permite.
-**Falta ejecutarlo contra un proyecto Supabase alojado**, y eso necesita
-credenciales que el repositorio no tiene ni debe tener.
+El proyecto alojado ya existe: `hagotufila-dev`, ref `xwgobslgldxzatjrcxhl`,
+región `sa-east-1`. La aplicación está conectada a él y lo confirma el indicador
+de origen de datos, que en desarrollo muestra
+«Supabase conectado · xwgobslgldxzatjrcxhl.supabase.co».
+
+**Falta aplicar el esquema**, y eso necesita una credencial que el repositorio no
+tiene ni debe tener: un token de acceso personal (`sbp_…`) o la contraseña de la
+base. Hasta entonces el proyecto responde `PGRST205` —"no existe la tabla"— a
+cada consulta, que es exactamente lo que se ve hoy.
 
 Construido y verificado:
 
@@ -56,12 +62,30 @@ Construido y verificado:
 - [x] Inventario del esquema dentro de `npm run db:test`
 - [x] `docs/DESPLIEGUE-SUPABASE.md` con los pasos exactos
 
-Pendiente, y es el único punto que cierra la etapa:
+Añadido al conectar el proyecto real:
 
-- [ ] Crear el proyecto Supabase y aplicar `supabase db push --include-seed`
-- [ ] Completar las variables de `.env.local` y las cuatro cuentas de prueba
+- [x] Proyecto `hagotufila-dev` creado y alcanzable; clave pública verificada
+      contra `/auth/v1/settings` y `/rest/v1/`
+- [x] `.env.local` con la URL y la clave pública; la aplicación cambia a modo
+      Supabase y lo muestra en el indicador
+- [x] Corregido: una variable presente pero vacía (`SUPABASE_SECRET_KEY=`, como
+      pide la propia plantilla) hacía fallar la validación de entorno y devolvía
+      500 en todas las páginas. Ahora vacío equivale a ausente
+- [x] `npm run db:push:hosted`: aplica las migraciones del repositorio por HTTPS
+      cuando el puerto de PostgreSQL está cerrado. Probado de extremo a extremo
+      contra un PostgreSQL 16 local: 18 migraciones, 32 tablas, 5 vistas,
+      16 funciones, 73 políticas, 19 enums, y la segunda ejecución no repite nada
+
+Pendiente, y es lo único que cierra la etapa. Todo esto está bloqueado por
+credenciales, no por código:
+
+- [ ] Aplicar el esquema al proyecto alojado
+      (`supabase db push --include-seed`, o `npm run db:push:hosted` con
+      `SUPABASE_ACCESS_TOKEN`)
+- [ ] Aplicar la semilla geográfica: sin ella los trabajos no tienen comunas
+- [ ] Poner `SUPABASE_SECRET_KEY` y las cuatro cuentas de prueba en `.env.local`
 - [ ] Ejecutar `npm run verify:supabase` y que pase
-- [ ] Ejecutar `npm run e2e` con credenciales y que pase
+- [ ] Ejecutar `npm run e2e` con credenciales y que pase, sin omitir `marketplace.spec.ts`
 - [ ] Recorrer a mano, con dos navegadores, el flujo de cliente y de trabajador
 
 ---

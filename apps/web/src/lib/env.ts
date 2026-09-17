@@ -48,22 +48,38 @@ const serverSchema = z.object({
 
 export type ServerEnv = z.infer<typeof serverSchema>;
 
+/**
+ * Una variable presente pero vacía equivale a no haberla definido.
+ *
+ * `.env.example` y la documentación piden dejar en blanco lo que todavía no se
+ * tiene (`SUPABASE_SECRET_KEY=`, las cuentas de prueba, las credenciales de
+ * Transbank). Sin esta normalización, Next carga esos valores como `""`, zod los
+ * rechaza contra `min(1)` o los coerce a 0, y la aplicación devuelve 500 en vez
+ * de arrancar en modo demostración. La plantilla es la fuente de verdad: si dice
+ * "déjalo vacío", vacío tiene que significar ausente.
+ */
+function orUndefined(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? undefined : trimmed;
+}
+
 function read(): ServerEnv {
   const parsed = serverSchema.safeParse({
-    NODE_ENV: process.env.NODE_ENV,
-    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
-    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-    NEXT_PUBLIC_DATA_SOURCE: process.env.NEXT_PUBLIC_DATA_SOURCE,
-    PAYMENT_PROVIDER: process.env.PAYMENT_PROVIDER,
-    TRANSBANK_ENVIRONMENT: process.env.TRANSBANK_ENVIRONMENT,
-    TRANSBANK_COMMERCE_CODE: process.env.TRANSBANK_COMMERCE_CODE,
-    TRANSBANK_API_KEY: process.env.TRANSBANK_API_KEY,
-    PLATFORM_COMMISSION_BPS: process.env.PLATFORM_COMMISSION_BPS,
-    DISPUTE_WINDOW_HOURS: process.env.DISPUTE_WINDOW_HOURS,
+    NODE_ENV: orUndefined(process.env.NODE_ENV),
+    NEXT_PUBLIC_SITE_URL: orUndefined(process.env.NEXT_PUBLIC_SITE_URL),
+    NEXT_PUBLIC_SUPABASE_URL: orUndefined(process.env.NEXT_PUBLIC_SUPABASE_URL),
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: orUndefined(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: orUndefined(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+    SUPABASE_SECRET_KEY: orUndefined(process.env.SUPABASE_SECRET_KEY),
+    SUPABASE_SERVICE_ROLE_KEY: orUndefined(process.env.SUPABASE_SERVICE_ROLE_KEY),
+    NEXT_PUBLIC_DATA_SOURCE: orUndefined(process.env.NEXT_PUBLIC_DATA_SOURCE),
+    PAYMENT_PROVIDER: orUndefined(process.env.PAYMENT_PROVIDER),
+    TRANSBANK_ENVIRONMENT: orUndefined(process.env.TRANSBANK_ENVIRONMENT),
+    TRANSBANK_COMMERCE_CODE: orUndefined(process.env.TRANSBANK_COMMERCE_CODE),
+    TRANSBANK_API_KEY: orUndefined(process.env.TRANSBANK_API_KEY),
+    PLATFORM_COMMISSION_BPS: orUndefined(process.env.PLATFORM_COMMISSION_BPS),
+    DISPUTE_WINDOW_HOURS: orUndefined(process.env.DISPUTE_WINDOW_HOURS),
   });
 
   if (!parsed.success) {

@@ -35,6 +35,7 @@ con datos realistas en pesos chilenos. Es la forma más rápida de revisar la in
 | `npm run db:test` | Aplica el esquema a un PostgreSQL y corre todas las pruebas |
 | `npm run db:contract` | Comprueba que el código y el esquema coincidan |
 | `npm run verify:supabase` | Recorre el marketplace completo contra un Supabase real |
+| `npm run db:push:hosted` | Aplica las migraciones a un proyecto alojado por HTTPS, cuando el puerto 5432 está cerrado |
 | `npm run e2e` | Recorrido por navegador con Playwright |
 
 ---
@@ -75,6 +76,14 @@ npx supabase db push --include-seed      # esquema + 16 regiones y 346 comunas
 
 npx supabase gen types typescript --linked --schema public \
   > src/lib/supabase/database.types.ts
+```
+
+Si tu red no deja salir al puerto 5432 y `db push` se queda colgado, hay una vía
+por HTTPS con las mismas migraciones (necesita `SUPABASE_ACCESS_TOKEN`):
+
+```bash
+npm run db:push:hosted -- --plan   # qué se aplicaría
+npm run db:push:hosted             # aplicar
 ```
 
 Semillas de demostración, **solo en entornos de prueba** (crean cuentas con
@@ -131,8 +140,16 @@ Lo que **todavía es simulado**:
 | Imágenes | Los buckets y columnas existen; la carga no está implementada |
 | Notificaciones | Solo dentro de la aplicación. Sin push, email ni SMS |
 
-La Etapa 3 deja lista la validación contra un proyecto Supabase alojado
-(`npm run verify:supabase` y `npm run e2e`), pero **no se ha ejecutado**: este
-entorno no tiene credenciales. Es el primer paso antes de integrar Transbank.
+El proyecto Supabase de desarrollo ya existe (`hagotufila-dev`, ref
+`xwgobslgldxzatjrcxhl`) y la aplicación está conectada a él: con la URL y la
+clave pública en `.env.local`, el indicador de desarrollo pasa a
+«Supabase conectado · xwgobslgldxzatjrcxhl.supabase.co».
+
+Lo que **todavía no se ha ejecutado** es aplicar el esquema a ese proyecto, y con
+ello `npm run verify:supabase` y las pruebas E2E del marketplace. Falta una
+credencial que el repositorio no tiene ni debe tener: un token de acceso personal
+o la contraseña de la base para las migraciones, y `SUPABASE_SECRET_KEY` para las
+cuentas de prueba. Mientras tanto el proyecto responde `PGRST205` a cada consulta,
+porque está vacío. Ver `docs/DESPLIEGUE-SUPABASE.md` §3.
 
 Ver `docs/HOJA-DE-RUTA.md` para el detalle y los riesgos pendientes.

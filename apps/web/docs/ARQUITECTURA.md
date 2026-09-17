@@ -429,6 +429,46 @@ del proyecto) o **Modo demo** (naranja). En producción no se pinta nunca.
 Existe por una razón concreta: una prueba de aceptación hecha sin darse cuenta
 contra datos de ejemplo no vale, y es un error fácil de cometer.
 
+### 7.6 Aplicar migraciones donde solo sale HTTPS
+
+`supabase db push` abre una conexión PostgreSQL directa al puerto 5432 del
+proyecto, o al 6543 del pooler. Eso es lo correcto y es la vía normal. Pero hay
+entornos donde ese puerto está cerrado y solo sale tráfico HTTPS: contenedores
+de integración continua, redes corporativas, el entorno remoto de un agente. Ahí
+`db push` no falla con un mensaje útil: espera hasta agotar el tiempo.
+
+`scripts/push-migrations-hosted.ts` (`npm run db:push:hosted`) cubre ese caso.
+Envía el contenido de cada archivo de `supabase/migrations/` tal cual, en el
+mismo orden, a la Management API sobre HTTPS, y registra cada versión en
+`supabase_migrations.schema_migrations` con el mismo formato que el CLI, de modo
+que un `supabase db push` posterior desde otra máquina las vea aplicadas y no las
+repita.
+
+Tres decisiones deliberadas:
+
+- **No reconstruye SQL.** Las migraciones del repositorio son el esquema oficial;
+  el script es transporte, no una segunda fuente de verdad.
+- **No ignora errores.** Si una migración falla, se detiene en ese archivo, no la
+  registra y sale con código distinto de cero. La siguiente ejecución retoma
+  desde ahí.
+- **No sustituye al CLI.** Es la salida de emergencia, y la documentación dice
+  cuándo usarla (`docs/DESPLIEGUE-SUPABASE.md` §3.b).
+
+No cubre `--include-seed`: la semilla se aplica aparte.
+
+### 7.7 Una variable vacía es una variable ausente
+
+`.env.example` pide dejar en blanco lo que todavía no se tiene:
+`SUPABASE_SECRET_KEY=`, las cuentas de prueba, las credenciales de Transbank. Al
+conectar el proyecto real esa instrucción resultó ser una trampa: Next carga una
+línea `X=` como la cadena vacía, no como ausente, y el esquema de zod la rechazaba
+contra `min(1)`. Resultado: la aplicación devolvía 500 en todas las páginas por
+seguir su propia plantilla.
+
+`src/lib/env.ts` normaliza ahora cada valor antes de validarlo: vacío o solo
+espacios equivale a no definido. La validación sigue siendo ruidosa cuando el
+valor está presente y es inválido, que es cuando de verdad conviene fallar.
+
 ## 8. Verificación del esquema
 
 El esquema no se entrega "escrito y sin ejecutar". Se aplica y se prueba contra un
@@ -465,6 +505,7 @@ Ese contraste encontró el defecto descrito en §6.5.
 | Comando | Contra qué | Qué cubre |
 |---|---|---|
 | `npm run db:test` | PostgreSQL local | Esquema, RLS, flujo, concurrencia, semillas, inventario. 110 comprobaciones |
+| `npm run db:push:hosted -- --plan` | Supabase real | Qué migraciones faltan por aplicar, sin escribir nada |
 | `npm run verify:supabase` | Supabase real | El mismo recorrido por API, más Realtime, Storage y Auth. 49 comprobaciones |
 | `npm run e2e` | Supabase real, por navegador | Entrar, publicar, ofertar, aceptar, pagar |
 

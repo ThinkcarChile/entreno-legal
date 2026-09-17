@@ -17,6 +17,11 @@ Tiempo aproximado: 20 minutos.
 Anota el **project ref**: es el identificador que aparece en la URL del panel,
 `https://supabase.com/dashboard/project/<project-ref>`.
 
+> **Proyecto de desarrollo de HagoTuFila.** Ya existe y no hay que crearlo de
+> nuevo: `hagotufila-dev`, ref `xwgobslgldxzatjrcxhl`, región `sa-east-1`,
+> `https://xwgobslgldxzatjrcxhl.supabase.co`. Para trabajar contra él basta con
+> la sección 2 en adelante.
+
 ---
 
 ## 2. Copiar las credenciales
@@ -46,6 +51,8 @@ el navegador una credencial que omite RLS.
 
 ## 3. Aplicar el esquema
 
+### 3.a Vía normal: el CLI de Supabase
+
 ```bash
 cd apps/web
 
@@ -63,6 +70,46 @@ npx supabase db push --include-seed
 Esto crea, en orden: extensiones, enums, funciones auxiliares, tablas, triggers,
 vistas, políticas RLS, privilegios de tabla y de columna, buckets de Storage y
 las funciones RPC.
+
+### 3.b Si el puerto de PostgreSQL está cerrado
+
+`supabase db push` abre una conexión PostgreSQL directa al puerto 5432 del
+proyecto, o al 6543 del pooler. Hay entornos —contenedores de integración
+continua, redes corporativas, el entorno remoto de un agente— donde solo sale
+tráfico HTTPS. Ahí `db push` no falla con un mensaje claro: se queda esperando
+hasta agotar el tiempo.
+
+Cómo saber si es tu caso, antes de perder diez minutos:
+
+```bash
+# 443 responde y 5432 no → estás en este caso
+node -e 'const s=require("net").connect(5432,"aws-1-sa-east-1.pooler.supabase.com");
+s.setTimeout(6000);
+s.on("connect",()=>{console.log("5432 abierto");s.end()});
+s.on("timeout",()=>{console.log("5432 bloqueado");s.destroy()});
+s.on("error",e=>console.log("5432 bloqueado:",e.code))'
+```
+
+Para ese caso el repositorio trae:
+
+```bash
+# Requiere SUPABASE_ACCESS_TOKEN en .env.local (token personal `sbp_…`,
+# se crea en https://supabase.com/dashboard/account/tokens)
+npm run db:push:hosted -- --plan    # vista previa, no escribe nada
+npm run db:push:hosted              # aplica
+```
+
+`scripts/push-migrations-hosted.ts` envía el contenido de cada archivo de
+`supabase/migrations/` tal cual, en el mismo orden, a través de la Management
+API sobre HTTPS, y lleva el mismo registro en
+`supabase_migrations.schema_migrations` que usa el CLI. Un `supabase db push`
+posterior desde otra máquina ve las migraciones como aplicadas y no las repite.
+No reconstruye SQL ni omite comprobaciones: si una migración falla, se detiene
+en ese archivo, no la registra y sale con código distinto de cero.
+
+Lo que **no** cubre: la semilla. `--include-seed` no tiene equivalente aquí, así
+que la semilla geográfica hay que aplicarla aparte (sección 5) o pegándola en el
+editor SQL del panel.
 
 ### Comprobar que quedó completo
 
@@ -133,6 +180,26 @@ llevan al lugar equivocado.
 En un proyecto de pruebas conviene desactivarlo. La aplicación funciona igual en
 los dos casos: si Supabase exige confirmación, el registro muestra "revisa tu
 correo" en vez de entrar directo.
+
+Para saber cómo está un proyecto sin entrar al panel, la clave es
+`mailer_autoconfirm`: `true` significa confirmación desactivada.
+
+```bash
+curl -s "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/settings" \
+  -H "apikey: $NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" |
+  node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+    const s=JSON.parse(d);
+    console.log("registro abierto :", !s.disable_signup);
+    console.log("correo+contraseña:", s.external.email);
+    console.log("autoconfirmación :", s.mailer_autoconfirm);
+  })'
+```
+
+`hagotufila-dev` responde hoy `mailer_autoconfirm: false`, es decir, con
+confirmación exigida. Eso **no** bloquea las pruebas: `npm run verify:supabase` y
+las pruebas E2E no se registran por el formulario, sino que crean sus cuentas con
+`auth.admin.createUser({ email_confirm: true })` usando la clave privada, que es
+justamente la excepción para la que esa clave está permitida.
 
 ### 4.3 Realtime (verificar)
 
@@ -282,3 +349,6 @@ otra sin recargar.
 | "Falta la clave privada de Supabase" al pagar | Falta `SUPABASE_SECRET_KEY` |
 | `db push` falla al crear políticas de Storage | El rol no puede escribir en `storage.objects`: crea esas políticas desde **Storage → Policies** con las reglas de la migración `…000900` |
 | Un trabajador verificado no puede ofertar | Revisa `worker_profiles.verification_status`; debe ser `VERIFIED` |
+| `db push` se queda colgado sin mensaje | El puerto 5432/6543 está bloqueado en tu red: usa `npm run db:push:hosted` (sección 3.b) |
+| Todas las páginas dan 500 con `PGRST205` | Hay credenciales pero el esquema no está aplicado: la aplicación habla con el proyecto y el proyecto está vacío |
+| "Variables de entorno inválidas" al arrancar | Un valor presente pero mal formado. Una variable *vacía* no da este error: se trata como ausente |
