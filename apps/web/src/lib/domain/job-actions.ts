@@ -56,6 +56,20 @@ export function isFinished(status: JobStatus): boolean {
   );
 }
 
+/**
+ * El cliente pidió cancelar mientras había un pago en vuelo y se espera la
+ * respuesta del proveedor. Nada se puede hacer con el trabajo en este estado:
+ * ni pagar, ni cancelar otra vez, ni comenzar. Termina en CANCELLED.
+ */
+export function isCancellationPending(status: JobStatus): boolean {
+  return status === JobStatus.CANCELLATION_PENDING;
+}
+
+/** El trabajo todavía puede recibir un pago que lo habilite. */
+export function isPayable(status: JobStatus): boolean {
+  return status === JobStatus.OFFER_ACCEPTED || status === JobStatus.PAYMENT_PENDING;
+}
+
 export function jobPermissions(status: JobStatus, viewer: Viewer): JobPermissions {
   const client = viewer === "client";
   const editable = status === JobStatus.DRAFT || status === JobStatus.PUBLISHED;
@@ -69,10 +83,9 @@ export function jobPermissions(status: JobStatus, viewer: Viewer): JobPermission
         status === JobStatus.PAYMENT_PENDING),
     canReceiveOffers: isOpen(status),
     canAcceptOffer: client && isOpen(status),
-    needsPayment:
-      client && (status === JobStatus.OFFER_ACCEPTED || status === JobStatus.PAYMENT_PENDING),
+    needsPayment: client && isPayable(status),
     canStartWork: viewer === "worker" && status === JobStatus.PAID,
-    canChat: viewer !== "visitor" && !isFinished(status),
+    canChat: viewer !== "visitor" && !isFinished(status) && !isCancellationPending(status),
   };
 }
 

@@ -50,13 +50,13 @@ Construido y verificado:
 - [x] Migraciones repetibles donde el proyecto de destino puede traer el objeto
 - [x] Carga de fotografía de perfil a Storage, con nombre generado por la aplicación
 - [x] Indicador de origen de datos visible solo en desarrollo
-- [x] `npm run db:push:hosted`: las 21 migraciones aplicadas por HTTPS
+- [x] `npm run db:push:hosted`: las 23 migraciones aplicadas por HTTPS
 - [x] `npm run db:seed:hosted`: 1 país, 16 regiones, 346 comunas
 - [x] `npm run verify:schema:hosted`: inventario, RLS, `security_invoker`, grants
       de `anon`, `search_path`, publicación de Realtime, URLs de retorno y advisors
 - [x] `npm run verify:supabase`: 61 de 61 comprobaciones
 - [x] `npm run e2e`: 11 de 11, con las siete del marketplace ejecutándose de verdad
-- [x] `npm run db:test`: 122 comprobaciones contra PostgreSQL 16 local
+- [x] `npm run db:test`: 141 comprobaciones contra PostgreSQL 16 local
 - [x] Recorrido a mano con dos ventanas: 19 de 21 pasos (los dos restantes
       necesitan que el navegador alcance Supabase, ver abajo)
 - [x] `docs/DESPLIEGUE-SUPABASE.md` con los pasos exactos
@@ -140,14 +140,34 @@ en `AVISOS_ACEPTADOS`, dentro de `scripts/verify-schema-hosted.ts`.
       `auth`.** No se notaba mientras todo lo que llamaba a `auth.uid()` desde
       una sesión era `SECURITY DEFINER`
 
-Pendiente de esta auditoría, y es de la Etapa 4 porque necesita reembolsos:
+El último hallazgo de esa auditoría se cerró sin esperar a Webpay, porque era
+una carrera del dominio y no del proveedor (`docs/PAGOS.md`):
 
-- [ ] **`cancel_job` no toca el pago en vuelo.** Si se cancela un trabajo en
-      `PAYMENT_PENDING` y el proveedor confirma el pago después, el disparador
-      `payments_create_payout` crea un payout a favor del trabajador por un
-      trabajo cancelado, y el dinero del cliente queda cobrado sin ruta de
-      devolución. Hoy no se alcanza con el proveedor simulado, que confirma de
-      inmediato. Se cierra al integrar Webpay Plus y la conciliación
+- [x] **`cancel_job` no tocaba el pago en vuelo.** Si se cancelaba un trabajo
+      en `PAYMENT_PENDING` y el proveedor confirmaba después, el disparador de
+      payout —sin ninguna comprobación— pagaba al trabajador por un trabajo
+      cancelado y el dinero del cliente quedaba cobrado sin ruta de devolución.
+      Resuelto en `…000300` y `…000400`: estado `CANCELLATION_PENDING`, decisión
+      única bajo bloqueo `jobs → assignments → payments`, entrada única de
+      resultados (`confirm_payment_result`, solo del servicio) idempotente por
+      identificador de evento, «devolución pendiente» como
+      `UNDER_REVIEW + captured_at + review_reason`, y candados en la base:
+      ningún payout sin pago `PAID` ni sobre cancelado, ninguna asignación
+      cancelada vuelve a habilitarse, ningún trabajo cancelado revive, y el
+      usuario perdió `UPDATE`/`DELETE` sobre las tres tablas de dinero
+- [x] **No se podía reproducir.** El proveedor simulado aprobaba en el acto.
+      `DelayedMockPaymentProvider` (`mock-delayed`) espera a `settle()` y libera
+      a todos los que esperaban en el mismo tick: una barrera, sin `sleep`.
+      Con él corren P01–P17 y las carreras R10–R12 en local (dos sesiones
+      `psql`, `RACE_REPS` veces) y las 23 comprobaciones de
+      `npm run verify:payments` contra `hagotufila-dev` (tres ejecuciones,
+      25 carreras de cada tipo, los dos desenlaces observados, cero
+      violaciones de invariantes)
+- [x] **Dos defectos latentes que destapó.** `start_protected_payment` nunca
+      reutilizaba un pago existente (comprobaba `record IS NOT NULL`, que en
+      PL/pgSQL exige todas las columnas no nulas) y bloqueaba la asignación
+      antes que el trabajo, al revés que `cancel_job`: candidato a
+      interbloqueo. Corregidos los dos
 
 ---
 
@@ -183,9 +203,14 @@ Pendiente, y no es código:
    y mapear sus respuestas a los estados internos. No inventar endpoints.
    La acción de servidor y la ruta `/pagos/retorno` ya están escritas para no
    tener que cambiarlas.
-2. **Conciliación**: idempotencia por `provider_transaction_id`, reintentos y
-   registro completo en `payment_events`.
-3. **Reembolsos** totales y parciales.
+2. **Conciliación**: la idempotencia por evento y la entrada única
+   (`confirm_payment_result`) ya existen; falta la tarea que consulte los pagos
+   en vuelo (`getStatus`) pasado un plazo y los asiente, y que saque de
+   `CANCELLATION_PENDING` a un trabajo cuyo proveedor nunca respondió.
+   Definir el `provider_event_id` de Webpay con el SDK delante.
+3. **Reembolsos** totales y parciales. Los pagos `UNDER_REVIEW` con
+   `captured_at` son la cola de entrada: hoy son un registro contable, no un
+   reembolso bancario. Ver los riesgos de `docs/PAGOS.md` §9.
 4. **Payouts**: aprobación en `/admin/payouts` con referencia bancaria y
    liberación automática al vencer `DISPUTE_WINDOW_HOURS`.
 
@@ -232,6 +257,7 @@ Pendiente, y no es código:
 | ~~Sin recorrido contra Supabase real~~ | Resuelto: el esquema está aplicado en `hagotufila-dev` y pasaron `verify:supabase` (61/61), `e2e` (11/11) y el recorrido a mano | — |
 | ~~Políticas de Storage sobre `storage.objects`~~ | Resuelto: la migración `…000900` creó las 11 políticas en el proyecto alojado sin intervención manual, y V07 las cuenta | — |
 | ~~`getClaims()` no ejercitado contra un proyecto real~~ | Resuelto: `verify:supabase` abre cuatro sesiones simultáneas y comprueba que ninguna se cruza | — |
+| Devolución pendiente sin reembolso real | Un pago que llegó tras la cancelación queda `UNDER_REVIEW` con `captured_at`; nadie lo devuelve todavía y ninguna tarea vigila los trabajos que se quedan en `CANCELLATION_PENDING` si el proveedor no responde | Etapa 4: reembolso con el SDK y conciliación de pagos en vuelo (`docs/PAGOS.md` §9) |
 | Realtime no visto desde un navegador | La entrega funciona entre sesiones reales por API, pero el navegador del entorno donde se validó no alcanza Supabase | Repetir M15 y M16 del recorrido a mano en una máquina con salida normal |
 | `database.types.ts` genérico | Los tipos no reflejan las columnas reales, así que un error de nombre solo lo detecta `db:contract` | Generar los tipos con la CLI al crear el proyecto |
 | Sin pruebas automatizadas del front | La lógica de dominio es pura y testeable, pero no hay pruebas | Añadir Vitest antes de la Etapa 4 |

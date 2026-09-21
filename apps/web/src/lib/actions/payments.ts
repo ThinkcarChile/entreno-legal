@@ -1,7 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
 import { env } from "@/lib/env";
 import { getPaymentProvider } from "@/lib/payments";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -94,39 +92,8 @@ export async function startProtectedPaymentAction(
 
 /** ¿Está disponible el botón de simulación? Solo fuera de producción. */
 export async function isPaymentSimulationEnabled(): Promise<boolean> {
-  return env.PAYMENT_PROVIDER === "mock" && env.NODE_ENV !== "production";
-}
-
-export async function cancelPendingPaymentAction(
-  paymentId: string,
-): Promise<ActionResult<void>> {
-  try {
-    const { supabase, userId } = await requireSession();
-    const { data: payment } = await supabase
-      .from("payments")
-      .select("id,client_id,status,assignment_id")
-      .eq("id", paymentId)
-      .maybeSingle<{
-        id: string;
-        client_id: string;
-        status: string;
-        assignment_id: string | null;
-      }>();
-
-    if (!payment || payment.client_id !== userId) {
-      return { ok: false, error: "No encontramos el pago." };
-    }
-    if (payment.status === "PAID") {
-      return { ok: false, error: "Este pago ya fue confirmado." };
-    }
-
-    const admin = createAdminClient();
-    await admin.from("payments").update({ status: "FAILED", failed_at: new Date().toISOString() })
-      .eq("id", paymentId);
-
-    revalidatePath(`/mis-trabajos/${payment.assignment_id}`);
-    return actionOk();
-  } catch (error) {
-    return actionError(error, "No pudimos cancelar el pago.");
-  }
+  return (
+    (env.PAYMENT_PROVIDER === "mock" || env.PAYMENT_PROVIDER === "mock-delayed") &&
+    env.NODE_ENV !== "production"
+  );
 }

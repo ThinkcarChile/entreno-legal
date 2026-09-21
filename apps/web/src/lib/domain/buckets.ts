@@ -21,7 +21,12 @@ export function clientBuckets(jobs: readonly ClientJobSummary[]): readonly Bucke
   const waiting = jobs.filter((j) => j.status === JobStatus.PUBLISHED && j.offerCount === 0);
   const withOffers = jobs.filter((j) => j.status === JobStatus.PUBLISHED && j.offerCount > 0);
   const assigned = jobs.filter(
-    (j) => j.status === JobStatus.OFFER_ACCEPTED || j.status === JobStatus.PAYMENT_PENDING,
+    (j) =>
+      j.status === JobStatus.OFFER_ACCEPTED ||
+      j.status === JobStatus.PAYMENT_PENDING ||
+      // Con la cancelación en verificación sigue aquí, con su propia insignia,
+      // hasta que el proveedor responda y pase a cancelado.
+      j.status === JobStatus.CANCELLATION_PENDING,
   );
   const running = jobs.filter(
     (j) =>

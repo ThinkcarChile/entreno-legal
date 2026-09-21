@@ -41,6 +41,13 @@ export interface ConfirmPaymentInput {
 
 export interface ConfirmPaymentResult {
   providerTransactionId: string;
+  /**
+   * Identifica ESTA confirmación en el proveedor. Una misma confirmación que
+   * llega dos veces —el usuario recarga la página de retorno, el proveedor
+   * reintenta un webhook— trae el mismo id, y la base la registra una sola
+   * vez. Un pago reintentado con otro token es otro evento.
+   */
+  providerEventId: string;
   status: PaymentStatus;
   amount: Money;
   /** Código de autorización del proveedor, si existe. */

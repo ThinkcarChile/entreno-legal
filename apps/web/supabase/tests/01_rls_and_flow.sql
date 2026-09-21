@@ -171,6 +171,11 @@ insert into assignments (
   '11111111-1111-1111-1111-111111111111',
   'AWAITING_PAYMENT', 8500, 300, 42500, 15000
 );
+-- La asignación se insertó a mano; en la aplicación la crea accept_job_offer,
+-- que deja el trabajo en OFFER_ACCEPTED. Desde la migración …000400 un pago
+-- solo habilita un trabajo que de verdad esté esperando pago, así que el
+-- montaje tiene que dejar el mismo estado que dejaría el camino real.
+update jobs set status = 'OFFER_ACCEPTED' where id = '99999999-9999-9999-9999-999999999999';
 
 insert into payments (job_id, assignment_id, client_id, amount, provider, status)
 values ('99999999-9999-9999-9999-999999999999','aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',

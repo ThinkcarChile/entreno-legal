@@ -118,13 +118,14 @@ con `security_invoker = true`.
 | `review_worker_verification(...)` | Administración | Aprueba, rechaza o suspende, y avisa a la persona |
 | `publish_job(jsonb)` | El cliente | Crea el trabajo y su dirección privada en una sola operación |
 | `update_open_job(id, jsonb)` | El cliente | Edita mientras el trabajo siga abierto y avisa a quien ofertó |
-| `cancel_job(id, motivo)` | El cliente | Cancela y rechaza las ofertas pendientes |
+| `cancel_job(id, motivo)` | El cliente | Cancela mirando el pago: sin dinero en juego, en el acto; con un pago en vuelo, deja el trabajo en `CANCELLATION_PENDING` hasta que el proveedor responda; con pago confirmado, la rechaza (reembolso o disputa). Ver `PAGOS.md` |
 | `accept_job_offer(offer)` | El cliente | **Atómica**: asigna, rechaza el resto, abre chat, audita y notifica |
 | `withdraw_job_offer(offer)` | El trabajador | Retira su propia oferta pendiente |
 | `open_job_conversation(job, worker)` | Cliente o trabajador con oferta | Abre o recupera el hilo del par |
 | `mark_conversation_read(id)` | Participante | Marca leídos los mensajes de la contraparte (`SECURITY INVOKER`) |
 | `mark_notifications_read(ids)` | Cualquier usuario conectado | Marca leídas sus notificaciones (`SECURITY INVOKER`) |
 | `start_protected_payment(assignment)` | El cliente | Crea el pago con los montos calculados en la base |
+| `confirm_payment_result(pago, proveedor, evento, resultado, importe, detalles)` | **Solo la clave de servicio** (`EXECUTE` revocado a todo usuario) | Única entrada de resultados del proveedor: registra el evento una vez por identificador, decide bajo bloqueo `jobs → assignments → payments` y devuelve qué pasó |
 
 El trabajador **no puede leer** `handoff_codes`: RLS solo permite la lectura al
 cliente. Por eso el PIN sirve como prueba de presencia simultánea.
@@ -174,6 +175,9 @@ supuestos, y todos rodean a una de las dieciséis:
 | Poner la propia oferta en `ACCEPTED` por `UPDATE`, bloqueando el trabajo | `accept_job_offer` | `…000200` |
 | Reescribir el texto de un mensaje de la contraparte | `mark_conversation_read` | `…000200` |
 | Reescribir el contenido de los propios avisos | `mark_notifications_read` | `…000200` |
+| Crear un payout a mano, sobre un pago sin confirmar o sobre un trabajo cancelado | `confirm_payment_result` (y `payouts_guard` para el propio sistema) | `…000400` |
+| Reescribir o borrar `payments`, `payment_events` o `payouts` | ninguna: el usuario perdió `UPDATE`, `DELETE` y `TRUNCATE` | `…000400` |
+| «Confirmar» el propio pago llamando a la función de confirmación | `confirm_payment_result` es solo del servicio | `…000400` |
 
 Y ocho de las dieciséis **no fallaban sin sesión**: se apoyaban en una
 comparación `dueño <> auth.uid()`, y con `auth.uid()` nulo esa expresión vale
@@ -189,6 +193,16 @@ autorización en una sola línea de defensa. Corregido en `…000200`, y lo prue
 `touch_updated_at`, `generate_reference`, `handle_new_user`, `sync_offer_count`,
 `log_payment_event`, `validate_review`, `refresh_worker_reputation`,
 `hold_payout_on_dispute`, `apply_loyalty_transaction`, `write_audit_log`.
+
+Y las del dinero, desde la Etapa 2.5 (`…000400`): `guard_payment_settlement`
+(BEFORE UPDATE en `payments`: decide habilitar o revisar, bajo bloqueo),
+`on_payment_paid` (AFTER UPDATE: habilita, crea el payout, avisa),
+`guard_payout` (ningún payout sin pago `PAID`, sobre cancelado o a otro
+trabajador), `guard_job_terminal` (un trabajo cancelado no revive),
+`finalize_job_cancellation` (lo que comparten `cancel_job` y la confirmación
+tardía), `create_payout_for_assignment` (idempotente) y
+`payment_invariant_violations()` (devuelve toda fila que rompa los invariantes;
+las pruebas exigen cero).
 
 ---
 
@@ -213,9 +227,14 @@ usuario: las políticas de Storage lo exigen.
 PGHOST=/tmp PGPORT=55432 PGUSER=postgres npm run db:test
 ```
 
-Aplica el stub de Supabase, las 21 migraciones, la semilla geográfica y 122
+Aplica el stub de Supabase, las 23 migraciones, la semilla geográfica y 141
 comprobaciones de inventario, RLS, flujo completo, concurrencia, semilla de
-demostración y contraste entre el código y el esquema. Ver `supabase/tests/`.
+demostración, endurecimiento de las RPC, política de cancelación y pago (con
+carreras reales entre dos sesiones, `RACE_REPS` repeticiones) y contraste entre
+el código y el esquema. Ver `supabase/tests/`.
+
+Los mismos escenarios de cancelación y pago corren contra el proyecto alojado
+con `npm run verify:payments` (ver `PAGOS.md` §8).
 
 Contra un proyecto Supabase alojado el equivalente es
 `npm run verify:schema:hosted`. Las cifras esperadas son las mismas a propósito;

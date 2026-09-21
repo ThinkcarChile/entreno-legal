@@ -136,11 +136,20 @@ La plataforma **sugiere**; el precio final lo fija cada trabajador en su oferta.
 ### 3.8 Pagos: `PaymentProvider` con implementación Transbank aislada
 
 `TransbankPaymentProvider` existe como clase con la forma correcta del flujo
-(crear transacción → redirección → confirmación), pero **no** inventa endpoints ni SDK.
-Los métodos lanzan `PaymentProviderNotConfiguredError` hasta que se integre el SDK
-oficial vigente en ambiente de integración.
+(crear transacción → redirección → confirmación → consulta de estado →
+reversa/reembolso), pero **no** inventa endpoints ni SDK. Los métodos lanzan
+`PaymentProviderNotConfiguredError` hasta que se integre el SDK oficial vigente
+en ambiente de integración.
 
-En desarrollo se usa `MockPaymentProvider`, que simula la máquina de estados completa.
+En desarrollo hay dos proveedores simulados, ambos prohibidos en producción:
+`MockPaymentProvider` (`mock`) aprueba en el acto, y `DelayedMockPaymentProvider`
+(`mock-delayed`) crea el pago y **no responde hasta que alguien decide** con
+`settle()`. El segundo existe porque el primero no podía reproducir la carrera
+entre una confirmación tardía y una cancelación; ver `docs/PAGOS.md` §6.
+
+Sea cual sea el proveedor, su respuesta llega a la base por una sola vía:
+`applyProviderResult` → `confirm_payment_result`, que la registra una sola vez
+por identificador de evento y decide bajo bloqueo. Ver §8.
 
 Nunca se almacenan datos de tarjeta. Ninguna credencial vive en el repositorio.
 
@@ -231,9 +240,12 @@ Las transiciones válidas viven en `src/lib/domain/state-machines.ts` como mapas
 explícitos. Ningún componente cambia un estado sin pasar por `canTransition()`.
 
 - **Trabajo:** `DRAFT → PUBLISHED → OFFER_ACCEPTED → PAYMENT_PENDING → PAID →
-  IN_PROGRESS → HANDOFF_COMPLETED → COMPLETED → CLOSED`, con ramas `CANCELLED` y `DISPUTED`.
+  IN_PROGRESS → HANDOFF_COMPLETED → COMPLETED → CLOSED`, con ramas `CANCELLED`,
+  `DISPUTED` y, desde `PAYMENT_PENDING`, `CANCELLATION_PENDING → CANCELLED`
+  (el cliente pidió cancelar con un pago en vuelo; ver §8).
 - **Pago:** `PENDING → CREATED → AUTHORIZED → PAID`, con `FAILED`, `REFUNDED`,
-  `PARTIALLY_REFUNDED`, `UNDER_REVIEW`.
+  `PARTIALLY_REFUNDED`, `UNDER_REVIEW`. `UNDER_REVIEW` + `captured_at` significa
+  «dinero recibido que hay que devolver».
 - **Payout:** `PENDING → APPROVED → PROCESSING → PAID`, con `HELD` y `CANCELLED`.
 - **Verificación:** `UNVERIFIED → PENDING → VERIFIED | REJECTED`, más `SUSPENDED`.
 - **Extensión:** `PENDING → ACCEPTED | REJECTED | EXPIRED | CANCELLED`.
@@ -326,6 +338,9 @@ acción ni la ruta de retorno se tocan.
 
 Los montos los calcula `start_protected_payment` en la base desde la asignación.
 El navegador nunca envía el total a cobrar.
+
+La ruta de retorno tampoco decide: le entrega la respuesta del proveedor a
+`confirm_payment_result` y muestra lo que la base resolvió (§8).
 
 ### 6.8 Estados: se reutilizó el enum existente
 
@@ -489,7 +504,73 @@ traer contraseñas o credenciales, o si algún `insert` no lleva `on conflict`. 
 deliberado que sea una comprobación de la máquina: el archivo está generado desde
 `src/lib/geo/chile.ts` y podría cambiar sin que nadie vuelva a leerlo entero.
 
-## 8. Verificación del esquema
+## 8. Etapa 2.5: cancelar con un pago en vuelo, sin carreras
+
+La auditoría de las RPC dejó un hallazgo abierto: `cancel_job` cancelaba un
+trabajo en `PAYMENT_PENDING` sin mirar el pago, y si el proveedor confirmaba
+después, el disparador de payout —que no comprobaba nada— pagaba al trabajador
+por un trabajo cancelado. No es un defecto del proveedor: es una carrera del
+dominio, y se resolvió en el dominio. `docs/PAGOS.md` es la guía completa; aquí
+van las decisiones.
+
+### 8.1 Un estado explícito para «cancelar con dinero en vuelo»
+
+`CANCELLATION_PENDING` es un valor nuevo de `job_status`. Ni `PAYMENT_PENDING`
+ni `CANCELLED` decían la verdad mientras el proveedor no respondía: el primero
+oculta que el cliente ya pidió cancelar, el segundo promete que no hay dinero
+cobrado. Un trabajo en ese estado solo puede ir a `CANCELLED`, la interfaz no
+ofrece pagar ni avanzar, y el cliente lee «Estamos verificando el estado del
+pago antes de completar la cancelación».
+
+«Devolución pendiente» **no** es un enum nuevo: es `payments.status = UNDER_REVIEW`
+con `captured_at` y `review_reason`. `REFUNDED` ya existe para cuando la
+devolución ocurra de verdad; hasta integrar Transbank no se afirma que exista.
+
+### 8.2 La decisión se toma en la base, bajo tres bloqueos en un orden fijo
+
+Todo lo que decide sobre dinero bloquea `jobs → assignments → payments`, en ese
+orden, en una transacción. `start_protected_payment` bloqueaba al revés y se
+corrigió: un orden único es lo que impide el interbloqueo entre una cancelación
+y una confirmación simultáneas.
+
+Un disparador BEFORE UPDATE sobre `payments` decide, antes de que `PAID` llegue
+a escribirse, si el pago habilita el trabajo o queda en revisión. Así vale para
+cualquier vía —la RPC, un script, un `UPDATE` con la clave de servicio— y no
+depende de que el código de la aplicación se acuerde de comprobar. El payout se
+crea después de esa decisión, nunca antes.
+
+### 8.3 Idempotencia por identificador de evento, no por transacción
+
+`confirm_payment_result` es la única entrada de resultados del proveedor y solo
+la ejecuta la clave de servicio. Registra cada evento una vez por
+`(provider, provider_event_id)` con un índice único; la segunda llegada del
+mismo evento —en secuencia o a la vez— devuelve `duplicate` sin tocar nada.
+`provider_transaction_id` no servía: una misma transacción puede producir
+varios eventos legítimos (autorización, confirmación, reversa).
+
+### 8.4 Los estados terminales lo son también para el sistema
+
+`guard_assignment_transitions` dejaba pasar al rol de servicio y a la
+administración; para ordenar los pasos está bien, para revivir una asignación
+cancelada no. Ahora los terminales se comprueban antes de ese permiso, un
+disparador equivalente protege `jobs`, y `payouts_guard` rechaza cualquier
+payout sin pago `PAID`, sobre asignación cancelada o sobre trabajo cancelado.
+`authenticated` perdió `UPDATE`, `DELETE` y `TRUNCATE` sobre las tres tablas de
+dinero: el append-only de `payment_events` ya no descansa solo en RLS.
+
+### 8.5 Las carreras se prueban con carreras, sin `sleep`
+
+En SQL, dos sesiones `psql` reales lanzadas a la vez, repetidas; serializan los
+bloqueos de fila. En Node, `DelayedMockPaymentProvider` es una barrera: las
+confirmaciones esperan una promesa y `settle()` las libera en el mismo tick, así
+que dos peticiones llegan a PostgREST simultáneas y deterministas. Las dos
+baterías comprueban los mismos escenarios y terminan ejecutando
+`payment_invariant_violations()`, que debe devolver cero filas. Un `sleep`
+habría hecho la prueba lenta y, peor, verde por casualidad.
+
+---
+
+## 9. Verificación del esquema
 
 El esquema no se entrega "escrito y sin ejecutar". Se aplica y se prueba contra un
 PostgreSQL real:
@@ -520,17 +601,18 @@ contraste entre el código y el esquema (`scripts/check-db-contract.sh`) que ver
 que cada tabla, vista, función y columna que usa la aplicación exista de verdad.
 Ese contraste encontró el defecto descrito en §6.5.
 
-### 8.1 Tres niveles de verificación, con propósitos distintos
+### 9.1 Tres niveles de verificación, con propósitos distintos
 
 | Comando | Contra qué | Qué cubre |
 |---|---|---|
-| `npm run db:test` | PostgreSQL local | Esquema, RLS, flujo, concurrencia, semillas, inventario. 110 comprobaciones |
+| `npm run db:test` | PostgreSQL local | Esquema, RLS, flujo, concurrencia, semillas, inventario, endurecimiento de las RPC, política de cancelación y pago con carreras reales. 141 comprobaciones |
 | `npm run db:push:hosted -- --plan` | Supabase real | Qué migraciones faltan por aplicar, sin escribir nada |
-| `npm run verify:schema:hosted` | Supabase real | Inventario, RLS, `security_invoker`, grants, Realtime y advisors. 17 comprobaciones |
+| `npm run verify:schema:hosted` | Supabase real | Inventario, RLS, `security_invoker`, grants, Realtime y advisors. 18 comprobaciones |
 | `npm run verify:supabase` | Supabase real | El mismo recorrido por API, más Realtime, Storage y Auth, y las escrituras directas que deben fallar. 61 comprobaciones |
+| `npm run verify:payments` | Supabase real | Cancelación contra confirmación tardía, duplicada y simultánea, con el proveedor retardado y las piezas de la aplicación. 23 comprobaciones |
 | `npm run e2e` | Supabase real, por navegador | Entrar, publicar, ofertar, aceptar, pagar |
 
-Los tres se mantienen. El local es rápido y corre siempre, incluso sin
+Todos se mantienen. El local es rápido y corre siempre, incluso sin
 credenciales; el de integración prueba lo que solo existe en Supabase (Auth,
 Realtime, Storage); el de navegador prueba que la interfaz conecta bien las dos
 cosas. Ninguno reemplaza a los otros.
@@ -539,6 +621,6 @@ El inventario del esquema (`05_schema_inventory.sql`) comprueba además que las
 32 tablas tengan RLS activo y que las 5 vistas usen `security_invoker`. Es la
 comprobación que impide que una tabla nueva quede abierta por olvido.
 
-## 9. Qué queda fuera todavía
+## 10. Qué queda fuera todavía
 
 Ver `docs/HOJA-DE-RUTA.md`.

@@ -35,6 +35,7 @@ con datos realistas en pesos chilenos. Es la forma más rápida de revisar la in
 | `npm run db:test` | Aplica el esquema a un PostgreSQL y corre todas las pruebas |
 | `npm run db:contract` | Comprueba que el código y el esquema coincidan |
 | `npm run verify:supabase` | Recorre el marketplace completo contra un Supabase real |
+| `npm run verify:payments` | Cancelación contra confirmación tardía, duplicada y simultánea, contra un Supabase real y con el proveedor retardado |
 | `npm run db:push:hosted` | Aplica las migraciones a un proyecto alojado por HTTPS, cuando el puerto 5432 está cerrado |
 | `npm run db:seed:hosted` | Aplica la semilla geográfica oficial a un proyecto alojado de desarrollo, por HTTPS |
 | `npm run verify:schema:hosted` | Inventario del esquema alojado y advisors de seguridad y rendimiento |
@@ -53,7 +54,7 @@ Todas en `.env.example`. Ninguna credencial real vive en el repositorio.
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Para datos reales | Clave pública, sujeta a RLS. Reemplaza a `ANON_KEY` |
 | `SUPABASE_SECRET_KEY` | Solo servidor | Omite RLS. Reemplaza a `SERVICE_ROLE_KEY`. Nunca con prefijo `NEXT_PUBLIC_` |
 | `NEXT_PUBLIC_DATA_SOURCE` | No | `demo`, `supabase` o `auto` (por defecto) |
-| `PAYMENT_PROVIDER` | No | `mock` o `transbank`. `mock` está prohibido en producción |
+| `PAYMENT_PROVIDER` | No | `mock`, `mock-delayed` o `transbank`. Los dos simulados están prohibidos en producción |
 | `TRANSBANK_ENVIRONMENT` | No | `integration` o `production` |
 | `TRANSBANK_COMMERCE_CODE` | Al integrar | Credencial de Transbank |
 | `TRANSBANK_API_KEY` | Al integrar | Credencial de Transbank |
@@ -143,7 +144,7 @@ Lo que **todavía es simulado**:
 
 | Función | Estado |
 |---|---|
-| Pago con Webpay Plus | Simulado. El flujo es el definitivo, cambia solo el `PaymentProvider` |
+| Pago con Webpay Plus | Simulado. El flujo es el definitivo, cambia solo el `PaymentProvider`. La política de cancelación con un pago en vuelo ya es la definitiva (`docs/PAGOS.md`); el reembolso real no existe todavía |
 | Verificación de identidad | Real pero manual. La resuelve una persona desde `/admin/verificaciones`, sin proveedor biométrico |
 | Transferencia al trabajador | El payout se calcula y registra; la transferencia es manual |
 | Imágenes | Los buckets y columnas existen; la carga no está implementada |
@@ -154,9 +155,10 @@ El proyecto Supabase de desarrollo ya existe (`hagotufila-dev`, ref
 conectada: el indicador de desarrollo muestra
 «Supabase conectado · xwgobslgldxzatjrcxhl.supabase.co».
 
-Contra ese proyecto real ya corrieron, y pasan: las 21 migraciones, la semilla
+Contra ese proyecto real ya corrieron, y pasan: las 23 migraciones, la semilla
 geográfica (1 país, 16 regiones, 346 comunas), `npm run verify:schema:hosted`,
-las 61 comprobaciones de `npm run verify:supabase`, las 11 pruebas de
+las 61 comprobaciones de `npm run verify:supabase`, las 23 de
+`npm run verify:payments`, las 11 pruebas de
 `npm run e2e` —incluidas las siete del marketplace— y el recorrido a mano de
 `docs/DESPLIEGUE-SUPABASE.md` §8.4.
 

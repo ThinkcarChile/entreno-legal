@@ -37,7 +37,7 @@ const serverSchema = z.object({
   NEXT_PUBLIC_DATA_SOURCE: z.enum(["demo", "supabase", "auto"]).default("auto"),
 
   /** mock | transbank */
-  PAYMENT_PROVIDER: z.enum(["mock", "transbank"]).default("mock"),
+  PAYMENT_PROVIDER: z.enum(["mock", "mock-delayed", "transbank"]).default("mock"),
   TRANSBANK_ENVIRONMENT: z.enum(["integration", "production"]).default("integration"),
   TRANSBANK_COMMERCE_CODE: z.string().optional(),
   TRANSBANK_API_KEY: z.string().optional(),

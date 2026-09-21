@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { getPaymentProvider } from "@/lib/payments";
+import { applyProviderResult, getPaymentProvider } from "@/lib/payments";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getVerifiedUser } from "@/lib/supabase/verified-user";
@@ -31,12 +31,13 @@ export async function GET(request: NextRequest) {
   const admin = createAdminClient();
   const { data: payment } = await admin
     .from("payments")
-    .select("id,client_id,assignment_id,status,amount")
+    .select("id,client_id,assignment_id,job_id,status,amount")
     .eq("provider_token", token)
     .maybeSingle<{
       id: string;
       client_id: string;
       assignment_id: string | null;
+      job_id: string;
       status: string;
       amount: number;
     }>();
@@ -50,39 +51,32 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/mis-trabajos/publicados?pago=error`);
   }
 
+  // Un pago que ya se resolvió no se vuelve a confirmar con el proveedor: el
+  // usuario recargó la página de retorno, o volvió atrás.
   if (payment.status === "PAID") {
     return NextResponse.redirect(`${origin}/mis-trabajos/${payment.assignment_id}?pago=ok`);
+  }
+  if (payment.status === "UNDER_REVIEW") {
+    return NextResponse.redirect(`${origin}/mis-trabajos/publicados/${payment.job_id}?pago=revision`);
   }
 
   const provider = getPaymentProvider();
   const result = await provider.confirmPayment({ token });
 
-  await admin
-    .from("payments")
-    .update({
-      status: result.status,
-      authorization_code: result.authorizationCode,
-      card_last_digits: result.cardLastDigits,
-      payment_type_code: result.paymentTypeCode,
-      installments: result.installments,
-      authorized_at: result.status === "PAID" ? new Date().toISOString() : null,
-      paid_at: result.status === "PAID" ? new Date().toISOString() : null,
-      failed_at: result.status === "FAILED" ? new Date().toISOString() : null,
-    })
-    .eq("id", payment.id);
-
-  // La carga útil ya saneada queda en la bitácora del pago.
-  await admin.from("payment_events").insert({
-    payment_id: payment.id,
-    to_status: result.status,
-    provider: provider.id,
-    payload: result.raw,
-  });
+  // Todo lo que decide sobre el dinero pasa por aquí, y por ningún otro sitio:
+  // una transacción, tres bloqueos, un solo registro por evento del proveedor.
+  // Que el trabajo se habilite o que el pago quede en revisión para devolución
+  // porque el cliente canceló mientras tanto lo decide la base, no esta ruta.
+  const settlement = await applyProviderResult(admin, payment.id, provider.id, result);
 
   const target =
-    result.status === "PAID"
+    settlement.paymentStatus === "PAID"
       ? `/mis-trabajos/${payment.assignment_id}?pago=ok`
-      : `/pagar/${payment.assignment_id}?pago=rechazado`;
+      : settlement.paymentStatus === "UNDER_REVIEW"
+        ? `/mis-trabajos/publicados/${payment.job_id}?pago=revision`
+        : settlement.jobStatus === "CANCELLED"
+          ? `/mis-trabajos/publicados/${payment.job_id}?pago=cancelado`
+          : `/pagar/${payment.assignment_id}?pago=rechazado`;
 
   return NextResponse.redirect(`${origin}${target}`);
 }

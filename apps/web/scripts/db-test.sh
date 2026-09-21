@@ -77,6 +77,15 @@ run -d "$DB_NAME" -f "$ROOT/supabase/seed/001_geo.sql" > /dev/null \
     | grep -vE "$FILTER" | sed -E 's/^psql:[^ ]+ //; s/^NOTICE:  //'
 
   echo ""
+  echo "════ Etapa 2.5 · Cancelar con un pago en vuelo ════"
+  psql -d "$DB_NAME" -f "$ROOT/supabase/tests/07_payment_cancellation.sql" 2>&1 \
+    | grep -vE "$FILTER" | sed -E 's/^psql:[^ ]+ //; s/^NOTICE:  //'
+
+  echo ""
+  echo "════ Etapa 2.5 · Carreras entre confirmación y cancelación ════"
+  bash "$ROOT/supabase/tests/07_race_payment.sh" "$DB_NAME" "${RACE_REPS:-5}"
+
+  echo ""
   echo "════ Contrato entre la aplicación y el esquema ════"
   DB_NAME="$DB_NAME" bash "$ROOT/scripts/check-db-contract.sh"
 } | tee "$REPORT"
@@ -100,6 +109,6 @@ if grep -qE "^ERROR:" "$REPORT"; then
   exit 1
 fi
 
-TOTAL=$(grep -cE "^(T|E|R|S|I|H)[0-9]+" "$REPORT")
+TOTAL=$(grep -cE "^(T|E|R|S|I|H|P)[0-9]+" "$REPORT")
 echo "✓ $TOTAL comprobaciones pasaron"
 rm -f "$REPORT"

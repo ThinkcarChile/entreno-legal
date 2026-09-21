@@ -37,7 +37,7 @@ with inventario as (
     (select commission_bps from public.platform_settings)               as comision_pb
 ),
 esperado as (
-  select 32 as tablas, 5 as vistas, 16 as funciones_rpc, 19 as enums,
+  select 32 as tablas, 5 as vistas, 17 as funciones_rpc, 19 as enums,
          73 as politicas_rls, 5 as buckets, 346 as comunas, 16 as regiones,
          9 as categorias, 1400 as comision_pb
 )

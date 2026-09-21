@@ -18,7 +18,8 @@
     "verify:schema:hosted": "node scripts/verify-schema-hosted.ts",
     "verify:supabase": "node scripts/verify-supabase.ts",
     "e2e": "playwright test",
-    "e2e:ui": "playwright test --ui"
+    "e2e:ui": "playwright test --ui",
+    "verify:payments": "node --import ./scripts/loader/alias.mjs scripts/verify-payments.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

@@ -35,6 +35,8 @@ export const JobStatus = {
   PUBLISHED: "PUBLISHED",
   OFFER_ACCEPTED: "OFFER_ACCEPTED",
   PAYMENT_PENDING: "PAYMENT_PENDING",
+  /** El cliente pidió cancelar con un pago en vuelo: se espera al proveedor. */
+  CANCELLATION_PENDING: "CANCELLATION_PENDING",
   PAID: "PAID",
   IN_PROGRESS: "IN_PROGRESS",
   HANDOFF_COMPLETED: "HANDOFF_COMPLETED",

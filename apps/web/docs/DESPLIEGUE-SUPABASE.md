@@ -20,7 +20,7 @@ Anota el **project ref**: es el identificador que aparece en la URL del panel,
 > **Proyecto de desarrollo de HagoTuFila.** Ya existe y no hay que crearlo de
 > nuevo: `hagotufila-dev`, ref `xwgobslgldxzatjrcxhl`, región `sa-east-1`,
 > `https://xwgobslgldxzatjrcxhl.supabase.co`. **El esquema ya está aplicado**
-> —21 migraciones y la semilla geográfica—, así que si trabajas contra él,
+> —23 migraciones y la semilla geográfica—, así que si trabajas contra él,
 > `db:push:hosted` no tendrá nada pendiente. Para ponerte a trabajar basta con
 > la sección 2 y la 8.
 
@@ -172,7 +172,7 @@ npm run verify:schema:hosted
 
 Comprueba contra el proyecto alojado el inventario completo —tablas, vistas,
 funciones, enums, políticas, buckets, políticas de Storage, datos de referencia,
-comisión y las 21 migraciones del historial— y además que ninguna tabla esté sin
+comisión y las 23 migraciones del historial— y además que ninguna tabla esté sin
 RLS, que ninguna vista se salte `security_invoker`, que el rol `anon` no tenga
 escritura en ninguna tabla, que toda función `SECURITY DEFINER` fije su
 `search_path`, y que la publicación de Realtime traiga las cuatro tablas
@@ -400,6 +400,20 @@ auditoría no se puede alterar.
 
 Sale con código distinto de cero si algo falla e indica qué.
 
+```bash
+npm run verify:payments
+RACE_REPS=10 npm run verify:payments
+```
+
+Prueba la política de cancelación y pago contra el proyecto alojado con el
+proveedor simulado retardado y las mismas piezas que usa la aplicación: cancelar
+sin pago, con un pago que nunca llegó al proveedor y con uno en vuelo; la
+aprobación que llega antes y la que llega después de cancelar; el rechazo
+tardío; la misma confirmación dos veces, en secuencia y a la vez; la aprobación
+y la cancelación a la vez, repetidas `RACE_REPS` veces; lo que nadie puede hacer
+a mano; y, al final, los invariantes sobre todo lo que creó. No usa `sleep`.
+Usa las cuentas de cliente, trabajador y tercero de §8.1. Ver `docs/PAGOS.md`.
+
 ### 8.3 Recorrido por el navegador
 
 ```bash
@@ -460,7 +474,7 @@ llega es el de la otra persona hasta recargar.
 
 1. Proyecto Supabase aparte del de pruebas. No compartas la base.
 2. `NEXT_PUBLIC_SITE_URL` con el dominio real y HTTPS.
-3. `PAYMENT_PROVIDER` **no** puede quedar en `mock`: la aplicación se niega a
+3. `PAYMENT_PROVIDER` **no** puede quedar en `mock` ni en `mock-delayed`: la aplicación se niega a
    iniciar un pago con `NODE_ENV=production` y proveedor simulado.
 4. No apliques las semillas de demostración.
 5. Revisa que la clave secreta esté solo en las variables del servidor de tu

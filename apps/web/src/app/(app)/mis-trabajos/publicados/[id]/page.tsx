@@ -12,7 +12,8 @@ import { Amount, Badge, ButtonLink, Card, CardContent, HourlyRate } from "@/comp
 import { Alert } from "@/components/ui/feedback";
 import { requireOnboardedUser } from "@/lib/auth/session";
 import { getData } from "@/lib/data";
-import { jobPermissions } from "@/lib/domain/job-actions";
+import { JobStatus, PaymentStatus } from "@/lib/domain/enums";
+import { isCancellationPending, jobPermissions } from "@/lib/domain/job-actions";
 import { jobStatusLabels } from "@/lib/domain/labels";
 import { formatDate, formatDuration, formatTime } from "@/lib/utils/datetime";
 
@@ -23,14 +24,16 @@ export const metadata: Metadata = {
 
 interface PageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ pago?: string }>;
 }
 
 /**
  * Panel del cliente sobre su propio trabajo: ofertas recibidas, avance y
  * acciones disponibles según el estado.
  */
-export default async function ClientJobDetailPage({ params }: PageProps) {
+export default async function ClientJobDetailPage({ params, searchParams }: PageProps) {
   const { id } = await params;
+  const { pago } = await searchParams;
   const session = await requireOnboardedUser(`/mis-trabajos/publicados/${id}`);
   const data = getData();
 
@@ -49,6 +52,13 @@ export default async function ClientJobDetailPage({ params }: PageProps) {
   const permissions = jobPermissions(job.status, "client");
   const status = jobStatusLabels[job.status];
   const pendingOffers = offers.filter((o) => o.status === "PENDING");
+  const cancellationPending = isCancellationPending(job.status);
+  const paymentStatus = assignment?.payment?.status ?? null;
+  // Hay un pago creado en el proveedor y sin respuesta: cancelar no será
+  // inmediato, y conviene decirlo antes de que el cliente pulse.
+  const paymentInFlight =
+    paymentStatus === PaymentStatus.CREATED || paymentStatus === PaymentStatus.AUTHORIZED;
+  const paymentUnderReview = paymentStatus === PaymentStatus.UNDER_REVIEW;
 
   return (
     <div className="container-page py-6 sm:py-10">
@@ -75,6 +85,34 @@ export default async function ClientJobDetailPage({ params }: PageProps) {
               <p className="mt-1.5 text-sm text-ink-600">{status.description}</p>
             )}
           </header>
+
+          {pago === "revision" && (
+            <Alert tone="warning" title="Recibimos un pago después de tu cancelación">
+              El proveedor confirmó el cobro cuando el trabajo ya estaba cancelándose. No habilita
+              el trabajo: queda registrado para devolución y te avisaremos cuando se resuelva.
+            </Alert>
+          )}
+
+          {pago === "cancelado" && (
+            <Alert tone="info" title="Cancelación completada">
+              El pago no se completó, así que no hay nada que devolver.
+            </Alert>
+          )}
+
+          {cancellationPending && (
+            <Alert tone="warning" title="Cancelación en verificación">
+              Estamos verificando el estado del pago antes de completar la cancelación. En cuanto
+              el proveedor responda, el trabajo quedará cancelado; si el pago llegó a cobrarse,
+              quedará registrado para devolución.
+            </Alert>
+          )}
+
+          {job.status === JobStatus.CANCELLED && paymentUnderReview && (
+            <Alert tone="warning" title="Devolución pendiente">
+              Este trabajo está cancelado, pero el proveedor confirmó un cobro después de tu
+              solicitud. El importe está registrado para devolución.
+            </Alert>
+          )}
 
           {permissions.needsPayment && assignment && (
             <Alert tone="warning" title="Falta confirmar el pago">
@@ -206,7 +244,9 @@ export default async function ClientJobDetailPage({ params }: PageProps) {
                     Editar trabajo
                   </ButtonLink>
                 )}
-                {permissions.canCancel && <CancelJobButton jobId={job.id} />}
+                {permissions.canCancel && (
+                  <CancelJobButton jobId={job.id} hasPaymentInFlight={paymentInFlight} />
+                )}
               </div>
 
               {!permissions.canEdit && !assignment && (

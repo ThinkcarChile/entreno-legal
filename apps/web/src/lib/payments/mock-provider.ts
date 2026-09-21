@@ -56,6 +56,7 @@ export class MockPaymentProvider implements PaymentProvider {
       if (!token.startsWith("mock-")) {
         return {
           providerTransactionId: token,
+          providerEventId: `evt-${token}`,
           status: PaymentStatus.FAILED,
           amount: { amount: 0, currency: "CLP" },
           authorizationCode: null,
@@ -69,6 +70,7 @@ export class MockPaymentProvider implements PaymentProvider {
 
       return {
         providerTransactionId: token,
+        providerEventId: `evt-${token}`,
         status: PaymentStatus.PAID,
         amount: { amount: 0, currency: "CLP" },
         authorizationCode: "MOCK-AUTH",
@@ -83,6 +85,7 @@ export class MockPaymentProvider implements PaymentProvider {
     entry.status = PaymentStatus.PAID;
     return {
       providerTransactionId: token,
+      providerEventId: `evt-${token}`,
       status: PaymentStatus.PAID,
       amount: entry.input.amount,
       authorizationCode: "MOCK-AUTH",

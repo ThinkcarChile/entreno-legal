@@ -12,8 +12,8 @@ import { Alert } from "@/components/ui/feedback";
 import { site } from "@/config/site";
 import { requireOnboardedUser } from "@/lib/auth/session";
 import { getData } from "@/lib/data";
-import { PaymentStatus } from "@/lib/domain/enums";
-import { workerFacingStage } from "@/lib/domain/job-actions";
+import { AssignmentStatus, JobStatus, PaymentStatus } from "@/lib/domain/enums";
+import { isCancellationPending, isPayable, workerFacingStage } from "@/lib/domain/job-actions";
 import { assignmentStatusLabels } from "@/lib/domain/labels";
 import { formatDate, formatDuration, formatTime } from "@/lib/utils/datetime";
 import { formatPercent } from "@/lib/utils/format";
@@ -53,6 +53,15 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
   const status = assignmentStatusLabels[assignment.status];
   const counterpart = isClient ? worker.profile : client;
   const paid = payment?.status === PaymentStatus.PAID;
+  const cancellationPending = isCancellationPending(job.status);
+  const cancelled =
+    job.status === JobStatus.CANCELLED ||
+    assignment.status === AssignmentStatus.CANCELLED_BY_CLIENT ||
+    assignment.status === AssignmentStatus.CANCELLED_BY_WORKER;
+  const paymentUnderReview = payment?.status === PaymentStatus.UNDER_REVIEW;
+  // Solo se pide el pago mientras el trabajo de verdad lo espera: nunca con la
+  // cancelación en verificación ni sobre un trabajo cancelado.
+  const canPay = isClient && !paid && isPayable(job.status);
 
   return (
     <div className="container-page py-6 sm:py-10">
@@ -64,7 +73,7 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
         {isClient ? "Mis trabajos publicados" : "Mis trabajos"}
       </Link>
 
-      {pago === "ok" && (
+      {pago === "ok" && paid && (
         <Alert tone="success" className="mt-6" title="Pago confirmado">
           El dinero quedó asociado a este trabajo. El trabajador ya puede comenzar.
         </Alert>
@@ -84,7 +93,29 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
             <p className="mt-1.5 text-sm text-ink-600">{workerFacingStage(assignment.status)}</p>
           </header>
 
-          {!paid && (
+          {cancellationPending && (
+            <Alert tone="warning" title="Cancelación en verificación">
+              {isClient
+                ? "Estamos verificando el estado del pago antes de completar la cancelación. No hace falta que hagas nada."
+                : "El cliente pidió cancelar este trabajo. Se completará en cuanto se verifique el pago. No inicies el trabajo."}
+            </Alert>
+          )}
+
+          {cancelled && paymentUnderReview && (
+            <Alert tone="warning" title="Trabajo cancelado · devolución pendiente">
+              {isClient
+                ? "El proveedor confirmó el cobro después de tu cancelación. El importe está registrado para devolución."
+                : "Este trabajo quedó cancelado. El pago que llegó después no lo habilita y no genera un pago para ti."}
+            </Alert>
+          )}
+
+          {cancelled && !paymentUnderReview && (
+            <Alert tone="info" title="Trabajo cancelado">
+              {isClient ? "Este trabajo quedó cancelado." : "El cliente canceló este trabajo."}
+            </Alert>
+          )}
+
+          {!paid && !cancellationPending && !cancelled && (
             <Alert tone="warning" title="Falta confirmar el pago">
               {isClient ? (
                 <>
@@ -227,7 +258,7 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
             </CardContent>
           </Card>
 
-          {isWorker && (
+          {isWorker && !cancellationPending && !cancelled && (
             <Card>
               <CardContent>
                 <AssignmentActions assignmentId={assignment.id} status={assignment.status} />
@@ -235,7 +266,7 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
             </Card>
           )}
 
-          {isClient && !paid && (
+          {canPay && (
             <ButtonLink href={`/pagar/${assignment.id}`} size="lg" fullWidth>
               Confirmar el pago
             </ButtonLink>

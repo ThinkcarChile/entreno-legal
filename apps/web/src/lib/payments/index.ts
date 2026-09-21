@@ -1,5 +1,6 @@
 import { env } from "@/lib/env";
 
+import { DelayedMockPaymentProvider } from "./delayed-mock-provider";
 import { MockPaymentProvider } from "./mock-provider";
 import { TransbankPaymentProvider } from "./transbank-provider";
 
@@ -7,8 +8,10 @@ import type { PaymentProvider } from "./provider";
 
 export * from "./provider";
 export * from "./settlement";
+export * from "./settle";
 export { TransbankPaymentProvider } from "./transbank-provider";
 export { MockPaymentProvider } from "./mock-provider";
+export { DelayedMockPaymentProvider } from "./delayed-mock-provider";
 
 let provider: PaymentProvider | null = null;
 
@@ -28,13 +31,18 @@ export function getPaymentProvider(): PaymentProvider {
     return provider;
   }
 
+  // Los dos simulados —inmediato y retardado— quedan fuera de producción sin
+  // excepción. No hay variable de entorno que lo levante.
   if (env.NODE_ENV === "production") {
     throw new Error(
-      "PAYMENT_PROVIDER=mock no está permitido en producción. Configura Transbank.",
+      `PAYMENT_PROVIDER=${env.PAYMENT_PROVIDER} no está permitido en producción. Configura Transbank.`,
     );
   }
 
-  provider = new MockPaymentProvider();
+  provider =
+    env.PAYMENT_PROVIDER === "mock-delayed"
+      ? new DelayedMockPaymentProvider()
+      : new MockPaymentProvider();
   return provider;
 }
 

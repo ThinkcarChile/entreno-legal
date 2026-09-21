@@ -12,6 +12,7 @@ import { requireOnboardedUser } from "@/lib/auth/session";
 import { isPaymentSimulationEnabled } from "@/lib/actions/payments";
 import { getData } from "@/lib/data";
 import { PaymentStatus } from "@/lib/domain/enums";
+import { isPayable } from "@/lib/domain/job-actions";
 import { formatDate, formatDuration, formatTime } from "@/lib/utils/datetime";
 import { formatPercent } from "@/lib/utils/format";
 
@@ -38,6 +39,12 @@ export default async function ProtectedPaymentPage({ params, searchParams }: Pag
 
   if (detail.payment?.status === PaymentStatus.PAID) {
     redirect(`/mis-trabajos/${id}?pago=ok`);
+  }
+
+  // Con la cancelación en verificación, o ya cancelado, aquí no hay nada que
+  // pagar: la pantalla del trabajo explica en qué estado está.
+  if (!isPayable(detail.job.status)) {
+    redirect(`/mis-trabajos/${id}`);
   }
 
   const { settlement, job, worker } = detail;

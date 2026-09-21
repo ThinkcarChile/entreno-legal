@@ -31,6 +31,11 @@ export const jobStatusLabels: Record<JobStatus, StatusLabel> = {
   PUBLISHED: { label: "Recibiendo ofertas", tone: "info" },
   OFFER_ACCEPTED: { label: "Oferta aceptada", tone: "info", description: "Falta confirmar el pago" },
   PAYMENT_PENDING: { label: "Pago pendiente", tone: "warning" },
+  CANCELLATION_PENDING: {
+    label: "Cancelación en verificación",
+    tone: "warning",
+    description: "Estamos verificando el estado del pago antes de completar la cancelación",
+  },
   PAID: { label: "Pago confirmado", tone: "success", description: "El trabajador puede comenzar" },
   IN_PROGRESS: { label: "En curso", tone: "info" },
   HANDOFF_COMPLETED: { label: "Entrega realizada", tone: "success" },
@@ -77,7 +82,7 @@ export const paymentStatusLabels: Record<PaymentStatus, StatusLabel> = {
   FAILED: { label: "Rechazado", tone: "danger" },
   REFUNDED: { label: "Devuelto", tone: "neutral" },
   PARTIALLY_REFUNDED: { label: "Devuelto parcialmente", tone: "neutral" },
-  UNDER_REVIEW: { label: "En revisión", tone: "warning" },
+  UNDER_REVIEW: { label: "En revisión para devolución", tone: "warning" },
 };
 
 export const payoutStatusLabels: Record<PayoutStatus, StatusLabel> = {
