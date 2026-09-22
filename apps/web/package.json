@@ -24,7 +24,8 @@
     "verify:execution": "node --import ./scripts/loader/alias.mjs scripts/verify-execution.ts",
     "verify:pwa": "node --import ./scripts/loader/alias.mjs scripts/verify-pwa.ts",
     "verify:transbank": "node --import ./scripts/loader/alias.mjs scripts/verify-transbank.ts",
-    "brand:logo": "node --import ./scripts/loader/alias.mjs scripts/render-logo.ts"
+    "brand:logo": "node --import ./scripts/loader/alias.mjs scripts/render-logo.ts",
+    "evidence:webpay": "node --import ./scripts/loader/alias.mjs scripts/evidence-webpay.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

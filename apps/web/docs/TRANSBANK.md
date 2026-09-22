@@ -328,6 +328,10 @@ Fecha de expiración: cualquiera futura. Autenticación bancaria: RUT
 
 ### Recorrido a mano
 
+El guion completo —las diecisiete pruebas, qué comprobar en cada una y cómo
+capturar la evidencia— está en **`PRUEBAS-WEBPAY.md`**. Lo de aquí abajo es el
+resumen.
+
 Desde una red que alcance a Transbank (ver §12):
 
 1. `PAYMENT_PROVIDER=transbank` y `TRANSBANK_ENVIRONMENT=integration`.
@@ -343,6 +347,20 @@ Desde una red que alcance a Transbank (ver §12):
 8. **Tiempo agotado**: dejar el formulario 10 minutos sin tocar.
 9. **Retorno repetido**: recargar la página de retorno. No se cobra dos veces.
 10. En `/admin/pagos`, «Consultar al proveedor» sobre cada uno.
+
+Después de cada prueba, la evidencia:
+
+```bash
+npm run evidence:webpay -- --caso "3. Crédito aprobado"
+```
+
+Lee de la base las doce cosas que hay que mirar —fila del pago, orden, importe,
+estado del proveedor, estado interno, eventos, auditoría, trabajo, asignación,
+payout, notificaciones e invariantes— y las escribe en
+`evidencia/webpay-integration.md`. Termina con error si algún invariante está
+roto, porque una prueba con el dinero descuadrado no vale aunque la pantalla
+dijera lo correcto. Nunca imprime el token completo, ni claves, ni tarjetas, ni
+datos personales.
 
 ---
 
@@ -552,7 +570,8 @@ integración desde este entorno**, y `npm run verify:transbank` marca esas
 comprobaciones como OMITIDAS —no como aprobadas— y termina con código distinto
 de cero.
 
-Lo que queda pendiente de ejecutar desde una red que alcance a Transbank:
+Lo que queda pendiente de ejecutar desde una red que alcance a Transbank
+—con el guion paso a paso en `PRUEBAS-WEBPAY.md`—:
 
 - crear una transacción real y comprobar el token y la URL
 - consultar su estado

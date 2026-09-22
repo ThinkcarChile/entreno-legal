@@ -43,6 +43,8 @@ con datos realistas en pesos chilenos. Es la forma más rápida de revisar la in
 | `npm run verify:transbank` | Webpay Plus: SDK, guardas, identificadores, retornos, secretos y ambiente de integración |
 | `npm run test:unit` | Pruebas unitarias del dominio financiero (Vitest) |
 | `npm run verify:pwa` | Manifiesto, iconos, service worker, tokens y contrastes. Sin servidor ni Supabase |
+| `npm run evidence:webpay` | Evidencia de una prueba contra Webpay Integration: las doce comprobaciones, sin secretos |
+| `npm run brand:logo` | Rehace el logotipo de 130 × 59 px para la validación de Transbank |
 | `npm run e2e` | Recorrido por navegador con Playwright, más la revisión responsive, de consola y de accesibilidad |
 
 ---
@@ -135,6 +137,7 @@ Detalle en [`docs/BASE-DE-DATOS.md`](docs/BASE-DE-DATOS.md).
 - [`docs/BASE-DE-DATOS.md`](docs/BASE-DE-DATOS.md) — esquema, RLS, funciones, Storage
 - [`docs/DESPLIEGUE-SUPABASE.md`](docs/DESPLIEGUE-SUPABASE.md) — poner el proyecto en marcha
 - [`docs/TRANSBANK.md`](docs/TRANSBANK.md) — Webpay Plus: integración, conciliación, devoluciones y producción
+- [`docs/PRUEBAS-WEBPAY.md`](docs/PRUEBAS-WEBPAY.md) — las diecisiete pruebas contra el ambiente de integración, paso a paso
 - [`docs/DISENO.md`](docs/DISENO.md) — identidad, tokens, componentes, responsive y PWA
 - [`docs/EJECUCION.md`](docs/EJECUCION.md) — del pago confirmado a la aprobación
 - [`docs/PAGOS.md`](docs/PAGOS.md) — el dinero hasta la confirmación, y la cancelación
