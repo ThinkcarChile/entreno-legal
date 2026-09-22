@@ -69,7 +69,7 @@ export function SignUpForm({ defaultIntent = "CLIENT" }: { defaultIntent?: "CLIE
     return (
       <div className="text-center">
         <CheckCircle2 size={40} className="mx-auto text-success-600" aria-hidden="true" />
-        <h2 className="mt-4 text-lg font-semibold text-ink-900">Revisa tu correo</h2>
+        <h2 className="mt-4 text-h3 text-ink-950">Revisa tu correo</h2>
         <p className="mt-2 text-ink-600">
           Te enviamos un enlace para confirmar tu cuenta. Al abrirlo continúas con tu perfil.
         </p>
@@ -81,7 +81,7 @@ export function SignUpForm({ defaultIntent = "CLIENT" }: { defaultIntent?: "CLIE
     <form onSubmit={onSubmit} method="post" noValidate className="space-y-5">
       {/* POST, no GET: ver el comentario en `sign-in-form.tsx`. */}
       <fieldset>
-        <legend className="text-sm font-medium text-ink-800">¿Cómo quieres empezar?</legend>
+        <legend className="text-small font-medium text-ink-800">¿Cómo quieres empezar?</legend>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {intents.map((option) => (
             <button
@@ -93,15 +93,15 @@ export function SignUpForm({ defaultIntent = "CLIENT" }: { defaultIntent?: "CLIE
                 "rounded-[var(--radius-control)] border px-4 py-3 text-left transition-colors",
                 intent === option.id
                   ? "border-brand-600 bg-brand-50/60 ring-1 ring-brand-600"
-                  : "border-ink-200 bg-white hover:border-brand-200",
+                  : "border-line bg-surface hover:border-brand-200",
               )}
             >
-              <span className="block text-sm font-medium text-ink-900">{option.title}</span>
-              <span className="mt-0.5 block text-xs text-ink-500">{option.description}</span>
+              <span className="block text-small font-medium text-ink-950">{option.title}</span>
+              <span className="mt-0.5 block text-caption text-ink-500">{option.description}</span>
             </button>
           ))}
         </div>
-        <p className="mt-2 text-xs text-ink-500">
+        <p className="mt-2 text-caption text-ink-500">
           Puedes usar los dos modos con la misma cuenta cuando quieras.
         </p>
       </fieldset>
@@ -134,7 +134,7 @@ export function SignUpForm({ defaultIntent = "CLIENT" }: { defaultIntent?: "CLIE
         </Field>
       </div>
 
-      <label className="flex cursor-pointer items-start gap-3 text-sm text-ink-700">
+      <label className="flex cursor-pointer items-start gap-3 text-small text-ink-700">
         <input
           type="checkbox"
           name="acceptsTerms"
@@ -153,7 +153,7 @@ export function SignUpForm({ defaultIntent = "CLIENT" }: { defaultIntent?: "CLIE
         </span>
       </label>
       {errors.acceptsTerms && (
-        <p className="text-sm text-danger-600" role="alert">
+        <p className="text-small text-danger-600" role="alert">
           {errors.acceptsTerms}
         </p>
       )}
@@ -164,7 +164,7 @@ export function SignUpForm({ defaultIntent = "CLIENT" }: { defaultIntent?: "CLIE
         {pending ? "Creando tu cuenta…" : "Crear cuenta"}
       </Button>
 
-      <p className="text-center text-sm text-ink-600">
+      <p className="text-center text-small text-ink-600">
         ¿Ya tienes cuenta?{" "}
         <Link href="/entrar" className="font-medium text-brand-700 hover:underline">
           Entra aquí

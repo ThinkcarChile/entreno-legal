@@ -22,12 +22,12 @@ export function Rating({ value, count, size = "sm", showCount = true, className 
         aria-hidden="true"
       />
       <span
-        className={cn("font-semibold text-ink-900", size === "sm" ? "text-sm" : "text-base")}
+        className={cn("font-semibold text-ink-950", size === "sm" ? "text-small" : "text-base")}
       >
         {formatRating(value)}
       </span>
       {showCount && typeof count === "number" && (
-        <span className={cn("text-ink-500", size === "sm" ? "text-sm" : "text-base")}>
+        <span className={cn("text-ink-500", size === "sm" ? "text-small" : "text-base")}>
           ({count})
         </span>
       )}
@@ -38,7 +38,7 @@ export function Rating({ value, count, size = "sm", showCount = true, className 
 /** Estrellas individuales, para el detalle de una reseña. */
 export function StarRow({ value, label }: { value: number; label: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 text-sm">
+    <div className="flex items-center justify-between gap-4 text-small">
       <span className="text-ink-600">{label}</span>
       <span className="flex items-center gap-0.5" aria-label={`${value} de 5`}>
         {[1, 2, 3, 4, 5].map((i) => (

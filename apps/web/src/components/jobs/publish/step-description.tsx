@@ -59,10 +59,10 @@ export function StepDescription({ draft, errors, update }: StepProps) {
         />
       </Field>
 
-      <div className="rounded-[var(--radius-control)] border border-dashed border-ink-200 bg-ink-50/60 p-5 text-center">
+      <div className="rounded-[var(--radius-control)] border border-dashed border-line bg-ink-50/60 p-5 text-center">
         <ImagePlus size={22} className="mx-auto text-ink-400" aria-hidden="true" />
-        <p className="mt-2 text-sm font-medium text-ink-700">Fotografías</p>
-        <p className="mt-1 text-sm text-ink-500">
+        <p className="mt-2 text-small font-medium text-ink-700">Fotografías</p>
+        <p className="mt-1 text-small text-ink-500">
           La carga de imágenes se habilita junto con Supabase Storage. Podrás adjuntar hasta seis
           fotos del lugar o del encargo.
         </p>

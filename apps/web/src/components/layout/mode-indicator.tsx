@@ -25,7 +25,7 @@ export function ModeIndicator() {
           : "bg-success-700 text-white"
       }
     >
-      <div className="container-page flex items-center gap-2 py-1.5 text-xs font-medium">
+      <div className="container-page flex items-center gap-2 py-1.5 text-caption font-medium">
         {demo ? (
           <>
             <FlaskConical size={13} aria-hidden="true" />

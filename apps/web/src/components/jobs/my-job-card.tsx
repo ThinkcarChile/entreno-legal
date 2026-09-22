@@ -19,17 +19,17 @@ export function ClientJobCard({ job }: { job: ClientJobSummary }) {
       <CardContent className="flex h-full flex-col">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={status.tone}>{status.label}</Badge>
-          <span className="text-xs text-ink-400">{job.reference}</span>
+          <span className="text-caption text-ink-500">{job.reference}</span>
         </div>
 
-        <h3 className="mt-3 font-semibold text-ink-900">
+        <h3 className="mt-3 font-semibold text-ink-950">
           <Link href={`/mis-trabajos/publicados/${job.id}`} className="hover:text-brand-700">
             <span className="absolute inset-0" aria-hidden="true" />
             {job.title}
           </Link>
         </h3>
 
-        <dl className="mt-3 space-y-1.5 text-sm text-ink-600">
+        <dl className="mt-3 space-y-1.5 text-small text-ink-600">
           <div className="flex items-center gap-2">
             <MapPin size={15} className="shrink-0 text-ink-400" aria-hidden="true" />
             <dd>
@@ -56,8 +56,8 @@ export function ClientJobCard({ job }: { job: ClientJobSummary }) {
         </dl>
 
         <div className="mt-auto border-t border-ink-100 pt-4">
-          <p className="text-xs text-ink-500">Presupuesto</p>
-          <p className="mt-0.5 text-lg font-semibold text-ink-900">
+          <p className="text-caption text-ink-500">Presupuesto</p>
+          <p className="mt-0.5 text-h3 text-ink-950">
             <Amount value={job.proposedTotal} />
           </p>
         </div>
@@ -81,17 +81,17 @@ export function WorkerJobCard({ job }: { job: WorkerJobSummary }) {
       <CardContent className="flex h-full flex-col">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={status.tone}>{status.label}</Badge>
-          <span className="text-xs text-ink-400">{job.reference}</span>
+          <span className="text-caption text-ink-500">{job.reference}</span>
         </div>
 
-        <h3 className="mt-3 font-semibold text-ink-900">
+        <h3 className="mt-3 font-semibold text-ink-950">
           <Link href={href} className="hover:text-brand-700">
             <span className="absolute inset-0" aria-hidden="true" />
             {job.title}
           </Link>
         </h3>
 
-        <dl className="mt-3 space-y-1.5 text-sm text-ink-600">
+        <dl className="mt-3 space-y-1.5 text-small text-ink-600">
           <div className="flex items-center gap-2">
             <MapPin size={15} className="shrink-0 text-ink-400" aria-hidden="true" />
             <dd>
@@ -108,10 +108,10 @@ export function WorkerJobCard({ job }: { job: WorkerJobSummary }) {
         </dl>
 
         <div className="mt-auto border-t border-ink-100 pt-4">
-          <p className="text-xs text-ink-500">Tu oferta</p>
-          <p className="mt-0.5 text-lg font-semibold text-ink-900">
+          <p className="text-caption text-ink-500">Tu oferta</p>
+          <p className="mt-0.5 text-h3 text-ink-950">
             {job.offerHourlyRate ? <Amount value={job.offerHourlyRate} /> : "—"}
-            <span className="text-sm font-normal text-ink-500">/h</span>
+            <span className="text-small font-normal text-ink-500">/h</span>
           </p>
         </div>
       </CardContent>

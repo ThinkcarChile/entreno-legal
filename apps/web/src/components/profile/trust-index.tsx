@@ -17,24 +17,24 @@ export function TrustIndexCard({ result }: { result: TrustIndexResult }) {
       <CardContent>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="flex items-center gap-2 text-sm font-medium text-ink-600">
+            <p className="flex items-center gap-2 text-small font-medium text-ink-600">
               <ShieldCheck size={16} className="text-brand-600" aria-hidden="true" />
               {site.trustIndexLabel}
             </p>
-            <p className="mt-2 text-4xl font-semibold tracking-tight text-ink-900 tabular-nums">
+            <p className="mt-2 text-4xl font-semibold tracking-tight text-ink-950 tabular-nums">
               {result.value}
-              <span className="ml-1 text-lg font-normal text-ink-400">/100</span>
+              <span className="ml-1 text-lg font-normal text-ink-500">/100</span>
             </p>
-            <p className="mt-1 text-sm text-ink-500">{band.label}</p>
+            <p className="mt-1 text-small text-ink-500">{band.label}</p>
           </div>
         </div>
 
         <dl className="mt-6 space-y-3">
           {result.components.map((component) => (
             <div key={component.code}>
-              <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center justify-between text-small">
                 <dt className="text-ink-600">{component.label}</dt>
-                <dd className="font-medium text-ink-900 tabular-nums">
+                <dd className="font-medium text-ink-950 tabular-nums">
                   {formatPercent(component.score)}
                 </dd>
               </div>

@@ -19,7 +19,7 @@ export default async function MessagesPage() {
   if (!session) {
     return (
       <div className="container-page py-8 sm:py-12">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Mensajes</h1>
+        <h1 className="text-h2 text-ink-950">Mensajes</h1>
         <p className="mt-2 max-w-2xl text-ink-600">
           Cada trabajo tiene su propia conversación entre el cliente y el trabajador. Nadie más
           puede leerla.
@@ -43,7 +43,7 @@ export default async function MessagesPage() {
 
   return (
     <div className="container-page max-w-3xl py-8 sm:py-12">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink-900 sm:text-3xl">Mensajes</h1>
+      <h1 className="text-h2 text-ink-950 sm:text-h1">Mensajes</h1>
       <p className="mt-2 text-ink-600">
         Una conversación por trabajo y persona. Solo ustedes dos pueden leerla.
       </p>
@@ -69,24 +69,24 @@ export default async function MessagesPage() {
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline justify-between gap-3">
-                          <p className="truncate font-medium text-ink-900">
+                          <p className="truncate font-medium text-ink-950">
                             {conversation.counterpartName}
                           </p>
                           {conversation.lastMessageAt && (
-                            <span className="shrink-0 text-xs text-ink-400">
+                            <span className="shrink-0 text-caption text-ink-500">
                               {formatRelative(conversation.lastMessageAt)}
                             </span>
                           )}
                         </div>
-                        <p className="truncate text-sm text-ink-500">{conversation.jobTitle}</p>
+                        <p className="truncate text-small text-ink-500">{conversation.jobTitle}</p>
                         {conversation.lastMessage && (
-                          <p className="mt-0.5 truncate text-sm text-ink-600">
+                          <p className="mt-0.5 truncate text-small text-ink-600">
                             {conversation.lastMessage}
                           </p>
                         )}
                       </div>
                       {conversation.unreadCount > 0 && (
-                        <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-brand-600 px-1.5 text-xs font-semibold text-white tabular-nums">
+                        <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-brand-600 px-1.5 text-caption font-semibold text-white tabular-nums">
                           {conversation.unreadCount}
                         </span>
                       )}

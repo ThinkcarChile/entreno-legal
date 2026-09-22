@@ -30,7 +30,7 @@ export function EvidenceGallery({
 
   if (files.length === 0) {
     return (
-      <p className="text-sm text-ink-500">
+      <p className="text-small text-ink-500">
         Todavía no hay fotos ni comprobantes de este trabajo.
       </p>
     );
@@ -60,7 +60,7 @@ export function EvidenceGallery({
                 type="button"
                 onClick={() => open(file.id)}
                 disabled={pending}
-                className="flex w-full items-center gap-3 rounded-[var(--radius-control)] border border-ink-200 p-3 text-left hover:border-brand-300 hover:bg-brand-50/40 disabled:opacity-60"
+                className="flex w-full items-center gap-3 rounded-[var(--radius-control)] border border-line p-3 text-left hover:border-brand-300 hover:bg-brand-50/40 disabled:opacity-60"
               >
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-ink-100 text-ink-500">
                   {isPdf ? (
@@ -70,10 +70,10 @@ export function EvidenceGallery({
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-ink-900">
+                  <span className="block truncate text-small font-medium text-ink-950">
                     {file.title}
                   </span>
-                  <span className="block text-xs text-ink-500">
+                  <span className="block text-caption text-ink-500">
                     {formatTime(file.occurredAt, timezone)}
                     {file.authorName ? ` · ${file.authorName}` : ""}
                   </span>
@@ -84,7 +84,7 @@ export function EvidenceGallery({
           );
         })}
       </ul>
-      <p className="text-xs text-ink-500">
+      <p className="text-caption text-ink-500">
         Los archivos son privados: se abren con un enlace firmado que caduca en un minuto.
       </p>
     </div>

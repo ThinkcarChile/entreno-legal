@@ -54,13 +54,13 @@ export default async function ProtectedPaymentPage({ params, searchParams }: Pag
     <div className="container-page max-w-2xl py-6 sm:py-10">
       <Link
         href={`/mis-trabajos/publicados/${job.id}`}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-600 hover:text-brand-700"
+        className="inline-flex items-center gap-1.5 text-small font-medium text-ink-600 hover:text-brand-700"
       >
         <ChevronLeft size={16} aria-hidden="true" />
         Volver al trabajo
       </Link>
 
-      <h1 className="mt-6 text-2xl font-semibold tracking-tight text-ink-900 sm:text-3xl">
+      <h1 className="mt-6 text-h2 text-ink-950 sm:text-h1">
         {site.protectedPaymentLabel}
       </h1>
       <p className="mt-2 text-ink-600">
@@ -79,8 +79,8 @@ export default async function ProtectedPaymentPage({ params, searchParams }: Pag
           <div className="flex items-center gap-3.5 border-b border-ink-100 pb-5">
             <Avatar src={worker.profile.avatarUrl} name={worker.profile.displayName} />
             <div className="min-w-0">
-              <p className="truncate font-medium text-ink-900">{job.title}</p>
-              <p className="mt-0.5 text-sm text-ink-500">
+              <p className="truncate font-medium text-ink-950">{job.title}</p>
+              <p className="mt-0.5 text-small text-ink-500">
                 {worker.profile.displayName} · {formatDate(job.startsAt, job.timezone)} a las{" "}
                 {formatTime(job.startsAt, job.timezone)} ·{" "}
                 {formatDuration(detail.assignment.agreedDurationMinutes)}
@@ -88,7 +88,7 @@ export default async function ProtectedPaymentPage({ params, searchParams }: Pag
             </div>
           </div>
 
-          <dl className="mt-5 space-y-3 text-sm">
+          <dl className="mt-5 space-y-3 text-small">
             <Row label="Valor del trabajo" value={<Amount value={settlement.serviceAmount} />} />
             {settlement.bonusAmount.amount > 0 && (
               <Row
@@ -106,14 +106,14 @@ export default async function ProtectedPaymentPage({ params, searchParams }: Pag
 
           <div className="mt-5 space-y-3 border-t border-ink-100 pt-5">
             <div className="flex items-baseline justify-between gap-4">
-              <span className="text-sm text-ink-600">El trabajador recibe</span>
-              <span className="font-semibold text-ink-900">
+              <span className="text-small text-ink-600">El trabajador recibe</span>
+              <span className="font-semibold text-ink-950">
                 <Amount value={settlement.workerReceives} />
               </span>
             </div>
             <div className="flex items-baseline justify-between gap-4">
-              <span className="text-base font-medium text-ink-900">Total a pagar</span>
-              <span className="text-2xl font-semibold text-ink-900">
+              <span className="text-base font-medium text-ink-950">Total a pagar</span>
+              <span className="text-2xl font-semibold text-ink-950">
                 <Amount value={settlement.clientTotal} />
               </span>
             </div>
@@ -141,9 +141,9 @@ function Row({
     <div>
       <div className="flex items-baseline justify-between gap-4">
         <dt className="text-ink-600">{label}</dt>
-        <dd className="font-medium text-ink-900 tabular-nums">{value}</dd>
+        <dd className="font-medium text-ink-950 tabular-nums">{value}</dd>
       </div>
-      {hint && <p className="mt-0.5 text-xs text-ink-500">{hint}</p>}
+      {hint && <p className="mt-0.5 text-caption text-ink-500">{hint}</p>}
     </div>
   );
 }

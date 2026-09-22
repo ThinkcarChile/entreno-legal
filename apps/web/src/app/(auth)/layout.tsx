@@ -5,7 +5,7 @@ import { site } from "@/config/site";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col bg-white">
+    <div className="flex min-h-dvh flex-col bg-surface">
       <header className="container-page flex h-16 items-center">
         <Link href="/" aria-label={site.name}>
           <Logo />

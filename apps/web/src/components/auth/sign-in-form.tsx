@@ -92,7 +92,7 @@ export function SignInForm() {
         {pending ? "Entrando…" : "Entrar"}
       </Button>
 
-      <div className="space-y-2 text-center text-sm text-ink-600">
+      <div className="space-y-2 text-center text-small text-ink-600">
         <p>
           <Link href="/recuperar-clave" className="font-medium text-brand-700 hover:underline">
             Olvidé mi contraseña

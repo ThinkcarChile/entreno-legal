@@ -144,8 +144,8 @@ export function WorkerProfileForm({ worker }: { worker: WorkerProfile | null }) 
       </div>
 
       <fieldset>
-        <legend className="text-sm font-medium text-ink-800">Zonas donde trabajas</legend>
-        <p className="mt-1 text-sm text-ink-500">
+        <legend className="text-small font-medium text-ink-800">Zonas donde trabajas</legend>
+        <p className="mt-1 text-small text-ink-500">
           Deja la comuna en blanco para cubrir toda la región.
         </p>
 
@@ -177,8 +177,8 @@ export function WorkerProfileForm({ worker }: { worker: WorkerProfile | null }) 
         </Button>
       </fieldset>
 
-      <div className="space-y-3 rounded-[var(--radius-card)] border border-ink-200 bg-white p-5">
-        <label className="flex cursor-pointer items-start gap-3 text-sm text-ink-700">
+      <div className="space-y-3 rounded-[var(--radius-card)] border border-line bg-surface p-5">
+        <label className="flex cursor-pointer items-start gap-3 text-small text-ink-700">
           <input
             type="checkbox"
             checked={acceptsOvernight}
@@ -188,7 +188,7 @@ export function WorkerProfileForm({ worker }: { worker: WorkerProfile | null }) 
           <span>Acepto trabajos nocturnos y de madrugada.</span>
         </label>
 
-        <label className="flex cursor-pointer items-start gap-3 text-sm text-ink-700">
+        <label className="flex cursor-pointer items-start gap-3 text-small text-ink-700">
           <input
             type="checkbox"
             checked={isAccepting}
@@ -196,13 +196,13 @@ export function WorkerProfileForm({ worker }: { worker: WorkerProfile | null }) 
             onChange={(event) => setIsAccepting(event.target.checked)}
             className="mt-0.5 h-4.5 w-4.5 rounded border-ink-300 text-brand-600 focus:ring-brand-500 disabled:opacity-40"
           />
-          <span className={canAcceptJobs ? "" : "text-ink-400"}>
+          <span className={canAcceptJobs ? "" : "text-ink-500"}>
             Aparecer como disponible para recibir invitaciones.
             {!canAcceptJobs && " Se habilita cuando tu identidad esté verificada."}
           </span>
         </label>
 
-        <label className="flex cursor-pointer items-start gap-3 text-sm text-ink-700">
+        <label className="flex cursor-pointer items-start gap-3 text-small text-ink-700">
           <input
             type="checkbox"
             checked={acceptsTerms}
@@ -243,9 +243,9 @@ function AreaRow({
   );
 
   return (
-    <div className="flex flex-wrap items-end gap-3 rounded-[var(--radius-control)] border border-ink-200 p-3">
+    <div className="flex flex-wrap items-end gap-3 rounded-[var(--radius-control)] border border-line p-3">
       <div className="min-w-44 flex-1">
-        <label className="mb-1 block text-xs font-medium text-ink-600">Región</label>
+        <label className="mb-1 block text-caption font-medium text-ink-600">Región</label>
         <Select
           value={area.regionCode}
           onChange={(event) =>
@@ -262,7 +262,7 @@ function AreaRow({
       </div>
 
       <div className="min-w-44 flex-1">
-        <label className="mb-1 block text-xs font-medium text-ink-600">Comuna</label>
+        <label className="mb-1 block text-caption font-medium text-ink-600">Comuna</label>
         <Select
           value={area.communeCode ?? ""}
           disabled={communes.length === 0}
@@ -278,7 +278,7 @@ function AreaRow({
       </div>
 
       <div className="w-28">
-        <label className="mb-1 block text-xs font-medium text-ink-600">Radio (km)</label>
+        <label className="mb-1 block text-caption font-medium text-ink-600">Radio (km)</label>
         <Input
           type="number"
           min={1}

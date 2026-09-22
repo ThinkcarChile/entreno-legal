@@ -19,7 +19,7 @@ export function DemoBanner() {
 
   return (
     <div className="bg-ink-900 text-white">
-      <div className="container-page flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
+      <div className="container-page flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-small">
         <span className="inline-flex items-center gap-1.5 font-medium">
           <FlaskConical size={14} aria-hidden="true" />
           Modo demostración

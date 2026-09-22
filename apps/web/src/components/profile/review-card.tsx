@@ -10,8 +10,8 @@ export function ReviewCard({ review }: { review: Review }) {
         <div className="flex items-center gap-3">
           <Avatar src={review.authorAvatarUrl} name={review.authorName} />
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-ink-900">{review.authorName}</p>
-            <p className="text-xs text-ink-500">{formatRelative(review.createdAt)}</p>
+            <p className="truncate text-small font-medium text-ink-950">{review.authorName}</p>
+            <p className="text-caption text-ink-500">{formatRelative(review.createdAt)}</p>
           </div>
           <Rating value={review.overall} showCount={false} className="ml-auto" />
         </div>

@@ -77,18 +77,16 @@ test.describe("marketplace de punta a punta", () => {
     await signIn(page, clientAccount!.email, clientAccount!.password);
     await page.goto("/publicar");
 
-    // Paso 1: categoría
+    // Pantalla 1 de 4: qué necesitas.
     await page.getByRole("button", { name: /Lanzamientos y tiendas/ }).click();
     await page.getByRole("button", { name: "Continuar" }).click();
 
-    // Paso 2: dónde
+    // Pantalla 2 de 4: dónde y cuándo, juntos.
     await page.getByLabel("Región").selectOption("13");
     await page.getByLabel("Comuna").selectOption("13-providencia");
     await page.getByLabel("Dirección").fill("Av. Providencia 1234, local 5");
     await page.getByLabel("Nombre del lugar").fill("Tienda de prueba");
-    await page.getByRole("button", { name: "Continuar" }).click();
 
-    // Paso 3: cuándo
     const date = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
     await page.getByLabel("Fecha").fill(date);
     await page.getByLabel("Hora de inicio").fill("05:00");
@@ -98,24 +96,18 @@ test.describe("marketplace de punta a punta", () => {
     await page.getByLabel("O ingresa los minutos exactos").fill("300");
     await page.getByRole("button", { name: "Continuar" }).click();
 
-    // Paso 4: descripción
+    // Pantalla 3 de 4: descripción y objetivo.
     await page.getByLabel("Título").fill(jobTitle);
     await page
       .getByLabel("Descripción")
       .fill(
         "Necesito que alguien tome lugar en la fila desde temprano y me avise cómo avanza durante la mañana.",
       );
-    await page.getByRole("button", { name: "Continuar" }).click();
-
-    // Paso 5: objetivo
     await page.getByRole("button", { name: /Quedar lo más adelante posible/ }).click();
     await page.getByRole("button", { name: "Continuar" }).click();
 
-    // Paso 6: precio
+    // Pantalla 4 de 4: precio y revisión, en la misma vista.
     await page.getByLabel("Tu tarifa por hora").fill("10000");
-    await page.getByRole("button", { name: "Continuar" }).click();
-
-    // Paso 7: revisión y publicación
     await expect(page.getByText(jobTitle)).toBeVisible();
     await page.getByRole("checkbox").check();
     await page.getByRole("button", { name: "Publicar trabajo" }).click();

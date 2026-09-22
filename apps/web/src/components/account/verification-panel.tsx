@@ -46,39 +46,39 @@ export function VerificationPanel({ status }: { status: VerificationStatus }) {
     );
 
   return (
-    <div className="rounded-[var(--radius-card)] border border-ink-200 bg-white p-5 sm:p-6">
+    <div className="rounded-[var(--radius-card)] border border-line bg-surface p-5 sm:p-6">
       <div className="flex items-start gap-3.5">
         {icon}
         <div className="min-w-0 flex-1">
-          <h2 className="font-semibold text-ink-900">Verificación de identidad</h2>
+          <h2 className="font-semibold text-ink-950">Verificación de identidad</h2>
           <Badge tone={label.tone} className="mt-2">
             {label.label}
           </Badge>
 
           {status === VerificationStatus.VERIFIED ? (
-            <p className="mt-3 text-sm text-ink-600">
+            <p className="mt-3 text-small text-ink-600">
               Tu identidad está verificada. Ya puedes enviar ofertas y ser seleccionado para
               trabajos.
             </p>
           ) : status === VerificationStatus.PENDING ? (
-            <p className="mt-3 text-sm text-ink-600">
+            <p className="mt-3 text-small text-ink-600">
               Estamos revisando tu solicitud. Te avisamos apenas esté lista. Mientras tanto puedes
               explorar trabajos y dejar tu perfil listo.
             </p>
           ) : status === VerificationStatus.SUSPENDED ? (
-            <p className="mt-3 text-sm text-ink-600">
+            <p className="mt-3 text-small text-ink-600">
               Tu cuenta está suspendida. Escríbenos para revisar tu caso.
             </p>
           ) : (
             <>
-              <p className="mt-3 text-sm text-ink-600">
-                <strong className="font-medium text-ink-900">
+              <p className="mt-3 text-small text-ink-600">
+                <strong className="font-medium text-ink-950">
                   Para enviar ofertas y aceptar trabajos deberás verificar tu identidad.
                 </strong>{" "}
                 Es lo que hace que un cliente confíe en dejarle un encargo a alguien que no
                 conoce.
               </p>
-              <ul className="mt-3 space-y-1.5 text-sm text-ink-600">
+              <ul className="mt-3 space-y-1.5 text-small text-ink-600">
                 <li className="flex gap-2">
                   <BadgeCheck size={15} className="mt-0.5 shrink-0 text-brand-600" aria-hidden="true" />
                   Tus documentos se guardan en privado y nunca aparecen en tu perfil.
@@ -115,7 +115,7 @@ export function VerificationPanel({ status }: { status: VerificationStatus }) {
             </Button>
           )}
 
-          <p className="mt-4 text-xs text-ink-500">
+          <p className="mt-4 text-caption text-ink-500">
             La carga de documento y selfie se habilita junto con el proveedor de verificación. Por
             ahora la revisión la hace nuestro equipo.
           </p>

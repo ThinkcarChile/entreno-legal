@@ -22,9 +22,9 @@ const benefits = [
 export default function WorkWithUsPage() {
   return (
     <>
-      <section className="border-b border-ink-200/60 bg-white py-16 sm:py-20">
+      <section className="border-b border-line bg-surface py-16 sm:py-20">
         <div className="container-page max-w-3xl">
-          <h1 className="text-3xl font-semibold tracking-tight text-ink-900 sm:text-4xl">
+          <h1 className="text-h1 text-ink-950 sm:text-display">
             Tu tiempo puede valer más
           </h1>
           <p className="mt-4 text-lg text-ink-600">
@@ -48,15 +48,15 @@ export default function WorkWithUsPage() {
             <Card key={benefit.title}>
               <CardContent>
                 <benefit.icon size={22} className="text-brand-600" aria-hidden="true" />
-                <h3 className="mt-4 font-semibold text-ink-900">{benefit.title}</h3>
-                <p className="mt-1.5 text-sm text-ink-600">{benefit.description}</p>
+                <h3 className="mt-4 font-semibold text-ink-950">{benefit.title}</h3>
+                <p className="mt-1.5 text-small text-ink-600">{benefit.description}</p>
               </CardContent>
             </Card>
           ))}
         </div>
       </Section>
 
-      <Section title="Antes de empezar" className="bg-white">
+      <Section title="Antes de empezar" className="bg-surface">
         <div className="max-w-3xl space-y-4 text-[0.9375rem] text-ink-700">
           <p>
             Para aceptar trabajos necesitas completar la verificación de identidad. Es

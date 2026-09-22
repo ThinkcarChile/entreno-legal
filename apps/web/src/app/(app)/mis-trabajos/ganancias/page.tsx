@@ -35,17 +35,17 @@ export default async function EarningsPage() {
     <div className="container-page py-6 sm:py-10">
       <Link
         href="/mis-trabajos"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-600 hover:text-brand-700"
+        className="inline-flex items-center gap-1.5 text-small font-medium text-ink-600 hover:text-brand-700"
       >
         <ChevronLeft size={16} aria-hidden="true" />
         Mis trabajos
       </Link>
 
       <header className="mt-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900 sm:text-3xl">
+        <h1 className="text-h2 text-ink-950 sm:text-h1">
           Mis ganancias
         </h1>
-        <p className="mt-1.5 text-sm text-ink-600">
+        <p className="mt-1.5 text-small text-ink-600">
           Lo que has ganado por trabajo, con el estado real de cada pago.
         </p>
       </header>
@@ -92,28 +92,28 @@ export default async function EarningsPage() {
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge tone={label.tone}>{label.label}</Badge>
-                          <span className="text-xs text-ink-400">{row.jobReference}</span>
+                          <span className="text-caption text-ink-500">{row.jobReference}</span>
                         </div>
                         <Link
                           href={`/mis-trabajos/${row.assignmentId}`}
-                          className="mt-1.5 block font-medium text-ink-900 hover:text-brand-700"
+                          className="mt-1.5 block font-medium text-ink-950 hover:text-brand-700"
                         >
                           {row.jobTitle}
                         </Link>
-                        <p className="mt-0.5 text-sm text-ink-500">
+                        <p className="mt-0.5 text-small text-ink-500">
                           {formatDate(row.jobStartsAt)}
                         </p>
                         {row.heldReason && (
-                          <p className="mt-1 text-sm text-warning-700">{row.heldReason}</p>
+                          <p className="mt-1 text-small text-warning-700">{row.heldReason}</p>
                         )}
                         {row.bankReference && (
-                          <p className="mt-1 text-sm text-success-700">
+                          <p className="mt-1 text-small text-success-700">
                             Transferido · referencia {row.bankReference}
                           </p>
                         )}
                       </div>
 
-                      <dl className="shrink-0 space-y-1 text-right text-sm">
+                      <dl className="shrink-0 space-y-1 text-right text-small">
                         <div>
                           <dt className="sr-only">Monto del trabajo</dt>
                           <dd className="text-ink-600 tabular-nums">
@@ -136,7 +136,7 @@ export default async function EarningsPage() {
                         </div>
                         <div className="border-t border-ink-100 pt-1">
                           <dt className="sr-only">Recibes</dt>
-                          <dd className="text-base font-semibold text-ink-900 tabular-nums">
+                          <dd className="text-base font-semibold text-ink-950 tabular-nums">
                             <Amount value={row.netAmount} />
                           </dd>
                         </div>

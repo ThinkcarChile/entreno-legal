@@ -11,10 +11,16 @@ import { Logo } from "./logo";
 import { MobileMenu } from "./mobile-menu";
 import { UserMenu } from "./user-menu";
 
+/**
+ * Navegación pública.
+ *
+ * Cuatro entradas y ninguna más: una barra con ocho enlaces es una barra que no
+ * se lee. Lo que no está aquí está en el pie, que es donde se busca.
+ */
 const navigation = [
-  { href: "/trabajos", label: "Buscar trabajos" },
+  { href: "/trabajos", label: "Explorar trabajos" },
   { href: "/como-funciona", label: "Cómo funciona" },
-  { href: "/trabajadores", label: "Trabajadores" },
+  { href: "/pago-protegido", label: "Seguridad" },
   { href: "/precios", label: "Precios" },
 ];
 
@@ -22,38 +28,46 @@ const navigation = [
  * Cabecera.
  *
  * Es un componente de servidor para que la sesión se resuelva antes de pintar:
- * así nadie ve "Entrar" durante un instante estando ya conectado.
+ * así nadie ve «Entrar» durante un instante estando ya conectado.
+ *
+ * En móvil quedan el logotipo, los avisos y el menú. Las acciones de trabajo
+ * viven en la barra inferior, que es donde llega el pulgar.
  */
 export async function SiteHeader() {
   const session = await getViewer();
   const isWorker = session?.modes.includes(UserRole.WORKER) ?? false;
+  const unread = session?.unreadNotifications ?? 0;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-ink-200/70 bg-white/85 backdrop-blur-md">
-      <div className="container-page flex h-16 items-center justify-between gap-6">
-        <Link href="/" className="flex items-center gap-2.5" aria-label={site.name}>
+    <header className="sticky top-0 z-(--z-index-header) border-b border-line bg-surface/90 backdrop-blur-md">
+      <div className="container-page flex h-(--spacing-header) items-center justify-between gap-4">
+        <Link
+          href="/"
+          className="flex shrink-0 items-center rounded-[var(--radius-control)]"
+          aria-label={`${site.name}, ir al inicio`}
+        >
           <Logo />
         </Link>
 
-        <nav aria-label="Principal" className="hidden items-center gap-1 lg:flex">
+        <nav aria-label="Principal" className="hidden items-center gap-0.5 lg:flex">
           {navigation.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-[var(--radius-control)] px-3 py-2 text-sm font-medium text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900"
+              className="rounded-[var(--radius-control)] px-3 py-2 text-small font-medium text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-950"
             >
               {item.label}
             </Link>
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 lg:flex">
-          {session ? (
+        <div className="flex items-center gap-1.5">
+          {session && (
             <>
               <Link
                 href="/mensajes"
                 aria-label="Mensajes"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-ink-600 hover:bg-ink-100"
+                className="hidden h-11 w-11 items-center justify-center rounded-[var(--radius-control)] text-ink-600 hover:bg-ink-100 hover:text-ink-950 lg:inline-flex"
               >
                 <MessageCircle size={19} aria-hidden="true" />
               </Link>
@@ -61,48 +75,54 @@ export async function SiteHeader() {
               <Link
                 href="/notificaciones"
                 aria-label={
-                  session.unreadNotifications > 0
-                    ? `Notificaciones, ${session.unreadNotifications} sin leer`
-                    : "Notificaciones"
+                  unread > 0 ? `Notificaciones, ${unread} sin leer` : "Notificaciones"
                 }
-                className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-ink-600 hover:bg-ink-100"
+                className="relative hidden h-11 w-11 items-center justify-center rounded-[var(--radius-control)] text-ink-600 hover:bg-ink-100 hover:text-ink-950 lg:inline-flex"
               >
                 <Bell size={19} aria-hidden="true" />
-                {session.unreadNotifications > 0 && (
-                  <span className="absolute top-1.5 right-1.5 inline-flex min-w-4 items-center justify-center rounded-full bg-danger-600 px-1 text-[0.625rem] font-semibold text-white tabular-nums">
-                    {session.unreadNotifications > 9 ? "9+" : session.unreadNotifications}
+                {unread > 0 && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute top-1.5 right-1.5 inline-flex min-w-4 items-center justify-center rounded-full bg-danger-600 px-1 text-[0.625rem] leading-4 font-semibold text-white"
+                  >
+                    {unread > 9 ? "9+" : unread}
                   </span>
                 )}
               </Link>
+            </>
+          )}
 
+          {session ? (
+            <div className="hidden lg:flex lg:items-center lg:gap-2">
               <ButtonLink href="/publicar" size="sm">
-                Publicar
+                Publicar trabajo
               </ButtonLink>
-
               <UserMenu
                 displayName={session.profile.displayName}
                 avatarUrl={session.profile.avatarUrl}
                 isWorker={isWorker}
                 isAdmin={session.isAdmin}
               />
-            </>
+            </div>
           ) : (
-            <>
+            <div className="hidden lg:flex lg:items-center lg:gap-2">
               <ButtonLink href="/entrar" variant="ghost" size="sm">
-                Entrar
+                Iniciar sesión
               </ButtonLink>
               <ButtonLink href="/publicar" size="sm">
-                Publicar un trabajo
+                Publicar trabajo
               </ButtonLink>
-            </>
+            </div>
           )}
-        </div>
 
-        <MobileMenu
-          items={navigation}
-          signedIn={Boolean(session)}
-          unreadCount={session?.unreadNotifications ?? 0}
-        />
+          <MobileMenu
+            items={navigation}
+            signedIn={Boolean(session)}
+            isWorker={isWorker}
+            isAdmin={session?.isAdmin ?? false}
+            unreadCount={unread}
+          />
+        </div>
       </div>
     </header>
   );

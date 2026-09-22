@@ -96,7 +96,7 @@ export function AvatarUploader({
             <Camera size={15} aria-hidden="true" />
             {pending ? "Subiendo…" : preview ? "Cambiar foto" : "Subir foto"}
           </Button>
-          <p className="mt-1.5 text-xs text-ink-500">JPG, PNG o WebP, hasta 4 MB.</p>
+          <p className="mt-1.5 text-caption text-ink-500">JPG, PNG o WebP, hasta 4 MB.</p>
         </div>
       </div>
 

@@ -55,7 +55,7 @@ export function ExtensionRequestForm({ assignmentId }: { assignmentId: string })
   }
 
   return (
-    <div className="space-y-3 rounded-[var(--radius-control)] border border-ink-200 p-4">
+    <div className="space-y-3 rounded-[var(--radius-control)] border border-line p-4">
       {error && <Alert tone="danger">{error}</Alert>}
 
       <Field label="Cuánto tiempo más" htmlFor="extension-minutes">
@@ -83,7 +83,7 @@ export function ExtensionRequestForm({ assignmentId }: { assignmentId: string })
         />
       </Field>
 
-      <p className="text-xs text-ink-500">
+      <p className="text-caption text-ink-500">
         Se cobra al cliente a la misma tarifa por hora que acordaron. Tú lo recibes con la misma
         comisión de siempre, y solo si él acepta y paga.
       </p>
@@ -127,8 +127,8 @@ export function ExtensionAnswer({
     <div className="space-y-3 rounded-[var(--radius-control)] border border-warning-100 bg-warning-50/60 p-4">
       <div className="flex items-start gap-2.5">
         <Clock size={17} className="mt-0.5 shrink-0 text-warning-600" aria-hidden="true" />
-        <div className="text-sm">
-          <p className="font-medium text-ink-900">
+        <div className="text-small">
+          <p className="font-medium text-ink-950">
             El trabajador pide {formatDuration(extension.additionalMinutes)} más
           </p>
           {extension.reason && <p className="mt-1 text-ink-700">{extension.reason}</p>}
@@ -140,7 +140,7 @@ export function ExtensionAnswer({
 
       {error && <Alert tone="danger">{error}</Alert>}
 
-      <p className="text-xs text-ink-600">
+      <p className="text-caption text-ink-600">
         Si aceptas, se crea un cobro aparte por ese tiempo. El trabajo original no cambia de
         precio. La respuesta es definitiva.
       </p>
@@ -170,7 +170,7 @@ export function ExtensionPaymentPrompt({
 
   if (payment?.status === PaymentStatus.PAID) {
     return (
-      <p className="text-sm text-success-700">
+      <p className="text-small text-success-700">
         Tiempo adicional de {formatDuration(extension.additionalMinutes)} pagado.
       </p>
     );
@@ -189,9 +189,9 @@ export function ExtensionPaymentPrompt({
   }
 
   return (
-    <div className="space-y-2.5 rounded-[var(--radius-control)] border border-ink-200 p-4">
+    <div className="space-y-2.5 rounded-[var(--radius-control)] border border-line p-4">
       {error && <Alert tone="danger">{error}</Alert>}
-      <p className="text-sm text-ink-700">
+      <p className="text-small text-ink-700">
         Aceptaste {formatDuration(extension.additionalMinutes)} más. Falta pagar{" "}
         <Amount value={extension.additionalAmount} />.
       </p>

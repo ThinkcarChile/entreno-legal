@@ -151,7 +151,7 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
     <div className="container-page py-6 sm:py-10">
       <Link
         href={isClient ? "/mis-trabajos/publicados" : "/mis-trabajos"}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-600 hover:text-brand-700"
+        className="inline-flex items-center gap-1.5 text-small font-medium text-ink-600 hover:text-brand-700"
       >
         <ChevronLeft size={16} aria-hidden="true" />
         {isClient ? "Mis trabajos publicados" : "Mis trabajos"}
@@ -169,12 +169,12 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={status.tone}>{status.label}</Badge>
               <Badge tone="info">{job.category.name}</Badge>
-              <span className="text-xs text-ink-400">{job.reference}</span>
+              <span className="text-caption text-ink-500">{job.reference}</span>
             </div>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-ink-900 sm:text-3xl">
+            <h1 className="mt-3 text-h2 text-ink-950 sm:text-h1">
               {job.title}
             </h1>
-            <p className="mt-1.5 text-sm text-ink-600">{waitingFor(facts)}</p>
+            <p className="mt-1.5 text-small text-ink-600">{waitingFor(facts)}</p>
           </header>
 
           {/* ------------------------------------------------ avisos de estado */}
@@ -256,10 +256,10 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
               <div className="flex items-center gap-3.5 border-b border-ink-100 pb-5">
                 <Avatar src={counterpart.avatarUrl} name={counterpart.displayName} />
                 <div className="min-w-0">
-                  <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">
+                  <p className="text-caption font-medium tracking-wide text-ink-500 uppercase">
                     {isClient ? "Trabajador" : "Cliente"}
                   </p>
-                  <p className="font-medium text-ink-900">{counterpart.displayName}</p>
+                  <p className="font-medium text-ink-950">{counterpart.displayName}</p>
                 </div>
                 {detail.conversationId && can.canChat && (
                   <ButtonLink
@@ -283,7 +283,7 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
                   aria-hidden="true"
                 />
                 <div>
-                  <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">Cuándo</p>
+                  <p className="text-caption font-medium tracking-wide text-ink-500 uppercase">Cuándo</p>
                   <p className="mt-1 text-[0.9375rem] text-ink-700 first-letter:uppercase">
                     {formatDate(job.startsAt, job.timezone)}
                   </p>
@@ -300,7 +300,7 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
               <div className="flex gap-3.5">
                 <Target size={18} className="mt-0.5 shrink-0 text-ink-400" aria-hidden="true" />
                 <div>
-                  <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">
+                  <p className="text-caption font-medium tracking-wide text-ink-500 uppercase">
                     Objetivo
                   </p>
                   <p className="mt-1 text-[0.9375rem] text-ink-700">
@@ -312,7 +312,7 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
               {assignment.bonus && (
                 <div className="flex gap-3 rounded-[var(--radius-control)] bg-success-50 p-4">
                   <Gift size={18} className="mt-0.5 shrink-0 text-success-600" aria-hidden="true" />
-                  <div className="text-sm">
+                  <div className="text-small">
                     <p className="font-medium text-success-800">
                       Bono por objetivo: <Amount value={assignment.bonus} />
                     </p>
@@ -325,7 +325,7 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
 
               {job.instructions && (
                 <div>
-                  <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">
+                  <p className="text-caption font-medium tracking-wide text-ink-500 uppercase">
                     Instrucciones
                   </p>
                   <p className="mt-1.5 text-[0.9375rem] whitespace-pre-line text-ink-700">
@@ -341,10 +341,10 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
           {can.canAddEvidence && (
             <Card>
               <CardContent>
-                <h2 className="text-base font-semibold text-ink-900">
+                <h2 className="text-base font-semibold text-ink-950">
                   {isWorker ? "Informar al cliente" : "Aportar una nota o foto"}
                 </h2>
-                <p className="mt-1 mb-4 text-sm text-ink-500">
+                <p className="mt-1 mb-4 text-small text-ink-500">
                   Todo lo que envíes queda en la línea de tiempo del trabajo y sirve como evidencia.
                 </p>
                 <EvidenceForm assignmentId={assignment.id} />
@@ -354,7 +354,7 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
 
           <Card>
             <CardContent>
-              <h2 className="text-base font-semibold text-ink-900">Avance del trabajo</h2>
+              <h2 className="text-base font-semibold text-ink-950">Avance del trabajo</h2>
               <div className="mt-5">
                 <JobTimeline entries={timeline} timezone={job.timezone} />
               </div>
@@ -364,7 +364,7 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
           {timeline.some((entry) => entry.storagePath) && (
             <Card>
               <CardContent>
-                <h2 className="flex items-center gap-2 text-base font-semibold text-ink-900">
+                <h2 className="flex items-center gap-2 text-base font-semibold text-ink-950">
                   <Paperclip size={17} className="text-ink-400" aria-hidden="true" />
                   Evidencia adjunta
                 </h2>
@@ -378,7 +378,7 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
           {can.canReview && (
             <Card>
               <CardContent>
-                <h2 className="text-base font-semibold text-ink-900">¿Cómo fue tu experiencia?</h2>
+                <h2 className="text-base font-semibold text-ink-950">¿Cómo fue tu experiencia?</h2>
                 <div className="mt-4">
                   <ReviewForm
                     assignmentId={assignment.id}
@@ -395,17 +395,17 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
           <Card>
             <CardContent>
-              <p className="text-sm text-ink-500">
+              <p className="text-small text-ink-500">
                 {isClient ? "Total pagado" : "Recibes por este trabajo"}
               </p>
-              <p className="mt-1 text-3xl font-semibold tracking-tight text-ink-900">
+              <p className="mt-1 text-h1 text-ink-950">
                 <Amount value={isClient ? settlement.clientTotal : settlement.workerReceives} />
               </p>
 
-              <dl className="mt-4 space-y-2 border-t border-ink-100 pt-4 text-sm">
+              <dl className="mt-4 space-y-2 border-t border-ink-100 pt-4 text-small">
                 <div className="flex justify-between gap-4">
                   <dt className="text-ink-600">Valor del trabajo</dt>
-                  <dd className="text-ink-900 tabular-nums">
+                  <dd className="text-ink-950 tabular-nums">
                     <Amount value={settlement.serviceAmount} />
                   </dd>
                 </div>
@@ -414,7 +414,7 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
                     <dt className="text-ink-600">
                       {assignment.bonusAwarded === false ? "Bono no otorgado" : "Bono potencial"}
                     </dt>
-                    <dd className="text-ink-900 tabular-nums">
+                    <dd className="text-ink-950 tabular-nums">
                       <Amount value={settlement.bonusAmount} />
                     </dd>
                   </div>
@@ -423,20 +423,20 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
                   <dt className="text-ink-600">
                     Tarifa {site.shortName} ({formatPercent(settlement.commissionBps / 10000, 0)})
                   </dt>
-                  <dd className="text-ink-900 tabular-nums">
+                  <dd className="text-ink-950 tabular-nums">
                     <Amount value={settlement.commissionAmount} />
                   </dd>
                 </div>
               </dl>
 
               {isWorker && payout && (
-                <p className="mt-4 border-t border-ink-100 pt-4 text-sm">
+                <p className="mt-4 border-t border-ink-100 pt-4 text-small">
                   <span className="text-ink-600">Estado de tu pago: </span>
                   <Badge tone={payoutStatusLabels[payout.status].tone}>
                     {payoutStatusLabels[payout.status].label}
                   </Badge>
                   {payout.status === PayoutStatus.PAID && payout.bankReference && (
-                    <span className="mt-1 block text-xs text-ink-500">
+                    <span className="mt-1 block text-caption text-ink-500">
                       Referencia {payout.bankReference}
                     </span>
                   )}
@@ -462,7 +462,7 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
           {(can.canVerifyHandoffCode || (isClient && can.canGenerateHandoffCode)) && (
             <Card>
               <CardContent>
-                <h2 className="mb-3 text-base font-semibold text-ink-900">Código de entrega</h2>
+                <h2 className="mb-3 text-base font-semibold text-ink-950">Código de entrega</h2>
                 {isWorker ? (
                   <WorkerHandoffPanel assignmentId={assignment.id} />
                 ) : (
@@ -479,7 +479,7 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
           {(can.canRequestExtension || (can.canAnswerExtension && pendingExtension)) && (
             <Card>
               <CardContent className="space-y-3">
-                <h2 className="text-base font-semibold text-ink-900">Tiempo adicional</h2>
+                <h2 className="text-base font-semibold text-ink-950">Tiempo adicional</h2>
                 {can.canAnswerExtension && pendingExtension ? (
                   <ExtensionAnswer assignmentId={assignment.id} extension={pendingExtension} />
                 ) : (
@@ -507,14 +507,14 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
           {can.canApproveCompletion && (
             <Card>
               <CardContent className="space-y-3">
-                <h2 className="text-base font-semibold text-ink-900">Cerrar el trabajo</h2>
-                <p className="text-sm text-ink-600">
+                <h2 className="text-base font-semibold text-ink-950">Cerrar el trabajo</h2>
+                <p className="text-small text-ink-600">
                   {assignment.completionRequestedAt
                     ? "El trabajador dio por terminado el trabajo. Revisa el avance y la evidencia antes de aprobar."
                     : "Puedes aprobar cuando el trabajo esté hecho a tu conformidad."}
                 </p>
                 {assignment.completionNote && (
-                  <p className="rounded-[var(--radius-control)] bg-ink-50 p-3 text-sm text-ink-700">
+                  <p className="rounded-[var(--radius-control)] bg-ink-50 p-3 text-small text-ink-700">
                     {assignment.completionNote}
                   </p>
                 )}
@@ -543,7 +543,7 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
             </ButtonLink>
           )}
 
-          <p className="text-center text-xs text-ink-500">
+          <p className="text-center text-caption text-ink-500">
             ¿Necesitas ayuda?{" "}
             <Link href="/contacto" className="font-medium underline underline-offset-2">
               Escríbenos

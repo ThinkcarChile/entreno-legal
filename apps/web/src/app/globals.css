@@ -3,84 +3,213 @@
 /*
   Sistema de diseño HagoTuFila.
 
-  Fondo claro, mucho aire, tarjetas, tipografía nítida y una sola familia de color
-  de marca. Sin gradientes decorativos ni efectos innecesarios: la estética
-  comunica confianza, que es el producto.
+  Una marca chilena de servicios entre personas: cálida, clara y seria con el
+  dinero. Coral para lo que se pulsa, azul profundo para lo que se lee, crema
+  para el fondo. Sin gradientes decorativos ni efectos que no signifiquen nada:
+  la estética comunica confianza, y la confianza es el producto.
+
+  Todo valor vive aquí. Ningún componente escribe un color, un radio o una
+  sombra a mano: si mañana cambia la marca, cambia este archivo y nada más.
+
+  Contraste: los tonos de texto están elegidos para cumplir WCAG AA sobre
+  blanco y sobre crema. Los números de cada uno están en el comentario de su
+  bloque, porque un tono que «se ve bien» y no llega a 4,5:1 es un tono que
+  deja fuera a alguien.
 */
 
 @theme {
-  /* Marca: azul profundo, sobrio y legible sobre blanco. */
-  --color-brand-50: #f0f4ff;
-  --color-brand-100: #e0e9ff;
-  --color-brand-200: #c3d4fe;
-  --color-brand-300: #9bb4fc;
-  --color-brand-400: #6e8df8;
-  --color-brand-500: #4a66f0;
-  --color-brand-600: #3049dc;
-  --color-brand-700: #2739b4;
-  --color-brand-800: #24328e;
-  --color-brand-900: #222f72;
-  --color-brand-950: #171e45;
+  /* --------------------------------------------------------------- marca --
+     Coral. `brand-500` es el color de marca de las piezas gráficas; para texto
+     y botones se usan los dos siguientes, que sí llegan a contraste AA:
+       brand-600 sobre blanco con texto blanco encima → 4,98:1
+       brand-700 como texto sobre blanco               → 6,70:1
+  */
+  --color-brand-50: #fff1f4;
+  --color-brand-100: #ffe1e8;
+  --color-brand-200: #ffc8d5;
+  --color-brand-300: #ffa0b8;
+  --color-brand-400: #f76e91;
+  --color-brand-500: #e8476b;
+  --color-brand-600: #ce2f59;
+  --color-brand-700: #b01f47;
+  --color-brand-800: #921a3d;
+  --color-brand-900: #7b1937;
+  --color-brand-950: #450a1b;
 
-  /* Neutros con un matiz frío, para que el blanco no se vea sucio. */
-  --color-ink-50: #f8fafc;
-  --color-ink-100: #f1f4f8;
-  --color-ink-200: #e3e8ef;
-  --color-ink-300: #cdd5e0;
-  --color-ink-400: #9aa5b6;
-  --color-ink-500: #6b7787;
-  --color-ink-600: #4d5766;
-  --color-ink-700: #3a4250;
-  --color-ink-800: #252c38;
-  --color-ink-900: #161c26;
-  --color-ink-950: #0b1018;
+  /* ---------------------------------------------------------- neutros --
+     Azul profundo, no gris puro: es lo que hace que el crema se vea cálido y
+     no sucio. `ink-950` es el azul de la marca (#152238).
+       ink-600 sobre blanco → 7,14:1 (texto largo)
+       ink-500 sobre blanco → 4,78:1 (texto secundario)
+       ink-400 no se usa para texto: iconos y separadores.
+  */
+  --color-ink-50: #f6f7fa;
+  --color-ink-100: #edeff4;
+  --color-ink-200: #dce1ea;
+  --color-ink-300: #c1c9d8;
+  --color-ink-400: #8e9ab0;
+  --color-ink-500: #66738c;
+  --color-ink-600: #4c5871;
+  --color-ink-700: #3a455c;
+  --color-ink-800: #273249;
+  --color-ink-900: #1b2740;
+  --color-ink-950: #152238;
 
-  --color-success-50: #ecfdf5;
-  --color-success-100: #d1fae5;
-  --color-success-500: #10b981;
-  --color-success-600: #059669;
-  --color-success-700: #047857;
+  /* ------------------------------------------------------ verificación --
+     Verde de confianza. `success-500` es el de las insignias;
+     `success-700` sobre blanco → 5,31:1, que es el que lleva texto.
+  */
+  --color-success-50: #ecfdf6;
+  --color-success-100: #d1fae8;
+  --color-success-200: #a7f3d4;
+  --color-success-500: #20b486;
+  --color-success-600: #14936c;
+  --color-success-700: #0f7a5a;
+  --color-success-800: #0d6149;
 
-  --color-warning-50: #fffbeb;
-  --color-warning-100: #fef3c7;
+  /* ------------------------------------------------------------- aviso -- */
+  --color-warning-50: #fffaeb;
+  --color-warning-100: #fef0c7;
+  --color-warning-200: #fedf89;
   --color-warning-500: #f59e0b;
-  --color-warning-600: #d97706;
-  --color-warning-700: #b45309;
+  --color-warning-600: #dc6803;
+  --color-warning-700: #b54708;
+  --color-warning-800: #93370d;
 
-  --color-danger-50: #fef2f2;
-  --color-danger-100: #fee2e2;
-  --color-danger-500: #ef4444;
-  --color-danger-600: #dc2626;
-  --color-danger-700: #b91c1c;
+  /* ------------------------------------------------------------- error --
+     Rojo netamente más oscuro y menos rosado que el coral de marca: un botón
+     destructivo no se puede confundir con el botón principal.
+  */
+  --color-danger-50: #fef3f2;
+  --color-danger-100: #fee4e2;
+  --color-danger-200: #fecdca;
+  --color-danger-500: #d92d20;
+  --color-danger-600: #c0281c;
+  --color-danger-700: #b42318;
+  --color-danger-800: #912018;
 
+  /* ------------------------------------------------------- superficies --
+     Capa semántica. Los componentes nuevos usan estos nombres y no el color
+     concreto: es lo que permitiría un tema oscuro sin tocar cada archivo.
+  */
   --color-surface: #ffffff;
-  --color-canvas: #f7f8fb;
+  --color-surface-sunken: #fbfcfe;
+  --color-canvas: #fff9f4;
+  --color-canvas-warm: #fff3ea;
+  --color-line: #dce1ea;
+  --color-line-strong: #c1c9d8;
 
+  /* ------------------------------------------------------- tipografía -- */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     sans-serif;
 
+  --text-display: 3rem;
+  --text-display--line-height: 1.04;
+  --text-display--letter-spacing: -0.03em;
+  --text-display--font-weight: 650;
+
+  --text-h1: 2.25rem;
+  --text-h1--line-height: 1.1;
+  --text-h1--letter-spacing: -0.025em;
+  --text-h1--font-weight: 650;
+
+  --text-h2: 1.75rem;
+  --text-h2--line-height: 1.2;
+  --text-h2--letter-spacing: -0.02em;
+  --text-h2--font-weight: 600;
+
+  --text-h3: 1.25rem;
+  --text-h3--line-height: 1.3;
+  --text-h3--letter-spacing: -0.015em;
+  --text-h3--font-weight: 600;
+
+  --text-body: 1rem;
+  --text-body--line-height: 1.6;
+
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.5;
+
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.45;
+
+  --text-label: 0.75rem;
+  --text-label--line-height: 1.3;
+  --text-label--letter-spacing: 0.04em;
+  --text-label--font-weight: 600;
+
+  /* ------------------------------------------------------------ formas -- */
   --radius-card: 1rem;
   --radius-control: 0.75rem;
+  --radius-pill: 999px;
 
-  --shadow-card: 0 1px 2px rgb(11 16 24 / 0.04), 0 8px 24px -12px rgb(11 16 24 / 0.12);
-  --shadow-raised: 0 2px 4px rgb(11 16 24 / 0.05), 0 16px 40px -16px rgb(11 16 24 / 0.18);
+  --shadow-card: 0 1px 2px rgb(21 34 56 / 0.04), 0 8px 24px -12px rgb(21 34 56 / 0.12);
+  --shadow-raised: 0 2px 4px rgb(21 34 56 / 0.05), 0 16px 40px -16px rgb(21 34 56 / 0.18);
+  --shadow-overlay: 0 24px 64px -24px rgb(21 34 56 / 0.35);
 
+  /* ------------------------------------------------------------ medidas -- */
   /* Altura de la barra inferior móvil, usada para reservar espacio. */
   --spacing-tabbar: 4.25rem;
+  /* Altura de la cabecera fija, para anclas y posicionamiento pegajoso. */
+  --spacing-header: 4rem;
+
+  /* --------------------------------------------------------- animación -- */
+  --animate-fade-in: fade-in 160ms ease-out;
+  --animate-slide-up: slide-up 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-sheet-up: sheet-up 260ms cubic-bezier(0.22, 1, 0.36, 1);
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem);
+    }
+  }
+
+  @keyframes sheet-up {
+    from {
+      transform: translateY(100%);
+    }
+  }
+}
+
+/*
+  Capas de apilamiento, nombradas.
+
+  Un número suelto en un componente no dice contra qué compite. Estas cinco son
+  todas las que existen, y están ordenadas por lo que tiene que quedar encima.
+*/
+@theme {
+  --z-index-base: 0;
+  --z-index-sticky: 20;
+  --z-index-header: 40;
+  --z-index-overlay: 60;
+  --z-index-toast: 80;
 }
 
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
     scroll-behavior: smooth;
+    /* El navegador pinta los controles nativos según esto. */
+    color-scheme: light;
+    /* Evita que un elemento ancho rompa la página en móvil. */
+    overflow-x: hidden;
   }
 
   body {
     background-color: var(--color-canvas);
     color: var(--color-ink-900);
     font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    overflow-x: hidden;
   }
 
   h1,
@@ -106,15 +235,29 @@
     background-color: var(--color-brand-100);
     color: var(--color-brand-900);
   }
+
+  /* Una imagen nunca desborda su contenedor. */
+  img,
+  svg,
+  video {
+    max-width: 100%;
+    height: auto;
+  }
 }
 
 @layer components {
-  /* Contenedor estándar: ancho cómodo en escritorio, márgenes seguros en móvil. */
+  /* Contenedor estándar: ancho cómodo en escritorio, margen seguro en móvil. */
   .container-page {
     width: 100%;
     margin-inline: auto;
-    max-width: 72rem;
-    padding-inline: 1.25rem;
+    max-width: 75rem;
+    padding-inline: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .container-page {
+      padding-inline: 1.5rem;
+    }
   }
 
   @media (min-width: 1024px) {
@@ -126,6 +269,28 @@
   /* Reserva de espacio para la barra de navegación inferior en móvil. */
   .pb-tabbar {
     padding-bottom: calc(var(--spacing-tabbar) + env(safe-area-inset-bottom));
+  }
+
+  /*
+    Barra desplazable horizontal sin barra visible.
+
+    Para pestañas y filtros en móvil, donde el contenido no cabe y partirlo en
+    dos líneas lo hace ilegible. `scroll-snap` deja cada elemento alineado.
+  */
+  .scroll-row {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scroll-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scroll-row > * {
+    scroll-snap-align: start;
   }
 }
 

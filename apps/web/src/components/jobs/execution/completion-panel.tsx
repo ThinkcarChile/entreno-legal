@@ -57,16 +57,16 @@ export function ApprovalPanel({
   }
 
   return (
-    <div className="space-y-3 rounded-[var(--radius-control)] border border-ink-200 p-4">
+    <div className="space-y-3 rounded-[var(--radius-control)] border border-line p-4">
       {error && <Alert tone="danger">{error}</Alert>}
 
-      <p className="text-sm text-ink-800">
+      <p className="text-small text-ink-800">
         Al aprobar, el pago de <Amount value={workerReceives} /> queda liberado para el
         trabajador. Después de esto ya no se puede deshacer desde aquí.
       </p>
 
       {bonus && (
-        <label className="flex cursor-pointer items-start gap-2.5 rounded-[var(--radius-control)] bg-success-50 p-3 text-sm">
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-[var(--radius-control)] bg-success-50 p-3 text-small">
           <input
             type="checkbox"
             checked={bonusAwarded}
@@ -135,15 +135,15 @@ export function DisputeForm({ assignmentId }: { assignmentId: string }) {
     <div className="space-y-3 rounded-[var(--radius-control)] border border-danger-100 bg-danger-50/50 p-4">
       {error && <Alert tone="danger">{error}</Alert>}
 
-      <p className="text-sm text-ink-800">
+      <p className="text-small text-ink-800">
         El pago al trabajador queda retenido mientras se revisa. Te pediremos evidencia a las dos
         partes.
       </p>
 
       <fieldset className="space-y-1.5">
-        <legend className="text-sm font-medium text-ink-800">¿Qué ocurrió?</legend>
+        <legend className="text-small font-medium text-ink-800">¿Qué ocurrió?</legend>
         {REASONS.map((option) => (
-          <label key={option} className="flex items-center gap-2 text-sm text-ink-700">
+          <label key={option} className="flex items-center gap-2 text-small text-ink-700">
             <input
               type="radio"
               name="dispute-reason"

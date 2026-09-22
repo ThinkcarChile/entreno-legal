@@ -1,109 +1,175 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
 
-import { Menu, X } from "lucide-react";
+import {
+  Bell,
+  Briefcase,
+  ClipboardList,
+  LifeBuoy,
+  Menu,
+  MessageCircle,
+  Settings,
+  ShieldCheck,
+  User,
+  Wallet,
+} from "lucide-react";
 
-import { ButtonLink } from "@/components/ui";
+import { ButtonLink, Overlay } from "@/components/ui";
+import { signOutAction } from "@/lib/actions/auth";
 
-export interface MobileMenuProps {
+/**
+ * Menú de móvil.
+ *
+ * Es una hoja que sube desde abajo, no una pantalla completa sin aviso: se ve
+ * de dónde viene, se cierra como se espera y el fondo sigue ahí. El
+ * comportamiento —Escape, foco atrapado, foco devuelto, fondo sin desplazar— lo
+ * pone `Overlay`, que es el mismo de todos los diálogos.
+ *
+ * Solo aparece bajo `lg`. Por encima, la navegación está en la cabecera.
+ */
+export function MobileMenu({
+  items,
+  signedIn = false,
+  isWorker = false,
+  isAdmin = false,
+  unreadCount = 0,
+}: {
   items: readonly { href: string; label: string }[];
   signedIn?: boolean;
+  isWorker?: boolean;
+  isAdmin?: boolean;
   unreadCount?: number;
-}
-
-export function MobileMenu({ items, signedIn = false, unreadCount = 0 }: MobileMenuProps) {
+}) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
 
-  // Bloquea el scroll de fondo mientras el panel está abierto.
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open]);
+  // Navegar cierra el menú: si no, la hoja sigue encima de la página nueva.
+  //
+  // Se ajusta durante el render y no en un efecto: con un efecto, la página
+  // nueva se pinta una vez con la hoja todavía abierta y luego se vuelve a
+  // pintar sin ella, que es justo el parpadeo que se ve en móvil.
+  const [lastPath, setLastPath] = useState(pathname);
+  if (lastPath !== pathname) {
+    setLastPath(pathname);
+    setOpen(false);
+  }
+
+  const personal = signedIn
+    ? [
+        { href: "/mis-trabajos/publicados", label: "Trabajos que publiqué", icon: Briefcase },
+        ...(isWorker
+          ? [
+              { href: "/mis-trabajos", label: "Mis trabajos", icon: ClipboardList },
+              { href: "/mis-trabajos/ganancias", label: "Mis ganancias", icon: Wallet },
+            ]
+          : []),
+        { href: "/mensajes", label: "Mensajes", icon: MessageCircle },
+        {
+          href: "/notificaciones",
+          label: unreadCount > 0 ? `Notificaciones (${unreadCount})` : "Notificaciones",
+          icon: Bell,
+        },
+        { href: "/cuenta", label: "Mi cuenta", icon: Settings },
+        ...(isAdmin ? [{ href: "/admin", label: "Administración", icon: ShieldCheck }] : []),
+      ]
+    : [];
 
   return (
-    <div className="lg:hidden">
+    <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] text-ink-700 hover:bg-ink-100"
-        aria-label="Abrir menú"
+        aria-label="Abrir el menú"
         aria-expanded={open}
+        className="relative inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-control)] text-ink-700 hover:bg-ink-100 lg:hidden"
       >
-        <Menu size={20} aria-hidden="true" />
+        <Menu size={21} aria-hidden="true" />
         {unreadCount > 0 && (
-          <span className="absolute mt-[-1.1rem] ml-5 inline-flex h-2 w-2 rounded-full bg-danger-600" />
+          <span
+            aria-hidden="true"
+            className="absolute top-2 right-2 h-2 w-2 rounded-full bg-danger-600"
+          />
         )}
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-50 bg-white">
-          <div className="container-page flex h-16 items-center justify-end">
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] text-ink-700 hover:bg-ink-100"
-              aria-label="Cerrar menú"
-            >
-              <X size={20} aria-hidden="true" />
-            </button>
-          </div>
-
-          <nav className="container-page mt-4 flex flex-col gap-1" aria-label="Principal móvil">
+      <Overlay open={open} onClose={() => setOpen(false)} title="Menú" variant="sheet">
+        <nav aria-label="Menú principal" className="space-y-6">
+          <ul className="space-y-0.5">
             {items.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setOpen(false)}
-                className="rounded-[var(--radius-control)] px-3 py-3.5 text-lg font-medium text-ink-800 hover:bg-ink-50"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-
-          {signedIn && (
-            <nav className="container-page mt-4 flex flex-col gap-1 border-t border-ink-100 pt-4">
-              {[
-                { href: "/mis-trabajos/publicados", label: "Trabajos que publiqué" },
-                { href: "/mis-trabajos", label: "Mis trabajos" },
-                { href: "/mensajes", label: "Mensajes" },
-                { href: "/notificaciones", label: `Notificaciones${unreadCount > 0 ? ` (${unreadCount})` : ""}` },
-                { href: "/cuenta", label: "Mi cuenta" },
-              ].map((item) => (
+              <li key={item.href}>
                 <Link
-                  key={item.href}
                   href={item.href}
-                  onClick={() => setOpen(false)}
-                  className="rounded-[var(--radius-control)] px-3 py-3 text-base font-medium text-ink-700 hover:bg-ink-50"
+                  className="flex min-h-11 items-center rounded-[var(--radius-control)] px-3 text-body font-medium text-ink-950 hover:bg-ink-100"
                 >
                   {item.label}
                 </Link>
+              </li>
+            ))}
+          </ul>
+
+          {personal.length > 0 && (
+            <ul className="space-y-0.5 border-t border-line pt-4">
+              {personal.map((item) => (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className="flex min-h-11 items-center gap-3 rounded-[var(--radius-control)] px-3 text-small text-ink-700 hover:bg-ink-100"
+                  >
+                    <item.icon size={17} className="shrink-0 text-ink-500" aria-hidden="true" />
+                    {item.label}
+                  </Link>
+                </li>
               ))}
-            </nav>
+            </ul>
           )}
 
-          <div className="container-page mt-8 flex flex-col gap-3">
-            <ButtonLink href="/publicar" size="lg" fullWidth onClick={() => setOpen(false)}>
-              Publicar un trabajo
-            </ButtonLink>
-            {!signedIn && (
-              <ButtonLink
-                href="/entrar"
-                variant="outline"
-                size="lg"
-                fullWidth
-                onClick={() => setOpen(false)}
+          <ul className="space-y-0.5 border-t border-line pt-4">
+            <li>
+              <Link
+                href="/ayuda"
+                className="flex min-h-11 items-center gap-3 rounded-[var(--radius-control)] px-3 text-small text-ink-700 hover:bg-ink-100"
               >
-                Entrar
-              </ButtonLink>
+                <LifeBuoy size={17} className="shrink-0 text-ink-500" aria-hidden="true" />
+                Ayuda y contacto
+              </Link>
+            </li>
+            {!signedIn && (
+              <li>
+                <Link
+                  href="/entrar"
+                  className="flex min-h-11 items-center gap-3 rounded-[var(--radius-control)] px-3 text-small text-ink-700 hover:bg-ink-100"
+                >
+                  <User size={17} className="shrink-0 text-ink-500" aria-hidden="true" />
+                  Iniciar sesión
+                </Link>
+              </li>
             )}
-          </div>
+          </ul>
+        </nav>
+
+        <div className="mt-6 space-y-2">
+          <ButtonLink href="/publicar" size="lg" fullWidth>
+            Publicar un trabajo
+          </ButtonLink>
+          {signedIn ? (
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                className="flex min-h-11 w-full items-center justify-center rounded-[var(--radius-control)] text-small font-medium text-ink-600 hover:bg-ink-100"
+              >
+                Cerrar sesión
+              </button>
+            </form>
+          ) : (
+            <ButtonLink href="/crear-cuenta" variant="outline" size="lg" fullWidth>
+              Crear una cuenta
+            </ButtonLink>
+          )}
         </div>
-      )}
-    </div>
+      </Overlay>
+    </>
   );
 }

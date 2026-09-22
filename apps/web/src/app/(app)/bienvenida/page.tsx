@@ -20,7 +20,7 @@ export default async function OnboardingPage() {
 
   return (
     <div className="container-page max-w-2xl py-8 sm:py-12">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink-900 sm:text-3xl">
+      <h1 className="text-h2 text-ink-950 sm:text-h1">
         Bienvenido a HagoTuFila
       </h1>
       <p className="mt-2 text-ink-600">

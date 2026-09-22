@@ -141,12 +141,12 @@ export function OfferForm({
         />
       </Field>
 
-      <div className="rounded-[var(--radius-control)] bg-ink-50 px-4 py-3 text-sm">
+      <div className="rounded-[var(--radius-control)] bg-ink-50 px-4 py-3 text-small">
         <p className="text-ink-500">Tu oferta total</p>
-        <p className="mt-0.5 text-xl font-semibold text-ink-900 tabular-nums">
+        <p className="mt-0.5 text-xl font-semibold text-ink-950 tabular-nums">
           {total ? formatMoney(total) : "—"}
         </p>
-        <p className="mt-0.5 text-xs text-ink-500">
+        <p className="mt-0.5 text-caption text-ink-500">
           Por {formatDuration(durationMinutes)} estimadas
         </p>
       </div>
@@ -161,8 +161,8 @@ export function OfferForm({
               onClick={() => setArrival(option.value)}
               className={
                 arrival === option.value
-                  ? "rounded-full border border-brand-600 bg-brand-600 px-3.5 py-1.5 text-sm font-medium text-white"
-                  : "rounded-full border border-ink-200 bg-white px-3.5 py-1.5 text-sm font-medium text-ink-700 hover:border-brand-300"
+                  ? "rounded-full border border-brand-600 bg-brand-600 px-3.5 py-1.5 text-small font-medium text-white"
+                  : "rounded-full border border-line bg-surface px-3.5 py-1.5 text-small font-medium text-ink-700 hover:border-brand-300"
               }
             >
               {option.label}

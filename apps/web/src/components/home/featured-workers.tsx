@@ -16,7 +16,7 @@ export function FeaturedWorkers({ workers }: { workers: readonly WorkerProfile[]
           Ver todos
         </ButtonLink>
       }
-      className="bg-white"
+      className="bg-surface"
     >
       <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {workers.map((worker) => (

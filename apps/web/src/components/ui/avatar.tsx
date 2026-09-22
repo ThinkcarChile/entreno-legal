@@ -10,8 +10,8 @@ export interface AvatarProps {
 }
 
 const sizes = {
-  sm: { box: "h-8 w-8 text-xs", px: 32 },
-  md: { box: "h-11 w-11 text-sm", px: 44 },
+  sm: { box: "h-8 w-8 text-caption", px: 32 },
+  md: { box: "h-11 w-11 text-small", px: 44 },
   lg: { box: "h-16 w-16 text-lg", px: 64 },
   xl: { box: "h-24 w-24 text-2xl", px: 96 },
 } as const;

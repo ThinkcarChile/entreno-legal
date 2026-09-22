@@ -13,7 +13,7 @@ import { JobUrgency } from "@/lib/domain/enums";
 import { timezoneFor } from "@/lib/geo/chile";
 import { getPricingEngine, type PriceSuggestion } from "@/lib/pricing";
 import { zonedInputToUtc } from "@/lib/utils/datetime";
-import { publishJobSchema, publishSteps } from "@/lib/validation/job";
+import { publishJobSchema, publishStages, publishSteps } from "@/lib/validation/job";
 
 import { StepCategory } from "./step-category";
 import { StepDescription } from "./step-description";
@@ -30,9 +30,16 @@ import type { JobCategory } from "@/lib/domain/types";
 /**
  * Asistente de publicación.
  *
- * Mobile-first y por pasos. El borrador se guarda en el navegador para que nadie
- * pierda lo escrito al cerrar la pestaña. La validación usa los mismos esquemas
- * que validará el servidor cuando exista el backend.
+ * Cuatro pantallas —qué, dónde y cuándo, cómo, cuánto— y no siete: publicar
+ * una fila no es rellenar una declaración de impuestos, y cada «Continuar» de
+ * más es gente que abandona a medias.
+ *
+ * La validación no se relajó al agrupar: cada pantalla comprueba todos los
+ * esquemas de los bloques que contiene, y son los mismos que validará el
+ * servidor. Lo que cambió es cuántas veces hay que pulsar, no qué se exige.
+ *
+ * El borrador se guarda en el navegador para que nadie pierda lo escrito al
+ * cerrar la pestaña.
  */
 export function PublishWizard({
   categories,
@@ -85,31 +92,33 @@ export function PublishWizard({
   }, [categories, draft]);
 
   const validateStep = useCallback((): boolean => {
-    const schema = publishSteps[step]?.schema;
-    if (!schema) return true;
-
-    const result = schema.safeParse(draft);
-    if (result.success) {
-      setErrors({});
-      return true;
-    }
+    // Una pantalla puede agrupar varios bloques: se comprueban todos y se
+    // muestran juntos los errores, no el primero que aparezca.
+    const schemas = (publishStages[step]?.steps ?? [])
+      .map((id) => publishSteps.find((s) => s.id === id)?.schema)
+      .filter((schema) => schema != null);
 
     const next: Record<string, string> = {};
-    for (const issue of result.error.issues) {
-      const key = String(issue.path[0] ?? "form");
-      next[key] ??= issue.message;
+    for (const schema of schemas) {
+      const result = schema.safeParse(draft);
+      if (result.success) continue;
+      for (const issue of result.error.issues) {
+        const key = String(issue.path[0] ?? "form");
+        next[key] ??= issue.message;
+      }
     }
+
     setErrors(next);
-    return false;
+    return Object.keys(next).length === 0;
   }, [draft, step]);
 
   const goNext = useCallback(() => {
     if (!validateStep()) return;
 
-    const next = Math.min(step + 1, publishSteps.length - 1);
-    // Al entrar al paso de precio se precarga la tarifa recomendada, que el
-    // cliente puede cambiar libremente.
-    if (publishSteps[next]?.id === "precio" && suggestion && !draft.hourlyRate) {
+    const next = Math.min(step + 1, publishStages.length - 1);
+    // Al entrar a la pantalla de precio se precarga la tarifa recomendada, que
+    // el cliente puede cambiar libremente, también fuera del rango sugerido.
+    if (publishStages[next]?.id === "precio" && suggestion && !draft.hourlyRate) {
       patchDraft({ hourlyRate: suggestion.recommendedHourly.amount });
     }
 
@@ -165,27 +174,43 @@ export function PublishWizard({
 
   if (submitted) return <SubmittedPanel jobId={publishedJobId} demoMode={demoMode} />;
 
-  const isLastStep = step === publishSteps.length - 1;
+  const isLastStage = step === publishStages.length - 1;
   const stepProps = { draft, errors, update };
 
   return (
     <div>
-      <Stepper steps={publishSteps} current={step} />
+      <Stepper steps={publishStages} current={step} />
 
       <Card className="mt-6">
         <CardContent className="sm:p-8">
-          <h2 className="text-xl font-semibold tracking-tight text-ink-900">
-            {publishSteps[step]?.title}
-          </h2>
+          <h2 className="text-h3 text-ink-950">{publishStages[step]?.title}</h2>
 
-          <div className="mt-6">
+          <div className="mt-6 space-y-8">
             {step === 0 && <StepCategory {...stepProps} categories={categories} />}
-            {step === 1 && <StepLocation {...stepProps} />}
-            {step === 2 && <StepSchedule {...stepProps} />}
-            {step === 3 && <StepDescription {...stepProps} />}
-            {step === 4 && <StepObjective {...stepProps} categories={categories} />}
-            {step === 5 && <StepPrice {...stepProps} suggestion={suggestion} />}
-            {step === 6 && <StepReview {...stepProps} categories={categories} />}
+
+            {step === 1 && (
+              <>
+                <StepLocation {...stepProps} />
+                <Divider label="¿Cuándo?" />
+                <StepSchedule {...stepProps} />
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <StepDescription {...stepProps} />
+                <Divider label="Objetivo" />
+                <StepObjective {...stepProps} categories={categories} />
+              </>
+            )}
+
+            {step === 3 && (
+              <>
+                <StepPrice {...stepProps} suggestion={suggestion} />
+                <Divider label="Revisión" />
+                <StepReview {...stepProps} categories={categories} />
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -196,7 +221,7 @@ export function PublishWizard({
         </Alert>
       )}
 
-      {!canPublish && step === publishSteps.length - 1 && (
+      {!canPublish && isLastStage && (
         <Alert tone="info" className="mt-4" title="Falta entrar a tu cuenta">
           Guardamos tu borrador. Al entrar vuelves aquí y publicas en un clic.
         </Alert>
@@ -210,7 +235,7 @@ export function PublishWizard({
           </Button>
         )}
 
-        {isLastStep ? (
+        {isLastStage ? (
           <Button size="lg" fullWidth onClick={submit} disabled={submitting}>
             {submitting ? (
               <>
@@ -229,7 +254,7 @@ export function PublishWizard({
         )}
       </div>
 
-      <p className="mt-4 text-center text-sm text-ink-500">
+      <p className="mt-4 text-center text-small text-ink-500">
         ¿Dudas sobre qué se puede pedir?{" "}
         <Link href="/reglas" className="font-medium text-brand-700 hover:underline">
           Revisa las reglas de uso
@@ -239,12 +264,22 @@ export function PublishWizard({
   );
 }
 
+/** Separador con título entre dos bloques de una misma pantalla. */
+function Divider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 pt-2">
+      <h3 className="text-label text-ink-500 uppercase">{label}</h3>
+      <span aria-hidden="true" className="h-px flex-1 bg-line" />
+    </div>
+  );
+}
+
 function SubmittedPanel({ jobId, demoMode }: { jobId: string | null; demoMode: boolean }) {
   return (
     <Card>
       <CardContent className="py-12 text-center sm:p-12">
         <CheckCircle2 size={44} className="mx-auto text-success-600" aria-hidden="true" />
-        <h2 className="mt-5 text-xl font-semibold tracking-tight text-ink-900">
+        <h2 className="mt-5 text-h3 text-ink-950">
           {demoMode ? "Tu trabajo quedó listo para publicarse" : "Tu trabajo está publicado"}
         </h2>
         <p className="mx-auto mt-3 max-w-md text-ink-600">

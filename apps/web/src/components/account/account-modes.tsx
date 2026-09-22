@@ -86,11 +86,11 @@ function Toggle({
         "rounded-[var(--radius-control)] border px-4 py-3 text-left transition-colors",
         active
           ? "border-brand-600 bg-brand-50/60 ring-1 ring-brand-600"
-          : "border-ink-200 bg-white hover:border-brand-200",
+          : "border-line bg-surface hover:border-brand-200",
       )}
     >
       <span className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium text-ink-900">{title}</span>
+        <span className="text-small font-medium text-ink-950">{title}</span>
         <span
           aria-hidden="true"
           className={cn(
@@ -100,13 +100,13 @@ function Toggle({
         >
           <span
             className={cn(
-              "h-4 w-4 rounded-full bg-white transition-transform",
+              "h-4 w-4 rounded-full bg-surface transition-transform",
               active && "translate-x-4",
             )}
           />
         </span>
       </span>
-      <span className="mt-0.5 block text-xs text-ink-500">{description}</span>
+      <span className="mt-0.5 block text-caption text-ink-500">{description}</span>
     </button>
   );
 }

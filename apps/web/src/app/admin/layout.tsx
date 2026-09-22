@@ -21,18 +21,18 @@ const sections = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col bg-canvas">
-      <header className="border-b border-ink-200 bg-white">
+      <header className="border-b border-line bg-surface">
         <div className="container-page flex h-16 items-center justify-between gap-6">
           <Link href="/" className="flex items-center gap-2.5">
             <Logo compact />
-            <span className="text-sm font-semibold text-ink-900">Administración</span>
+            <span className="text-small font-semibold text-ink-950">Administración</span>
           </Link>
           <nav aria-label="Secciones" className="hidden gap-1 md:flex">
             {sections.map((section) => (
               <Link
                 key={section.href}
                 href={section.href}
-                className="rounded-[var(--radius-control)] px-3 py-2 text-sm font-medium text-ink-600 hover:bg-ink-100 hover:text-ink-900"
+                className="rounded-[var(--radius-control)] px-3 py-2 text-small font-medium text-ink-600 hover:bg-ink-100 hover:text-ink-950"
               >
                 {section.label}
               </Link>

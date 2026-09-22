@@ -29,7 +29,7 @@ export function StepReview({
 
   return (
     <div className="space-y-6">
-      <dl className="divide-y divide-ink-100 rounded-[var(--radius-card)] border border-ink-200 bg-white">
+      <dl className="divide-y divide-ink-100 rounded-[var(--radius-card)] border border-line bg-surface">
         <Row label="Categoría" value={category?.name ?? "—"} />
         <Row
           label="Tipo"
@@ -92,7 +92,7 @@ export function StepReview({
           label="Precio"
           value={
             <>
-              <span className="text-lg font-semibold text-ink-900">
+              <span className="text-h3 text-ink-950">
                 {total ? formatMoney(total) : "—"}
               </span>
               <span className="block text-ink-500">
@@ -104,7 +104,7 @@ export function StepReview({
         />
       </dl>
 
-      <div className="flex gap-3 rounded-[var(--radius-card)] border border-warning-100 bg-warning-50 p-5 text-sm text-warning-800">
+      <div className="flex gap-3 rounded-[var(--radius-card)] border border-warning-100 bg-warning-50 p-5 text-small text-warning-800">
         <AlertTriangle size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
         <div>
           <p className="font-medium">Antes de publicar, confirma que tu encargo es permitido</p>
@@ -117,25 +117,25 @@ export function StepReview({
         </div>
       </div>
 
-      <label className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-card)] border border-ink-200 bg-white p-5">
+      <label className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-5">
         <input
           type="checkbox"
           checked={draft.acceptsRules ?? false}
           onChange={(event) => update({ acceptsRules: event.target.checked })}
           className="mt-0.5 h-4.5 w-4.5 rounded border-ink-300 text-brand-600 focus:ring-brand-500"
         />
-        <span className="text-sm text-ink-700">
+        <span className="text-small text-ink-700">
           Confirmo que este encargo cumple las reglas de uso de {site.name} y que la información
           entregada es correcta.
         </span>
       </label>
       {errors.acceptsRules && (
-        <p className="text-sm text-danger-600" role="alert">
+        <p className="text-small text-danger-600" role="alert">
           {errors.acceptsRules}
         </p>
       )}
 
-      <p className="flex gap-2.5 text-sm text-ink-600">
+      <p className="flex gap-2.5 text-small text-ink-600">
         <ShieldCheck size={16} className="mt-0.5 shrink-0 text-success-600" aria-hidden="true" />
         Publicar es gratis. Solo pagas cuando aceptas una oferta, y el dinero queda protegido
         hasta que el servicio se complete.
@@ -147,7 +147,7 @@ export function StepReview({
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="grid gap-1 px-5 py-4 sm:grid-cols-[10rem_1fr] sm:gap-4">
-      <dt className="text-sm text-ink-500">{label}</dt>
+      <dt className="text-small text-ink-500">{label}</dt>
       <dd className="text-[0.9375rem] text-ink-800">{value}</dd>
     </div>
   );

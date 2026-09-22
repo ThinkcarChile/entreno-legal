@@ -13,11 +13,11 @@ export default async function MarketingLayout({ children }: { children: React.Re
   const mode = session?.modes.includes(UserRole.WORKER) ? "worker" : "client";
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex min-h-dvh flex-col pb-tabbar lg:pb-0">
       <ModeIndicator />
       <DemoBanner />
       <SiteHeader />
-      <main className="flex-1 pb-tabbar lg:pb-0">{children}</main>
+      <main className="flex-1">{children}</main>
       <SiteFooter />
       <MobileTabBar mode={mode} />
     </div>

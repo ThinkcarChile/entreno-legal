@@ -65,7 +65,7 @@ function CategoryGroupBlock({
 }) {
   return (
     <div>
-      <h3 className="text-sm font-semibold tracking-wide text-ink-500 uppercase">{title}</h3>
+      <h3 className="text-label text-ink-500 uppercase">{title}</h3>
       <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {categories.map((category) => {
           const Icon = icons[category.icon ?? ""] ?? ListChecks;
@@ -75,17 +75,17 @@ function CategoryGroupBlock({
             <li key={category.id}>
               <Link
                 href={`/trabajos?categoria=${category.slug}`}
-                className="flex h-full gap-4 rounded-[var(--radius-card)] border border-ink-200/70 bg-white p-5 transition-colors hover:border-brand-200 hover:bg-brand-50/40"
+                className="flex h-full gap-4 rounded-[var(--radius-card)] border border-line bg-surface p-5 transition-colors hover:border-brand-200 hover:bg-brand-50/40"
               >
                 <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-brand-50 text-brand-700">
                   <Icon size={20} aria-hidden="true" />
                 </span>
                 <span className="min-w-0">
-                  <span className="block font-semibold text-ink-900">{category.name}</span>
+                  <span className="block font-semibold text-ink-950">{category.name}</span>
                   {category.description && (
-                    <span className="mt-1 block text-sm text-ink-600">{category.description}</span>
+                    <span className="mt-1 block text-small text-ink-600">{category.description}</span>
                   )}
-                  <span className="mt-2 block text-xs text-ink-500">
+                  <span className="mt-2 block text-caption text-ink-500">
                     Referencia{" "}
                     <AmountRange
                       min={category.baseHourlyMin}

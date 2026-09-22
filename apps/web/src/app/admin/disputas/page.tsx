@@ -35,7 +35,7 @@ export default async function AdminDisputesPage() {
   return (
     <div className="container-page py-8 sm:py-10">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Disputas</h1>
+        <h1 className="text-h2 text-ink-950">Disputas</h1>
         <p className="mt-1 text-ink-600">
           {open.length} abierta{open.length === 1 ? "" : "s"} · {resolved.length} resuelta
           {resolved.length === 1 ? "" : "s"}
@@ -68,31 +68,31 @@ export default async function AdminDisputesPage() {
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge tone={label.tone}>{label.label}</Badge>
-                          <span className="text-xs text-ink-400">{row.jobReference}</span>
+                          <span className="text-caption text-ink-500">{row.jobReference}</span>
                         </div>
-                        <p className="mt-1.5 font-medium text-ink-900">{row.jobTitle}</p>
-                        <p className="mt-0.5 text-sm text-ink-600">
+                        <p className="mt-1.5 font-medium text-ink-950">{row.jobTitle}</p>
+                        <p className="mt-0.5 text-small text-ink-600">
                           {row.clientName} (cliente) · {row.workerName} (trabajador) ·{" "}
                           {formatDateTime(row.dispute.createdAt)}
                         </p>
                       </div>
                       {row.amountHeld && (
                         <p className="shrink-0 text-right">
-                          <span className="block text-xs text-ink-500">Monto en juego</span>
-                          <span className="text-lg font-semibold text-ink-900 tabular-nums">
+                          <span className="block text-caption text-ink-500">Monto en juego</span>
+                          <span className="text-h3 text-ink-950 tabular-nums">
                             <Amount value={row.amountHeld} />
                           </span>
                         </p>
                       )}
                     </div>
 
-                    <div className="rounded-[var(--radius-control)] bg-ink-50 p-3.5 text-sm">
-                      <p className="font-medium text-ink-900">{row.dispute.reason}</p>
+                    <div className="rounded-[var(--radius-control)] bg-ink-50 p-3.5 text-small">
+                      <p className="font-medium text-ink-950">{row.dispute.reason}</p>
                       <p className="mt-1 text-ink-700">{row.dispute.description}</p>
                     </div>
 
                     {row.dispute.status === DisputeStatus.RESOLVED ? (
-                      <div className="rounded-[var(--radius-control)] bg-success-50 p-3.5 text-sm text-success-800">
+                      <div className="rounded-[var(--radius-control)] bg-success-50 p-3.5 text-small text-success-800">
                         <p className="font-medium">Resuelta: {row.dispute.resolution}</p>
                         <p className="mt-1">{row.dispute.resolutionNotes}</p>
                         {row.dispute.refundAmount && row.dispute.refundAmount.amount > 0 && (
@@ -106,7 +106,7 @@ export default async function AdminDisputesPage() {
                       <div className="flex flex-wrap items-start gap-3">
                         <Link
                           href={`/mis-trabajos/${row.dispute.assignmentId}`}
-                          className="text-sm font-medium text-brand-700 underline underline-offset-2"
+                          className="text-small font-medium text-brand-700 underline underline-offset-2"
                         >
                           Ver el trabajo y su evidencia
                         </Link>

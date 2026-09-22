@@ -26,18 +26,18 @@ export default async function AdminDashboardPage() {
     <div className="container-page py-8 sm:py-10">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Resumen</h1>
+          <h1 className="text-h2 text-ink-950">Resumen</h1>
           <p className="mt-1 text-ink-600">Indicadores de los últimos 30 días.</p>
         </div>
         {isDemoMode() && (
-          <p className="rounded-full bg-warning-50 px-3 py-1.5 text-xs font-medium text-warning-700 ring-1 ring-warning-100 ring-inset">
+          <p className="rounded-full bg-warning-50 px-3 py-1.5 text-caption font-medium text-warning-700 ring-1 ring-warning-100 ring-inset">
             Datos de demostración
           </p>
         )}
       </header>
 
       <section className="mt-8">
-        <h2 className="text-sm font-semibold tracking-wide text-ink-500 uppercase">Negocio</h2>
+        <h2 className="text-small font-semibold tracking-wide text-ink-500 uppercase">Negocio</h2>
         <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Stat label="GMV" value={formatMoney(kpis.gmv)} hint="Volumen bruto transado" />
           <Stat
@@ -51,7 +51,7 @@ export default async function AdminDashboardPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="text-sm font-semibold tracking-wide text-ink-500 uppercase">Actividad</h2>
+        <h2 className="text-small font-semibold tracking-wide text-ink-500 uppercase">Actividad</h2>
         <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Stat label="Trabajos publicados" value={formatNumber(kpis.jobsPublished)} />
           <Stat label="Trabajos completados" value={formatNumber(kpis.jobsCompleted)} />
@@ -61,7 +61,7 @@ export default async function AdminDashboardPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="text-sm font-semibold tracking-wide text-ink-500 uppercase">
+        <h2 className="text-small font-semibold tracking-wide text-ink-500 uppercase">
           Requiere atención
         </h2>
         <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -110,13 +110,13 @@ export default async function AdminDashboardPage() {
 
       <Card className="mt-8">
         <CardContent>
-          <h2 className="text-base font-semibold text-ink-900">Qué queda por hacer a mano</h2>
-          <p className="mt-2 text-sm text-ink-600">
+          <h2 className="text-base font-semibold text-ink-950">Qué queda por hacer a mano</h2>
+          <p className="mt-2 text-small text-ink-600">
             Las transferencias a los trabajadores se hacen fuera de la plataforma y se registran
             aquí con su referencia bancaria. Las devoluciones al cliente quedan anotadas, pero no
             se ejecutan: eso necesita la integración con el medio de pago. Toda acción
             administrativa queda registrada en{" "}
-            <code className="rounded bg-ink-100 px-1.5 py-0.5 text-xs">audit_logs</code>.
+            <code className="rounded bg-ink-100 px-1.5 py-0.5 text-caption">audit_logs</code>.
           </p>
         </CardContent>
       </Card>
@@ -142,8 +142,8 @@ function QueueCard({
     <CardContent className="flex items-center gap-4">
       <span className={`shrink-0 ${tone}`}>{icon}</span>
       <div>
-        <p className="text-sm text-ink-500">{label}</p>
-        <p className="mt-0.5 text-2xl font-semibold text-ink-900 tabular-nums">{value}</p>
+        <p className="text-small text-ink-500">{label}</p>
+        <p className="mt-0.5 text-2xl font-semibold text-ink-950 tabular-nums">{value}</p>
       </div>
     </CardContent>
   );

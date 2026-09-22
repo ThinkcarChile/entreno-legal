@@ -6,6 +6,7 @@ import { Faq, faqs } from "@/components/home/faq";
 import { FeaturedWorkers } from "@/components/home/featured-workers";
 import { Hero } from "@/components/home/hero";
 import { HowItWorks } from "@/components/home/how-it-works";
+import { OpenJobs } from "@/components/home/open-jobs";
 import { ProtectedPayment } from "@/components/home/protected-payment";
 import { Testimonials } from "@/components/home/testimonials";
 import { site } from "@/config/site";
@@ -22,9 +23,10 @@ export default async function HomePage() {
 
   // Todo sale del mismo origen de datos: o todo real, o todo de demostración.
   // Mezclar los dos haría creer que hay actividad donde no la hay.
-  const [categories, counts, workers, reviews] = await Promise.all([
+  const [categories, counts, open, workers, reviews] = await Promise.all([
     data.categories.list(),
     data.jobs.countByCategory(),
+    data.jobs.listOpen({ limit: 6, sort: "starts_soon" }),
     data.workers.listFeatured(4),
     data.workers.listRecentReviews(3),
   ]);
@@ -32,7 +34,8 @@ export default async function HomePage() {
   return (
     <>
       <StructuredData />
-      <Hero />
+      <Hero categories={categories} />
+      <OpenJobs jobs={open.items} />
       <HowItWorks />
       <ProtectedPayment />
       <Categories categories={categories} counts={counts} />

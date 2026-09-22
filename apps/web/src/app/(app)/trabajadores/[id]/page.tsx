@@ -77,7 +77,7 @@ export default async function WorkerProfilePage({ params }: PageProps) {
                   size="xl"
                 />
                 <div className="min-w-0 flex-1">
-                  <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight text-ink-900">
+                  <h1 className="flex flex-wrap items-center gap-2 text-h2 text-ink-950">
                     {worker.profile.displayName}
                     {verified && (
                       <BadgeCheck
@@ -102,7 +102,7 @@ export default async function WorkerProfilePage({ params }: PageProps) {
                     )}
                   </div>
 
-                  <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-600">
+                  <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-small text-ink-600">
                     <div className="flex items-center gap-1.5">
                       <MapPin size={15} className="text-ink-400" aria-hidden="true" />
                       <dd>
@@ -149,7 +149,7 @@ export default async function WorkerProfilePage({ params }: PageProps) {
 
           <Card>
             <CardContent>
-              <h2 className="text-base font-semibold text-ink-900">Verificaciones</h2>
+              <h2 className="text-base font-semibold text-ink-950">Verificaciones</h2>
               <ul className="mt-4 grid gap-3 sm:grid-cols-2">
                 <TrustRow
                   icon={<BadgeCheck size={16} aria-hidden="true" />}
@@ -172,7 +172,7 @@ export default async function WorkerProfilePage({ params }: PageProps) {
                   ok={worker.acceptsOvernight}
                 />
               </ul>
-              <p className="mt-4 text-xs text-ink-500">
+              <p className="mt-4 text-caption text-ink-500">
                 Los datos personales (RUT, documento, teléfono y cuenta bancaria) nunca se
                 muestran públicamente.
               </p>
@@ -180,11 +180,11 @@ export default async function WorkerProfilePage({ params }: PageProps) {
           </Card>
 
           <section>
-            <h2 className="text-base font-semibold text-ink-900">
+            <h2 className="text-base font-semibold text-ink-950">
               Reseñas ({worker.reputation.reviewCount})
             </h2>
             {reviews.length === 0 ? (
-              <p className="mt-3 text-sm text-ink-500">Todavía no tiene reseñas publicadas.</p>
+              <p className="mt-3 text-small text-ink-500">Todavía no tiene reseñas publicadas.</p>
             ) : (
               <ul className="mt-4 grid gap-4 sm:grid-cols-2">
                 {reviews.map((review) => (
@@ -200,17 +200,17 @@ export default async function WorkerProfilePage({ params }: PageProps) {
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
           <Card>
             <CardContent>
-              <p className="text-sm text-ink-500">Tarifa de referencia</p>
-              <p className="mt-1 text-3xl font-semibold tracking-tight text-ink-900">
+              <p className="text-small text-ink-500">Tarifa de referencia</p>
+              <p className="mt-1 text-h1 text-ink-950">
                 <HourlyRate value={worker.baseHourlyRate} />
               </p>
               {worker.availabilityNote && (
-                <p className="mt-2 text-sm text-ink-600">{worker.availabilityNote}</p>
+                <p className="mt-2 text-small text-ink-600">{worker.availabilityNote}</p>
               )}
               <Button fullWidth size="lg" className="mt-5" disabled={!worker.isAcceptingJobs}>
                 {worker.isAcceptingJobs ? "Invitar a un trabajo" : "No disponible por ahora"}
               </Button>
-              <p className="mt-3 text-xs text-ink-500">
+              <p className="mt-3 text-caption text-ink-500">
                 La tarifa final la define su oferta para cada trabajo.
               </p>
             </CardContent>
@@ -221,10 +221,10 @@ export default async function WorkerProfilePage({ params }: PageProps) {
           {gap && gap.missing.length > 0 && (
             <Card>
               <CardContent>
-                <p className="text-sm font-medium text-ink-900">
+                <p className="text-small font-medium text-ink-950">
                   Camino al nivel {gap.next.toLowerCase()}
                 </p>
-                <ul className="mt-3 space-y-1.5 text-sm text-ink-600">
+                <ul className="mt-3 space-y-1.5 text-small text-ink-600">
                   {gap.missing.map((item) => (
                     <li key={item}>· {item}</li>
                   ))}
@@ -235,8 +235,8 @@ export default async function WorkerProfilePage({ params }: PageProps) {
 
           <Card>
             <CardContent>
-              <p className="text-sm font-medium text-ink-900">Zonas de trabajo</p>
-              <ul className="mt-3 space-y-1.5 text-sm text-ink-600">
+              <p className="text-small font-medium text-ink-950">Zonas de trabajo</p>
+              <ul className="mt-3 space-y-1.5 text-small text-ink-600">
                 {worker.serviceAreas.map((area) => (
                   <li key={area.id}>
                     {regionName(area.regionCode)}
@@ -262,10 +262,10 @@ function TrustRow({
   ok: boolean;
 }) {
   return (
-    <li className="flex items-center gap-2.5 text-sm">
+    <li className="flex items-center gap-2.5 text-small">
       <span className={ok ? "text-success-600" : "text-ink-300"}>{icon}</span>
-      <span className={ok ? "text-ink-800" : "text-ink-400"}>{label}</span>
-      {!ok && <span className="ml-auto text-xs text-ink-400">Pendiente</span>}
+      <span className={ok ? "text-ink-800" : "text-ink-500"}>{label}</span>
+      {!ok && <span className="ml-auto text-caption text-ink-500">Pendiente</span>}
     </li>
   );
 }

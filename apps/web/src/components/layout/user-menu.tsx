@@ -46,7 +46,7 @@ export function UserMenu({ displayName, avatarUrl, isWorker, isAdmin }: UserMenu
         className="flex items-center gap-2 rounded-full py-1 pr-2 pl-1 transition-colors hover:bg-ink-100"
       >
         <Avatar src={avatarUrl} name={displayName} size="sm" />
-        <span className="hidden max-w-32 truncate text-sm font-medium text-ink-800 sm:block">
+        <span className="hidden max-w-32 truncate text-small font-medium text-ink-800 sm:block">
           {displayName}
         </span>
         <ChevronDown size={15} className="text-ink-400" aria-hidden="true" />
@@ -55,7 +55,7 @@ export function UserMenu({ displayName, avatarUrl, isWorker, isAdmin }: UserMenu
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-2 w-60 overflow-hidden rounded-[var(--radius-card)] border border-ink-200 bg-white shadow-[var(--shadow-raised)]"
+          className="absolute right-0 z-50 mt-2 w-60 overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface shadow-[var(--shadow-raised)]"
         >
           <div className="p-1.5">
             <MenuLink href="/cuenta" icon={<UserRound size={15} />} onSelect={() => setOpen(false)}>
@@ -91,7 +91,7 @@ export function UserMenu({ displayName, avatarUrl, isWorker, isAdmin }: UserMenu
           <form action={signOutAction} className="border-t border-ink-100 p-1.5">
             <button
               type="submit"
-              className="flex w-full items-center gap-2.5 rounded-[var(--radius-control)] px-3 py-2 text-left text-sm text-ink-700 hover:bg-ink-50"
+              className="flex w-full items-center gap-2.5 rounded-[var(--radius-control)] px-3 py-2 text-left text-small text-ink-700 hover:bg-ink-50"
             >
               <LogOut size={15} aria-hidden="true" />
               Cerrar sesión
@@ -119,7 +119,7 @@ function MenuLink({
       href={href}
       role="menuitem"
       onClick={onSelect}
-      className="flex items-center gap-2.5 rounded-[var(--radius-control)] px-3 py-2 text-sm text-ink-700 hover:bg-ink-50"
+      className="flex items-center gap-2.5 rounded-[var(--radius-control)] px-3 py-2 text-small text-ink-700 hover:bg-ink-50"
     >
       {icon ?? <span className="w-[15px]" aria-hidden="true" />}
       {children}

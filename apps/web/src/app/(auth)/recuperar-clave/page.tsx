@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function ResetPasswordPage() {
   return (
     <div>
-      <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
+      <h1 className="text-h2 text-ink-950">
         Recuperar tu contraseña
       </h1>
       <p className="mt-2 text-ink-600">

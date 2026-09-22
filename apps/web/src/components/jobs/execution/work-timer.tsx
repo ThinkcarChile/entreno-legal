@@ -55,11 +55,11 @@ export function WorkTimer({
           aria-hidden="true"
         />
         <div>
-          <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">
+          <p className="text-caption font-medium tracking-wide text-ink-500 uppercase">
             {frozen ? "Tiempo trabajado" : "Tiempo transcurrido"}
           </p>
           <p
-            className="text-2xl font-semibold tabular-nums text-ink-900"
+            className="text-2xl font-semibold tabular-nums text-ink-950"
             aria-live="off"
             suppressHydrationWarning
           >
@@ -71,7 +71,7 @@ export function WorkTimer({
       {percent != null && (
         <div className="mt-3">
           <div
-            className="h-1.5 w-full overflow-hidden rounded-full bg-white"
+            className="h-1.5 w-full overflow-hidden rounded-full bg-surface"
             role="progressbar"
             aria-valuenow={percent}
             aria-valuemin={0}
@@ -83,7 +83,7 @@ export function WorkTimer({
               style={{ width: `${percent}%` }}
             />
           </div>
-          <p className="mt-1.5 text-xs text-ink-600">
+          <p className="mt-1.5 text-caption text-ink-600">
             {overtime
               ? "Se pasó del tiempo acordado. Se puede pedir más tiempo al cliente."
               : `${percent} % del tiempo acordado`}

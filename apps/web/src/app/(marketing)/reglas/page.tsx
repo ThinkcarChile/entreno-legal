@@ -32,9 +32,9 @@ const forbidden = [
 export default function RulesPage() {
   return (
     <>
-      <section className="border-b border-ink-200/60 bg-white py-16 sm:py-20">
+      <section className="border-b border-line bg-surface py-16 sm:py-20">
         <div className="container-page max-w-3xl">
-          <h1 className="text-3xl font-semibold tracking-tight text-ink-900 sm:text-4xl">
+          <h1 className="text-h1 text-ink-950 sm:text-display">
             Reglas de uso
           </h1>
           <p className="mt-4 text-lg text-ink-600">
@@ -77,7 +77,7 @@ export default function RulesPage() {
           </div>
         </div>
 
-        <p className="mt-8 max-w-3xl text-sm text-ink-600">
+        <p className="mt-8 max-w-3xl text-small text-ink-600">
           Publicar un encargo que infrinja estas reglas implica su retiro inmediato y puede
           derivar en la suspensión de la cuenta. Si tienes dudas sobre si tu encargo está
           permitido, escríbenos antes de publicarlo.

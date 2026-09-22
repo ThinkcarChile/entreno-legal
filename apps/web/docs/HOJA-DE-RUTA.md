@@ -298,9 +298,12 @@ Defectos reales que destapó, todos corregidos:
 17. **Páginas regionales** para SEO.
 18. **Búsqueda por cercanía** con PostGIS: columna `geography` generada e índice
     GIST sobre las coordenadas que ya se guardan.
-19. **PWA**: service worker y registro de evidencia sin conexión.
+19. ~~**PWA**: service worker~~ hecho en el Bloque 4 (`docs/DISENO.md` §8).
+    Queda el **registro de evidencia sin conexión**: hoy, sin red, la
+    aplicación muestra la página de cortesía y no encola nada.
 20. **Push, email y SMS/WhatsApp** como canales del despachador que ya existe.
-21. **Panel de administración completo**: pagos, payouts, disputas y reportes.
+21. **Panel de administración**: quedan los reportes agregados. Las colas de
+    verificaciones, check-ins, disputas y payouts ya existen.
 22. **Precios por demanda**: sustituir `RuleBasedPricingEngine` sin tocar la
     interfaz.
 23. **Aplicación nativa**, una vez validado el producto.
@@ -324,4 +327,8 @@ Defectos reales que destapó, todos corregidos:
 | Notificaciones solo in-app | Un trabajador que no abre la aplicación no se entera de una oferta aceptada | Push y email en la Etapa 6 |
 | Sin límite de frecuencia propio | Se depende del de Supabase Auth; las acciones de negocio no tienen tope | Añadir control por usuario en ofertas y mensajes |
 | Términos y política de privacidad provisionales | Texto de relleno | Redacción legal antes de abrir al público |
+| Sin regresión visual automática | Las capturas se adjuntan al informe de Playwright, pero nada las compara entre ejecuciones: un cambio de estilo que rompa una pantalla pasa si no desborda ni ensucia la consola | Comparación de capturas con umbral cuando el diseño deje de moverse |
+| Sin auditoría de contraste sobre la página pintada | Se recalculan los pares de la paleta, no cada combinación real de la interfaz | Añadir axe-core al recorrido de Playwright |
+| Identidad provisional | El logotipo no está registrado ni es definitivo | Diseño de marca antes de abrir al público |
+| Iconos de la PWA en SVG | Android e iOS los aceptan, pero algunos lanzadores antiguos esperan PNG | Exportar PNG de 192 y 512 al cerrar la identidad |
 | Imágenes de trabajos sin implementar | La foto de perfil ya sube a Storage; las imágenes asociadas a un trabajo no, porque requieren subir antes de crear el trabajo y ampliar `publish_job` | Etapa 5 |

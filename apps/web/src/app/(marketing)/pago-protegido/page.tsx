@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 const steps = [
   { title: "Contratas", description: "Aceptas la oferta del trabajador que elegiste." },
-  { title: "Pagas con Webpay", description: "El cobro se procesa con Transbank. No guardamos datos de tu tarjeta." },
+  { title: "Pagas en la pasarela", description: "El cobro lo procesa la pasarela de pago. No guardamos los datos de tu tarjeta." },
   { title: "Pago confirmado", description: "El monto queda asociado a ese trabajo específico." },
   { title: "El trabajo comienza", description: "Recién con el pago confirmado el trabajador puede empezar." },
   { title: "Sigues el avance", description: "Check-in, fotos, actualizaciones y código de entrega." },
@@ -27,9 +27,9 @@ const steps = [
 export default function ProtectedPaymentPage() {
   return (
     <>
-      <section className="border-b border-ink-200/60 bg-white py-16 sm:py-20">
+      <section className="border-b border-line bg-surface py-16 sm:py-20">
         <div className="container-page max-w-3xl">
-          <h1 className="text-3xl font-semibold tracking-tight text-ink-900 sm:text-4xl">
+          <h1 className="text-h1 text-ink-950 sm:text-display">
             {site.protectedPaymentLabel}
           </h1>
           <p className="mt-4 text-lg text-ink-600">
@@ -45,11 +45,11 @@ export default function ProtectedPaymentPage() {
             <li key={step.title}>
               <Card className="h-full">
                 <CardContent>
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-small font-semibold text-white">
                     {index + 1}
                   </span>
-                  <h3 className="mt-4 font-semibold text-ink-900">{step.title}</h3>
-                  <p className="mt-1.5 text-sm text-ink-600">{step.description}</p>
+                  <h3 className="mt-4 font-semibold text-ink-950">{step.title}</h3>
+                  <p className="mt-1.5 text-small text-ink-600">{step.description}</p>
                 </CardContent>
               </Card>
             </li>
@@ -59,7 +59,7 @@ export default function ProtectedPaymentPage() {
 
       <ProtectedPayment />
 
-      <Section title="Lo que no hacemos" className="bg-white">
+      <Section title="Lo que no hacemos" className="bg-surface">
         <ul className="grid max-w-3xl gap-3 text-[0.9375rem] text-ink-700">
           <li>No guardamos ni procesamos directamente los datos de tu tarjeta.</li>
           <li>No existe una billetera con saldo retirable para clientes.</li>

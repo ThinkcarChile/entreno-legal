@@ -16,7 +16,7 @@ export default async function WorkersPage() {
   return (
     <div className="container-page py-8 sm:py-12">
       <header className="max-w-2xl">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900 sm:text-3xl">
+        <h1 className="text-h2 text-ink-950 sm:text-h1">
           Trabajadores verificados
         </h1>
         <p className="mt-2 text-ink-600">

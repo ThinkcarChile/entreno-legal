@@ -36,14 +36,14 @@ export default async function AdminVerificationsPage() {
   return (
     <div className="container-page py-8 sm:py-10">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Verificaciones</h1>
+        <h1 className="text-h2 text-ink-950">Verificaciones</h1>
         <p className="mt-1 text-ink-600">
           Solo un trabajador verificado puede enviar ofertas y ser asignado a un trabajo.
         </p>
       </header>
 
       <section className="mt-8">
-        <h2 className="text-sm font-semibold tracking-wide text-ink-500 uppercase">
+        <h2 className="text-small font-semibold tracking-wide text-ink-500 uppercase">
           Pendientes ({pending.length})
         </h2>
 
@@ -63,12 +63,12 @@ export default async function AdminVerificationsPage() {
                       <div className="flex flex-wrap items-start gap-4">
                         <Avatar src={request.avatarUrl} name={request.displayName} />
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium text-ink-900">{request.displayName}</p>
-                          <p className="mt-0.5 text-sm text-ink-500">
+                          <p className="font-medium text-ink-950">{request.displayName}</p>
+                          <p className="mt-0.5 text-small text-ink-500">
                             Solicitado {formatRelative(request.createdAt)} ·{" "}
                             {request.documentType ?? "Sin documento declarado"}
                           </p>
-                          <p className="mt-2 text-xs text-ink-500">
+                          <p className="mt-2 text-caption text-ink-500">
                             Los archivos viven en el bucket privado y no se exponen aquí hasta
                             integrar la vista segura de documentos.
                           </p>
@@ -86,7 +86,7 @@ export default async function AdminVerificationsPage() {
 
       {history.length > 0 && (
         <section className="mt-10">
-          <h2 className="text-sm font-semibold tracking-wide text-ink-500 uppercase">
+          <h2 className="text-small font-semibold tracking-wide text-ink-500 uppercase">
             Resueltas recientemente
           </h2>
           <ul className="mt-3 space-y-2">
@@ -95,16 +95,16 @@ export default async function AdminVerificationsPage() {
               return (
                 <li
                   key={request.id}
-                  className="flex flex-wrap items-center gap-3 rounded-[var(--radius-card)] border border-ink-200/70 bg-white px-5 py-3"
+                  className="flex flex-wrap items-center gap-3 rounded-[var(--radius-card)] border border-line bg-surface px-5 py-3"
                 >
                   <Avatar src={request.avatarUrl} name={request.displayName} size="sm" />
-                  <span className="font-medium text-ink-900">{request.displayName}</span>
+                  <span className="font-medium text-ink-950">{request.displayName}</span>
                   <Badge tone={label.tone}>{label.label}</Badge>
                   {request.rejectionReason && (
-                    <span className="text-sm text-ink-500">{request.rejectionReason}</span>
+                    <span className="text-small text-ink-500">{request.rejectionReason}</span>
                   )}
                   {request.reviewedAt && (
-                    <span className="ml-auto text-xs text-ink-400">
+                    <span className="ml-auto text-caption text-ink-500">
                       {formatRelative(request.reviewedAt)}
                     </span>
                   )}

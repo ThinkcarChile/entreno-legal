@@ -74,26 +74,26 @@ export function ClientHandoffPanel({
 
       {code ? (
         <>
-          <p className="text-sm text-ink-600">
+          <p className="text-small text-ink-600">
             Dale este código al trabajador solo cuando te entregue lo acordado.
           </p>
           <div className="flex gap-2" aria-label="Código de entrega">
             {code.split("").map((digit, index) => (
               <span
                 key={index}
-                className="flex h-14 w-12 items-center justify-center rounded-[var(--radius-control)] border border-ink-200 bg-white text-2xl font-semibold tabular-nums text-ink-900"
+                className="flex h-14 w-12 items-center justify-center rounded-[var(--radius-control)] border border-line bg-surface text-2xl font-semibold tabular-nums text-ink-950"
               >
                 {digit}
               </span>
             ))}
           </div>
-          <p className="text-xs text-ink-500">
+          <p className="text-caption text-ink-500">
             No lo envíes por el chat. Vale una sola vez y caduca en 12 horas.
           </p>
         </>
       ) : (
         <>
-          <p className="flex gap-2 text-sm text-ink-600">
+          <p className="flex gap-2 text-small text-ink-600">
             <Lock size={15} className="mt-0.5 shrink-0 text-ink-400" aria-hidden="true" />
             El código aparece solo cuando lo pides, y solo para ti.
           </p>
@@ -146,7 +146,7 @@ export function WorkerHandoffPanel({ assignmentId }: { assignmentId: string }) {
         <Alert tone="info">Le avisamos al cliente que estás listo para entregar.</Alert>
       )}
 
-      <p className="text-sm text-ink-600">
+      <p className="text-small text-ink-600">
         Pídele el código al cliente en el momento de la entrega y escríbelo aquí.
       </p>
 
@@ -167,7 +167,7 @@ export function WorkerHandoffPanel({ assignmentId }: { assignmentId: string }) {
       <Button variant="ghost" size="sm" fullWidth onClick={ask} disabled={pending}>
         Pedirle el código al cliente
       </Button>
-      <p className="text-xs text-ink-500">
+      <p className="text-caption text-ink-500">
         Tienes cinco intentos. Un código equivocado no cierra el trabajo.
       </p>
     </div>

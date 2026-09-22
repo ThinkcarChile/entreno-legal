@@ -30,14 +30,14 @@ export function JobCard({ job }: { job: JobSummary }) {
           )}
         </div>
 
-        <h3 className="mt-3.5 text-base font-semibold text-ink-900">
+        <h3 className="mt-3.5 text-base font-semibold text-ink-950">
           <Link href={`/trabajos/${job.id}`} className="hover:text-brand-700">
             <span className="absolute inset-0" aria-hidden="true" />
             {job.title}
           </Link>
         </h3>
 
-        <dl className="mt-3 space-y-1.5 text-sm text-ink-600">
+        <dl className="mt-3 space-y-1.5 text-small text-ink-600">
           <div className="flex items-center gap-2">
             <MapPin size={15} className="shrink-0 text-ink-400" aria-hidden="true" />
             <dd>
@@ -63,16 +63,16 @@ export function JobCard({ job }: { job: JobSummary }) {
 
         <div className="mt-auto flex items-end justify-between gap-4 border-t border-ink-100 pt-4">
           <div>
-            <p className="text-xs text-ink-500">Presupuesto propuesto</p>
-            <p className="mt-0.5 text-lg font-semibold text-ink-900">
+            <p className="text-caption text-ink-500">Presupuesto propuesto</p>
+            <p className="mt-0.5 text-h3 text-ink-950">
               <Amount value={job.proposedTotal} />
             </p>
-            <p className="text-xs text-ink-500">
+            <p className="text-caption text-ink-500">
               <HourlyRate value={job.proposedHourlyRate} />
             </p>
           </div>
           {job.publishedAt && (
-            <p className="text-xs text-ink-400">{formatRelative(job.publishedAt)}</p>
+            <p className="text-caption text-ink-500">{formatRelative(job.publishedAt)}</p>
           )}
         </div>
       </CardContent>

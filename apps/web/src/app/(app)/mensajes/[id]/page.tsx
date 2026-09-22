@@ -35,7 +35,7 @@ export default async function ConversationPage({ params }: PageProps) {
     <div className="container-page max-w-3xl py-6 sm:py-10">
       <Link
         href="/mensajes"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-600 hover:text-brand-700"
+        className="inline-flex items-center gap-1.5 text-small font-medium text-ink-600 hover:text-brand-700"
       >
         <ChevronLeft size={16} aria-hidden="true" />
         Mensajes
@@ -47,7 +47,7 @@ export default async function ConversationPage({ params }: PageProps) {
           name={detail.conversation.counterpartName}
         />
         <div className="min-w-0 flex-1">
-          <h1 className="truncate font-semibold text-ink-900">
+          <h1 className="truncate font-semibold text-ink-950">
             {detail.conversation.counterpartName}
           </h1>
           <Link
@@ -56,7 +56,7 @@ export default async function ConversationPage({ params }: PageProps) {
                 ? `/mis-trabajos/publicados/${detail.conversation.jobId}`
                 : `/trabajos/${detail.conversation.jobId}`
             }
-            className="truncate text-sm text-ink-500 hover:text-brand-700"
+            className="truncate text-small text-ink-500 hover:text-brand-700"
           >
             {detail.conversation.jobTitle}
           </Link>

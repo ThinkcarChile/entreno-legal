@@ -45,7 +45,7 @@ export function StepObjective({
   return (
     <div className="space-y-8">
       <fieldset>
-        <legend className="text-sm font-medium text-ink-800">
+        <legend className="text-small font-medium text-ink-800">
           ¿Cuál es el objetivo? <span className="text-danger-600">*</span>
         </legend>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -61,17 +61,17 @@ export function StepObjective({
                   "rounded-[var(--radius-control)] border px-4 py-3 text-left transition-colors",
                   active
                     ? "border-brand-600 bg-brand-50/60 ring-1 ring-brand-600"
-                    : "border-ink-200 bg-white hover:border-brand-200",
+                    : "border-line bg-surface hover:border-brand-200",
                 )}
               >
-                <span className="block text-sm font-medium text-ink-900">{option.label}</span>
-                <span className="mt-0.5 block text-xs text-ink-500">{option.description}</span>
+                <span className="block text-small font-medium text-ink-950">{option.label}</span>
+                <span className="mt-0.5 block text-caption text-ink-500">{option.description}</span>
               </button>
             );
           })}
         </div>
         {errors.objectiveType && (
-          <p className="mt-2 text-sm text-danger-600" role="alert">
+          <p className="mt-2 text-small text-danger-600" role="alert">
             {errors.objectiveType}
           </p>
         )}
@@ -117,9 +117,9 @@ export function StepObjective({
         </Field>
       )}
 
-      <div className="rounded-[var(--radius-card)] border border-ink-200 bg-white p-5">
-        <h3 className="font-semibold text-ink-900">Bono por objetivo</h3>
-        <p className="mt-1.5 text-sm text-ink-600">
+      <div className="rounded-[var(--radius-card)] border border-line bg-surface p-5">
+        <h3 className="font-semibold text-ink-950">Bono por objetivo</h3>
+        <p className="mt-1.5 text-small text-ink-600">
           Opcional. El bono es distinto del pago por trabajo: si la persona hizo bien su trabajo
           pero un factor externo impidió alcanzar el objetivo, recibe el pago por tiempo y no el
           bono.
@@ -156,8 +156,8 @@ export function StepObjective({
         </div>
 
         {bonus > 0 && (
-          <p className="mt-3 text-sm text-ink-600">
-            Se sumará <span className="font-medium text-ink-900">{formatMoney(money(bonus))}</span>{" "}
+          <p className="mt-3 text-small text-ink-600">
+            Se sumará <span className="font-medium text-ink-950">{formatMoney(money(bonus))}</span>{" "}
             al total solo si el objetivo se cumple.
           </p>
         )}

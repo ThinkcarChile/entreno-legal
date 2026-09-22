@@ -55,7 +55,7 @@ export function StepSchedule({ draft, errors, update }: StepProps) {
       </div>
 
       <fieldset>
-        <legend className="text-sm font-medium text-ink-800">
+        <legend className="text-small font-medium text-ink-800">
           Duración estimada <span className="text-danger-600">*</span>
         </legend>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -66,10 +66,10 @@ export function StepSchedule({ draft, errors, update }: StepProps) {
               aria-pressed={duration === minutes}
               onClick={() => update({ durationMinutes: minutes })}
               className={cn(
-                "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                "rounded-full border px-4 py-2 text-small font-medium transition-colors",
                 duration === minutes
                   ? "border-brand-600 bg-brand-600 text-white"
-                  : "border-ink-200 bg-white text-ink-700 hover:border-brand-300",
+                  : "border-line bg-surface text-ink-700 hover:border-brand-300",
               )}
             >
               {formatDuration(minutes)}
@@ -96,14 +96,14 @@ export function StepSchedule({ draft, errors, update }: StepProps) {
           </Field>
         </div>
 
-        <p className="mt-3 text-sm text-ink-500">
+        <p className="mt-3 text-small text-ink-500">
           No hay duración máxima. Si el trabajo se alarga, puedes solicitar una extensión y el
           trabajador decide si la acepta.
         </p>
       </fieldset>
 
       {overnight && (
-        <div className="flex gap-3 rounded-[var(--radius-control)] border border-brand-100 bg-brand-50/60 p-4 text-sm text-brand-800">
+        <div className="flex gap-3 rounded-[var(--radius-control)] border border-brand-100 bg-brand-50/60 p-4 text-small text-brand-800">
           <Moon size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
           <p>
             Este trabajo cruza la madrugada. Se marca como nocturno y el precio sugerido sube,

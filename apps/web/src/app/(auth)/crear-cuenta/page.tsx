@@ -19,7 +19,7 @@ export default async function SignUpPage({ searchParams }: PageProps) {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Crea tu cuenta</h1>
+      <h1 className="text-h2 text-ink-950">Crea tu cuenta</h1>
       <p className="mt-2 text-ink-600">Es gratis y te toma menos de un minuto.</p>
 
       <div className="mt-8 space-y-5">

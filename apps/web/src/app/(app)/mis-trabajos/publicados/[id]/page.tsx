@@ -64,7 +64,7 @@ export default async function ClientJobDetailPage({ params, searchParams }: Page
     <div className="container-page py-6 sm:py-10">
       <Link
         href="/mis-trabajos/publicados"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-600 hover:text-brand-700"
+        className="inline-flex items-center gap-1.5 text-small font-medium text-ink-600 hover:text-brand-700"
       >
         <ChevronLeft size={16} aria-hidden="true" />
         Mis trabajos publicados
@@ -76,13 +76,13 @@ export default async function ClientJobDetailPage({ params, searchParams }: Page
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={status.tone}>{status.label}</Badge>
               <Badge tone="info">{job.category.name}</Badge>
-              <span className="text-xs text-ink-400">{job.reference}</span>
+              <span className="text-caption text-ink-500">{job.reference}</span>
             </div>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-ink-900 sm:text-3xl">
+            <h1 className="mt-3 text-h2 text-ink-950 sm:text-h1">
               {job.title}
             </h1>
             {status.description && (
-              <p className="mt-1.5 text-sm text-ink-600">{status.description}</p>
+              <p className="mt-1.5 text-small text-ink-600">{status.description}</p>
             )}
           </header>
 
@@ -133,7 +133,7 @@ export default async function ClientJobDetailPage({ params, searchParams }: Page
               <div className="flex gap-3.5">
                 <CalendarClock size={18} className="mt-0.5 shrink-0 text-ink-400" aria-hidden="true" />
                 <div>
-                  <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">Cuándo</p>
+                  <p className="text-caption font-medium tracking-wide text-ink-500 uppercase">Cuándo</p>
                   <p className="mt-1 text-[0.9375rem] text-ink-700 first-letter:uppercase">
                     {formatDate(job.startsAt, job.timezone)}
                   </p>
@@ -147,7 +147,7 @@ export default async function ClientJobDetailPage({ params, searchParams }: Page
               <div className="flex gap-3.5">
                 <Target size={18} className="mt-0.5 shrink-0 text-ink-400" aria-hidden="true" />
                 <div>
-                  <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">
+                  <p className="text-caption font-medium tracking-wide text-ink-500 uppercase">
                     Objetivo
                   </p>
                   <p className="mt-1 text-[0.9375rem] text-ink-700">
@@ -159,7 +159,7 @@ export default async function ClientJobDetailPage({ params, searchParams }: Page
               {job.objective.bonus && (
                 <div className="flex gap-3 rounded-[var(--radius-control)] bg-success-50 p-4">
                   <Gift size={18} className="mt-0.5 shrink-0 text-success-600" aria-hidden="true" />
-                  <div className="text-sm">
+                  <div className="text-small">
                     <p className="font-medium text-success-800">
                       Bono por objetivo: <Amount value={job.objective.bonus} />
                     </p>
@@ -175,7 +175,7 @@ export default async function ClientJobDetailPage({ params, searchParams }: Page
           {timeline.length > 0 && (
             <Card>
               <CardContent>
-                <h2 className="text-base font-semibold text-ink-900">Avance del trabajo</h2>
+                <h2 className="text-base font-semibold text-ink-950">Avance del trabajo</h2>
                 <div className="mt-5">
                   <JobTimeline entries={timeline} timezone={job.timezone} />
                 </div>
@@ -184,20 +184,20 @@ export default async function ClientJobDetailPage({ params, searchParams }: Page
           )}
 
           <section>
-            <h2 className="flex items-center gap-2 text-base font-semibold text-ink-900">
+            <h2 className="flex items-center gap-2 text-base font-semibold text-ink-950">
               <Users size={18} aria-hidden="true" className="text-ink-400" />
               Ofertas recibidas ({offers.length})
             </h2>
 
             {offers.length === 0 ? (
-              <p className="mt-3 text-sm text-ink-500">
+              <p className="mt-3 text-small text-ink-500">
                 Todavía no tienes ofertas. Los trabajadores verificados de la zona ya pueden ver tu
                 publicación.
               </p>
             ) : (
               <>
                 {permissions.canAcceptOffer && pendingOffers.length > 1 && (
-                  <p className="mt-2 text-sm text-ink-500">
+                  <p className="mt-2 text-small text-ink-500">
                     Compara reputación, puntualidad y precio. Aceptar una descarta las demás.
                   </p>
                 )}
@@ -220,11 +220,11 @@ export default async function ClientJobDetailPage({ params, searchParams }: Page
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
           <Card>
             <CardContent>
-              <p className="text-sm text-ink-500">Presupuesto propuesto</p>
-              <p className="mt-1 text-3xl font-semibold tracking-tight text-ink-900">
+              <p className="text-small text-ink-500">Presupuesto propuesto</p>
+              <p className="mt-1 text-h1 text-ink-950">
                 <Amount value={job.proposedTotal} />
               </p>
-              <p className="mt-1 text-sm text-ink-500">
+              <p className="mt-1 text-small text-ink-500">
                 <HourlyRate value={job.proposedHourlyRate} /> ·{" "}
                 {formatDuration(job.estimatedDurationMinutes)}
               </p>
@@ -250,7 +250,7 @@ export default async function ClientJobDetailPage({ params, searchParams }: Page
               </div>
 
               {!permissions.canEdit && !assignment && (
-                <p className="mt-3 text-xs text-ink-500">
+                <p className="mt-3 text-caption text-ink-500">
                   Un trabajo con oferta aceptada ya no se puede editar: hay alguien que organizó su
                   día con estos datos.
                 </p>
@@ -261,8 +261,8 @@ export default async function ClientJobDetailPage({ params, searchParams }: Page
           {assignment && (
             <Card>
               <CardContent>
-                <p className="text-sm font-medium text-ink-900">Trabajador asignado</p>
-                <p className="mt-2 text-sm text-ink-600">
+                <p className="text-small font-medium text-ink-950">Trabajador asignado</p>
+                <p className="mt-2 text-small text-ink-600">
                   {assignment.worker.profile.displayName}
                 </p>
                 {assignment.conversationId && (

@@ -94,7 +94,7 @@ export function StepLocation({ draft, errors, update }: StepProps) {
         />
       </Field>
 
-      <div className="flex gap-3 rounded-[var(--radius-control)] border border-dashed border-ink-200 bg-ink-50/60 p-4 text-sm text-ink-600">
+      <div className="flex gap-3 rounded-[var(--radius-control)] border border-dashed border-line bg-ink-50/60 p-4 text-small text-ink-600">
         <MapPin size={18} className="mt-0.5 shrink-0 text-ink-400" aria-hidden="true" />
         <p>
           El punto exacto en el mapa se agrega en la siguiente etapa del producto. Por ahora la

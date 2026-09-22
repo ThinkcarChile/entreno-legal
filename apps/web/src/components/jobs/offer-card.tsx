@@ -36,7 +36,7 @@ export function OfferCard({
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <Link
                 href={`/trabajadores/${worker.userId}`}
-                className="font-semibold text-ink-900 hover:text-brand-700"
+                className="font-semibold text-ink-950 hover:text-brand-700"
               >
                 {worker.profile.displayName}
               </Link>
@@ -53,7 +53,7 @@ export function OfferCard({
               )}
             </div>
 
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-500">
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-ink-500">
               {worker.reputation.reviewCount > 0 && (
                 <Rating
                   value={worker.reputation.averageRating}
@@ -66,24 +66,24 @@ export function OfferCard({
           </div>
 
           <div className="shrink-0 text-right">
-            <p className="text-lg font-semibold text-ink-900">
+            <p className="text-h3 text-ink-950">
               <HourlyRate value={offer.hourlyRate} />
             </p>
-            <p className="text-sm text-ink-500">
+            <p className="text-small text-ink-500">
               Total <Amount value={offer.estimatedTotal} />
             </p>
           </div>
         </div>
 
         {offer.message && (
-          <p className="mt-4 rounded-[var(--radius-control)] bg-ink-50 px-4 py-3 text-sm leading-relaxed text-ink-700">
+          <p className="mt-4 rounded-[var(--radius-control)] bg-ink-50 px-4 py-3 text-small leading-relaxed text-ink-700">
             {offer.message}
           </p>
         )}
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           {offer.estimatedArrivalAt && (
-            <p className="flex items-center gap-1.5 text-sm text-ink-500">
+            <p className="flex items-center gap-1.5 text-small text-ink-500">
               <Clock3 size={14} aria-hidden="true" />
               Puede llegar a las {formatTime(offer.estimatedArrivalAt, timezone)}
             </p>

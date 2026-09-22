@@ -23,7 +23,7 @@ export default async function MyPublishedJobsPage() {
     <div className="container-page py-8 sm:py-12">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink-900 sm:text-3xl">
+          <h1 className="text-h2 text-ink-950 sm:text-h1">
             Trabajos que publiqué
           </h1>
           <p className="mt-2 text-ink-600">

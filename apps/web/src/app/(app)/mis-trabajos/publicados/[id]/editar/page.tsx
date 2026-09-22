@@ -36,13 +36,13 @@ export default async function EditJobPage({ params }: PageProps) {
     <div className="container-page max-w-2xl py-6 sm:py-10">
       <Link
         href={`/mis-trabajos/publicados/${id}`}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-600 hover:text-brand-700"
+        className="inline-flex items-center gap-1.5 text-small font-medium text-ink-600 hover:text-brand-700"
       >
         <ChevronLeft size={16} aria-hidden="true" />
         Volver al trabajo
       </Link>
 
-      <h1 className="mt-6 text-2xl font-semibold tracking-tight text-ink-900 sm:text-3xl">
+      <h1 className="mt-6 text-h2 text-ink-950 sm:text-h1">
         Editar trabajo
       </h1>
       <p className="mt-2 text-ink-600">

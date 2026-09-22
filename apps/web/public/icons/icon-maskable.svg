@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 32 32" role="img" aria-label="HagoTuFila">
+  <rect width="32" height="32" fill="#ce2f59"/>
+  <g transform="translate(16 16) scale(0.62) translate(-16 -16)">
+    <path d="M16 3.6c-5.2 0-9.4 4.1-9.4 9.2 0 6.5 7.8 13.8 8.9 14.9.3.3.7.3 1 0 1.1-1.1 8.9-8.4 8.9-14.9 0-5.1-4.2-9.2-9.4-9.2Z" fill="#ffffff"/>
+    <circle cx="16" cy="12.6" r="5.9" fill="#ce2f59"/>
+    <path d="M16 9v3.7l2.6 1.5" stroke="#ffffff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <circle cx="23.4" cy="23.2" r="5.4" fill="#ce2f59"/>
+    <circle cx="23.4" cy="23.2" r="4.2" fill="#20b486"/>
+    <path d="m21.4 23.3 1.5 1.5 2.6-2.9" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+</svg>

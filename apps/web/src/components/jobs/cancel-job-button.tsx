@@ -47,7 +47,7 @@ export function CancelJobButton({
 
   return (
     <div className="space-y-3 rounded-[var(--radius-control)] border border-danger-100 bg-danger-50/60 p-4">
-      <p className="text-sm text-ink-800">
+      <p className="text-small text-ink-800">
         {hasPaymentInFlight
           ? "¿Seguro que quieres cancelar? Hay un pago en curso: verificaremos su estado antes de completar la cancelación, y si llegó a cobrarse quedará registrado para devolución."
           : "¿Seguro que quieres cancelar? Se rechazarán las ofertas pendientes."}

@@ -63,7 +63,7 @@ export function OfferActions({
   if (confirming) {
     return (
       <div className="w-full space-y-3 rounded-[var(--radius-control)] border border-brand-200 bg-brand-50/60 p-4">
-        <p className="text-sm text-ink-800">
+        <p className="text-small text-ink-800">
           Vas a contratar a <strong className="font-medium">{workerName}</strong> por{" "}
           <strong className="font-medium">{total}</strong>. Las demás ofertas quedarán
           rechazadas y el siguiente paso es el pago.

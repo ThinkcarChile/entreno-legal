@@ -62,7 +62,7 @@ export function ReviewForm({
     <div className="space-y-4">
       {error && <Alert tone="danger">{error}</Alert>}
 
-      <p className="text-sm text-ink-600">
+      <p className="text-small text-ink-600">
         ¿Cómo fue trabajar con {counterpartName}? Tu reseña se publica solo porque el trabajo se
         completó de verdad.
       </p>
@@ -70,7 +70,7 @@ export function ReviewForm({
       <div className="space-y-2.5">
         {DIMENSIONS.map((dimension) => (
           <div key={dimension.key} className="flex items-center justify-between gap-4">
-            <span className="text-sm text-ink-700">{dimension.label}</span>
+            <span className="text-small text-ink-700">{dimension.label}</span>
             <div className="flex gap-0.5" role="group" aria-label={dimension.label}>
               {[1, 2, 3, 4, 5].map((value) => (
                 <button

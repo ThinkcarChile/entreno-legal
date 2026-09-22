@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
+import { ServiceWorkerSetup } from "@/components/layout/service-worker";
+import { brand } from "@/config/brand";
 import { seoKeywords, site } from "@/config/site";
 
 import "./globals.css";
@@ -41,10 +43,16 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, "max-image-preview": "large" },
   },
   formatDetection: { telephone: false },
+  // La aplicación instalada usa su propia barra de estado, sin la del navegador.
+  appleWebApp: {
+    capable: true,
+    title: site.shortName,
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#3049dc",
+  themeColor: brand.canvas,
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -54,8 +62,11 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es-CL" className={inter.variable}>
-      <body className="min-h-dvh antialiased">{children}</body>
+    <html lang="es-CL" data-scroll-behavior="smooth" className={inter.variable}>
+      <body className="min-h-dvh antialiased">
+        {children}
+        <ServiceWorkerSetup />
+      </body>
     </html>
   );
 }

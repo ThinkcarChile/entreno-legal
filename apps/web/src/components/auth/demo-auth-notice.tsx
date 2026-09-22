@@ -11,7 +11,7 @@ export function DemoAuthNotice() {
   return (
     <Alert tone="info" title="Modo demostración">
       Los formularios validan igual que en producción, pero las cuentas se crean cuando se
-      configura Supabase. Revisa <code className="font-mono text-xs">.env.example</code>.
+      configura Supabase. Revisa <code className="font-mono text-caption">.env.example</code>.
     </Alert>
   );
 }

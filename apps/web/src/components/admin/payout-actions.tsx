@@ -53,7 +53,7 @@ export function PayoutActions({
       {error && <Alert tone="danger">{error}</Alert>}
 
       {mode === "pay" && (
-        <div className="space-y-2.5 rounded-[var(--radius-control)] border border-ink-200 p-3">
+        <div className="space-y-2.5 rounded-[var(--radius-control)] border border-line p-3">
           <Field label="Referencia de la transferencia" htmlFor={`ref-${payoutId}`} required>
             <Input
               id={`ref-${payoutId}`}
@@ -63,7 +63,7 @@ export function PayoutActions({
               maxLength={80}
             />
           </Field>
-          <p className="text-xs text-ink-500">
+          <p className="text-caption text-ink-500">
             Se registra un pago ya realizado fuera de la plataforma. No se envía dinero desde aquí.
           </p>
           <div className="flex gap-2">
@@ -82,7 +82,7 @@ export function PayoutActions({
       )}
 
       {mode === "hold" && (
-        <div className="space-y-2.5 rounded-[var(--radius-control)] border border-ink-200 p-3">
+        <div className="space-y-2.5 rounded-[var(--radius-control)] border border-line p-3">
           <Field label="Motivo de la retención" htmlFor={`hold-${payoutId}`} required>
             <Input
               id={`hold-${payoutId}`}

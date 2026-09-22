@@ -15,8 +15,8 @@ export function Stepper({ steps, current }: StepperProps) {
     <div>
       <div className="sm:hidden">
         <div className="flex items-baseline justify-between">
-          <p className="text-sm font-medium text-ink-900">{steps[current]?.title}</p>
-          <p className="text-xs text-ink-500 tabular-nums">
+          <p className="text-small font-medium text-ink-950">{steps[current]?.title}</p>
+          <p className="text-caption text-ink-500 tabular-nums">
             Paso {current + 1} de {steps.length}
           </p>
         </div>
@@ -37,7 +37,7 @@ export function Stepper({ steps, current }: StepperProps) {
             <li key={step.id} className="flex flex-1 items-center gap-2">
               <span
                 className={cn(
-                  "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                  "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-caption font-semibold",
                   done && "bg-brand-600 text-white",
                   active && "bg-brand-50 text-brand-700 ring-2 ring-brand-600",
                   !done && !active && "bg-ink-100 text-ink-500",
@@ -47,8 +47,8 @@ export function Stepper({ steps, current }: StepperProps) {
               </span>
               <span
                 className={cn(
-                  "hidden truncate text-xs font-medium lg:block",
-                  active ? "text-ink-900" : "text-ink-500",
+                  "hidden truncate text-caption font-medium lg:block",
+                  active ? "text-ink-950" : "text-ink-500",
                 )}
               >
                 {step.title}

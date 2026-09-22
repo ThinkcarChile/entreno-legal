@@ -100,7 +100,7 @@ export default async function JobDetailPage({ params }: PageProps) {
     <div className="container-page py-6 sm:py-10">
       <Link
         href="/trabajos"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-600 hover:text-brand-700"
+        className="inline-flex items-center gap-1.5 text-small font-medium text-ink-600 hover:text-brand-700"
       >
         <ChevronLeft size={16} aria-hidden="true" />
         Volver a trabajos
@@ -118,18 +118,18 @@ export default async function JobDetailPage({ params }: PageProps) {
               <Badge tone={urgencyLabels[job.urgency].tone}>
                 {urgencyLabels[job.urgency].label}
               </Badge>
-              <span className="text-xs text-ink-400">{job.reference}</span>
+              <span className="text-caption text-ink-500">{job.reference}</span>
             </div>
 
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-ink-900 sm:text-3xl">
+            <h1 className="mt-3 text-h2 text-ink-950 sm:text-h1">
               {job.title}
             </h1>
 
             <div className="mt-4 flex items-center gap-3">
               <Avatar src={job.client.avatarUrl} name={job.client.displayName} size="sm" />
-              <p className="text-sm text-ink-600">
+              <p className="text-small text-ink-600">
                 Publicado por{" "}
-                <span className="font-medium text-ink-900">{job.client.displayName}</span>
+                <span className="font-medium text-ink-950">{job.client.displayName}</span>
               </p>
             </div>
           </header>
@@ -163,14 +163,14 @@ export default async function JobDetailPage({ params }: PageProps) {
               {job.objective.bonus && (
                 <div className="flex gap-3 rounded-[var(--radius-control)] bg-success-50 p-4">
                   <Gift size={18} className="mt-0.5 shrink-0 text-success-600" aria-hidden="true" />
-                  <div className="text-sm">
+                  <div className="text-small">
                     <p className="font-medium text-success-800">
                       Bono por objetivo: <Amount value={job.objective.bonus} />
                     </p>
                     {job.objective.bonusConditions && (
                       <p className="mt-1 text-success-700">{job.objective.bonusConditions}</p>
                     )}
-                    <p className="mt-2 text-xs text-success-700/80">
+                    <p className="mt-2 text-caption text-success-700/80">
                       El bono es adicional al pago por trabajo y se paga solo si el objetivo se
                       cumple.
                     </p>
@@ -182,14 +182,14 @@ export default async function JobDetailPage({ params }: PageProps) {
 
           <Card>
             <CardContent>
-              <h2 className="text-base font-semibold text-ink-900">Descripción</h2>
+              <h2 className="text-base font-semibold text-ink-950">Descripción</h2>
               <p className="mt-3 text-[0.9375rem] leading-relaxed whitespace-pre-line text-ink-700">
                 {job.description}
               </p>
 
               {job.instructions && (
                 <>
-                  <h3 className="mt-6 text-sm font-semibold text-ink-900">Instrucciones</h3>
+                  <h3 className="mt-6 text-small font-semibold text-ink-950">Instrucciones</h3>
                   <p className="mt-2 text-[0.9375rem] leading-relaxed whitespace-pre-line text-ink-700">
                     {job.instructions}
                   </p>
@@ -201,7 +201,7 @@ export default async function JobDetailPage({ params }: PageProps) {
           {timeline.length > 0 && (
             <Card>
               <CardContent>
-                <h2 className="text-base font-semibold text-ink-900">Avance del trabajo</h2>
+                <h2 className="text-base font-semibold text-ink-950">Avance del trabajo</h2>
                 <div className="mt-5">
                   <JobTimeline entries={timeline} timezone={job.timezone} />
                 </div>
@@ -211,12 +211,12 @@ export default async function JobDetailPage({ params }: PageProps) {
 
           {isOwner && (
             <section>
-              <h2 className="flex items-center gap-2 text-base font-semibold text-ink-900">
+              <h2 className="flex items-center gap-2 text-base font-semibold text-ink-950">
                 <Users size={18} aria-hidden="true" className="text-ink-400" />
                 Ofertas recibidas ({offers.length})
               </h2>
               {offers.length === 0 ? (
-                <p className="mt-3 text-sm text-ink-500">
+                <p className="mt-3 text-small text-ink-500">
                   Todavía no hay ofertas. Los trabajadores verificados de la zona ya pueden verlo.
                 </p>
               ) : (
@@ -232,7 +232,7 @@ export default async function JobDetailPage({ params }: PageProps) {
           )}
 
           {!isOwner && (
-            <p className="text-sm text-ink-500">
+            <p className="text-small text-ink-500">
               {job.offerCount === 0
                 ? "Todavía nadie ha ofertado. Es un buen momento para postular."
                 : `Ya hay ${job.offerCount} ${job.offerCount === 1 ? "oferta" : "ofertas"} para este trabajo.`}
@@ -243,11 +243,11 @@ export default async function JobDetailPage({ params }: PageProps) {
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
           <Card>
             <CardContent>
-              <p className="text-sm text-ink-500">Presupuesto propuesto</p>
-              <p className="mt-1 text-3xl font-semibold tracking-tight text-ink-900">
+              <p className="text-small text-ink-500">Presupuesto propuesto</p>
+              <p className="mt-1 text-h1 text-ink-950">
                 <Amount value={job.proposedTotal} />
               </p>
-              <p className="mt-1 text-sm text-ink-500">
+              <p className="mt-1 text-small text-ink-500">
                 <HourlyRate value={job.proposedHourlyRate} /> ·{" "}
                 {formatDuration(job.estimatedDurationMinutes)}
               </p>
@@ -308,7 +308,7 @@ export default async function JobDetailPage({ params }: PageProps) {
               </div>
 
               {!isOwner && isOpen(job.status) && (
-                <p className="mt-4 flex gap-2 text-xs text-ink-500">
+                <p className="mt-4 flex gap-2 text-caption text-ink-500">
                   <Info size={14} className="mt-px shrink-0" aria-hidden="true" />
                   Propones tu propia tarifa por hora. El cliente elige entre todas las ofertas
                   recibidas.
@@ -321,11 +321,11 @@ export default async function JobDetailPage({ params }: PageProps) {
 
           <Card>
             <CardContent>
-              <p className="flex items-center gap-2 text-sm font-medium text-ink-900">
+              <p className="flex items-center gap-2 text-small font-medium text-ink-950">
                 <ShieldCheck size={16} className="text-success-600" aria-hidden="true" />
                 {site.protectedPaymentLabel}
               </p>
-              <p className="mt-2 text-sm text-ink-600">
+              <p className="mt-2 text-small text-ink-600">
                 El cliente paga antes de que el trabajo comience y el dinero queda asociado a
                 este servicio. Se aprueba tu pago cuando la entrega se confirma o vence el plazo
                 para reportar un problema.
@@ -351,7 +351,7 @@ function DetailRow({
     <div className="flex gap-3.5">
       <span className="mt-0.5 shrink-0 text-ink-400">{icon}</span>
       <div className="min-w-0">
-        <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">{label}</p>
+        <p className="text-caption font-medium tracking-wide text-ink-500 uppercase">{label}</p>
         <div className="mt-1 text-[0.9375rem] text-ink-700">{value}</div>
       </div>
     </div>

@@ -17,9 +17,9 @@ export default async function PricingPage() {
 
   return (
     <>
-      <section className="border-b border-ink-200/60 bg-white py-16 sm:py-20">
+      <section className="border-b border-line bg-surface py-16 sm:py-20">
         <div className="container-page max-w-3xl">
-          <h1 className="text-3xl font-semibold tracking-tight text-ink-900 sm:text-4xl">
+          <h1 className="text-h1 text-ink-950 sm:text-display">
             Precios sugeridos
           </h1>
           <p className="mt-4 text-lg text-ink-600">
@@ -30,8 +30,8 @@ export default async function PricingPage() {
       </section>
 
       <Section title="Rangos de referencia por categoría">
-        <div className="overflow-hidden rounded-[var(--radius-card)] border border-ink-200/70 bg-white">
-          <table className="w-full text-left text-sm">
+        <div className="overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface">
+          <table className="w-full text-left text-small">
             <thead className="border-b border-ink-100 bg-ink-50/60">
               <tr>
                 <th scope="col" className="px-5 py-3 font-semibold text-ink-700">
@@ -48,11 +48,11 @@ export default async function PricingPage() {
             <tbody className="divide-y divide-ink-100">
               {categories.map((category) => (
                 <tr key={category.id}>
-                  <td className="px-5 py-3.5 font-medium text-ink-900">{category.name}</td>
+                  <td className="px-5 py-3.5 font-medium text-ink-950">{category.name}</td>
                   <td className="px-5 py-3.5 text-ink-600">
                     {category.group === CategoryGroup.FILA ? "Hacer una fila" : "Trámite o gestión"}
                   </td>
-                  <td className="px-5 py-3.5 text-right text-ink-900 tabular-nums">
+                  <td className="px-5 py-3.5 text-right text-ink-950 tabular-nums">
                     <AmountRange min={category.baseHourlyMin} max={category.baseHourlyMax} />
                   </td>
                 </tr>
@@ -61,18 +61,18 @@ export default async function PricingPage() {
           </table>
         </div>
 
-        <p className="mt-4 text-sm text-ink-500">
+        <p className="mt-4 text-small text-ink-500">
           Sobre estos rangos se aplican ajustes por horario nocturno, fin de semana, feriado,
           urgencia, duración, región y comuna.
         </p>
       </Section>
 
-      <Section title="Comisión y cobros" className="bg-white">
+      <Section title="Comisión y cobros" className="bg-surface">
         <div className="grid gap-5 sm:grid-cols-3">
           <Card>
             <CardContent>
-              <h3 className="font-semibold text-ink-900">Publicar es gratis</h3>
-              <p className="mt-2 text-sm text-ink-600">
+              <h3 className="font-semibold text-ink-950">Publicar es gratis</h3>
+              <p className="mt-2 text-small text-ink-600">
                 No cobramos por publicar ni por recibir ofertas. Solo hay cobro cuando aceptas
                 una oferta y el trabajo se concreta.
               </p>
@@ -80,10 +80,10 @@ export default async function PricingPage() {
           </Card>
           <Card>
             <CardContent>
-              <h3 className="font-semibold text-ink-900">
+              <h3 className="font-semibold text-ink-950">
                 Comisión de {(platform.commissionBps / 100).toLocaleString("es-CL")}%
               </h3>
-              <p className="mt-2 text-sm text-ink-600">
+              <p className="mt-2 text-small text-ink-600">
                 Se aplica sobre el monto del servicio y sostiene la verificación de identidad,
                 el soporte y la protección del pago.
               </p>
@@ -91,8 +91,8 @@ export default async function PricingPage() {
           </Card>
           <Card>
             <CardContent>
-              <h3 className="font-semibold text-ink-900">Bono aparte</h3>
-              <p className="mt-2 text-sm text-ink-600">
+              <h3 className="font-semibold text-ink-950">Bono aparte</h3>
+              <p className="mt-2 text-small text-ink-600">
                 El bono por objetivo es adicional al pago por trabajo y llega completo al
                 trabajador cuando el objetivo se cumple.
               </p>

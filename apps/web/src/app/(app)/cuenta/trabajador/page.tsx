@@ -26,7 +26,7 @@ export default async function WorkerAccountPage() {
   if (!isWorker) {
     return (
       <div className="container-page max-w-2xl py-8 sm:py-12">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
+        <h1 className="text-h2 text-ink-950">
           Activa el modo trabajador
         </h1>
         <p className="mt-2 text-ink-600">
@@ -48,7 +48,7 @@ export default async function WorkerAccountPage() {
 
   return (
     <div className="container-page max-w-3xl py-8 sm:py-12">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink-900 sm:text-3xl">
+      <h1 className="text-h2 text-ink-950 sm:text-h1">
         Perfil de trabajador
       </h1>
       <p className="mt-2 text-ink-600">
@@ -83,7 +83,7 @@ export default async function WorkerAccountPage() {
           </CardContent>
         </Card>
 
-        <p className="flex items-start gap-2 text-sm text-ink-600">
+        <p className="flex items-start gap-2 text-small text-ink-600">
           <Info size={16} className="mt-0.5 shrink-0 text-ink-400" aria-hidden="true" />
           <span>
             Tus datos personales (RUT, documento, teléfono y cuenta bancaria) nunca se muestran en

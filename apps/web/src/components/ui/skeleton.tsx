@@ -12,7 +12,7 @@ export function Skeleton({ className }: { className?: string }) {
 
 export function JobCardSkeleton() {
   return (
-    <div className="rounded-[var(--radius-card)] border border-ink-200/70 bg-white p-5">
+    <div className="rounded-[var(--radius-card)] border border-line bg-surface p-5">
       <Skeleton className="h-5 w-24 rounded-full" />
       <Skeleton className="mt-3.5 h-5 w-full" />
       <Skeleton className="mt-2 h-4 w-3/4" />

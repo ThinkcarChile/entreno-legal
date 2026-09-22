@@ -31,7 +31,7 @@ export function StepCategory({
   return (
     <div className="space-y-8">
       <fieldset>
-        <legend className="text-sm font-medium text-ink-800">¿Qué necesitas?</legend>
+        <legend className="text-small font-medium text-ink-800">Tipo de servicio</legend>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           {groups.map((group) => {
             const active = activeGroup === group.id;
@@ -45,11 +45,11 @@ export function StepCategory({
                   "rounded-[var(--radius-card)] border p-5 text-left transition-colors",
                   active
                     ? "border-brand-600 bg-brand-50/60 ring-1 ring-brand-600"
-                    : "border-ink-200 bg-white hover:border-brand-200 hover:bg-brand-50/30",
+                    : "border-line bg-surface hover:border-brand-200 hover:bg-brand-50/30",
                 )}
               >
-                <span className="block font-semibold text-ink-900">{group.title}</span>
-                <span className="mt-1 block text-sm text-ink-600">{group.description}</span>
+                <span className="block font-semibold text-ink-950">{group.title}</span>
+                <span className="mt-1 block text-small text-ink-600">{group.description}</span>
               </button>
             );
           })}
@@ -57,11 +57,11 @@ export function StepCategory({
       </fieldset>
 
       <fieldset>
-        <legend className="text-sm font-medium text-ink-800">Elige la subcategoría</legend>
+        <legend className="text-small font-medium text-ink-800">Elige la subcategoría</legend>
         <div className="mt-3 space-y-6">
           {groups.map((group) => (
             <div key={group.id}>
-              <p className="text-xs font-semibold tracking-wide text-ink-500 uppercase">
+              <p className="text-caption font-semibold tracking-wide text-ink-500 uppercase">
                 {group.title}
               </p>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -79,14 +79,14 @@ export function StepCategory({
                           "rounded-[var(--radius-control)] border px-4 py-3 text-left transition-colors",
                           active
                             ? "border-brand-600 bg-brand-50/60 ring-1 ring-brand-600"
-                            : "border-ink-200 bg-white hover:border-brand-200",
+                            : "border-line bg-surface hover:border-brand-200",
                         )}
                       >
-                        <span className="block text-sm font-medium text-ink-900">
+                        <span className="block text-small font-medium text-ink-950">
                           {category.name}
                         </span>
                         {category.description && (
-                          <span className="mt-0.5 block text-xs text-ink-500">
+                          <span className="mt-0.5 block text-caption text-ink-500">
                             {category.description}
                           </span>
                         )}
@@ -98,7 +98,7 @@ export function StepCategory({
           ))}
         </div>
         {errors.categoryId && (
-          <p className="mt-3 text-sm text-danger-600" role="alert">
+          <p className="mt-3 text-small text-danger-600" role="alert">
             {errors.categoryId}
           </p>
         )}

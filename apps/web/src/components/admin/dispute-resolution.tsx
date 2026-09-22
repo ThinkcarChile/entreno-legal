@@ -76,13 +76,13 @@ export function DisputeResolutionForm({ disputeId }: { disputeId: string }) {
   }
 
   return (
-    <div className="w-full space-y-3 rounded-[var(--radius-control)] border border-ink-200 bg-white p-4">
+    <div className="w-full space-y-3 rounded-[var(--radius-control)] border border-line bg-surface p-4">
       {error && <Alert tone="danger">{error}</Alert>}
 
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium text-ink-800">Resultado de la disputa</legend>
+        <legend className="text-small font-medium text-ink-800">Resultado de la disputa</legend>
         {OPTIONS.map((option) => (
-          <label key={option.value} className="flex items-start gap-2 text-sm">
+          <label key={option.value} className="flex items-start gap-2 text-small">
             <input
               type="radio"
               name={`resolution-${disputeId}`}
@@ -92,7 +92,7 @@ export function DisputeResolutionForm({ disputeId }: { disputeId: string }) {
               className="mt-1 h-4 w-4 accent-brand-600"
             />
             <span>
-              <span className="font-medium text-ink-900">{option.label}</span>
+              <span className="font-medium text-ink-950">{option.label}</span>
               <span className="block text-ink-500">{option.hint}</span>
             </span>
           </label>
@@ -128,7 +128,7 @@ export function DisputeResolutionForm({ disputeId }: { disputeId: string }) {
         fondos dentro de la plataforma y deja anotado el monto a devolver.
       </Alert>
 
-      <label className="flex items-start gap-2 text-sm text-ink-700">
+      <label className="flex items-start gap-2 text-small text-ink-700">
         <input
           type="checkbox"
           checked={confirmed}

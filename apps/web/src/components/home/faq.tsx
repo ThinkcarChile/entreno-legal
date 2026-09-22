@@ -38,21 +38,21 @@ export function Faq() {
     <Section
       eyebrow="Preguntas frecuentes"
       title="Antes de publicar tu primer trabajo"
-      className="bg-white"
+      className="bg-surface"
     >
-      <div className="mx-auto max-w-3xl divide-y divide-ink-100 border-y border-ink-100">
+      <div className="mx-auto max-w-3xl divide-y divide-line border-y border-line">
         {faqs.map((faq) => (
           <details key={faq.question} className="group py-5">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left font-medium text-ink-900">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-[var(--radius-control)] py-1 text-left font-medium text-ink-950">
               {faq.question}
               <span
                 aria-hidden="true"
-                className="shrink-0 text-xl leading-none text-ink-400 transition-transform group-open:rotate-45"
+                className="shrink-0 text-xl leading-none text-ink-500 transition-transform group-open:rotate-45"
               >
                 +
               </span>
             </summary>
-            <p className="mt-3 text-[0.9375rem] leading-relaxed text-ink-600">{faq.answer}</p>
+            <p className="mt-3 text-body text-ink-600">{faq.answer}</p>
           </details>
         ))}
       </div>

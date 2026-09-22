@@ -40,7 +40,8 @@ con datos realistas en pesos chilenos. Es la forma más rápida de revisar la in
 | `npm run db:push:hosted` | Aplica las migraciones a un proyecto alojado por HTTPS, cuando el puerto 5432 está cerrado |
 | `npm run db:seed:hosted` | Aplica la semilla geográfica oficial a un proyecto alojado de desarrollo, por HTTPS |
 | `npm run verify:schema:hosted` | Inventario del esquema alojado y advisors de seguridad y rendimiento |
-| `npm run e2e` | Recorrido por navegador con Playwright |
+| `npm run verify:pwa` | Manifiesto, iconos, service worker, tokens y contrastes. Sin servidor ni Supabase |
+| `npm run e2e` | Recorrido por navegador con Playwright, más la revisión responsive, de consola y de accesibilidad |
 
 ---
 
@@ -131,6 +132,9 @@ Detalle en [`docs/BASE-DE-DATOS.md`](docs/BASE-DE-DATOS.md).
 - [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) — capas, decisiones y deuda evitada
 - [`docs/BASE-DE-DATOS.md`](docs/BASE-DE-DATOS.md) — esquema, RLS, funciones, Storage
 - [`docs/DESPLIEGUE-SUPABASE.md`](docs/DESPLIEGUE-SUPABASE.md) — poner el proyecto en marcha
+- [`docs/DISENO.md`](docs/DISENO.md) — identidad, tokens, componentes, responsive y PWA
+- [`docs/EJECUCION.md`](docs/EJECUCION.md) — del pago confirmado a la aprobación
+- [`docs/PAGOS.md`](docs/PAGOS.md) — el dinero hasta la confirmación, y la cancelación
 - [`docs/HOJA-DE-RUTA.md`](docs/HOJA-DE-RUTA.md) — qué falta, por etapas
 
 ---
@@ -145,11 +149,12 @@ Lo que **todavía es simulado**:
 
 | Función | Estado |
 |---|---|
-| Pago con Webpay Plus | Simulado. El flujo es el definitivo, cambia solo el `PaymentProvider`. La política de cancelación con un pago en vuelo ya es la definitiva (`docs/PAGOS.md`); el reembolso real no existe todavía |
+| Pasarela de pago | Simulada, con `MockPaymentProvider`. **No hay ninguna pasarela conectada** y la interfaz no afirma que la haya. El flujo es el definitivo, cambia solo el `PaymentProvider`. La política de cancelación con un pago en vuelo ya es la definitiva (`docs/PAGOS.md`); el reembolso real no existe todavía |
 | Verificación de identidad | Real pero manual. La resuelve una persona desde `/admin/verificaciones`, sin proveedor biométrico |
 | Transferencia al trabajador | El payout se calcula, se aprueba y se registra con su referencia bancaria; la transferencia se hace fuera de la plataforma |
 | Imágenes | La evidencia del trabajo y de las disputas sube de verdad, validada por contenido; faltan las del trabajo publicado y las del chat |
 | Notificaciones | Solo dentro de la aplicación. Sin push, email ni SMS |
+| Identidad visual | Provisional y dibujada en código. No está registrada ni es definitiva (`docs/DISENO.md` §1) |
 
 El proyecto Supabase de desarrollo ya existe (`hagotufila-dev`, ref
 `xwgobslgldxzatjrcxhl`), **el esquema está aplicado** y la aplicación está

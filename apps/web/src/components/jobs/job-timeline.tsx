@@ -38,33 +38,33 @@ export function JobTimeline({
 }) {
   if (entries.length === 0) {
     return (
-      <p className="text-sm text-ink-500">
+      <p className="text-small text-ink-500">
         Aquí aparecerá el avance del trabajo: llegada, check-in, actualizaciones y entrega.
       </p>
     );
   }
 
   return (
-    <ol className="relative space-y-6 border-l border-ink-200 pl-6">
+    <ol className="relative space-y-6 border-l border-line pl-6">
       {entries.map((entry) => {
         const Icon = icons[entry.type] ?? MessageSquare;
         return (
           <li key={entry.id} className="relative">
-            <span className="absolute top-0.5 -left-[2.1875rem] inline-flex h-6 w-6 items-center justify-center rounded-full bg-white ring-1 ring-ink-200">
+            <span className="absolute top-0.5 -left-[2.1875rem] inline-flex h-6 w-6 items-center justify-center rounded-full bg-surface ring-1 ring-ink-200">
               <Icon size={13} className="text-brand-600" aria-hidden="true" />
             </span>
             <div className="flex flex-wrap items-baseline gap-x-2.5">
               <time
                 dateTime={entry.occurredAt}
-                className="text-sm font-semibold text-ink-900 tabular-nums"
+                className="text-small font-semibold text-ink-950 tabular-nums"
               >
                 {formatTime(entry.occurredAt, timezone)}
               </time>
-              <p className="text-sm font-medium text-ink-900">{entry.title}</p>
+              <p className="text-small font-medium text-ink-950">{entry.title}</p>
             </div>
-            {entry.body && <p className="mt-1 text-sm text-ink-600">{entry.body}</p>}
+            {entry.body && <p className="mt-1 text-small text-ink-600">{entry.body}</p>}
             {entry.authorName && (
-              <p className="mt-1 text-xs text-ink-400">Registrado por {entry.authorName}</p>
+              <p className="mt-1 text-caption text-ink-500">Registrado por {entry.authorName}</p>
             )}
           </li>
         );

@@ -129,7 +129,7 @@ export function WorkerSteps({
       )}
 
       {step.id === "check_in" && (
-        <p className="flex gap-2 rounded-[var(--radius-control)] bg-ink-50 p-3 text-xs text-ink-600">
+        <p className="flex gap-2 rounded-[var(--radius-control)] bg-ink-50 p-3 text-caption text-ink-600">
           <ShieldCheck size={15} className="mt-px shrink-0 text-ink-400" aria-hidden="true" />
           Usaremos tu ubicación únicamente para comprobar tu llegada a este trabajo. No se comparte
           con el cliente ni queda en tu perfil.
@@ -144,7 +144,7 @@ export function WorkerSteps({
           <ArrowRight size={16} aria-hidden="true" />
         )}
       </Button>
-      <p className="text-xs text-ink-500">{step.description}</p>
+      <p className="text-caption text-ink-500">{step.description}</p>
     </div>
   );
 }

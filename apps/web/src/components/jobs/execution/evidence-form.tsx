@@ -111,7 +111,7 @@ export function EvidenceForm({ assignmentId }: { assignmentId: string }) {
         )}
       </div>
 
-      <label className="flex cursor-pointer items-center gap-2.5 rounded-[var(--radius-control)] border border-dashed border-ink-300 px-3.5 py-3 text-sm text-ink-600 hover:border-brand-300 hover:bg-brand-50/40">
+      <label className="flex cursor-pointer items-center gap-2.5 rounded-[var(--radius-control)] border border-dashed border-ink-300 px-3.5 py-3 text-small text-ink-600 hover:border-brand-300 hover:bg-brand-50/40">
         <ImagePlus size={16} className="shrink-0 text-ink-400" aria-hidden="true" />
         <span className="min-w-0 flex-1 truncate">
           {fileName ?? "Adjuntar foto o comprobante (opcional)"}

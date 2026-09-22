@@ -138,7 +138,7 @@ export function OnboardingForm({
       </div>
 
       <fieldset>
-        <legend className="text-sm font-medium text-ink-800">
+        <legend className="text-small font-medium text-ink-800">
           ¿Cómo quieres usar HagoTuFila?
         </legend>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
@@ -152,15 +152,15 @@ export function OnboardingForm({
                 "rounded-[var(--radius-control)] border px-4 py-3 text-left transition-colors",
                 mode === option.id
                   ? "border-brand-600 bg-brand-50/60 ring-1 ring-brand-600"
-                  : "border-ink-200 bg-white hover:border-brand-200",
+                  : "border-line bg-surface hover:border-brand-200",
               )}
             >
-              <span className="block text-sm font-medium text-ink-900">{option.title}</span>
-              <span className="mt-0.5 block text-xs text-ink-500">{option.description}</span>
+              <span className="block text-small font-medium text-ink-950">{option.title}</span>
+              <span className="mt-0.5 block text-caption text-ink-500">{option.description}</span>
             </button>
           ))}
         </div>
-        <p className="mt-2 text-xs text-ink-500">
+        <p className="mt-2 text-caption text-ink-500">
           Puedes cambiarlo cuando quieras desde tu cuenta. No necesitas otra cuenta para el otro
           modo.
         </p>

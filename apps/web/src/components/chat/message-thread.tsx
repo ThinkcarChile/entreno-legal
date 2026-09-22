@@ -154,10 +154,10 @@ export function MessageThread({
   }
 
   return (
-    <div className="flex h-[70dvh] flex-col rounded-[var(--radius-card)] border border-ink-200 bg-white">
+    <div className="flex h-[70dvh] flex-col rounded-[var(--radius-card)] border border-line bg-surface">
       <div className="flex-1 space-y-3 overflow-y-auto p-4 sm:p-5">
         {optimistic.length === 0 && (
-          <p className="py-10 text-center text-sm text-ink-500">
+          <p className="py-10 text-center text-small text-ink-500">
             Todavía no hay mensajes. Escribe para coordinar con {counterpartName}.
           </p>
         )}
@@ -167,7 +167,7 @@ export function MessageThread({
             return (
               <p
                 key={message.id}
-                className="mx-auto max-w-md rounded-full bg-ink-100 px-3.5 py-1.5 text-center text-xs text-ink-600"
+                className="mx-auto max-w-md rounded-full bg-ink-100 px-3.5 py-1.5 text-center text-caption text-ink-600"
               >
                 {message.body}
               </p>
@@ -179,10 +179,10 @@ export function MessageThread({
             <div key={message.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
               <div
                 className={cn(
-                  "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm",
+                  "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-small",
                   mine
                     ? "rounded-br-md bg-brand-600 text-white"
-                    : "rounded-bl-md bg-ink-100 text-ink-900",
+                    : "rounded-bl-md bg-ink-100 text-ink-950",
                 )}
               >
                 <p className="whitespace-pre-wrap">{message.body}</p>

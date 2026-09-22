@@ -21,7 +21,7 @@ export default async function NotificationsPage() {
   if (!session) {
     return (
       <div className="container-page max-w-2xl py-8 sm:py-12">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Notificaciones</h1>
+        <h1 className="text-h2 text-ink-950">Notificaciones</h1>
         <EmptyState
           className="mt-8"
           icon={<Bell size={28} aria-hidden="true" />}
@@ -40,7 +40,7 @@ export default async function NotificationsPage() {
     <div className="container-page max-w-2xl py-8 sm:py-12">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink-900 sm:text-3xl">
+          <h1 className="text-h2 text-ink-950 sm:text-h1">
             Notificaciones
           </h1>
           <p className="mt-2 text-ink-600">
@@ -69,12 +69,12 @@ export default async function NotificationsPage() {
                 >
                   <CardContent className="py-4">
                     <div className="flex items-baseline justify-between gap-3">
-                      <p className="font-medium text-ink-900">{notification.title}</p>
-                      <span className="shrink-0 text-xs text-ink-400">
+                      <p className="font-medium text-ink-950">{notification.title}</p>
+                      <span className="shrink-0 text-caption text-ink-500">
                         {formatRelative(notification.createdAt)}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm text-ink-600">{notification.body}</p>
+                    <p className="mt-1 text-small text-ink-600">{notification.body}</p>
                   </CardContent>
                 </Card>
               );

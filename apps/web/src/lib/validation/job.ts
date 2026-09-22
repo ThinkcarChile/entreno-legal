@@ -94,7 +94,12 @@ export type PublishJobInput = z.infer<typeof publishJobSchema>;
 
 export type JobDraft = Partial<PublishJobInput>;
 
-/** Pasos del asistente, en orden. Un solo lugar define la secuencia. */
+/**
+ * Bloques de validación del asistente. Un solo lugar define qué exige cada uno.
+ *
+ * No son las pantallas: son las unidades de validación. Las pantallas las
+ * agrupa `publishStages`.
+ */
 export const publishSteps = [
   { id: "categoria", title: "¿Qué necesitas?", schema: stepCategorySchema },
   { id: "lugar", title: "¿Dónde?", schema: stepLocationSchema },
@@ -106,3 +111,41 @@ export const publishSteps = [
 ] as const;
 
 export type PublishStepId = (typeof publishSteps)[number]["id"];
+
+/**
+ * Pantallas del asistente: cuatro, en orden.
+ *
+ * Antes eran siete, una por bloque de validación, y publicar un trabajo exigía
+ * pulsar «Continuar» seis veces para escribir en total once campos. Se agrupan
+ * por la pregunta que responden —qué, dónde y cuándo, cómo, cuánto— sin tocar
+ * la validación: cada pantalla sigue comprobando los mismos esquemas, solo que
+ * los suyos a la vez.
+ */
+export const publishStages = [
+  {
+    id: "necesidad",
+    title: "¿Qué necesitas?",
+    steps: ["categoria"],
+  },
+  {
+    id: "cuando-donde",
+    title: "¿Dónde y cuándo?",
+    steps: ["lugar", "cuando"],
+  },
+  {
+    id: "detalle",
+    title: "Describe el trabajo",
+    steps: ["descripcion", "objetivo"],
+  },
+  {
+    id: "precio",
+    title: "Precio y revisión",
+    steps: ["precio", "revision"],
+  },
+] as const satisfies readonly {
+  id: string;
+  title: string;
+  steps: readonly PublishStepId[];
+}[];
+
+export type PublishStageId = (typeof publishStages)[number]["id"];

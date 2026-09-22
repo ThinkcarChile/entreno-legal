@@ -53,7 +53,7 @@ export function ResetPasswordForm() {
         {pending ? "Enviando…" : "Enviar enlace"}
       </Button>
 
-      <p className="text-center text-sm text-ink-600">
+      <p className="text-center text-small text-ink-600">
         <Link href="/entrar" className="font-medium text-brand-700 hover:underline">
           Volver a entrar
         </Link>

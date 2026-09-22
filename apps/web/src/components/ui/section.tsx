@@ -36,12 +36,12 @@ export function Section({
           >
             <div className={cn("max-w-2xl", align === "center" && "mx-auto text-center")}>
               {eyebrow && (
-                <p className="text-sm font-semibold tracking-wide text-brand-600 uppercase">
+                <p className="text-label text-brand-700 uppercase">
                   {eyebrow}
                 </p>
               )}
               {title && (
-                <h2 className="mt-2 text-2xl font-semibold text-ink-900 sm:text-3xl">{title}</h2>
+                <h2 className="mt-2 text-h2 text-ink-950 sm:text-[2rem]">{title}</h2>
               )}
               {description && (
                 <p className="mt-3 text-base text-ink-600 sm:text-lg">{description}</p>

@@ -24,7 +24,7 @@ export default async function AccountPage() {
   if (!session) {
     return (
       <div className="container-page max-w-2xl py-8 sm:py-12">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Mi cuenta</h1>
+        <h1 className="text-h2 text-ink-950">Mi cuenta</h1>
         <p className="mt-2 text-ink-600">
           Entra a tu cuenta para gestionar tu perfil, tu verificación y tus pagos. La misma cuenta
           sirve para contratar y para trabajar.
@@ -53,15 +53,15 @@ export default async function AccountPage() {
 
   return (
     <div className="container-page max-w-3xl py-8 sm:py-12">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink-900 sm:text-3xl">Mi cuenta</h1>
+      <h1 className="text-h2 text-ink-950 sm:text-h1">Mi cuenta</h1>
       <p className="mt-2 text-ink-600">
         {session.profile.displayName} · {session.email}
       </p>
 
       <Card className="mt-8">
         <CardContent>
-          <h2 className="font-semibold text-ink-900">Tu fotografía</h2>
-          <p className="mt-1.5 text-sm text-ink-600">
+          <h2 className="font-semibold text-ink-950">Tu fotografía</h2>
+          <p className="mt-1.5 text-small text-ink-600">
             Es lo primero que ve la otra persona. Un perfil con foto recibe más respuestas.
           </p>
           <div className="mt-5">
@@ -76,11 +76,11 @@ export default async function AccountPage() {
 
       <Card className="mt-5">
         <CardContent>
-          <h2 className="flex items-center gap-2 font-semibold text-ink-900">
+          <h2 className="flex items-center gap-2 font-semibold text-ink-950">
             <UserRound size={18} className="text-brand-600" aria-hidden="true" />
             Cómo usas HagoTuFila
           </h2>
-          <p className="mt-1.5 text-sm text-ink-600">
+          <p className="mt-1.5 text-small text-ink-600">
             Una sola cuenta para los dos modos. Cambiarlo no borra nada de lo que ya hiciste.
           </p>
           <div className="mt-5">
@@ -97,11 +97,11 @@ export default async function AccountPage() {
           <CardContent>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h2 className="flex items-center gap-2 font-semibold text-ink-900">
+                <h2 className="flex items-center gap-2 font-semibold text-ink-950">
                   <BadgeCheck size={18} className="text-brand-600" aria-hidden="true" />
                   Perfil de trabajador
                 </h2>
-                <p className="mt-1.5 text-sm text-ink-600">
+                <p className="mt-1.5 text-small text-ink-600">
                   Tu tarifa, tus zonas de trabajo y tu verificación de identidad.
                 </p>
                 {verification && (
@@ -168,8 +168,8 @@ function QuickLink({
       <Card className="h-full transition-colors hover:border-brand-200">
         <CardContent>
           <span className="text-brand-600">{icon}</span>
-          <h3 className="mt-3 font-semibold text-ink-900">{title}</h3>
-          <p className="mt-1 text-sm text-ink-600">{description}</p>
+          <h3 className="mt-3 font-semibold text-ink-950">{title}</h3>
+          <p className="mt-1 text-small text-ink-600">{description}</p>
         </CardContent>
       </Card>
     </Link>

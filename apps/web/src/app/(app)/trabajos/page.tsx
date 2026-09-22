@@ -59,7 +59,7 @@ export default async function JobsPage({ searchParams }: PageProps) {
   return (
     <div className="container-page py-8 sm:py-12">
       <header className="max-w-2xl">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900 sm:text-3xl">
+        <h1 className="text-h2 text-ink-950 sm:text-h1">
           Trabajos disponibles
         </h1>
         <p className="mt-2 text-ink-600">
@@ -72,7 +72,7 @@ export default async function JobsPage({ searchParams }: PageProps) {
         <JobFilters categories={categories} />
       </div>
 
-      <p className="mt-6 text-sm text-ink-500">
+      <p className="mt-6 text-small text-ink-500">
         {result.total === 0
           ? "Sin resultados"
           : `${result.total} ${result.total === 1 ? "trabajo" : "trabajos"} disponibles`}

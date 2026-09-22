@@ -29,7 +29,7 @@ export default async function AdminPayoutsPage() {
   return (
     <div className="container-page py-8 sm:py-10">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
+        <h1 className="text-h2 text-ink-950">
           Pagos a trabajadores
         </h1>
         <p className="mt-1 text-ink-600">
@@ -60,30 +60,30 @@ export default async function AdminPayoutsPage() {
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge tone={label.tone}>{label.label}</Badge>
-                          <span className="text-xs text-ink-400">{row.jobReference}</span>
+                          <span className="text-caption text-ink-500">{row.jobReference}</span>
                         </div>
                         <Link
                           href={`/mis-trabajos/${row.payout.assignmentId}`}
-                          className="mt-1.5 block font-medium text-ink-900 hover:text-brand-700"
+                          className="mt-1.5 block font-medium text-ink-950 hover:text-brand-700"
                         >
                           {row.jobTitle}
                         </Link>
-                        <p className="mt-0.5 text-sm text-ink-600">
+                        <p className="mt-0.5 text-small text-ink-600">
                           {row.workerName}
                           {row.completedAt ? ` · completado ${formatDateTime(row.completedAt)}` : ""}
                         </p>
-                        <p className="mt-1 text-sm text-ink-500">
+                        <p className="mt-1 text-small text-ink-500">
                           Bruto <Amount value={row.payout.grossAmount} /> · comisión{" "}
                           <Amount value={row.payout.commissionAmount} /> · neto{" "}
-                          <strong className="text-ink-900">
+                          <strong className="text-ink-950">
                             <Amount value={row.payout.netAmount} />
                           </strong>
                         </p>
                         {row.payout.heldReason && (
-                          <p className="mt-1 text-sm text-warning-700">{row.payout.heldReason}</p>
+                          <p className="mt-1 text-small text-warning-700">{row.payout.heldReason}</p>
                         )}
                         {row.payout.bankReference && (
-                          <p className="mt-1 text-sm text-success-700">
+                          <p className="mt-1 text-small text-success-700">
                             Referencia {row.payout.bankReference}
                           </p>
                         )}
