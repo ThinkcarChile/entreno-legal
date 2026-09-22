@@ -32,6 +32,7 @@ import type {
   SessionRepository,
   SettingsRepository,
   WorkerRepository,
+  AdminPayment,
 } from "../repositories";
 import type {
   AppNotification,
@@ -269,6 +270,10 @@ class DemoAdminRepository implements AdminRepository {
     };
   }
   async listVerifications(): Promise<readonly VerificationRequest[]> {
+    return [];
+  }
+  /** El modo demostración no tiene pagos reales que conciliar. */
+  async listPayments(): Promise<readonly AdminPayment[]> {
     return [];
   }
 

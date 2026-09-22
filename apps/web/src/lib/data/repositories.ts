@@ -195,6 +195,46 @@ export interface AdminPayout {
   completedAt: ISODateTime | null;
 }
 
+/** Un pago visto desde administración. Nunca incluye el token. */
+export interface AdminPayment {
+  paymentId: UUID;
+  jobId: UUID;
+  assignmentId: UUID | null;
+  jobReference: string;
+  jobTitle: string;
+  clientId: UUID;
+  purpose: string;
+  status: string;
+  provider: string;
+  environment: string | null;
+  buyOrder: string | null;
+  amount: number;
+  refundedAmount: number;
+  refundableAmount: number;
+  providerStatus: string | null;
+  responseCode: number | null;
+  authorizationCode: string | null;
+  cardLastDigits: string | null;
+  paymentTypeCode: string | null;
+  installments: number | null;
+  vci: string | null;
+  attempt: number;
+  failureReason: string | null;
+  reviewReason: string | null;
+  createdAt: ISODateTime;
+  paidAt: ISODateTime | null;
+  capturedAt: ISODateTime | null;
+  committedAt: ISODateTime | null;
+  reconciledAt: ISODateTime | null;
+  eventCount: number;
+  refundCount: number;
+  disputeId: UUID | null;
+  payoutId: UUID | null;
+}
+
+/** Filtro de la pantalla de pagos. */
+export type AdminPaymentFilter = "all" | "review" | "pending" | "refunded";
+
 export interface AdminRepository {
   getKpis(): Promise<PlatformKpis>;
   listVerifications(status?: VerificationStatus): Promise<readonly VerificationRequest[]>;
@@ -203,6 +243,8 @@ export interface AdminRepository {
   listPendingCheckIns(): Promise<readonly PendingCheckIn[]>;
   listDisputes(onlyOpen?: boolean): Promise<readonly AdminDispute[]>;
   listPayouts(status?: PayoutStatus): Promise<readonly AdminPayout[]>;
+  /** Pagos del cliente hacia la plataforma, para soporte y conciliación. */
+  listPayments(filter?: AdminPaymentFilter): Promise<readonly AdminPayment[]>;
 }
 
 /** Las ganancias de un trabajador. */

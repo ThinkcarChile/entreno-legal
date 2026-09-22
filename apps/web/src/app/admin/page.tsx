@@ -100,6 +100,7 @@ export default async function AdminDashboardPage() {
             tone="text-brand-600"
           />
           <QueueCard
+            href="/admin/pagos?filtro=review"
             icon={<AlertTriangle size={18} aria-hidden="true" />}
             label="Devoluciones por procesar"
             value={queues.refunds}

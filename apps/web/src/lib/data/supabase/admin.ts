@@ -12,6 +12,8 @@ import type {
   AdminRepository,
   PendingCheckIn,
   PlatformKpis,
+  AdminPayment,
+  AdminPaymentFilter,
 } from "../repositories";
 import type { CheckInResult, PayoutStatus, VerificationStatus } from "@/lib/domain/enums";
 import type { VerificationRequest } from "@/lib/domain/types";
@@ -286,4 +288,65 @@ export class SupabaseAdminRepository implements AdminRepository {
       };
     });
   }
+
+  /**
+   * Pagos del cliente hacia la plataforma.
+   *
+   * Sale de la vista `admin_payments`, que NO expone `provider_token`: el token
+   * autoriza confirmar y devolver, así que no viaja a ninguna pantalla. Las
+   * operaciones que lo necesitan lo leen en el servidor, con la clave de
+   * servicio.
+   */
+  async listPayments(filter: AdminPaymentFilter = "all"): Promise<readonly AdminPayment[]> {
+    const supabase = await this.getClient();
+    let query = supabase
+      .from("admin_payments")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (filter === "review") query = query.eq("status", "UNDER_REVIEW");
+    if (filter === "pending") query = query.in("status", ["PENDING", "CREATED", "AUTHORIZED"]);
+    if (filter === "refunded") query = query.in("status", ["REFUNDED", "PARTIALLY_REFUNDED"]);
+
+    const { data, error } = await query.returns<Record<string, unknown>[]>();
+    if (error) throw error;
+
+    return (data ?? []).map((row) => ({
+      paymentId: String(row.payment_id),
+      jobId: String(row.job_id),
+      assignmentId: (row.assignment_id as string | null) ?? null,
+      jobReference: String(row.job_reference ?? ""),
+      jobTitle: String(row.job_title ?? ""),
+      clientId: String(row.client_id),
+      purpose: String(row.purpose),
+      status: String(row.status),
+      provider: String(row.provider),
+      environment: (row.environment as string | null) ?? null,
+      buyOrder: (row.buy_order as string | null) ?? null,
+      amount: Number(row.amount ?? 0),
+      refundedAmount: Number(row.refunded_amount ?? 0),
+      refundableAmount: Number(row.refundable_amount ?? 0),
+      providerStatus: (row.provider_status as string | null) ?? null,
+      responseCode: row.response_code == null ? null : Number(row.response_code),
+      authorizationCode: (row.authorization_code as string | null) ?? null,
+      cardLastDigits: (row.card_last_digits as string | null) ?? null,
+      paymentTypeCode: (row.payment_type_code as string | null) ?? null,
+      installments: row.installments == null ? null : Number(row.installments),
+      vci: (row.vci as string | null) ?? null,
+      attempt: Number(row.attempt ?? 0),
+      failureReason: (row.failure_reason as string | null) ?? null,
+      reviewReason: (row.review_reason as string | null) ?? null,
+      createdAt: String(row.created_at),
+      paidAt: (row.paid_at as string | null) ?? null,
+      capturedAt: (row.captured_at as string | null) ?? null,
+      committedAt: (row.committed_at as string | null) ?? null,
+      reconciledAt: (row.reconciled_at as string | null) ?? null,
+      eventCount: Number(row.event_count ?? 0),
+      refundCount: Number(row.refund_count ?? 0),
+      disputeId: (row.dispute_id as string | null) ?? null,
+      payoutId: (row.payout_id as string | null) ?? null,
+    }));
+  }
+
 }
