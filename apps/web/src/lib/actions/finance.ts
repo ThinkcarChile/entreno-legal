@@ -48,7 +48,7 @@ async function requireAdmin() {
  */
 export async function reconcilePaymentsAction(
   paymentId?: string,
-): Promise<ActionResult<{ examined: number; changed: number }>> {
+): Promise<ActionResult<{ examined: number; changed: number; expired: number }>> {
   try {
     const { userId } = await requireAdmin();
 
@@ -62,14 +62,18 @@ export async function reconcilePaymentsAction(
 
     paymentLog({
       operation: "admin",
-      result: `reconcile:${summary.changed}/${summary.examined}`,
+      result: `reconcile:${summary.changed}/${summary.examined} expirados:${summary.expired}`,
       paymentId,
       correlationId: userId.slice(0, 8),
     });
 
     revalidatePath("/admin/pagos");
     revalidatePath("/admin");
-    return actionOk({ examined: summary.examined, changed: summary.changed });
+    return actionOk({
+      examined: summary.examined,
+      changed: summary.changed,
+      expired: summary.expired,
+    });
   } catch (error) {
     return actionError(error, "No pudimos conciliar los pagos.");
   }

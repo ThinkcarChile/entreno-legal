@@ -27,7 +27,8 @@ export function ReconcileAll() {
             const result = await reconcilePaymentsAction();
             setSummary(
               result.ok
-                ? `${result.data.examined} revisados · ${result.data.changed} actualizados`
+                ? `${result.data.examined} revisados · ${result.data.changed} actualizados` +
+                  (result.data.expired > 0 ? ` · ${result.data.expired} fuera de ventana` : "")
                 : result.error,
             );
           })

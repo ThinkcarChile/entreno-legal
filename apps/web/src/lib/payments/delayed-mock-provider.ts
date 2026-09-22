@@ -195,6 +195,9 @@ export class DelayedMockPaymentProvider implements PaymentProvider, Reconcilable
             : authorized
               ? "AUTHORIZED"
               : "FAILED",
+      // Un pago todavía en vuelo NO es terminal: es exactamente el caso que
+      // este proveedor existe para poder reproducir.
+      terminal: entry != null && entry.outcome == null ? false : true,
       responseCode: authorized ? 0 : entry?.outcome === "FAILED" ? -1 : null,
       amount: entry?.input.amount.amount ?? null,
       buyOrder: entry?.input.buyOrder ?? null,

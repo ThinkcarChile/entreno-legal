@@ -170,6 +170,8 @@ function mockSnapshot(
     maskedToken: maskToken(token),
     environment,
     providerStatus: authorized ? "AUTHORIZED" : "FAILED",
+    // El proveedor inmediato siempre contesta en firme.
+    terminal: true,
     responseCode: authorized ? 0 : -1,
     amount: input?.amount.amount ?? null,
     buyOrder: input?.buyOrder ?? null,

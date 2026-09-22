@@ -172,6 +172,23 @@ export async function handleReturn(
       if (snapshot.authorized) {
         return settleFromSnapshot(admin, payment, provider.id, snapshot, flow.kind);
       }
+
+      // El proveedor todavía no ha cerrado la transacción. No se marca nada:
+      // el pago se queda en la cola de conciliación, que volverá a preguntar.
+      // Declararlo fallido aquí sería decidir por el banco antes que el banco.
+      if (snapshot.terminal === false) {
+        paymentLog({
+          operation: "return",
+          result: "still_open",
+          paymentId: payment.id,
+          flow: flow.kind,
+        });
+        return {
+          kind: "PENDING",
+          payment,
+          reason: "el proveedor todavía no ha resuelto la transacción",
+        };
+      }
     }
 
     const { error } = await admin.rpc("record_payment_abandonment", {
@@ -198,6 +215,31 @@ export async function handleReturn(
     .from("payments")
     .update({ committed_at: new Date().toISOString() })
     .eq("id", payment.id);
+
+  // El `commit` contestó algo que no es definitivo (INITIALIZED, sin estado, o
+  // uno que no conocemos). NO se asienta.
+  //
+  // Es la comprobación más importante de todo el retorno. Todo lo que se
+  // asienta viaja con `commit:<token>`, y esa clave se registra una sola vez.
+  // Asentar aquí un «fallido» provisional gastaría la clave, y cuando el banco
+  // autorizara de verdad, la confirmación posterior devolvería `duplicate` sin
+  // aplicar nada: cliente cobrado, trabajo sin habilitar y ni un error en
+  // ningún sitio.
+  if (result.settleable === false) {
+    if (result.snapshot) await recordSnapshot(admin, payment.id, provider.id, result.snapshot);
+    paymentLog({
+      operation: "commit",
+      result: "not_settleable",
+      paymentId: payment.id,
+      flow: flow.kind,
+      reason: result.snapshot?.providerStatus ?? "sin estado",
+    });
+    return {
+      kind: "PENDING",
+      payment,
+      reason: "el proveedor todavía no ha resuelto la transacción",
+    };
+  }
 
   if (result.snapshot) {
     await recordSnapshot(admin, payment.id, provider.id, result.snapshot);

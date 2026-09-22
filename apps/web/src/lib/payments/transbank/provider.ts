@@ -18,6 +18,8 @@ import {
 } from "./identifiers";
 import {
   isRefundConfirmed,
+  isSettleable,
+  isTerminalStatus,
   refundedAmountOf,
   toPaymentStatus,
   toRefund,
@@ -266,6 +268,11 @@ export class TransbankPaymentProvider implements PaymentProvider, ReconcilablePr
       // El evento es la autorización de ESTA transacción. Confirmar dos veces
       // el mismo token es el mismo hecho financiero y se registra una vez.
       providerEventId: `commit:${token}`,
+      // `settleable` marca si este resultado se puede asentar. Un estado no
+      // terminal —INITIALIZED, ausente, desconocido— NO se asienta: hacerlo
+      // gastaría la clave de idempotencia con un resultado provisional y la
+      // autorización posterior se descartaría como duplicada.
+      settleable: isSettleable(tx),
       status: authorized ? PaymentStatus.PAID : PaymentStatus.FAILED,
       amount: { amount: tx.amount ?? 0, currency: "CLP" },
       authorizationCode: tx.authorizationCode,
@@ -284,6 +291,7 @@ export class TransbankPaymentProvider implements PaymentProvider, ReconcilablePr
       maskedToken: maskToken(token),
       environment: this.settings.environment,
       providerStatus: tx.status,
+      terminal: isTerminalStatus(tx.status),
       responseCode: tx.responseCode,
       amount: tx.amount,
       buyOrder: tx.buyOrder,

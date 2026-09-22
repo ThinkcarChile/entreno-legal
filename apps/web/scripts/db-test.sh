@@ -127,6 +127,10 @@ if grep -qE "^ERROR:" "$REPORT"; then
   exit 1
 fi
 
-TOTAL=$(grep -cE "^(T|E|R|S|I|H|P|X)[0-9]+" "$REPORT")
+# Las comprobaciones de Webpay llevan prefijo W y faltaban en este patrón: se
+# ejecutaban y un FALLO suyo seguía tumbando la batería —eso lo decide el grep
+# de "FALLO" de más arriba—, pero no entraban en el total, así que el número
+# que se publicaba era menor que el real.
+TOTAL=$(grep -cE "^(T|E|R|S|I|H|P|W|X)[0-9]+" "$REPORT")
 echo "✓ $TOTAL comprobaciones pasaron"
 rm -f "$REPORT"

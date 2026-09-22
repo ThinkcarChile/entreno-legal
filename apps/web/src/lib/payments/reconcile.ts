@@ -58,6 +58,8 @@ export interface ReconcileResult {
 export interface ReconcileSummary {
   examined: number;
   changed: number;
+  /** Pagos que cruzaron la ventana y se cerraron o pasaron a revisión. */
+  expired: number;
   results: ReconcileResult[];
 }
 
@@ -91,7 +93,7 @@ export async function reconcilePayments(
   const provider = getPaymentProvider();
 
   if (!isReconcilable(provider)) {
-    return { examined: 0, changed: 0, results: [] };
+    return { examined: 0, changed: 0, expired: 0, results: [] };
   }
 
   const pending = await loadQueue(admin, options);
@@ -117,13 +119,18 @@ export async function reconcilePayments(
     if (result.before !== result.after) changed += 1;
   }
 
+  // Los que cruzaron la ventana: fuera de ella el proveedor ya no responde, así
+  // que no tiene sentido preguntar. Se cierran o pasan a revisión, con evento y
+  // auditoría. Sin esto se quedaban colgados para siempre, invisibles.
+  const expired = options.paymentId ? 0 : await expireStale(admin);
+
   paymentLog({
     operation: "reconcile",
-    result: `examinados:${pending.length} cambiados:${changed}`,
+    result: `examinados:${pending.length} cambiados:${changed} expirados:${expired}`,
     environment: provider.environment,
   });
 
-  return { examined: pending.length, changed, results };
+  return { examined: pending.length, changed, expired, results };
 }
 
 async function loadQueue(
@@ -220,8 +227,13 @@ async function reconcileOne(
 
   await recordSnapshot(admin, row.payment_id, provider.id, snapshot);
 
-  // Sigue en vuelo: ni autorizado ni terminado. Se deja como está.
-  if (!snapshot.authorized && snapshot.providerStatus === "INITIALIZED") {
+  // Sigue en vuelo: el proveedor no ha cerrado la transacción. Se deja como
+  // está y se volverá a preguntar.
+  //
+  // La condición mira `terminal`, no solo `INITIALIZED`: un estado ausente o
+  // uno que no conocemos tampoco es una respuesta en firme, y cerrarlo como
+  // fallido sería decidir por el banco antes que el banco.
+  if (!snapshot.authorized && snapshot.terminal === false) {
     return {
       paymentId: row.payment_id,
       before: row.status,
@@ -334,4 +346,32 @@ async function reconcileOne(
     outcome: settlement.outcome === "duplicate" ? "already" : "settled",
     reason: settlement.reviewReason ?? undefined,
   };
+}
+
+/**
+ * Cierra los pagos que cruzaron la ventana de conciliación.
+ *
+ * La ventana vive en `platform_settings.reconciliation_window_days` —siete días
+ * por defecto, que es lo que responde Webpay— y no en el código.
+ *
+ * Los que estaban `PENDING` o `CREATED` se cierran como fallidos: el token de
+ * Webpay muere a los cinco minutos, así que a los siete días no hubo cobro y el
+ * cliente queda libre para volver a pagar. Los que estaban `AUTHORIZED` pasan a
+ * revisión, porque ahí sí puede haber dinero y no se cierra solo.
+ */
+async function expireStale(admin: SupabaseClient): Promise<number> {
+  const { data, error } = await admin.rpc("expire_stale_payments", { p_limit: 100 });
+  if (error) {
+    paymentLog({ operation: "reconcile", result: "expire_failed", reason: error.message });
+    return 0;
+  }
+  const rows = (data ?? []) as { payment_id: string; now_status: string }[];
+  for (const row of rows) {
+    paymentLog({
+      operation: "reconcile",
+      result: `expired:${row.now_status}`,
+      paymentId: row.payment_id,
+    });
+  }
+  return rows.length;
 }

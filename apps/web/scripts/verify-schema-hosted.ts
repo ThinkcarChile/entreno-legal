@@ -301,7 +301,7 @@ async function main(): Promise<void> {
 
   check("tablas en public", inv.tablas, 34);
   check("vistas en public", inv.vistas, 7);
-  check("funciones en public", inv.funciones, 43);
+  check("funciones en public", inv.funciones, 44);
   check("enums", inv.enums, 24);
   check("políticas RLS en public", inv.politicas, 75);
   check("buckets de Storage", inv.buckets, 5);
@@ -310,7 +310,7 @@ async function main(): Promise<void> {
   check("regiones", inv.regiones, 16);
   check("categorías de trabajo", inv.categorias, 9);
   check("comisión (puntos base)", inv.comision_pb, 1400);
-  check("migraciones en el historial", inv.migraciones, 32);
+  check("migraciones en el historial", inv.migraciones, 33);
 
   console.log("\n── Seguridad del esquema ──\n");
 

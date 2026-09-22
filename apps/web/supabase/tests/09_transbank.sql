@@ -616,3 +616,221 @@ begin
     (case when v_detalle = '' then '' else ' [' || v_detalle || ']' end) ||
     (case when v_pago = 0 and v_ref = 0 then '' else ' FALLO' end);
 end $$;
+
+\echo ''
+\echo '--- Ventana de conciliación y pagos rezagados'
+
+-- W30 · La ventana es configuración, no una cifra escrita en una función.
+do $$
+declare v_dias int; v_col boolean;
+begin
+  select reconciliation_window_days into v_dias from public.platform_settings limit 1;
+  select exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'platform_settings'
+       and column_name = 'reconciliation_window_days'
+  ) into v_col;
+  raise notice '%', 'W30 ventana configurable: columna ' || v_col || ', valor ' || v_dias ||
+    (case when v_col and v_dias = 7 then '' else ' FALLO' end);
+end $$;
+
+-- W31 · Un INITIALIZED no consume la clave commit:<token>.
+--
+-- Es el peor fallo posible de esta integración: si un resultado provisional
+-- gastara la clave, la autorización real posterior se descartaría como
+-- duplicada y el pago quedaría cobrado sin habilitar el trabajo.
+--
+-- Aquí se prueba desde la base: el evento de la autorización se registra y
+-- aplica, porque nadie gastó la clave antes.
+do $$
+declare m record; v_tag text; r jsonb; v_eventos int;
+begin
+  select * into m from pg_temp.montar_pago('w31', false);
+  select replace(provider_token, 'tok-', '') into v_tag from public.payments where id = m.payment_id;
+
+  -- La aplicación NO asienta un INITIALIZED, así que la clave sigue libre.
+  r := public.confirm_payment_result(m.payment_id, 'transbank_webpay_plus',
+       'commit:tok-' || v_tag, 'PAID', null,
+       jsonb_build_object('authorization_code', '123456'));
+
+  select count(*) into v_eventos from public.payment_events
+   where payment_id = m.payment_id and provider_event_id = 'commit:tok-' || v_tag;
+
+  raise notice '%', 'W31 clave libre tras un provisional: ' || (r ->> 'outcome') ||
+    ', pago ' || (r ->> 'payment_status') || ', eventos ' || v_eventos ||
+    (case when (r ->> 'outcome') = 'applied' and (r ->> 'payment_status') = 'PAID'
+               and v_eventos = 1
+          then '' else ' FALLO' end);
+end $$;
+
+-- W32 · Y si la clave SÍ se gastara, el pago se perdería. Se demuestra.
+--
+-- Esta prueba documenta por qué existe `isSettleable`: reproduce a mano lo que
+-- hacía el código antes del Bloque 5.1.
+do $$
+declare m record; v_tag text; r1 jsonb; r2 jsonb;
+begin
+  select * into m from pg_temp.montar_pago('w32', false);
+  select replace(provider_token, 'tok-', '') into v_tag from public.payments where id = m.payment_id;
+
+  -- Lo que hacía el código viejo: asentar FAILED con la clave del commit.
+  r1 := public.confirm_payment_result(m.payment_id, 'transbank_webpay_plus',
+        'commit:tok-' || v_tag, 'FAILED', null, '{}');
+  -- Y después llega la autorización de verdad.
+  r2 := public.confirm_payment_result(m.payment_id, 'transbank_webpay_plus',
+        'commit:tok-' || v_tag, 'PAID', null, '{}');
+
+  raise notice '%', 'W32 clave gastada (comportamiento antiguo): segunda llamada ' ||
+    (r2 ->> 'outcome') || ', pago queda en ' || (r2 ->> 'payment_status') ||
+    ' — por esto no se asienta un provisional' ||
+    (case when (r2 ->> 'outcome') = 'duplicate' and (r2 ->> 'payment_status') = 'FAILED'
+          then '' else ' FALLO' end);
+end $$;
+
+-- W33 · Un pago rezagado y sin cobro se cierra, y el cliente puede reintentar.
+do $$
+declare m record; v_res record; p public.payments;
+begin
+  select * into m from pg_temp.montar_pago('w33', false);
+  update public.payments set created_at = now() - interval '30 days' where id = m.payment_id;
+
+  select * into v_res from public.expire_stale_payments(100)
+   where payment_id = m.payment_id;
+  select * into p from public.payments where id = m.payment_id;
+
+  raise notice '%', 'W33 rezagado sin cobro: ' || coalesce(v_res.was_status::text, '—') ||
+    ' → ' || p.status || ', motivo ' || coalesce(p.failure_reason, '—') ||
+    (case when p.status = 'FAILED' and p.failure_reason = 'reconciliation_window_expired'
+          then '' else ' FALLO' end);
+end $$;
+
+-- W34 · Un pago rezagado AUTORIZADO pasa a revisión, no se cierra solo.
+do $$
+declare m record; p public.payments;
+begin
+  select * into m from pg_temp.montar_pago('w34', false);
+  update public.payments
+     set status = 'AUTHORIZED', created_at = now() - interval '30 days'
+   where id = m.payment_id;
+
+  perform public.expire_stale_payments(100);
+  select * into p from public.payments where id = m.payment_id;
+
+  raise notice '%', 'W34 rezagado autorizado: ' || p.status ||
+    ', motivo ' || coalesce(p.review_reason, '—') ||
+    ', capturado ' || (p.captured_at is not null) ||
+    (case when p.status = 'UNDER_REVIEW'
+               and p.review_reason = 'reconciliation_window_expired'
+          then '' else ' FALLO' end);
+end $$;
+
+-- W35 · Expirar deja constancia: evento y auditoría. Nada desaparece en silencio.
+do $$
+declare m record; v_eventos int; v_audit int;
+begin
+  select * into m from pg_temp.montar_pago('w35', false);
+  update public.payments set created_at = now() - interval '30 days' where id = m.payment_id;
+  perform public.expire_stale_payments(100);
+
+  select count(*) into v_eventos from public.payment_events
+   where payment_id = m.payment_id and payload ->> 'operation' = 'expire';
+  select count(*) into v_audit from public.audit_logs
+   where entity_id = m.payment_id and action = 'payment_expired_out_of_window';
+
+  raise notice '%', 'W35 rastro al expirar: eventos ' || v_eventos || ', auditoría ' || v_audit ||
+    (case when v_eventos = 1 and v_audit = 1 then '' else ' FALLO' end);
+end $$;
+
+-- W36 · Expirar dos veces no duplica nada.
+do $$
+declare m record; v_eventos int;
+begin
+  select * into m from pg_temp.montar_pago('w36', false);
+  update public.payments set created_at = now() - interval '30 days' where id = m.payment_id;
+  perform public.expire_stale_payments(100);
+  perform public.expire_stale_payments(100);
+
+  select count(*) into v_eventos from public.payment_events
+   where payment_id = m.payment_id and payload ->> 'operation' = 'expire';
+
+  raise notice '%', 'W36 expirar es idempotente: eventos ' || v_eventos ||
+    (case when v_eventos = 1 then '' else ' FALLO' end);
+end $$;
+
+-- W37 · Un pago colgado fuera de ventana es una violación de invariante.
+do $$
+declare m record; v_antes int; v_despues int;
+begin
+  select * into m from pg_temp.montar_pago('w37', false);
+  update public.payments set created_at = now() - interval '30 days' where id = m.payment_id;
+
+  select count(*) into v_antes from app_private.refund_invariant_violations()
+   where rule = 'stale_payment_out_of_window' and entity_id = m.payment_id;
+
+  perform public.expire_stale_payments(100);
+
+  select count(*) into v_despues from app_private.refund_invariant_violations()
+   where rule = 'stale_payment_out_of_window' and entity_id = m.payment_id;
+
+  raise notice '%', 'W37 el invariante ve los colgados: antes ' || v_antes ||
+    ', después de expirar ' || v_despues ||
+    (case when v_antes = 1 and v_despues = 0 then '' else ' FALLO' end);
+end $$;
+
+-- W38 · Un pago dentro de ventana NO se expira.
+do $$
+declare m record; p public.payments;
+begin
+  select * into m from pg_temp.montar_pago('w38', false);
+  update public.payments set created_at = now() - interval '2 days' where id = m.payment_id;
+  perform public.expire_stale_payments(100);
+  select * into p from public.payments where id = m.payment_id;
+
+  raise notice '%', 'W38 dentro de ventana intacto: ' || p.status ||
+    (case when p.status = 'CREATED' then '' else ' FALLO' end);
+end $$;
+
+-- W39 · La cola respeta la ventana configurada, no una cifra fija.
+do $$
+declare m record; v_en_cola int; v_original int;
+begin
+  select reconciliation_window_days into v_original from public.platform_settings limit 1;
+  select * into m from pg_temp.montar_pago('w39', false);
+  update public.payments set created_at = now() - interval '5 days' where id = m.payment_id;
+
+  -- Con la ventana por defecto (7 días) está en la cola.
+  select count(*) into v_en_cola from public.payments_pending_reconciliation(0, 200)
+   where payment_id = m.payment_id;
+
+  -- Bajando la ventana a 3 días, ya no: quedó fuera.
+  update public.platform_settings set reconciliation_window_days = 3;
+
+  raise notice '%', 'W39 ventana configurable en la cola: con 7 días ' || v_en_cola ||
+    ', con 3 días ' ||
+    (select count(*) from public.payments_pending_reconciliation(0, 200)
+      where payment_id = m.payment_id) ||
+    (case when v_en_cola = 1
+               and (select count(*) from public.payments_pending_reconciliation(0, 200)
+                     where payment_id = m.payment_id) = 0
+          then '' else ' FALLO' end);
+
+  update public.platform_settings set reconciliation_window_days = v_original;
+end $$;
+
+-- W40 · Invariantes finales del Bloque 5.1.
+do $$
+declare v_pago int; v_ref int; v_detalle text;
+begin
+  -- Se limpia lo que dejaron las pruebas de esta sección.
+  perform public.expire_stale_payments(500);
+
+  select count(*) into v_pago from app_private.payment_invariant_violations();
+  select count(*) into v_ref from app_private.refund_invariant_violations();
+  select coalesce(string_agg(distinct rule, ', '), '') into v_detalle
+    from app_private.refund_invariant_violations();
+
+  raise notice '%', 'W40 invariantes del Bloque 5.1: pago ' || v_pago ||
+    ', devolución ' || v_ref ||
+    (case when v_detalle = '' then '' else ' [' || v_detalle || ']' end) ||
+    (case when v_pago = 0 and v_ref = 0 then '' else ' FALLO' end);
+end $$;

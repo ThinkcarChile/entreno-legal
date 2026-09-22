@@ -6,6 +6,8 @@ import {
   extractCardLastDigits,
   findMismatches,
   isAuthorized,
+  isSettleable,
+  isTerminalStatus,
   isRefundConfirmed,
   refundedAmountOf,
   toPaymentStatus,
@@ -178,5 +180,48 @@ describe("devoluciones", () => {
   it("la anulación manda su propio importe, no el pedido", () => {
     const refund = toRefund({ type: "NULLIFIED", nullified_amount: 15000, response_code: 0 });
     expect(refundedAmountOf(refund, 20000)).toBe(15000);
+  });
+});
+
+/**
+ * La comprobación que evita el peor fallo de la integración: gastar la clave
+ * de idempotencia con un resultado que el banco todavía no ha dado.
+ */
+describe("qué resultados se pueden asentar", () => {
+  it("un estado terminal se asienta", () => {
+    for (const status of [
+      "AUTHORIZED",
+      "FAILED",
+      "REVERSED",
+      "NULLIFIED",
+      "PARTIALLY_NULLIFIED",
+      "CAPTURED",
+    ]) {
+      expect(isTerminalStatus(status)).toBe(true);
+      expect(isSettleable(toTransaction({ ...APPROVED, status }))).toBe(true);
+    }
+  });
+
+  it("INITIALIZED NO se asienta: la transacción sigue viva", () => {
+    expect(isTerminalStatus("INITIALIZED")).toBe(false);
+    expect(isSettleable(toTransaction({ ...APPROVED, status: "INITIALIZED" }))).toBe(false);
+  });
+
+  it("una respuesta sin estado no se asienta", () => {
+    expect(isSettleable(toTransaction({}))).toBe(false);
+    expect(isSettleable(toTransaction(null))).toBe(false);
+    expect(isSettleable(toTransaction({ ...APPROVED, status: null }))).toBe(false);
+  });
+
+  it("un estado desconocido no se asienta", () => {
+    // Si Transbank añade un estado mañana, lo prudente es no decidir por él.
+    expect(isTerminalStatus("ALGO_NUEVO")).toBe(false);
+    expect(isSettleable(toTransaction({ ...APPROVED, status: "ALGO_NUEVO" }))).toBe(false);
+  });
+
+  it("un INITIALIZED con response_code 0 tampoco se asienta ni se aprueba", () => {
+    const tx = toTransaction({ ...APPROVED, status: "INITIALIZED", response_code: 0 });
+    expect(isSettleable(tx)).toBe(false);
+    expect(isAuthorized(tx)).toBe(false);
   });
 });

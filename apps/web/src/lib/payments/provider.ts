@@ -66,6 +66,17 @@ export interface ConfirmPaymentResult {
   paymentTypeCode: string | null;
   installments: number | null;
   transactionDate: string | null;
+  /**
+   * `false` cuando el proveedor todavía no ha dicho la última palabra.
+   *
+   * Un resultado no asentable NO se registra: se deja el pago en la cola de
+   * conciliación. Escribirlo gastaría su clave de idempotencia con un
+   * resultado provisional, y la autorización posterior se descartaría como
+   * duplicada —dinero cobrado y trabajo sin habilitar—.
+   *
+   * Los proveedores que siempre responden en firme lo dejan en `true`.
+   */
+  settleable?: boolean;
   /** Carga útil saneada, para `payment_events`. */
   raw: Record<string, unknown>;
   /**
@@ -90,6 +101,8 @@ export interface ProviderSnapshot {
   maskedToken: string | null;
   environment: string;
   providerStatus: string | null;
+  /** ¿El proveedor ya cerró esta transacción? `INITIALIZED` no lo está. */
+  terminal?: boolean;
   responseCode: number | null;
   amount: number | null;
   buyOrder: string | null;

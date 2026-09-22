@@ -107,6 +107,52 @@ export function isAuthorized(tx: TransbankTransaction): boolean {
   return tx.status === TRANSBANK_STATUS.AUTHORIZED && tx.responseCode === 0;
 }
 
+/**
+ * Estados en los que Webpay ya dijo la última palabra sobre la transacción.
+ *
+ * `INITIALIZED` NO está: significa «creada y todavía sin resolver». Un
+ * desconocido tampoco, por la misma razón: si no sabemos qué es, no podemos
+ * afirmar que haya terminado.
+ *
+ * La distinción no es teórica. De ella depende si se consume la clave de
+ * idempotencia del pago: ver `isSettleable`.
+ */
+const TERMINAL_STATUSES: readonly string[] = [
+  TRANSBANK_STATUS.AUTHORIZED,
+  TRANSBANK_STATUS.FAILED,
+  TRANSBANK_STATUS.REVERSED,
+  TRANSBANK_STATUS.NULLIFIED,
+  TRANSBANK_STATUS.PARTIALLY_NULLIFIED,
+  TRANSBANK_STATUS.CAPTURED,
+];
+
+export function isTerminalStatus(status: string | null): boolean {
+  return status !== null && TERMINAL_STATUSES.includes(status);
+}
+
+/**
+ * ¿Se puede asentar este resultado como definitivo?
+ *
+ * Es la comprobación que faltaba, y la que evita el peor fallo posible de esta
+ * integración: **quemar la clave de idempotencia con un resultado provisional**.
+ *
+ * Todo lo que se asienta viaja con `commit:<token>` como identificador de
+ * evento, y `confirm_payment_result` registra cada identificador UNA sola vez.
+ * Si una respuesta `INITIALIZED` —o una sin `status`, o con un estado que no
+ * conocemos— se tradujera a «FAILED», se escribiría ese evento, la clave
+ * quedaría gastada, y cuando el banco autorizara de verdad la confirmación
+ * posterior devolvería `duplicate` sin aplicar nada.
+ *
+ * Resultado: cliente cobrado, trabajo sin habilitar, trabajador sin pago, y
+ * ningún error en ningún sitio. El dinero entra y el sistema no se entera.
+ *
+ * Por eso: solo un estado terminal se asienta. Lo demás se deja en la cola de
+ * conciliación, que volverá a preguntar.
+ */
+export function isSettleable(tx: TransbankTransaction): boolean {
+  return isTerminalStatus(tx.status);
+}
+
 /** Motivos por los que una respuesta aprobada no se puede dar por buena. */
 export type MismatchReason =
   | "amount_mismatch"
