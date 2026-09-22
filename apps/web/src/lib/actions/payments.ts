@@ -1,7 +1,8 @@
 "use server";
 
 import { env } from "@/lib/env";
-import { getPaymentProvider } from "@/lib/payments";
+import { PAYMENT_COLUMNS, startCheckout, type PaymentRow } from "@/lib/payments/checkout";
+import { errorCategory, paymentLog } from "@/lib/payments/logging";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { actionError, actionOk, type ActionResult } from "@/lib/utils/errors";
 
@@ -10,82 +11,83 @@ import { requireSession } from "./guards";
 /**
  * Pago Protegido.
  *
- * El recorrido es el definitivo: crear el pago en la base, pedirle al proveedor
- * una transacción, redirigir al usuario y confirmar al volver. Hoy el proveedor
- * es `MockPaymentProvider`; cuando se integre Webpay Plus se cambia solo esa
- * pieza y ni esta acción ni la ruta de retorno se tocan.
+ * El recorrido es el definitivo, con Webpay Plus detrás: la base calcula el
+ * importe, se registra el intento, se crea la transacción en el proveedor y el
+ * usuario pasa por una página de transición que envía el token por POST.
  *
- * Los montos NUNCA vienen del navegador: los calcula `start_protected_payment`
- * en la base, a partir de la asignación.
+ * Lo que NUNCA viene del navegador: el total, la comisión, el bono, el importe
+ * de una extensión, la orden de compra, el token y la URL de retorno. Todo eso
+ * se calcula o se construye en el servidor. Lo único que llega de fuera es el
+ * identificador de la asignación, y sobre él se comprueba la propiedad.
  */
+
+/** A dónde va el navegador después de pedir pagar. */
+interface CheckoutRedirect {
+  paymentId: string;
+  /** Ruta interna de la página de transición, o del trabajo si ya está pagado. */
+  redirectUrl: string;
+}
 
 export async function startProtectedPaymentAction(
   assignmentId: string,
-): Promise<ActionResult<{ paymentId: string; redirectUrl: string }>> {
+): Promise<ActionResult<CheckoutRedirect>> {
   try {
-    const { supabase, userId } = await requireSession();
+    const { supabase } = await requireSession();
 
     const { data: paymentId, error } = await supabase.rpc("start_protected_payment", {
       p_assignment_id: assignmentId,
     });
-
     if (error) return actionError(error, "No pudimos iniciar el pago.");
 
-    const { data: payment } = await supabase
+    const admin = createAdminClient();
+    const { data: payment } = await admin
       .from("payments")
-      .select("id,amount,currency,job_id,status,provider_token")
+      .select(PAYMENT_COLUMNS)
       .eq("id", String(paymentId))
-      .maybeSingle<{
-        id: string;
-        amount: number;
-        currency: string;
-        job_id: string;
-        status: string;
-        provider_token: string | null;
-      }>();
+      .maybeSingle<PaymentRow>();
 
     if (!payment) return { ok: false, error: "No encontramos el pago recién creado." };
 
-    // Si ya está pagado, no se vuelve a cobrar.
     if (payment.status === "PAID") {
-      return actionOk({
-        paymentId: payment.id,
-        redirectUrl: `/mis-trabajos/${assignmentId}`,
-      });
+      return actionOk({ paymentId: payment.id, redirectUrl: `/mis-trabajos/${assignmentId}` });
+    }
+    if (payment.status === "UNDER_REVIEW") {
+      return {
+        ok: false,
+        error:
+          "Hay un pago de este trabajo en revisión. No inicies otro: te avisamos en cuanto se resuelva.",
+      };
     }
 
-    const { data: job } = await supabase
+    const { data: job } = await admin
       .from("jobs")
       .select("reference")
       .eq("id", payment.job_id)
       .maybeSingle<{ reference: string }>();
 
-    const provider = getPaymentProvider();
-    const created = await provider.createPayment({
+    const checkout = await startCheckout(admin, payment, job?.reference ?? payment.id);
+
+    if (checkout.alreadySettled) {
+      return actionOk({ paymentId: payment.id, redirectUrl: `/mis-trabajos/${assignmentId}` });
+    }
+
+    paymentLog({
+      operation: "create",
+      result: "ok",
       paymentId: payment.id,
-      jobId: payment.job_id,
-      reference: job?.reference ?? payment.id,
-      amount: { amount: payment.amount, currency: "CLP" },
-      returnUrl: `${env.NEXT_PUBLIC_SITE_URL}/pagos/retorno`,
-      // Identificador de sesión derivado del usuario. Nunca su correo.
-      sessionId: userId.slice(0, 26),
+      buyOrder: checkout.buyOrder,
+      environment: checkout.environment,
+      token: checkout.token,
     });
 
-    // La escritura del identificador del proveedor es del sistema, no del
-    // usuario: va con la clave de servicio.
-    const admin = createAdminClient();
-    await admin
-      .from("payments")
-      .update({
-        status: created.status,
-        provider: provider.id,
-        provider_transaction_id: created.providerTransactionId,
-        provider_token: created.token,
-      })
-      .eq("id", payment.id);
-
-    return actionOk({ paymentId: payment.id, redirectUrl: created.redirectUrl });
+    // Se devuelve la ruta interna, no la de Webpay: el token tiene que viajar
+    // por POST desde la página de transición, no por la barra de direcciones.
+    return actionOk({
+      paymentId: payment.id,
+      redirectUrl: `/pagar/${assignmentId}/ir`,
+    });
   } catch (error) {
+    paymentLog({ operation: "create", result: "error", errorCategory: errorCategory(error) });
     return actionError(error, "No pudimos iniciar el pago.");
   }
 }
@@ -98,6 +100,18 @@ export async function isPaymentSimulationEnabled(): Promise<boolean> {
   );
 }
 
+/** Nombre del proveedor activo, para que la pantalla no prometa lo que no hay. */
+export async function activePaymentProviderLabel(): Promise<{
+  live: boolean;
+  environment: string;
+}> {
+  return {
+    live: env.PAYMENT_PROVIDER === "transbank" && env.TRANSBANK_ENVIRONMENT === "production",
+    environment:
+      env.PAYMENT_PROVIDER === "transbank" ? env.TRANSBANK_ENVIRONMENT : env.PAYMENT_PROVIDER,
+  };
+}
+
 /**
  * Cobro del tiempo adicional aceptado.
  *
@@ -105,29 +119,29 @@ export async function isPaymentSimulationEnabled(): Promise<boolean> {
  * fijado por `answer_job_extension` desde la tarifa acordada, y este cobro no
  * habilita nada por sí mismo. Cuando se confirma, lo único que ocurre es que el
  * pago al trabajador sube.
+ *
+ * Es un pago **propio**: tiene su fila, su orden de compra, su token, su
+ * idempotencia y sus eventos. No sustituye al principal ni lo modifica, y por
+ * eso una extensión pagada no puede reactivar un trabajo cancelado ni duplicar
+ * el pago al trabajador.
  */
 export async function startExtensionPaymentAction(
   extensionId: string,
-): Promise<ActionResult<{ paymentId: string; redirectUrl: string }>> {
+): Promise<ActionResult<CheckoutRedirect>> {
   try {
-    const { supabase, userId } = await requireSession();
+    const { supabase } = await requireSession();
 
     const { data: paymentId, error } = await supabase.rpc("start_extension_payment", {
       p_extension_id: extensionId,
     });
     if (error) return actionError(error, "No pudimos iniciar el cobro adicional.");
 
-    const { data: payment } = await supabase
+    const admin = createAdminClient();
+    const { data: payment } = await admin
       .from("payments")
-      .select("id,amount,job_id,assignment_id,status")
+      .select(PAYMENT_COLUMNS)
       .eq("id", String(paymentId))
-      .maybeSingle<{
-        id: string;
-        amount: number;
-        job_id: string;
-        assignment_id: string | null;
-        status: string;
-      }>();
+      .maybeSingle<PaymentRow>();
 
     if (!payment) return { ok: false, error: "No encontramos el cobro adicional." };
 
@@ -138,35 +152,40 @@ export async function startExtensionPaymentAction(
       });
     }
 
-    const { data: job } = await supabase
+    const { data: job } = await admin
       .from("jobs")
       .select("reference")
       .eq("id", payment.job_id)
       .maybeSingle<{ reference: string }>();
 
-    const provider = getPaymentProvider();
-    const created = await provider.createPayment({
+    const checkout = await startCheckout(
+      admin,
+      payment,
+      `${job?.reference ?? payment.id}-EXT`,
+    );
+
+    if (checkout.alreadySettled) {
+      return actionOk({
+        paymentId: payment.id,
+        redirectUrl: `/mis-trabajos/${payment.assignment_id ?? ""}`,
+      });
+    }
+
+    paymentLog({
+      operation: "create",
+      result: "ok",
       paymentId: payment.id,
-      jobId: payment.job_id,
-      reference: `${job?.reference ?? payment.id}-EXT`,
-      amount: { amount: payment.amount, currency: "CLP" },
-      returnUrl: `${env.NEXT_PUBLIC_SITE_URL}/pagos/retorno`,
-      sessionId: userId.slice(0, 26),
+      buyOrder: checkout.buyOrder,
+      environment: checkout.environment,
+      token: checkout.token,
     });
 
-    const admin = createAdminClient();
-    await admin
-      .from("payments")
-      .update({
-        status: created.status,
-        provider: provider.id,
-        provider_transaction_id: created.providerTransactionId,
-        provider_token: created.token,
-      })
-      .eq("id", payment.id);
-
-    return actionOk({ paymentId: payment.id, redirectUrl: created.redirectUrl });
+    return actionOk({
+      paymentId: payment.id,
+      redirectUrl: `/pagar/${payment.assignment_id ?? ""}/ir`,
+    });
   } catch (error) {
+    paymentLog({ operation: "create", result: "error", errorCategory: errorCategory(error) });
     return actionError(error, "No pudimos iniciar el cobro adicional.");
   }
 }

@@ -13,21 +13,27 @@ import { site } from "@/config/site";
 /**
  * Pago Protegido.
  *
- * El botón hace exactamente lo que hará en producción: crea la transacción en el
- * proveedor y redirige. Hoy el único proveedor es el simulado, y esa redirección
- * vuelve a nuestra propia ruta de retorno. No hay pasarela real conectada, así
- * que el texto no promete una: el día que se integre una, cambia el proveedor y
- * este componente no se toca.
+ * El botón hace lo mismo con los tres proveedores: pedir al servidor que cree
+ * la transacción y llevar a la página de transición, que es la que envía el
+ * token por POST. Este componente no conoce Transbank, no ve el token y no sabe
+ * en qué ambiente está: solo sigue la ruta que le devuelven.
+ *
+ * Una vez pulsado no se vuelve a habilitar. Es lo que evita el segundo cobro
+ * por doble clic o por volver atrás desde Webpay.
  */
 export function ProtectedPaymentPanel({
   assignmentId,
   simulationEnabled,
+  live,
 }: {
   assignmentId: string;
   simulationEnabled: boolean;
+  /** `true` solo si detrás hay una pasarela cobrando de verdad. */
+  live?: boolean;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function pay() {
@@ -38,14 +44,14 @@ export function ProtectedPaymentPanel({
         setError(result.error);
         return;
       }
-      // Salida hacia el proveedor. En simulación vuelve sola a /pagos/retorno.
-      if (result.data.redirectUrl.startsWith("http")) {
-        window.location.href = result.data.redirectUrl;
-      } else {
-        router.push(result.data.redirectUrl);
-      }
+      // La acción siempre devuelve una ruta interna: o la transición hacia
+      // Webpay, o la pantalla del trabajo si ya estaba pagado.
+      setLeaving(true);
+      router.push(result.data.redirectUrl);
     });
   }
+
+  const busy = pending || leaving;
 
   return (
     <div className="space-y-4">
@@ -57,22 +63,31 @@ export function ProtectedPaymentPanel({
             No hay pasarela de pago conectada. Este botón recorre el mismo flujo con un
             proveedor simulado y deja el pago confirmado. No se cobra nada.
           </Alert>
-          <Button size="lg" fullWidth onClick={pay} loading={pending}>
+          <Button size="lg" fullWidth onClick={pay} loading={busy}>
             <Sparkles size={17} aria-hidden="true" />
-            {pending ? "Procesando…" : "Simular pago aprobado"}
+            {busy ? "Procesando…" : "Simular pago aprobado"}
           </Button>
         </>
       ) : (
-        <Button size="lg" fullWidth onClick={pay} loading={pending}>
-          <CreditCard size={17} aria-hidden="true" />
-          {pending ? "Redirigiendo…" : "Ir a pagar"}
-        </Button>
+        <>
+          {!live && (
+            <Alert tone="info" title="Ambiente de integración">
+              Estás en el ambiente de pruebas de Webpay. Las tarjetas son de prueba y no se
+              cobra dinero real.
+            </Alert>
+          )}
+          <Button size="lg" fullWidth onClick={pay} loading={busy}>
+            <CreditCard size={17} aria-hidden="true" />
+            {busy ? "Preparando el pago…" : "Pagar con Webpay"}
+          </Button>
+        </>
       )}
 
-      <p className="flex gap-2 text-caption text-ink-500">
+      <p className="flex gap-2 text-caption text-ink-600">
         <ShieldCheck size={14} className="mt-px shrink-0 text-success-600" aria-hidden="true" />
         Con {site.protectedPaymentLabel}, el dinero queda asociado a este trabajo y se libera
-        cuando el servicio se complete. No guardamos los datos de tu tarjeta.
+        cuando el servicio se complete. Los datos de tu tarjeta los captura Webpay: nosotros no
+        los vemos ni los guardamos.
       </p>
     </div>
   );

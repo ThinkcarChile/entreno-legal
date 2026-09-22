@@ -9,7 +9,7 @@ import { Amount, Avatar, Card, CardContent } from "@/components/ui";
 import { Alert } from "@/components/ui/feedback";
 import { site } from "@/config/site";
 import { requireOnboardedUser } from "@/lib/auth/session";
-import { isPaymentSimulationEnabled } from "@/lib/actions/payments";
+import { activePaymentProviderLabel, isPaymentSimulationEnabled } from "@/lib/actions/payments";
 import { getData } from "@/lib/data";
 import { PaymentStatus } from "@/lib/domain/enums";
 import { isPayable } from "@/lib/domain/job-actions";
@@ -49,6 +49,7 @@ export default async function ProtectedPaymentPage({ params, searchParams }: Pag
 
   const { settlement, job, worker } = detail;
   const simulationEnabled = await isPaymentSimulationEnabled();
+  const provider = await activePaymentProviderLabel();
 
   return (
     <div className="container-page max-w-2xl py-6 sm:py-10">
@@ -68,9 +69,45 @@ export default async function ProtectedPaymentPage({ params, searchParams }: Pag
         servicio hasta que se complete.
       </p>
 
+      {/*
+        Los estados posibles al volver de Webpay. Se distinguen porque para
+        quien paga no es lo mismo «lo rechazó el banco» que «se acabó el
+        tiempo»: en un caso hay que probar con otra tarjeta y en el otro basta
+        con repetir. Ninguno de los tres implica un cobro.
+      */}
       {pago === "rechazado" && (
-        <Alert tone="danger" className="mt-6" title="El pago no se completó">
-          No se realizó ningún cobro. Puedes intentarlo otra vez.
+        <Alert tone="danger" className="mt-6" title="El pago fue rechazado">
+          Tu banco no autorizó la transacción y no se realizó ningún cobro. Puedes intentarlo
+          otra vez, con la misma tarjeta o con otra.
+        </Alert>
+      )}
+      {pago === "cancelado" && (
+        <Alert tone="warning" className="mt-6" title="Cancelaste el pago">
+          Saliste del formulario de Webpay antes de terminar. No se cobró nada y el trabajo
+          sigue esperando.
+        </Alert>
+      )}
+      {pago === "tiempo" && (
+        <Alert tone="warning" className="mt-6" title="El tiempo para pagar terminó">
+          El formulario de Webpay tiene un plazo limitado. No se cobró nada: vuelve a empezar
+          cuando quieras.
+        </Alert>
+      )}
+      {pago === "incompleto" && (
+        <Alert tone="warning" className="mt-6" title="El pago no se completó">
+          Volviste sin un resultado claro. No se cobró nada; si tienes dudas, espera unos
+          minutos antes de reintentar y comprueba tu cartola.
+        </Alert>
+      )}
+      {pago === "verificando" && (
+        <Alert tone="info" className="mt-6" title="Estamos verificando el resultado">
+          Todavía no sabemos qué pasó con tu pago. <strong>No vuelvas a pagar mientras
+          verificamos</strong>: si el cobro se hizo, lo verás reflejado en unos minutos.
+        </Alert>
+      )}
+      {pago === "error" && (
+        <Alert tone="danger" className="mt-6" title="No pudimos continuar">
+          Hubo un problema al preparar el pago y no se cobró nada. Inténtalo de nuevo.
         </Alert>
       )}
 
@@ -120,7 +157,11 @@ export default async function ProtectedPaymentPage({ params, searchParams }: Pag
           </div>
 
           <div className="mt-6">
-            <ProtectedPaymentPanel assignmentId={id} simulationEnabled={simulationEnabled} />
+            <ProtectedPaymentPanel
+              assignmentId={id}
+              simulationEnabled={simulationEnabled}
+              live={provider.live}
+            />
           </div>
         </CardContent>
       </Card>

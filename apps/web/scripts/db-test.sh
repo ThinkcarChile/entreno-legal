@@ -95,6 +95,15 @@ run -d "$DB_NAME" -f "$ROOT/supabase/seed/001_geo.sql" > /dev/null \
   bash "$ROOT/supabase/tests/08_race_execution.sh" "$DB_NAME" "${RACE_REPS:-5}"
 
   echo ""
+  echo "════ Bloque 5 · Webpay Plus: intento, retorno, devoluciones ════"
+  psql -d "$DB_NAME" -f "$ROOT/supabase/tests/09_transbank.sql" 2>&1 \
+    | grep -vE "$FILTER" | sed -E 's/^psql:[^ ]+ //; s/^NOTICE:  //'
+
+  echo ""
+  echo "════ Bloque 5 · Carreras sobre pagos y devoluciones ════"
+  bash "$ROOT/supabase/tests/09_race_transbank.sh" "$DB_NAME" "${RACE_REPS:-5}"
+
+  echo ""
   echo "════ Contrato entre la aplicación y el esquema ════"
   DB_NAME="$DB_NAME" bash "$ROOT/scripts/check-db-contract.sh"
 } | tee "$REPORT"
