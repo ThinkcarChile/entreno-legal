@@ -19,7 +19,8 @@
     "verify:supabase": "node scripts/verify-supabase.ts",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
-    "verify:payments": "node --import ./scripts/loader/alias.mjs scripts/verify-payments.ts"
+    "verify:payments": "node --import ./scripts/loader/alias.mjs scripts/verify-payments.ts",
+    "verify:execution": "node --import ./scripts/loader/alias.mjs scripts/verify-execution.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

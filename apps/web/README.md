@@ -36,6 +36,7 @@ con datos realistas en pesos chilenos. Es la forma más rápida de revisar la in
 | `npm run db:contract` | Comprueba que el código y el esquema coincidan |
 | `npm run verify:supabase` | Recorre el marketplace completo contra un Supabase real |
 | `npm run verify:payments` | Cancelación contra confirmación tardía, duplicada y simultánea, contra un Supabase real y con el proveedor retardado |
+| `npm run verify:execution` | Ejecución completa del trabajo contra un Supabase real, con sesiones de cliente, trabajador, tercero y administración |
 | `npm run db:push:hosted` | Aplica las migraciones a un proyecto alojado por HTTPS, cuando el puerto 5432 está cerrado |
 | `npm run db:seed:hosted` | Aplica la semilla geográfica oficial a un proyecto alojado de desarrollo, por HTTPS |
 | `npm run verify:schema:hosted` | Inventario del esquema alojado y advisors de seguridad y rendimiento |
@@ -146,8 +147,8 @@ Lo que **todavía es simulado**:
 |---|---|
 | Pago con Webpay Plus | Simulado. El flujo es el definitivo, cambia solo el `PaymentProvider`. La política de cancelación con un pago en vuelo ya es la definitiva (`docs/PAGOS.md`); el reembolso real no existe todavía |
 | Verificación de identidad | Real pero manual. La resuelve una persona desde `/admin/verificaciones`, sin proveedor biométrico |
-| Transferencia al trabajador | El payout se calcula y registra; la transferencia es manual |
-| Imágenes | Los buckets y columnas existen; la carga no está implementada |
+| Transferencia al trabajador | El payout se calcula, se aprueba y se registra con su referencia bancaria; la transferencia se hace fuera de la plataforma |
+| Imágenes | La evidencia del trabajo y de las disputas sube de verdad, validada por contenido; faltan las del trabajo publicado y las del chat |
 | Notificaciones | Solo dentro de la aplicación. Sin push, email ni SMS |
 
 El proyecto Supabase de desarrollo ya existe (`hagotufila-dev`, ref
@@ -155,11 +156,11 @@ El proyecto Supabase de desarrollo ya existe (`hagotufila-dev`, ref
 conectada: el indicador de desarrollo muestra
 «Supabase conectado · xwgobslgldxzatjrcxhl.supabase.co».
 
-Contra ese proyecto real ya corrieron, y pasan: las 23 migraciones, la semilla
+Contra ese proyecto real ya corrieron, y pasan: las 27 migraciones, la semilla
 geográfica (1 país, 16 regiones, 346 comunas), `npm run verify:schema:hosted`,
-las 61 comprobaciones de `npm run verify:supabase`, las 23 de
-`npm run verify:payments`, las 11 pruebas de
-`npm run e2e` —incluidas las siete del marketplace— y el recorrido a mano de
+las 62 comprobaciones de `npm run verify:supabase`, las 23 de
+`npm run verify:payments`, las 24 de `npm run verify:execution`, las 17 pruebas
+de `npm run e2e` —siete del marketplace y seis de la ejecución— y el recorrido a mano de
 `docs/DESPLIEGUE-SUPABASE.md` §8.4.
 
 Lo único que queda del proyecto alojado es la protección contra contraseñas

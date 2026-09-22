@@ -21,13 +21,18 @@ import type {
 import type {
   AppNotification,
   Assignment,
+  CheckIn,
+  Dispute,
+  Earning,
   Job,
+  JobExtension,
   JobCategory,
   JobOffer,
   JobSummary,
   Message,
   Payment,
   PaymentBreakdown,
+  Payout,
   PublicProfile,
   ReputationSnapshot,
   Review,
@@ -386,6 +391,11 @@ export interface AssignmentRow {
   bonus_awarded: boolean | null;
   started_at: string | null;
   checked_in_at: string | null;
+  on_the_way_at: string | null;
+  expected_end_at: string | null;
+  extension_minutes: number | null;
+  completion_requested_at: string | null;
+  completion_note: string | null;
   handoff_completed_at: string | null;
   completed_at: string | null;
   dispute_deadline_at: string | null;
@@ -407,6 +417,11 @@ export function mapAssignment(row: AssignmentRow): Assignment {
     bonusAwarded: row.bonus_awarded,
     startedAt: row.started_at,
     checkedInAt: row.checked_in_at,
+    onTheWayAt: row.on_the_way_at,
+    expectedEndAt: row.expected_end_at,
+    extensionMinutes: row.extension_minutes ?? 0,
+    completionRequestedAt: row.completion_requested_at,
+    completionNote: row.completion_note,
     handoffCompletedAt: row.handoff_completed_at,
     completedAt: row.completed_at,
     disputeDeadlineAt: row.dispute_deadline_at,
@@ -517,6 +532,171 @@ export function mapNotification(row: NotificationRow): AppNotification {
     href: row.href,
     jobId: row.job_id,
     readAt: row.read_at,
+    createdAt: row.created_at,
+  };
+}
+
+
+/* ------------------------------------------------- Bloque 3: ejecución */
+
+export interface CheckInRow {
+  id: string;
+  assignment_id: string;
+  job_id: string;
+  worker_id: string;
+  result: string;
+  review_status: string;
+  review_reason: string | null;
+  distance_m: number | null;
+  source: string;
+  occurred_at: string;
+  created_at: string;
+}
+
+export function mapCheckIn(row: CheckInRow): CheckIn {
+  return {
+    id: row.id,
+    assignmentId: row.assignment_id,
+    jobId: row.job_id,
+    workerId: row.worker_id,
+    result: row.result as CheckIn["result"],
+    reviewStatus: row.review_status as CheckIn["reviewStatus"],
+    reviewReason: row.review_reason,
+    distanceM: row.distance_m,
+    source: row.source === "manual" ? "manual" : "device",
+    occurredAt: row.occurred_at,
+    createdAt: row.created_at,
+  };
+}
+
+export interface ExtensionRow {
+  id: string;
+  assignment_id: string;
+  requested_by: string;
+  status: string;
+  additional_minutes: number;
+  hourly_rate: number;
+  additional_amount: number;
+  reason: string | null;
+  payment_id: string | null;
+  responded_at: string | null;
+  expires_at: string;
+  created_at: string;
+}
+
+export function mapExtension(row: ExtensionRow): JobExtension {
+  return {
+    id: row.id,
+    assignmentId: row.assignment_id,
+    requestedBy: row.requested_by,
+    status: row.status as JobExtension["status"],
+    additionalMinutes: row.additional_minutes,
+    hourlyRate: money(row.hourly_rate),
+    additionalAmount: money(row.additional_amount),
+    reason: row.reason,
+    paymentId: row.payment_id,
+    respondedAt: row.responded_at,
+    expiresAt: row.expires_at,
+    createdAt: row.created_at,
+  };
+}
+
+export interface DisputeRow {
+  id: string;
+  assignment_id: string;
+  opened_by: string;
+  status: string;
+  reason: string;
+  description: string;
+  resolution: string | null;
+  resolution_notes: string | null;
+  refund_amount: number | null;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  created_at: string;
+}
+
+export function mapDispute(row: DisputeRow): Dispute {
+  return {
+    id: row.id,
+    assignmentId: row.assignment_id,
+    openedBy: row.opened_by,
+    status: row.status as Dispute["status"],
+    reason: row.reason,
+    description: row.description,
+    resolution: (row.resolution as Dispute["resolution"]) ?? null,
+    resolutionNotes: row.resolution_notes,
+    refundAmount: row.refund_amount === null ? null : money(row.refund_amount),
+    resolvedBy: row.resolved_by,
+    resolvedAt: row.resolved_at,
+    createdAt: row.created_at,
+  };
+}
+
+export interface PayoutRow {
+  id: string;
+  assignment_id: string;
+  worker_id: string;
+  status: string;
+  gross_amount: number;
+  commission_amount: number;
+  discount_amount: number;
+  bonus_amount: number;
+  tax_withheld_amount: number;
+  net_amount: number;
+  bank_reference: string | null;
+  notes: string | null;
+  approved_at: string | null;
+  paid_at: string | null;
+  held_reason: string | null;
+  created_at: string;
+}
+
+export function mapPayout(row: PayoutRow): Payout {
+  return {
+    id: row.id,
+    assignmentId: row.assignment_id,
+    workerId: row.worker_id,
+    status: row.status as Payout["status"],
+    grossAmount: money(row.gross_amount),
+    commissionAmount: money(row.commission_amount),
+    discountAmount: money(row.discount_amount),
+    bonusAmount: money(row.bonus_amount),
+    taxWithheldAmount: money(row.tax_withheld_amount),
+    netAmount: money(row.net_amount),
+    bankReference: row.bank_reference,
+    heldReason: row.held_reason,
+    approvedAt: row.approved_at,
+    paidAt: row.paid_at,
+    notes: row.notes,
+    createdAt: row.created_at,
+  };
+}
+
+export interface EarningRow extends PayoutRow {
+  job_id: string;
+  job_reference: string;
+  job_title: string;
+  job_starts_at: string;
+}
+
+export function mapEarning(row: EarningRow): Earning {
+  return {
+    id: row.id,
+    assignmentId: row.assignment_id,
+    jobId: row.job_id,
+    jobReference: row.job_reference,
+    jobTitle: row.job_title,
+    jobStartsAt: row.job_starts_at,
+    status: row.status as Earning["status"],
+    grossAmount: money(row.gross_amount),
+    commissionAmount: money(row.commission_amount),
+    bonusAmount: money(row.bonus_amount),
+    netAmount: money(row.net_amount),
+    bankReference: row.bank_reference,
+    heldReason: row.held_reason,
+    approvedAt: row.approved_at,
+    paidAt: row.paid_at,
     createdAt: row.created_at,
   };
 }

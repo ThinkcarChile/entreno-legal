@@ -1,15 +1,26 @@
-import type { CategoryGroup, JobUrgency, VerificationStatus } from "@/lib/domain/enums";
+import type {
+  CategoryGroup,
+  CheckInResult,
+  JobUrgency,
+  PayoutStatus,
+  VerificationStatus,
+} from "@/lib/domain/enums";
 import type {
   AppNotification,
   AssignmentDetail,
   ClientJobSummary,
   ConversationDetail,
   ConversationSummary,
+  Dispute,
+  Earning,
+  EarningsSummary,
+  ISODateTime,
   Job,
   JobCategory,
   JobOffer,
   JobSummary,
   JobTimelineEntry,
+  Payout,
   PlatformSettings,
   PublicProfile,
   Review,
@@ -143,9 +154,61 @@ export interface PlatformKpis {
   pendingPayouts: number;
 }
 
+/** Colas de trabajo del panel interno. */
+export interface AdminQueues {
+  checkIns: number;
+  disputes: number;
+  payouts: number;
+  refunds: number;
+  extensions: number;
+}
+
+export interface PendingCheckIn {
+  id: UUID;
+  assignmentId: UUID;
+  jobId: UUID;
+  jobTitle: string;
+  jobReference: string;
+  workerName: string;
+  result: CheckInResult;
+  distanceM: number | null;
+  reviewReason: string | null;
+  occurredAt: ISODateTime;
+}
+
+export interface AdminDispute {
+  dispute: Dispute;
+  jobId: UUID;
+  jobTitle: string;
+  jobReference: string;
+  clientName: string;
+  workerName: string;
+  amountHeld: Money | null;
+  payoutStatus: PayoutStatus | null;
+}
+
+export interface AdminPayout {
+  payout: Payout;
+  jobTitle: string;
+  jobReference: string;
+  workerName: string;
+  completedAt: ISODateTime | null;
+}
+
 export interface AdminRepository {
   getKpis(): Promise<PlatformKpis>;
   listVerifications(status?: VerificationStatus): Promise<readonly VerificationRequest[]>;
+  /** Cuántas cosas esperan una decisión ahora mismo. */
+  getQueues(): Promise<AdminQueues>;
+  listPendingCheckIns(): Promise<readonly PendingCheckIn[]>;
+  listDisputes(onlyOpen?: boolean): Promise<readonly AdminDispute[]>;
+  listPayouts(status?: PayoutStatus): Promise<readonly AdminPayout[]>;
+}
+
+/** Las ganancias de un trabajador. */
+export interface EarningsRepository {
+  listMine(): Promise<readonly Earning[]>;
+  summary(): Promise<EarningsSummary>;
 }
 
 export interface DataAccess {
@@ -159,6 +222,7 @@ export interface DataAccess {
   readonly notifications: NotificationRepository;
   readonly settings: SettingsRepository;
   readonly admin: AdminRepository;
+  readonly earnings: EarningsRepository;
 }
 
 /**

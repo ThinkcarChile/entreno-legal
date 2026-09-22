@@ -269,6 +269,7 @@ select accept_job_offer(:'offer_id'::uuid) as assignment_id \gset
 reset role; reset request.jwt.claim.sub;
 
 select set_config('test.assignment_id', :'assignment_id', false);
+select set_config('test.trabajador', :TRABAJADOR, false);
 
 select 'E27 estado del trabajo tras aceptar = ' || status from jobs where id = :'job_id'::uuid;
 select 'E28 asignaciones del trabajo = ' || count(*) from assignments where job_id = :'job_id'::uuid;
@@ -331,12 +332,13 @@ reset role; reset request.jwt.claim.sub;
 
 do $$
 begin
-  update public.assignments set status = 'ON_THE_WAY'
-   where id = current_setting('test.assignment_id')::uuid;
+  perform set_config('request.jwt.claim.sub', current_setting('test.trabajador'), true);
+  perform public.mark_on_the_way(current_setting('test.assignment_id')::uuid);
   raise notice 'E37 FALLO: el trabajo avanzó sin pago confirmado';
 exception when check_violation then
   raise notice 'E37 OK: no se avanza sin pago confirmado';
 end $$;
+select set_config('request.jwt.claim.sub', '', false);
 
 \echo ''
 \echo '--- Pago Protegido'
@@ -363,10 +365,9 @@ select 'E42 payout creado (comisión / neto) = ' || commission_amount || ' / ' |
 select 'E43 avisos de pago emitidos = ' || count(*)
   from notifications where notification_type = 'JOB_PAID';
 
-set role authenticated;
 set request.jwt.claim.sub = :TRABAJADOR;
-update assignments set status = 'ON_THE_WAY' where id = :'assignment_id'::uuid;
-reset role; reset request.jwt.claim.sub;
+select mark_on_the_way(:'assignment_id'::uuid);
+reset request.jwt.claim.sub;
 select 'E44 asignación en camino tras pagar = ' || status
   from assignments where id = :'assignment_id'::uuid;
 
@@ -375,17 +376,23 @@ select 'E44 asignación en camino tras pagar = ' || status
 
 set role authenticated;
 set request.jwt.claim.sub = :TRABAJADOR;
+-- Desde el Bloque 3 no hay ni privilegio: antes la única barrera era que no
+-- existiera política de RLS, y eso es una sola capa para una bitácora.
 do $$
 begin
   update public.audit_logs set action = 'manipulado';
   if found then raise notice 'E45 FALLO: se alteró la bitácora de auditoría';
   else raise notice 'E45 OK: la bitácora no se puede alterar'; end if;
+exception when insufficient_privilege then
+  raise notice 'E45 OK: sin privilegio para alterar la bitácora';
 end $$;
 do $$
 begin
   delete from public.audit_logs;
   if found then raise notice 'E46 FALLO: se borró la bitácora de auditoría';
   else raise notice 'E46 OK: la bitácora no se puede borrar'; end if;
+exception when insufficient_privilege then
+  raise notice 'E46 OK: sin privilegio para borrar la bitácora';
 end $$;
 reset role; reset request.jwt.claim.sub;
 

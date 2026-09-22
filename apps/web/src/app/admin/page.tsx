@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
-import { AlertTriangle, BadgeCheck, Banknote, ShieldAlert } from "lucide-react";
+import { AlertTriangle, BadgeCheck, Banknote, MapPin, ShieldAlert, Timer } from "lucide-react";
 
 import { Card, CardContent, Stat } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth/session";
@@ -18,7 +19,8 @@ export default async function AdminDashboardPage() {
   // seguridad; esto sí, y la base lo vuelve a comprobar en cada consulta.
   await requireAdmin("/admin");
 
-  const kpis = await getData().admin.getKpis();
+  const data = getData();
+  const [kpis, queues] = await Promise.all([data.admin.getKpis(), data.admin.getQueues()]);
 
   return (
     <div className="container-page py-8 sm:py-10">
@@ -62,29 +64,45 @@ export default async function AdminDashboardPage() {
         <h2 className="text-sm font-semibold tracking-wide text-ink-500 uppercase">
           Requiere atención
         </h2>
-        <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <QueueCard
+            href="/admin/verificaciones"
             icon={<BadgeCheck size={18} aria-hidden="true" />}
             label="Verificaciones pendientes"
             value={kpis.pendingVerifications}
             tone="text-brand-600"
           />
           <QueueCard
-            icon={<Banknote size={18} aria-hidden="true" />}
-            label="Payouts por aprobar"
-            value={kpis.pendingPayouts}
-            tone="text-success-600"
+            href="/admin/check-ins"
+            icon={<MapPin size={18} aria-hidden="true" />}
+            label="Llegadas por revisar"
+            value={queues.checkIns}
+            tone="text-warning-600"
           />
           <QueueCard
+            href="/admin/disputas"
             icon={<ShieldAlert size={18} aria-hidden="true" />}
             label="Disputas abiertas"
-            value={kpis.openDisputes}
+            value={queues.disputes}
             tone="text-danger-600"
           />
           <QueueCard
+            href="/admin/payouts"
+            icon={<Banknote size={18} aria-hidden="true" />}
+            label="Pagos por resolver"
+            value={queues.payouts}
+            tone="text-success-600"
+          />
+          <QueueCard
+            icon={<Timer size={18} aria-hidden="true" />}
+            label="Extensiones esperando respuesta"
+            value={queues.extensions}
+            tone="text-brand-600"
+          />
+          <QueueCard
             icon={<AlertTriangle size={18} aria-hidden="true" />}
-            label="Cancelaciones"
-            value={kpis.cancellations}
+            label="Devoluciones por procesar"
+            value={queues.refunds}
             tone="text-warning-600"
           />
         </div>
@@ -92,12 +110,12 @@ export default async function AdminDashboardPage() {
 
       <Card className="mt-8">
         <CardContent>
-          <h2 className="text-base font-semibold text-ink-900">Siguiente etapa del panel</h2>
+          <h2 className="text-base font-semibold text-ink-900">Qué queda por hacer a mano</h2>
           <p className="mt-2 text-sm text-ink-600">
-            Las secciones de listado y resolución se construyen sobre los mismos repositorios:
-            cola de verificaciones con aprobación y rechazo, conciliación de pagos con Transbank,
-            aprobación de payouts con referencia bancaria y resolución de disputas con historial
-            de evidencia. Toda acción administrativa queda registrada en{" "}
+            Las transferencias a los trabajadores se hacen fuera de la plataforma y se registran
+            aquí con su referencia bancaria. Las devoluciones al cliente quedan anotadas, pero no
+            se ejecutan: eso necesita la integración con el medio de pago. Toda acción
+            administrativa queda registrada en{" "}
             <code className="rounded bg-ink-100 px-1.5 py-0.5 text-xs">audit_logs</code>.
           </p>
         </CardContent>
@@ -111,21 +129,30 @@ function QueueCard({
   label,
   value,
   tone,
+  href,
 }: {
   icon: React.ReactNode;
   label: string;
   value: number;
   tone: string;
+  /** Si hay pantalla donde resolverlo, la tarjeta lleva a ella. */
+  href?: string;
 }) {
+  const body = (
+    <CardContent className="flex items-center gap-4">
+      <span className={`shrink-0 ${tone}`}>{icon}</span>
+      <div>
+        <p className="text-sm text-ink-500">{label}</p>
+        <p className="mt-0.5 text-2xl font-semibold text-ink-900 tabular-nums">{value}</p>
+      </div>
+    </CardContent>
+  );
+
+  if (!href) return <Card>{body}</Card>;
+
   return (
-    <Card>
-      <CardContent className="flex items-center gap-4">
-        <span className={`shrink-0 ${tone}`}>{icon}</span>
-        <div>
-          <p className="text-sm text-ink-500">{label}</p>
-          <p className="mt-0.5 text-2xl font-semibold text-ink-900 tabular-nums">{value}</p>
-        </div>
-      </CardContent>
-    </Card>
+    <Link href={href} className="block rounded-[var(--radius-card)] hover:opacity-90">
+      <Card>{body}</Card>
+    </Link>
   );
 }

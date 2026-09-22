@@ -191,22 +191,28 @@ select 'T14 eventos de pago registrados = ' || count(*) from payment_events;
 -- Pasaba porque nada lo impedía: `verify_handoff_code` no mira el estado de
 -- partida. Desde la migración …000100 lo impide el disparador de transiciones,
 -- así que aquí se recorre el camino real.
-set role authenticated;
+-- Desde el Bloque 3 el avance pasa por funciones del servidor: el privilegio de
+-- escribir `assignments.status` ya no existe para nadie con sesión.
 set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
-update assignments set status = 'ON_THE_WAY'  where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-update assignments set status = 'CHECKED_IN', checked_in_at = now() where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-update assignments set status = 'IN_PROGRESS', started_at = now() where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-reset role; reset request.jwt.claim.sub;
+select mark_on_the_way('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa') ->> 'assignment_status' as paso1 \gset
+select register_check_in('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', true, -33.4173, -70.6065, 12, 'device') ->> 'result' as paso2 \gset
+select start_job_work('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa') ->> 'assignment_status' as paso3 \gset
+reset request.jwt.claim.sub;
 
--- Y no puede saltarse etapas: hacia atrás, o directo al final, se rechaza.
+select 'T14a recorrido del trabajador = ' || :'paso1' || ' → ' || :'paso2' || ' → ' || :'paso3'
+  || case when :'paso1' = 'ON_THE_WAY' and :'paso2' = 'VERIFIED' and :'paso3' = 'IN_PROGRESS'
+          then '' else ' FALLO' end;
+
+-- Y el estado no se escribe a mano: ni para retroceder ni para nada.
 set role authenticated;
 set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
 do $$
 begin
   update assignments set status = 'CONFIRMED' where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-  raise notice 'T14b FALLO: la asignación retrocedió de IN_PROGRESS a CONFIRMED';
-exception when check_violation then
-  raise notice 'T14b OK: la asignación no retrocede de estado';
+  raise notice 'T14b FALLO: se pudo escribir el estado de la asignación a mano';
+exception
+  when insufficient_privilege then raise notice 'T14b OK: sin privilegio para escribir el estado a mano';
+  when check_violation then raise notice 'T14b OK: la asignación no retrocede de estado';
 end $$;
 reset role; reset request.jwt.claim.sub;
 
@@ -238,15 +244,15 @@ select 'T19 evidencia de entrega registrada = ' || count(*)
 -- ---------------------------------------------------------------------------
 -- Reseñas, disputas, FilaPuntos y auditoría.
 -- ---------------------------------------------------------------------------
-update assignments set status = 'COMPLETED', completed_at = now(),
-       dispute_deadline_at = now() + interval '12 hours';
-
-set role authenticated;
+-- El cliente aprueba, y con eso se libera el pago al trabajador.
 set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
-insert into reviews (assignment_id, author_id, subject_id, punctuality, communication, compliance, overall, comment)
-values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','11111111-1111-1111-1111-111111111111',
-        '22222222-2222-2222-2222-222222222222',5,5,5,5,'Impecable, llego antes de la hora.');
-reset role; reset request.jwt.claim.sub;
+select approve_job_completion('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', true) ->> 'payout_status' as po \gset
+select submit_review('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 5, 5, 5, 5,
+                     'Impecable, llego antes de la hora.') as review_id \gset
+reset request.jwt.claim.sub;
+
+select 'T19b pago liberado al aprobar el cliente = ' || :'po'
+  || case when :'po' = 'APPROVED' then '' else ' FALLO' end;
 
 select 'T20 calificacion promedio recalculada = ' || average_rating
   from worker_profiles where user_id = '22222222-2222-2222-2222-222222222222';
@@ -268,12 +274,13 @@ reset role; reset request.jwt.claim.sub;
 -- El payout lo crea automaticamente el pago confirmado (Etapa 2).
 select 'T21b payout creado automaticamente al pagar = ' || count(*) from payouts;
 
-set role authenticated;
+-- Una disputa se abre por función desde el Bloque 3: la escritura directa ya no
+-- existe, y así el importe, el estado y la resolución no los pone quien reclama.
 set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
-insert into disputes (assignment_id, opened_by, reason, description)
-values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','11111111-1111-1111-1111-111111111111',
-        'No cumplio el objetivo','El trabajador no alcanzo la posicion acordada en la fila.');
-reset role; reset request.jwt.claim.sub;
+select open_dispute('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+                    'No cumplio el objetivo',
+                    'El trabajador no alcanzo la posicion acordada en la fila.') as dispute_id \gset
+reset request.jwt.claim.sub;
 
 select 'T22 estado del payout tras la disputa = ' || status from payouts;
 select 'T23 estado del trabajo tras la disputa = ' || status

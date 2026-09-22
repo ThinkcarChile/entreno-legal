@@ -29,11 +29,10 @@ export function clientBuckets(jobs: readonly ClientJobSummary[]): readonly Bucke
       j.status === JobStatus.CANCELLATION_PENDING,
   );
   const running = jobs.filter(
-    (j) =>
-      j.status === JobStatus.PAID ||
-      j.status === JobStatus.IN_PROGRESS ||
-      j.status === JobStatus.HANDOFF_COMPLETED,
+    (j) => j.status === JobStatus.PAID || j.status === JobStatus.IN_PROGRESS,
   );
+  const awaitingApproval = jobs.filter((j) => j.status === JobStatus.HANDOFF_COMPLETED);
+  const disputed = jobs.filter((j) => j.status === JobStatus.DISPUTED);
   const finished = jobs.filter(
     (j) => j.status === JobStatus.COMPLETED || j.status === JobStatus.CLOSED,
   );
@@ -72,6 +71,14 @@ export function clientBuckets(jobs: readonly ClientJobSummary[]): readonly Bucke
       items: running,
     },
     {
+      id: "por-aprobar",
+      label: "Finalización pendiente",
+      emptyTitle: "Nada esperando tu aprobación",
+      emptyDescription:
+        "Cuando un trabajador dé un trabajo por terminado, lo revisas y lo apruebas aquí.",
+      items: awaitingApproval,
+    },
+    {
       id: "terminados",
       label: "Terminados",
       emptyTitle: "Sin trabajos terminados",
@@ -84,6 +91,13 @@ export function clientBuckets(jobs: readonly ClientJobSummary[]): readonly Bucke
       emptyTitle: "Sin cancelaciones",
       emptyDescription: "Los trabajos cancelados o vencidos aparecen aquí.",
       items: cancelled,
+    },
+    {
+      id: "en-disputa",
+      label: "En disputa",
+      emptyTitle: "Sin reclamos abiertos",
+      emptyDescription: "Si reportas un problema, el caso aparece aquí mientras se revisa.",
+      items: disputed,
     },
   ];
 }
@@ -98,15 +112,23 @@ export function workerBuckets(jobs: readonly WorkerJobSummary[]): readonly Bucke
     (j) =>
       j.assignmentStatus === AssignmentStatus.ON_THE_WAY ||
       j.assignmentStatus === AssignmentStatus.CHECKED_IN ||
-      j.assignmentStatus === AssignmentStatus.IN_PROGRESS ||
-      j.assignmentStatus === AssignmentStatus.HANDOFF_COMPLETED,
+      j.assignmentStatus === AssignmentStatus.IN_PROGRESS,
   );
+  // Pedida la finalización, el trabajo ya no está «en curso» ni «terminado»:
+  // espera al cliente, y esa espera merece su propia pestaña.
+  const awaitingApproval = jobs.filter(
+    (j) => j.assignmentStatus === AssignmentStatus.HANDOFF_COMPLETED,
+  );
+  const disputed = jobs.filter((j) => j.status === JobStatus.DISPUTED);
   const finished = jobs.filter(
     (j) =>
-      j.assignmentStatus === AssignmentStatus.COMPLETED ||
-      j.offerStatus === OfferStatus.REJECTED ||
-      j.offerStatus === OfferStatus.WITHDRAWN ||
-      j.offerStatus === OfferStatus.EXPIRED,
+      j.status !== JobStatus.DISPUTED &&
+      (j.assignmentStatus === AssignmentStatus.COMPLETED ||
+        j.assignmentStatus === AssignmentStatus.CANCELLED_BY_CLIENT ||
+        j.assignmentStatus === AssignmentStatus.CANCELLED_BY_WORKER ||
+        j.offerStatus === OfferStatus.REJECTED ||
+        j.offerStatus === OfferStatus.WITHDRAWN ||
+        j.offerStatus === OfferStatus.EXPIRED),
   );
 
   return [
@@ -140,11 +162,25 @@ export function workerBuckets(jobs: readonly WorkerJobSummary[]): readonly Bucke
       items: running,
     },
     {
+      id: "por-aprobar",
+      label: "Finalización pendiente",
+      emptyTitle: "Nada esperando aprobación",
+      emptyDescription: "Cuando des un trabajo por terminado, esperará aquí la aprobación del cliente.",
+      items: awaitingApproval,
+    },
+    {
       id: "terminados",
       label: "Terminados",
       emptyTitle: "Sin historial todavía",
-      emptyDescription: "Aquí quedan los trabajos completados y las ofertas que no prosperaron.",
+      emptyDescription: "Aquí quedan los trabajos completados, cancelados y las ofertas que no prosperaron.",
       items: finished,
+    },
+    {
+      id: "en-disputa",
+      label: "En disputa",
+      emptyTitle: "Sin reclamos abiertos",
+      emptyDescription: "Si algo sale mal, el caso aparece aquí mientras se revisa.",
+      items: disputed,
     },
   ];
 }

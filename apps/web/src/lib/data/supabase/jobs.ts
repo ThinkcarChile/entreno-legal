@@ -3,27 +3,40 @@ import { money } from "@/lib/utils/money";
 
 import {
   mapAssignment,
+  mapCheckIn,
+  mapDispute,
+  mapExtension,
   mapJob,
   mapJobSummary,
   mapOffer,
   mapPayment,
   mapPaymentBreakdown,
+  mapPayout,
   mapProfile,
   mapWorkerProfile,
   type AssignmentRow,
+  type CheckInRow,
+  type DisputeRow,
+  type ExtensionRow,
   type JobPrivateLocationRow,
   type JobRow,
   type OfferRow,
   type PaymentRow,
   type PaymentSummaryRow,
+  type PayoutRow,
   type ProfileRow,
   type WorkerProfileRow,
 } from "./mappers";
 import {
   ASSIGNMENT_COLUMNS,
+  CHECK_IN_COLUMNS,
   currentUserId,
+  DISPUTE_COLUMNS,
+  EVIDENCE_COLUMNS,
+  EXTENSION_COLUMNS,
   JOB_COLUMNS,
   PAYMENT_COLUMNS,
+  PAYOUT_COLUMNS,
   PROFILE_COLUMNS,
   WORKER_COLUMNS,
   type Client,
@@ -190,7 +203,7 @@ export class SupabaseJobRepository implements JobRepository {
     const supabase = await this.getClient();
     const { data, error } = await supabase
       .from("job_evidence")
-      .select("*")
+      .select(EVIDENCE_COLUMNS)
       .eq("job_id", jobId)
       .order("occurred_at", { ascending: true })
       .returns<Record<string, unknown>[]>();
@@ -207,8 +220,12 @@ export class SupabaseJobRepository implements JobRepository {
       title: String(row.title ?? ""),
       body: (row.body as string | null) ?? null,
       imageUrl: (row.image_url as string | null) ?? null,
-      lat: (row.lat as number | null) ?? null,
-      lng: (row.lng as number | null) ?? null,
+      // Las coordenadas del check-in no salen por aquí: viven en
+      // `assignment_check_ins`, fuera del alcance de la contraparte.
+      storagePath: (row.storage_path as string | null) ?? null,
+      mimeType: (row.mime_type as string | null) ?? null,
+      sizeBytes: (row.size_bytes as number | null) ?? null,
+      eventKey: (row.event_key as string | null) ?? null,
       queueAhead: (row.queue_ahead as number | null) ?? null,
       occurredAt: String(row.occurred_at),
       createdAt: String(row.created_at),
@@ -359,8 +376,20 @@ export class SupabaseJobRepository implements JobRepository {
     const job = await this.getById(row.job_id);
     if (!job) return null;
 
-    const [workers, profiles, paymentResult, summaryResult, conversationResult, timeline] =
-      await Promise.all([
+    const [
+      workers,
+      profiles,
+      paymentResult,
+      summaryResult,
+      conversationResult,
+      timeline,
+      checkInResult,
+      extensionResult,
+      extensionPaymentResult,
+      disputeResult,
+      payoutResult,
+      reviewResult,
+    ] = await Promise.all([
         loadWorkers(supabase, [row.worker_id]),
         loadProfiles(supabase, [row.client_id]),
         supabase
@@ -383,6 +412,43 @@ export class SupabaseJobRepository implements JobRepository {
           .eq("worker_id", row.worker_id)
           .maybeSingle<{ id: string }>(),
         this.getTimeline(row.job_id),
+        // Las llegadas: RLS decide qué ve cada quien. El cliente recibe una
+        // lista vacía, y por eso el detalle nunca le muestra coordenadas.
+        supabase
+          .from("assignment_check_ins")
+          .select(CHECK_IN_COLUMNS)
+          .eq("assignment_id", row.id)
+          .order("occurred_at", { ascending: false })
+          .returns<CheckInRow[]>(),
+        supabase
+          .from("job_extensions")
+          .select(EXTENSION_COLUMNS)
+          .eq("assignment_id", row.id)
+          .order("created_at", { ascending: false })
+          .returns<ExtensionRow[]>(),
+        supabase
+          .from("payments")
+          .select(PAYMENT_COLUMNS)
+          .eq("assignment_id", row.id)
+          .eq("purpose", "EXTENSION")
+          .returns<PaymentRow[]>(),
+        supabase
+          .from("disputes")
+          .select(DISPUTE_COLUMNS)
+          .eq("assignment_id", row.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .returns<DisputeRow[]>(),
+        supabase
+          .from("payouts")
+          .select(PAYOUT_COLUMNS)
+          .eq("assignment_id", row.id)
+          .maybeSingle<PayoutRow>(),
+        supabase
+          .from("reviews")
+          .select("author_id")
+          .eq("assignment_id", row.id)
+          .returns<{ author_id: string }[]>(),
       ]);
 
     const worker = workers.get(row.worker_id);
@@ -392,6 +458,11 @@ export class SupabaseJobRepository implements JobRepository {
     const payment = paymentResult.data?.[0] ? mapPayment(paymentResult.data[0]) : null;
     const summary = summaryResult.data;
 
+    const extensionPayments: Record<string, ReturnType<typeof mapPayment>> = {};
+    for (const p of extensionPaymentResult.data ?? []) {
+      if (p.extension_id) extensionPayments[p.extension_id] = mapPayment(p);
+    }
+
     return {
       assignment: mapAssignment(row),
       job,
@@ -399,6 +470,12 @@ export class SupabaseJobRepository implements JobRepository {
       worker,
       payment,
       conversationId: conversationResult.data?.id ?? null,
+      checkIns: (checkInResult.data ?? []).map(mapCheckIn),
+      extensions: (extensionResult.data ?? []).map(mapExtension),
+      extensionPayments,
+      dispute: disputeResult.data?.[0] ? mapDispute(disputeResult.data[0]) : null,
+      payout: payoutResult.data ? mapPayout(payoutResult.data) : null,
+      reviewAuthors: (reviewResult.data ?? []).map((r) => r.author_id),
       timeline,
       settlement: summary
         ? mapPaymentBreakdown(summary)

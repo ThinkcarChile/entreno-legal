@@ -127,6 +127,36 @@ con `security_invoker = true`.
 | `start_protected_payment(assignment)` | El cliente | Crea el pago con los montos calculados en la base |
 | `confirm_payment_result(pago, proveedor, evento, resultado, importe, detalles)` | **Solo la clave de servicio** (`EXECUTE` revocado a todo usuario) | Única entrada de resultados del proveedor: registra el evento una vez por identificador, decide bajo bloqueo `jobs → assignments → payments` y devuelve qué pasó |
 
+### Ejecución del trabajo (Bloque 3)
+
+Todas bloquean `jobs → assignments` por `app_private.lock_assignment_for`, que
+exige sesión y comprueba el papel de quien llama. Ver `docs/EJECUCION.md`.
+
+| Función | Quién puede llamarla | Qué hace |
+|---|---|---|
+| `mark_on_the_way(assignment)` | El trabajador asignado | Avisa que salió. Idempotente |
+| `register_check_in(assignment, consentimiento, lat, lng, precisión, origen)` | El trabajador asignado | Registra la llegada, calcula la distancia contra la dirección real y decide si queda verificada o en revisión. Se puede repetir |
+| `start_job_work(assignment)` | El trabajador asignado | Comienza el trabajo. Exige un check-in verificado o aprobado a mano |
+| `add_job_evidence(assignment, tipo, título, cuerpo, ruta, mime, tamaño, fila)` | Las dos partes | Publica una actualización o un archivo. Rechaza los tipos reservados al sistema |
+| `request_job_extension(assignment, minutos, motivo)` | El trabajador asignado | Pide más tiempo. El importe lo calcula la base |
+| `answer_job_extension(extensión, aceptar)` | El cliente | Responde, una sola vez. Al aceptar crea el cobro adicional |
+| `start_extension_payment(extensión)` | El cliente | Devuelve el cobro adicional para llevarlo al proveedor |
+| `generate_handoff_code(assignment)` | El cliente | Crea o renueva el PIN de 4 dígitos |
+| `get_handoff_code(assignment)` | El cliente | Única vía de lectura del PIN |
+| `request_handoff_code(assignment)` | El trabajador asignado | Avisa al cliente. No devuelve el código |
+| `verify_handoff_code(assignment, código)` | El trabajador asignado | Valida la entrega. Un solo uso, cinco intentos, solo los fallos gastan intento |
+| `request_job_completion(assignment, nota)` | El trabajador asignado | Da el trabajo por terminado. **No libera el pago** |
+| `approve_job_completion(assignment, bono)` | El cliente | Aprueba y libera el pago al trabajador |
+| `submit_review(assignment, notas…)` | Las dos partes | Reseña, solo tras la aprobación y una por persona |
+| `open_dispute(assignment, motivo, descripción)` | Las dos partes | Abre la disputa y retiene el pago |
+| `add_dispute_evidence(disputa, texto, ruta, mime, tamaño)` | Partes y administración | Aporta una prueba |
+| `resolve_dispute(disputa, resultado, motivo, importe)` | **Administración** | Decide. No ejecuta ninguna devolución bancaria |
+| `review_check_in(check-in, aprobado, motivo)` | **Administración** | Aprueba o rechaza una llegada |
+| `approve_payout(payout, nota)` | **Administración** | Aprueba el pago al trabajador |
+| `mark_payout_paid(payout, referencia, fecha, nota)` | **Administración** | Registra una transferencia hecha por fuera. Idempotente |
+| `hold_payout(payout, motivo)` | **Administración** | Retiene con motivo escrito |
+| `admin_pending_reviews()` | **Administración** | Recuentos de las colas del panel |
+
 El trabajador **no puede leer** `handoff_codes`: RLS solo permite la lectura al
 cliente. Por eso el PIN sirve como prueba de presencia simultánea.
 
@@ -178,6 +208,13 @@ supuestos, y todos rodean a una de las dieciséis:
 | Crear un payout a mano, sobre un pago sin confirmar o sobre un trabajo cancelado | `confirm_payment_result` (y `payouts_guard` para el propio sistema) | `…000400` |
 | Reescribir o borrar `payments`, `payment_events` o `payouts` | ninguna: el usuario perdió `UPDATE`, `DELETE` y `TRUNCATE` | `…000400` |
 | «Confirmar» el propio pago llamando a la función de confirmación | `confirm_payment_result` es solo del servicio | `…000400` |
+| Marcar «voy en camino» en nombre del trabajador siendo el cliente | `mark_on_the_way` | Bloque 3 `…000100` |
+| Escribir el estado de la asignación a mano, para saltarse el orden | ninguna: el usuario perdió el `UPDATE` | Bloque 3 `…000100` |
+| Forjar un hito del sistema escribiendo `job_evidence.evidence_type` | `add_job_evidence` | Bloque 3 `…000100` |
+| Aceptarse la propia extensión, o cambiarle el importe a una aceptada | `answer_job_extension` | Bloque 3 `…000100` |
+| Leer el PIN de entrega con una consulta a `handoff_codes` | `get_handoff_code` | Bloque 3 `…000100` |
+| Insertar una disputa ya RESUELTA a favor de quien la abre | `open_dispute` | Bloque 3 `…000200` |
+| Borrar cualquier fila de `public` | ninguna: el `DELETE` se revocó en 28 relaciones | Bloque 3 `…000200` |
 
 Y ocho de las dieciséis **no fallaban sin sesión**: se apoyaban en una
 comparación `dueño <> auth.uid()`, y con `auth.uid()` nulo esa expresión vale
@@ -193,6 +230,13 @@ autorización en una sola línea de defensa. Corregido en `…000200`, y lo prue
 `touch_updated_at`, `generate_reference`, `handle_new_user`, `sync_offer_count`,
 `log_payment_event`, `validate_review`, `refresh_worker_reputation`,
 `hold_payout_on_dispute`, `apply_loyalty_transaction`, `write_audit_log`.
+
+Y las del Bloque 3: `lock_assignment_for` (bloqueo canónico y comprobación del
+papel), `timeline_event` (línea de tiempo idempotente por `event_key`),
+`distance_m` (haversine, sin PostGIS), `on_extension_paid` (suma el cobro
+adicional al payout), `refresh_worker_stats` (completados, minutos,
+cancelaciones, cumplimiento y puntualidad) y `guard_payout_transitions` (copia
+en la base de `payoutTransitions`).
 
 Y las del dinero, desde la Etapa 2.5 (`…000400`): `guard_payment_settlement`
 (BEFORE UPDATE en `payments`: decide habilitar o revisar, bajo bloqueo),
@@ -227,14 +271,15 @@ usuario: las políticas de Storage lo exigen.
 PGHOST=/tmp PGPORT=55432 PGUSER=postgres npm run db:test
 ```
 
-Aplica el stub de Supabase, las 23 migraciones, la semilla geográfica y 141
+Aplica el stub de Supabase, las 27 migraciones, la semilla geográfica y 179
 comprobaciones de inventario, RLS, flujo completo, concurrencia, semilla de
-demostración, endurecimiento de las RPC, política de cancelación y pago (con
-carreras reales entre dos sesiones, `RACE_REPS` repeticiones) y contraste entre
-el código y el esquema. Ver `supabase/tests/`.
+demostración, endurecimiento de las RPC, política de cancelación y pago, y
+ejecución completa del trabajo. Todo con carreras reales entre dos sesiones,
+`RACE_REPS` repeticiones. Ver `supabase/tests/`.
 
-Los mismos escenarios de cancelación y pago corren contra el proyecto alojado
-con `npm run verify:payments` (ver `PAGOS.md` §8).
+Contra el proyecto alojado, los mismos escenarios corren con
+`npm run verify:payments` (ver `PAGOS.md` §8) y `npm run verify:execution`
+(ver `EJECUCION.md` §14).
 
 Contra un proyecto Supabase alojado el equivalente es
 `npm run verify:schema:hosted`. Las cifras esperadas son las mismas a propósito;

@@ -32,7 +32,33 @@ export const WORKER_COLUMNS =
 export const ASSIGNMENT_COLUMNS =
   "id,job_id,offer_id,worker_id,client_id,status,agreed_hourly_rate,agreed_duration_minutes," +
   "agreed_total,bonus_amount,bonus_awarded,started_at,checked_in_at,handoff_completed_at," +
-  "completed_at,dispute_deadline_at,created_at";
+  "completed_at,dispute_deadline_at,created_at,on_the_way_at,expected_end_at," +
+  "extension_minutes,completion_requested_at,completion_note";
+
+// Sin `*`: desde el Bloque 3 las columnas de coordenadas de `job_evidence` no
+// son legibles para nadie con sesión, y `select("*")` las pide igual y falla
+// entero. La lista explícita es además lo que evita traer datos que la pantalla
+// no usa.
+export const EVIDENCE_COLUMNS =
+  "id,job_id,assignment_id,author_id,author_name,evidence_type,title,body,storage_path," +
+  "image_url,queue_ahead,occurred_at,created_at,event_key,visibility,mime_type,size_bytes";
+
+export const CHECK_IN_COLUMNS =
+  "id,assignment_id,job_id,worker_id,result,review_status,review_reason,distance_m," +
+  "source,occurred_at,created_at";
+
+export const EXTENSION_COLUMNS =
+  "id,assignment_id,requested_by,status,additional_minutes,hourly_rate,additional_amount," +
+  "reason,payment_id,responded_at,expires_at,created_at";
+
+export const DISPUTE_COLUMNS =
+  "id,assignment_id,opened_by,status,reason,description,resolution,resolution_notes," +
+  "refund_amount,resolved_by,resolved_at,created_at";
+
+export const PAYOUT_COLUMNS =
+  "id,assignment_id,worker_id,status,gross_amount,commission_amount,discount_amount," +
+  "bonus_amount,tax_withheld_amount,net_amount,bank_reference,notes,approved_at,paid_at," +
+  "held_reason,created_at";
 
 export const PAYMENT_COLUMNS =
   "id,job_id,assignment_id,extension_id,client_id,purpose,status,amount,provider," +

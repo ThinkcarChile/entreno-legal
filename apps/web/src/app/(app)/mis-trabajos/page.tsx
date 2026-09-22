@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, Wallet } from "lucide-react";
 
 import { BucketTabs } from "@/components/jobs/bucket-tabs";
 import { WorkerJobCard } from "@/components/jobs/my-job-card";
@@ -31,9 +31,15 @@ export default async function MyWorkerJobsPage() {
           </h1>
           <p className="mt-2 text-ink-600">Tus ofertas enviadas y los trabajos que tomaste.</p>
         </div>
-        <ButtonLink href="/trabajos" size="sm" variant="outline">
-          Buscar trabajos
-        </ButtonLink>
+        <div className="flex gap-2">
+          <ButtonLink href="/mis-trabajos/ganancias" size="sm" variant="outline">
+            <Wallet size={15} aria-hidden="true" />
+            Mis ganancias
+          </ButtonLink>
+          <ButtonLink href="/trabajos" size="sm">
+            Buscar trabajos
+          </ButtonLink>
+        </div>
       </header>
 
       {!eligibility.allowed && (

@@ -933,19 +933,30 @@ async function main(): Promise<void> {
     return `payout neto ${p.net_amount}, comisión ${p.commission_amount}`;
   });
 
-  await check("ahora sí el trabajador puede avanzar", async () => {
-    orThrow(
-      await worker.client
-        .from("assignments")
-        .update({ status: "ON_THE_WAY" })
-        .eq("id", assignmentId)
-        .select("id"),
-    );
+  await mustFailWith(
+    "ni con el pago hecho se escribe el estado de la asignación a mano",
+    ["42501"],
+    () => worker.client.from("assignments").update({ status: "ON_THE_WAY" }).eq("id", assignmentId),
+  );
+
+  await check("ahora sí el trabajador puede avanzar, por la función del servidor", async () => {
+    // Desde el Bloque 3 el avance es una RPC que comprueba el papel de quien
+    // llama y bloquea trabajo y asignación antes de escribir nada.
+    const { error } = await worker.client.rpc("mark_on_the_way", {
+      p_assignment_id: assignmentId,
+    });
+    if (error) throw new Error(error.message);
+
     const row = orThrow(
-      await admin.from("assignments").select("status").eq("id", assignmentId).maybeSingle(),
-    ) as { status: string };
+      await admin
+        .from("assignments")
+        .select("status,on_the_way_at")
+        .eq("id", assignmentId)
+        .maybeSingle(),
+    ) as { status: string; on_the_way_at: string | null };
     expect(row.status === "ON_THE_WAY", "no avanzó el estado");
-    return "ON_THE_WAY";
+    expect(Boolean(row.on_the_way_at), "no quedó la hora del servidor");
+    return "ON_THE_WAY con hora del servidor";
   });
 
   section("Concurrencia al aceptar");
@@ -1149,9 +1160,12 @@ async function main(): Promise<void> {
         .eq("id", assignmentId),
   );
 
+  // El salto de estado ya no depende del disparador: desde el Bloque 3 ni
+  // siquiera hay privilegio para escribir `status`. La guarda sigue ahí como
+  // segunda capa y la prueba local la ejercita (E10 y T14b).
   await mustFailWith(
-    "la asignación no se salta el orden de los estados",
-    ["23514"],
+    "la asignación no se escribe a mano, ni para saltarse el orden",
+    ["42501"],
     () => worker.client.from("assignments").update({ status: "COMPLETED" }).eq("id", assignmentId),
   );
 
@@ -1198,16 +1212,40 @@ async function main(): Promise<void> {
   });
 
   await check("y el avance legítimo del estado sigue funcionando", async () => {
-    const { error } = await worker.client
-      .from("assignments")
-      .update({ status: "CHECKED_IN", checked_in_at: new Date().toISOString() })
-      .eq("id", assignmentId);
+    // El check-in escribe la hora en el servidor y contrasta la ubicación con
+    // la dirección real del trabajo. Aquí se manda la del propio trabajo, así
+    // que tiene que quedar verificado.
+    const location = orThrow(
+      await admin
+        .from("job_private_location")
+        .select("lat,lng")
+        .eq("job_id", jobId)
+        .maybeSingle(),
+    ) as { lat: number | null; lng: number | null };
+
+    const { data, error } = await worker.client.rpc("register_check_in", {
+      p_assignment_id: assignmentId,
+      p_consent: true,
+      p_lat: location.lat,
+      p_lng: location.lng,
+      p_accuracy_m: 12,
+      p_source: "device",
+    });
     if (error) throw new Error(error.message);
+
+    const outcome = (data ?? {}) as Record<string, unknown>;
     const row = orThrow(
-      await admin.from("assignments").select("status").eq("id", assignmentId).maybeSingle(),
-    ) as { status: string };
+      await admin
+        .from("assignments")
+        .select("status,checked_in_at")
+        .eq("id", assignmentId)
+        .maybeSingle(),
+    ) as { status: string; checked_in_at: string | null };
+
     expect(row.status === "CHECKED_IN", `la asignación quedó en ${row.status}`);
-    return "ON_THE_WAY → CHECKED_IN";
+    expect(Boolean(row.checked_in_at), "no quedó la hora de llegada");
+    expect(outcome.result === "VERIFIED", `el check-in quedó ${outcome.result}`);
+    return `ON_THE_WAY → CHECKED_IN, llegada ${outcome.result}`;
   });
 
   section("Storage");

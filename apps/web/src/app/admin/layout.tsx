@@ -2,13 +2,14 @@ import Link from "next/link";
 
 import { Logo } from "@/components/layout/logo";
 
+// Solo se enlaza lo que existe: un enlace a una pantalla que no está es un 404
+// con el logotipo puesto.
 const sections = [
   { href: "/admin", label: "Resumen" },
   { href: "/admin/verificaciones", label: "Verificaciones" },
-  { href: "/admin/trabajos", label: "Trabajos" },
-  { href: "/admin/pagos", label: "Pagos" },
-  { href: "/admin/payouts", label: "Payouts" },
+  { href: "/admin/check-ins", label: "Llegadas" },
   { href: "/admin/disputas", label: "Disputas" },
+  { href: "/admin/payouts", label: "Pagos" },
 ];
 
 /**

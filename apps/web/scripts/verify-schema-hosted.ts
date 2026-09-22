@@ -113,12 +113,20 @@ function check(label: string, actual: unknown, expected: unknown): void {
  *   · un objeto de la lista que el advisor ya NO reporta también es un fallo,
  *     para que la lista no envejezca sola.
  *
- * Las catorce funciones se auditaron una por una en la Etapa 2.5: quién debe
- * llamarlas, qué escritura concreta les negaría RLS al llamante, qué comprueban
- * por dentro y qué prueba negativa lo respalda. El detalle está en
- * `docs/BASE-DE-DATOS.md`. `mark_conversation_read` y `mark_notifications_read`
- * salieron de esta lista en esa misma auditoría: no necesitaban SECURITY
- * DEFINER y pasaron a INVOKER.
+ * Las catorce primeras se auditaron una por una en la Etapa 2.5, y las veinte
+ * del Bloque 3 al escribirlas: quién debe llamarlas, qué escritura concreta les
+ * negaría RLS al llamante, qué comprueban por dentro y qué prueba negativa lo
+ * respalda. El detalle está en `docs/BASE-DE-DATOS.md`.
+ * `mark_conversation_read` y `mark_notifications_read` salieron de esta lista en
+ * aquella auditoría: no necesitaban SECURITY DEFINER y pasaron a INVOKER.
+ *
+ * Nota que vale para las veinte del Bloque 3: todas escriben tablas sobre las
+ * que `authenticated` ya no tiene ningún privilegio de escritura —`assignments`,
+ * `job_evidence`, `job_extensions`, `handoff_codes`, `disputes`, `payouts`,
+ * `reviews`, `assignment_check_ins`— y todas empiezan por
+ * `app_private.lock_assignment_for`, que exige sesión, comprueba el papel de
+ * quien llama y bloquea jobs → assignments en el orden canónico. Las cinco de
+ * administración comprueban `app_private.is_admin()` en su primera línea.
  */
 const AVISOS_ACEPTADOS: Record<string, Record<string, string>> = {
   auth_leaked_password_protection: {
@@ -169,6 +177,74 @@ const AVISOS_ACEPTADOS: Record<string, Record<string, string>> = {
     "public.verify_handoff_code":
       "La llama el trabajador asignado. Necesita LEER handoff_codes, que él no puede leer —el " +
       "PIN es del cliente— para comparar sin revelarlo, y contar los intentos.",
+    "public.mark_on_the_way":
+      "La llama el trabajador asignado. Escribe assignments.status y on_the_way_at, columnas " +
+      "sobre las que el usuario perdió el UPDATE en la migración …000100 del Bloque 3. " +
+      "Comprueba el papel y el estado de partida, y es idempotente.",
+    "public.register_check_in":
+      "La llama el trabajador asignado. Inserta en assignment_check_ins, tabla sin política de " +
+      "INSERT para nadie, y calcula la distancia contra job_private_location, que el trabajador " +
+      "puede leer pero no contrastar por sí solo. La hora es del servidor.",
+    "public.start_job_work":
+      "La llama el trabajador asignado. Escribe assignments y jobs, y exige un check-in " +
+      "verificado o aprobado a mano: la condición vive aquí porque el usuario no puede leer el " +
+      "estado de revisión de otro ni escribirlo.",
+    "public.add_job_evidence":
+      "La llaman las dos partes. Inserta en job_evidence, cuyo INSERT se revocó en el Bloque 3 " +
+      "precisamente para que nadie pueda forjar un hito del sistema escribiendo evidence_type.",
+    "public.request_job_extension":
+      "La llama el trabajador asignado. Inserta en job_extensions, sin política de INSERT, y " +
+      "calcula el importe desde la tarifa acordada: si viniera del navegador sería editable.",
+    "public.answer_job_extension":
+      "La llama el cliente. Escribe job_extensions y crea el pago adicional. El UPDATE de esa " +
+      "tabla se revocó en el Bloque 3: antes un participante podía aceptar su propia extensión.",
+    "public.start_extension_payment":
+      "La llama el cliente. Devuelve el pago del tiempo adicional bajo bloqueo; payments no " +
+      "tiene ninguna vía de escritura para el usuario.",
+    "public.get_handoff_code":
+      "La llama el cliente. Es la ÚNICA vía de lectura del PIN: handoff_codes dejó de tener " +
+      "política de lectura para usuarios en el Bloque 3, así que el código no sale por una " +
+      "consulta.",
+    "public.request_handoff_code":
+      "La llama el trabajador asignado. Solo emite un aviso al cliente; no devuelve el código " +
+      "ni lo escribe en ninguna parte.",
+    "public.request_job_completion":
+      "La llama el trabajador asignado. Escribe assignments y jobs. No libera dinero: eso es de " +
+      "approve_job_completion, y la separación es justamente lo que impide que una parte cobre " +
+      "sola.",
+    "public.approve_job_completion":
+      "La llama el cliente. Escribe assignments, jobs y payouts —ninguna escribible por el " +
+      "usuario— y es lo único que libera el pago al trabajador. Rechaza aprobar con una disputa " +
+      "abierta.",
+    "public.submit_review":
+      "La llama cualquiera de las dos partes. El INSERT directo en reviews se revocó en el " +
+      "Bloque 3: la función comprueba que el trabajo esté aprobado y calcula a quién se reseña.",
+    "public.open_dispute":
+      "La llaman las dos partes. El INSERT directo en disputes se revocó: con él se podía " +
+      "insertar una disputa ya RESUELTA a favor de quien la abría.",
+    "public.add_dispute_evidence":
+      "La llaman las partes y la administración. dispute_evidence tenía política de INSERT y " +
+      "ningún privilegio, así que nadie podía aportar una prueba; ahora entra por aquí, con " +
+      "validación del archivo.",
+    "public.resolve_dispute":
+      "SOLO la administración: primera línea del cuerpo es app_private.is_admin(). Decide el " +
+      "destino del payout y anota el importe a devolver. No ejecuta ninguna devolución " +
+      "bancaria.",
+    "public.review_check_in":
+      "SOLO la administración: primera línea es app_private.is_admin(). Aprueba o rechaza una " +
+      "llegada y con ello habilita o no el comienzo del trabajo.",
+    "public.approve_payout":
+      "SOLO la administración: primera línea es app_private.is_admin(). authenticated perdió el " +
+      "UPDATE sobre payouts en la Etapa 2.5.",
+    "public.mark_payout_paid":
+      "SOLO la administración: primera línea es app_private.is_admin(). Registra una " +
+      "transferencia hecha fuera de la plataforma, con su referencia; no mueve dinero.",
+    "public.hold_payout":
+      "SOLO la administración: primera línea es app_private.is_admin(). Retiene un pago con " +
+      "motivo escrito.",
+    "public.admin_pending_reviews":
+      "SOLO la administración: primera línea es app_private.is_admin(). Devuelve recuentos de " +
+      "las colas del panel; sin el rol, lanza excepción en vez de contestar cero.",
     "public.withdraw_job_offer":
       "La llama el trabajador autor de la oferta. Escribe job_offers.status, columna que quedó " +
       "fuera de su concesión en la migración …000200 precisamente para que no pueda aceptarse " +
@@ -215,18 +291,18 @@ async function main(): Promise<void> {
       (select count(*) from supabase_migrations.schema_migrations)       as migraciones;
   `);
 
-  check("tablas en public", inv.tablas, 32);
-  check("vistas en public", inv.vistas, 5);
-  check("funciones en public", inv.funciones, 17);
-  check("enums", inv.enums, 19);
-  check("políticas RLS en public", inv.politicas, 73);
+  check("tablas en public", inv.tablas, 33);
+  check("vistas en public", inv.vistas, 6);
+  check("funciones en public", inv.funciones, 37);
+  check("enums", inv.enums, 22);
+  check("políticas RLS en public", inv.politicas, 74);
   check("buckets de Storage", inv.buckets, 5);
   check("políticas de Storage", inv.politicas_storage, 11);
   check("comunas", inv.comunas, 346);
   check("regiones", inv.regiones, 16);
   check("categorías de trabajo", inv.categorias, 9);
   check("comisión (puntos base)", inv.comision_pb, 1400);
-  check("migraciones en el historial", inv.migraciones, 23);
+  check("migraciones en el historial", inv.migraciones, 27);
 
   console.log("\n── Seguridad del esquema ──\n");
 

@@ -1,4 +1,5 @@
 import { SupabaseAdminRepository } from "./admin";
+import { SupabaseEarningsRepository } from "./earnings";
 import {
   SupabaseCategoryRepository,
   SupabaseProfileRepository,
@@ -35,5 +36,6 @@ export function createSupabaseDataAccess(): DataAccess {
     notifications: new SupabaseNotificationRepository(getClient),
     settings: new SupabaseSettingsRepository(getClient),
     admin: new SupabaseAdminRepository(getClient),
+    earnings: new SupabaseEarningsRepository(getClient),
   };
 }

@@ -20,7 +20,7 @@ Anota el **project ref**: es el identificador que aparece en la URL del panel,
 > **Proyecto de desarrollo de HagoTuFila.** Ya existe y no hay que crearlo de
 > nuevo: `hagotufila-dev`, ref `xwgobslgldxzatjrcxhl`, región `sa-east-1`,
 > `https://xwgobslgldxzatjrcxhl.supabase.co`. **El esquema ya está aplicado**
-> —23 migraciones y la semilla geográfica—, así que si trabajas contra él,
+> —27 migraciones y la semilla geográfica—, así que si trabajas contra él,
 > `db:push:hosted` no tendrá nada pendiente. Para ponerte a trabajar basta con
 > la sección 2 y la 8.
 
@@ -172,7 +172,7 @@ npm run verify:schema:hosted
 
 Comprueba contra el proyecto alojado el inventario completo —tablas, vistas,
 funciones, enums, políticas, buckets, políticas de Storage, datos de referencia,
-comisión y las 23 migraciones del historial— y además que ninguna tabla esté sin
+comisión y las 27 migraciones del historial— y además que ninguna tabla esté sin
 RLS, que ninguna vista se salte `security_invoker`, que el rol `anon` no tenga
 escritura en ninguna tabla, que toda función `SECURITY DEFINER` fije su
 `search_path`, y que la publicación de Realtime traiga las cuatro tablas
@@ -414,15 +414,31 @@ y la cancelación a la vez, repetidas `RACE_REPS` veces; lo que nadie puede hace
 a mano; y, al final, los invariantes sobre todo lo que creó. No usa `sleep`.
 Usa las cuentas de cliente, trabajador y tercero de §8.1. Ver `docs/PAGOS.md`.
 
+```bash
+npm run verify:execution
+RACE_REPS=10 npm run verify:execution
+```
+
+Prueba la ejecución completa del trabajo con sesiones reales: ir en camino,
+llegar, comenzar, informar, pedir más tiempo, entregar con código, cerrar,
+aprobar, reseñar y disputar; que cada papel solo pueda lo suyo; que el cliente
+no vea las coordenadas del trabajador; que el cobro del tiempo adicional sume al
+pago sin liberar nada; que una disputa retenga el pago; y que registrar una
+transferencia exija referencia y no se duplique. Termina con dos carreras
+repetidas y los invariantes. Ver `docs/EJECUCION.md`.
+
 ### 8.3 Recorrido por el navegador
 
 ```bash
 npm run e2e
 ```
 
-Son once pruebas: cuatro de páginas públicas y siete del marketplace, que
-recorren entrar como cliente → publicar → entrar como trabajador → ofertar →
-conversar → aceptar → simular pago → ver las dos listas de «mis trabajos».
+Son diecisiete pruebas: cuatro de páginas públicas, siete del marketplace
+—entrar como cliente → publicar → entrar como trabajador → ofertar → conversar
+→ aceptar → simular pago → ver las dos listas de «mis trabajos»— y seis de la
+ejecución del trabajo, que recorren con el ratón el camino de ir en camino,
+check-in con geolocalización, comenzar, informar, entregar con código, aprobar y
+ver la ganancia.
 
 Playwright levanta el servidor por su cuenta, **en modo desarrollo**. No es un
 descuido ni una comodidad: `npm run start` corre con `NODE_ENV=production`, y

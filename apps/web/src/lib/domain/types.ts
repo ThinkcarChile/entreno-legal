@@ -3,6 +3,8 @@ import type { Money } from "@/lib/utils/money";
 import type {
   AssignmentStatus,
   CategoryGroup,
+  CheckInResult,
+  CheckInReview,
   DisputeResolution,
   DisputeStatus,
   EvidenceType,
@@ -264,10 +266,79 @@ export interface Assignment {
   bonusAwarded: boolean | null;
   startedAt: ISODateTime | null;
   checkedInAt: ISODateTime | null;
+  onTheWayAt: ISODateTime | null;
+  /** Fin previsto = inicio real + duración acordada + extensiones aceptadas. */
+  expectedEndAt: ISODateTime | null;
+  /** Minutos concedidos por extensiones ACEPTADAS. El acuerdo original no cambia. */
+  extensionMinutes: number;
+  completionRequestedAt: ISODateTime | null;
+  completionNote: string | null;
   handoffCompletedAt: ISODateTime | null;
   completedAt: ISODateTime | null;
   disputeDeadlineAt: ISODateTime | null;
   createdAt: ISODateTime;
+}
+
+/**
+ * Llegada del trabajador al lugar.
+ *
+ * Las coordenadas viven en `assignment_check_ins`, que solo lee el propio
+ * trabajador y la administración. Este tipo es lo que la aplicación maneja: el
+ * cliente recibe el resultado y la distancia, nunca el punto.
+ */
+export interface CheckIn {
+  id: UUID;
+  assignmentId: UUID;
+  jobId: UUID;
+  workerId: UUID;
+  result: CheckInResult;
+  reviewStatus: CheckInReview;
+  reviewReason: string | null;
+  /** Metros hasta la dirección del trabajo. `null` si no hubo ubicación. */
+  distanceM: number | null;
+  source: "device" | "manual";
+  occurredAt: ISODateTime;
+  createdAt: ISODateTime;
+}
+
+/** Lo que el cliente necesita saber del código de entrega, sin el código de más. */
+export interface HandoffCodeState {
+  exists: boolean;
+  /** Solo llega si quien pregunta es el cliente y el código sigue vigente. */
+  code: string | null;
+  verified: boolean;
+  expired: boolean;
+  attempts: number;
+  expiresAt: ISODateTime | null;
+}
+
+/** Una línea de «Mis ganancias»: un pago al trabajador con su trabajo. */
+export interface Earning {
+  id: UUID;
+  assignmentId: UUID;
+  jobId: UUID;
+  jobReference: string;
+  jobTitle: string;
+  jobStartsAt: ISODateTime;
+  status: PayoutStatus;
+  grossAmount: Money;
+  commissionAmount: Money;
+  bonusAmount: Money;
+  netAmount: Money;
+  bankReference: string | null;
+  heldReason: string | null;
+  approvedAt: ISODateTime | null;
+  paidAt: ISODateTime | null;
+  createdAt: ISODateTime;
+}
+
+/** Resumen de las ganancias de un trabajador, por estado. */
+export interface EarningsSummary {
+  pending: Money;
+  approved: Money;
+  held: Money;
+  paid: Money;
+  cancelled: Money;
 }
 
 export interface JobExtension {
@@ -334,6 +405,8 @@ export interface Payout {
   /** Monto final destinado al trabajador. */
   netAmount: Money;
   bankReference: string | null;
+  /** Por qué está retenido, cuando lo está. */
+  heldReason: string | null;
   approvedAt: ISODateTime | null;
   paidAt: ISODateTime | null;
   notes: string | null;
@@ -352,8 +425,12 @@ export interface JobTimelineEntry {
   title: string;
   body: string | null;
   imageUrl: string | null;
-  lat: number | null;
-  lng: number | null;
+  /** Ruta en el bucket privado. La URL firmada se pide aparte y dura poco. */
+  storagePath: string | null;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  /** Identificador del hito, cuando la entrada lo es (`check_in`, `handoff`…). */
+  eventKey: string | null;
   /** Personas por delante en la fila, cuando aplica. */
   queueAhead: number | null;
   occurredAt: ISODateTime;
@@ -529,6 +606,19 @@ export interface AssignmentDetail {
   timeline: readonly JobTimelineEntry[];
   /** Desglose económico calculado en la base. */
   settlement: PaymentBreakdown;
+  /* --- Bloque 3: todo lo que hace falta para operar el trabajo --- */
+  /** Llegadas registradas, de la más reciente a la más antigua. */
+  checkIns: readonly CheckIn[];
+  /** Solicitudes de tiempo adicional, de la más reciente a la más antigua. */
+  extensions: readonly JobExtension[];
+  /** Pagos del tiempo adicional, por identificador de extensión. */
+  extensionPayments: Readonly<Record<UUID, Payment>>;
+  /** Disputa abierta o resuelta sobre este trabajo, si la hay. */
+  dispute: Dispute | null;
+  /** Pago al trabajador, si ya existe. */
+  payout: Payout | null;
+  /** Reseñas ya dejadas, por identificador de quien la escribió. */
+  reviewAuthors: readonly UUID[];
 }
 
 /** Desglose que se muestra en la pantalla de Pago Protegido. */

@@ -86,6 +86,15 @@ run -d "$DB_NAME" -f "$ROOT/supabase/seed/001_geo.sql" > /dev/null \
   bash "$ROOT/supabase/tests/07_race_payment.sh" "$DB_NAME" "${RACE_REPS:-5}"
 
   echo ""
+  echo "════ Bloque 3 · Ejecución completa del trabajo ════"
+  psql -d "$DB_NAME" -f "$ROOT/supabase/tests/08_job_execution.sql" 2>&1 \
+    | grep -vE "$FILTER" | sed -E 's/^psql:[^ ]+ //; s/^NOTICE:  //'
+
+  echo ""
+  echo "════ Bloque 3 · Carreras entre acciones simultáneas ════"
+  bash "$ROOT/supabase/tests/08_race_execution.sh" "$DB_NAME" "${RACE_REPS:-5}"
+
+  echo ""
   echo "════ Contrato entre la aplicación y el esquema ════"
   DB_NAME="$DB_NAME" bash "$ROOT/scripts/check-db-contract.sh"
 } | tee "$REPORT"
@@ -109,6 +118,6 @@ if grep -qE "^ERROR:" "$REPORT"; then
   exit 1
 fi
 
-TOTAL=$(grep -cE "^(T|E|R|S|I|H|P)[0-9]+" "$REPORT")
+TOTAL=$(grep -cE "^(T|E|R|S|I|H|P|X)[0-9]+" "$REPORT")
 echo "✓ $TOTAL comprobaciones pasaron"
 rm -f "$REPORT"

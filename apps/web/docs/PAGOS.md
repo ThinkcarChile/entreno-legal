@@ -29,8 +29,9 @@ Y, además:
   clave de servicio;
 - `payment_events` es solo de escritura para la aplicación.
 
-Lo comprueban 141 comprobaciones locales (`npm run db:test`, con las carreras
-de `07_race_payment.sh`) y 23 contra `hagotufila-dev` (`npm run verify:payments`).
+Lo comprueban 179 comprobaciones locales (`npm run db:test`, con las carreras
+de `07_race_payment.sh` y `08_race_execution.sh`) y 23 contra `hagotufila-dev`
+(`npm run verify:payments`).
 
 ---
 
@@ -134,6 +135,7 @@ Lo que impide que un error de código —o un `UPDATE` a mano— rompa la garant
 | Disparador `assignments_guard_transitions` (endurecido) | Salir de `CANCELLED_BY_CLIENT`, `CANCELLED_BY_WORKER` o `COMPLETED`, **también** para la clave de servicio y la administración |
 | Disparador `jobs_guard_terminal` | Revivir un trabajo `CANCELLED` o `EXPIRED` (solo pueden ir a `CLOSED`); `CANCELLATION_PENDING` solo va a `CANCELLED` |
 | Disparador `payments_a_guard_settlement` | `REFUNDED` → en vuelo; `PAID` / `UNDER_REVIEW` → `FAILED`; y toda decisión de `PAID` fuera de los bloqueos |
+| Disparador `payouts_guard_transitions` (Bloque 3) | Saltarse la máquina de estados del pago al trabajador: `PAID` y `CANCELLED` son terminales para todos |
 | `REVOKE UPDATE, DELETE, TRUNCATE` a `authenticated` en `payments`, `payment_events`, `payouts` | Que un usuario con sesión toque dinero, incluso si una política de RLS se equivocara |
 | `EXECUTE` de `confirm_payment_result` solo para el servicio | Que un usuario «confirme» su propio pago |
 
@@ -221,6 +223,27 @@ barrera del proveedor.
 
 ---
 
+## 8 bis. El cobro del tiempo adicional
+
+Una extensión aceptada crea un pago aparte, con `purpose = 'EXTENSION'` y su
+propio `extension_id`. No toca el pago original ni el acuerdo inicial.
+
+`guard_payment_settlement` decide sobre los pagos del trabajo: un `PAID` solo
+habilita si el trabajo está esperando ese pago. Un cobro de extensión llega con
+el trabajo YA en curso, así que caía en la rama de «confirmación tardía» y
+terminaba en `UNDER_REVIEW` por `job_not_awaiting_payment`: el cliente pagaba el
+tiempo adicional y el dinero quedaba marcado como devolución pendiente.
+
+Tiene su propia rama, con las mismas exigencias: la extensión aceptada, el
+trabajo vivo y la asignación sin cancelar. Lo único que produce al confirmarse
+es que el payout existente sube —importe menos comisión—; no habilita nada, no
+cambia el estado del trabajo y no crea un payout nuevo. Si la extensión no está
+aceptada, el pago va a `UNDER_REVIEW` con `review_reason = 'extension_not_accepted'`.
+
+Ver `docs/EJECUCION.md` §7.
+
+---
+
 ## 9. Riesgos que quedan para Webpay real
 
 Lo que esta etapa **no** resuelve y hay que tener delante al integrar Transbank:
@@ -249,6 +272,11 @@ Lo que esta etapa **no** resuelve y hay que tener delante al integrar Transbank:
 6. **Importe verificado, moneda no.** `confirm_payment_result` compara el
    importe; asume CLP. Webpay Plus solo opera en CLP, pero hay que dejarlo
    explícito al mapear la respuesta.
-7. **Reembolso parcial y bonos.** El importe cobrado incluye el bono
+7. **Devoluciones de disputa.** Una resolución parcial o a favor del cliente
+   anota el importe en `disputes.refund_amount` y deja el pago en `PAID`,
+   porque el dinero se cobró de verdad. Ejecutar esa devolución es de la
+   Etapa 4; hasta entonces la cola son las disputas resueltas con importe
+   pendiente. Ver `docs/EJECUCION.md` §10.
+8. **Reembolso parcial y bonos.** El importe cobrado incluye el bono
    comprometido. Devolver solo el bono, o solo el servicio, necesita
    `PARTIALLY_REFUNDED` y reglas que hoy no están escritas.

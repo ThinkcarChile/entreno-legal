@@ -150,6 +150,31 @@ export const EvidenceType = {
 } as const;
 export type EvidenceType = (typeof EvidenceType)[keyof typeof EvidenceType];
 
+/** Resultado de contrastar la ubicación del check-in con la del trabajo. */
+export const CheckInResult = {
+  VERIFIED: "VERIFIED",
+  OUT_OF_RANGE: "OUT_OF_RANGE",
+  LOW_ACCURACY: "LOW_ACCURACY",
+  NO_LOCATION: "NO_LOCATION",
+} as const;
+export type CheckInResult = (typeof CheckInResult)[keyof typeof CheckInResult];
+
+/** Estado de la revisión manual de un check-in que no se verificó solo. */
+export const CheckInReview = {
+  NOT_REQUIRED: "NOT_REQUIRED",
+  PENDING: "PENDING",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED",
+} as const;
+export type CheckInReview = (typeof CheckInReview)[keyof typeof CheckInReview];
+
+/** Quién puede ver una entrada de evidencia. */
+export const EvidenceVisibility = {
+  PARTICIPANTS: "PARTICIPANTS",
+  ADMIN_ONLY: "ADMIN_ONLY",
+} as const;
+export type EvidenceVisibility = (typeof EvidenceVisibility)[keyof typeof EvidenceVisibility];
+
 export const MessageType = {
   TEXT: "TEXT",
   IMAGE: "IMAGE",
@@ -163,14 +188,22 @@ export const NotificationType = {
   JOB_PAID: "JOB_PAID",
   WORKER_ON_THE_WAY: "WORKER_ON_THE_WAY",
   CHECK_IN: "CHECK_IN",
+  JOB_STARTED: "JOB_STARTED",
+  JOB_UPDATE: "JOB_UPDATE",
+  NEW_EVIDENCE: "NEW_EVIDENCE",
   NEW_MESSAGE: "NEW_MESSAGE",
   EXTENSION_REQUESTED: "EXTENSION_REQUESTED",
   EXTENSION_ANSWERED: "EXTENSION_ANSWERED",
+  HANDOFF_REQUESTED: "HANDOFF_REQUESTED",
   JOB_FINISHED: "JOB_FINISHED",
+  JOB_APPROVED: "JOB_APPROVED",
   DISPUTE_OPENED: "DISPUTE_OPENED",
+  DISPUTE_RESOLVED: "DISPUTE_RESOLVED",
   PAYOUT_APPROVED: "PAYOUT_APPROVED",
+  PAYOUT_PAID: "PAYOUT_PAID",
   NEW_REVIEW: "NEW_REVIEW",
   VERIFICATION_UPDATED: "VERIFICATION_UPDATED",
+  JOB_CANCELLED: "JOB_CANCELLED",
 } as const;
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType];
 

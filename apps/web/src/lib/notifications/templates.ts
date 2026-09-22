@@ -65,6 +65,38 @@ export const notificationTemplates: Record<NotificationType, Template> = {
     title: "Nueva reseña",
     body: `${c.actorName ?? "Alguien"} te calificó con ${c.rating ?? "una nueva reseña"}.`,
   }),
+  JOB_STARTED: (c) => ({
+    title: "El trabajo comenzó",
+    body: `${c.actorName ?? "El trabajador"} empezó "${c.jobTitle ?? "el trabajo"}". Te avisamos de cada avance.`,
+  }),
+  JOB_UPDATE: (c) => ({
+    title: "Nueva actualización del trabajo",
+    body: `${c.actorName ?? "El trabajador"} envió novedades de "${c.jobTitle ?? "el trabajo"}".`,
+  }),
+  NEW_EVIDENCE: (c) => ({
+    title: "Nueva evidencia del trabajo",
+    body: `Se adjuntó una foto o comprobante a "${c.jobTitle ?? "el trabajo"}".`,
+  }),
+  HANDOFF_REQUESTED: (c) => ({
+    title: "Te piden el código de entrega",
+    body: `${c.actorName ?? "El trabajador"} está listo para entregarte lo acordado.`,
+  }),
+  JOB_APPROVED: (c) => ({
+    title: "El cliente aprobó el trabajo",
+    body: `Tu pago por "${c.jobTitle ?? "el trabajo"}" quedó aprobado.`,
+  }),
+  DISPUTE_RESOLVED: (c) => ({
+    title: "La disputa se resolvió",
+    body: `Ya hay una decisión sobre "${c.jobTitle ?? "el trabajo"}".`,
+  }),
+  PAYOUT_PAID: (c) => ({
+    title: "Registramos tu transferencia",
+    body: `El pago de "${c.jobTitle ?? "el trabajo"}" quedó registrado como transferido.`,
+  }),
+  JOB_CANCELLED: (c) => ({
+    title: "El trabajo se canceló",
+    body: `"${c.jobTitle ?? "El trabajo"}" quedó cancelado.`,
+  }),
   VERIFICATION_UPDATED: () => ({
     title: "Estado de verificación actualizado",
     body: "Revisa el estado de tu verificación de identidad en tu perfil.",

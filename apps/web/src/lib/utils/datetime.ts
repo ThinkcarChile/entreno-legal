@@ -126,3 +126,16 @@ export function isWeekend(value: string | Date, timeZone: string = DEFAULT_TIMEZ
 export function localHour(value: string | Date, timeZone: string = DEFAULT_TIMEZONE): number {
   return Number(formatInTimeZone(toDate(value), timeZone, "H"));
 }
+
+/**
+ * ¿Ya pasó este instante?
+ *
+ * Vive aquí y no en la pantalla porque leer el reloj durante el render de un
+ * componente es impuro: el mismo render puede dar dos resultados distintos.
+ * Encapsulado, la pantalla hace una llamada normal y el valor se calcula una
+ * sola vez por petición.
+ */
+export function hasPassed(value: string | Date | null | undefined): boolean {
+  if (!value) return false;
+  return toDate(value).getTime() < Date.now();
+}

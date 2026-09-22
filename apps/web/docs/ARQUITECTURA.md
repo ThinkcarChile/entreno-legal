@@ -570,7 +570,91 @@ habría hecho la prueba lenta y, peor, verde por casualidad.
 
 ---
 
-## 9. Verificación del esquema
+## 9. Bloque 3: ejecutar el trabajo, no solo contratarlo
+
+Hasta aquí el recorrido terminaba en «pago confirmado». Las tablas de lo que
+viene después —evidencia, extensiones, PIN de entrega, disputas, payouts—
+estaban creadas desde la Etapa 1, pero nadie las escribía. `docs/EJECUCION.md`
+es la guía completa; aquí van las decisiones.
+
+### 9.1 Ningún estado nuevo: el vocabulario ya existía
+
+`ON_THE_WAY`, `CHECKED_IN`, `IN_PROGRESS`, `HANDOFF_COMPLETED` y `COMPLETED`
+estaban en los enums desde el principio. El modelo conceptual del producto
+—READY, COMPLETION_PENDING, APPROVED— se mapea sobre ellos sin inventar un
+vocabulario paralelo, igual que se hizo en §6.8 con OPEN y ASSIGNED. Lo único
+nuevo son tres enumeraciones pequeñas para el check-in y la evidencia, que no
+tenían equivalente.
+
+### 9.2 Una matriz de permisos, no condiciones por pantalla
+
+`src/lib/domain/permissions.ts` recibe los hechos del trabajo y devuelve qué
+puede hacer quien mira. La interfaz pregunta ahí y nada más.
+
+El motivo no es la elegancia: cuando cada pantalla encadena sus propias
+condiciones, esas condiciones divergen, y aparecen las dos formas de error que
+peor se ven —un botón que no hace nada y una acción válida escondida— sin que el
+compilador diga una palabra. La base vuelve a comprobarlo todo, así que un botón
+de más no abre nada; uno de menos deja a alguien sin poder trabajar.
+
+### 9.3 El avance del trabajo dejó de ser un `UPDATE`
+
+`authenticated` tenía concedido `UPDATE (status, checked_in_at, started_at)`
+sobre `assignments`, y la aplicación escribía la hora con el reloj del navegador.
+Con ese privilegio, el CLIENTE podía marcar «voy en camino» en nombre del
+trabajador: la comprobación del rol vivía solo en TypeScript.
+
+Ahora cada paso es una función que exige sesión, comprueba el papel de quien
+llama y bloquea `jobs → assignments` en el orden canónico de la Etapa 2.5. El
+privilegio de escritura directa se revocó, y con él los de `job_evidence`,
+`job_extensions`, `handoff_codes`, `disputes` y `reviews`. También el `DELETE`
+sobre todo `public`: ningún punto de la aplicación borra filas, y la única
+barrera era que no hubiera política.
+
+### 9.4 La ubicación del check-in no es parte de la línea de tiempo
+
+La prueba de llegada le importa a las dos partes; la posición del teléfono de
+una persona es dato suyo. Se separan: las coordenadas viven en
+`assignment_check_ins`, que solo lee el propio trabajador y la administración, y
+la línea de tiempo recibe el hecho y la distancia. Las columnas `lat`/`lng` que
+`job_evidence` heredaba dejaron de ser legibles para nadie con sesión.
+
+Que un check-in no se verifique no bloquea a nadie sin salida: se puede
+reintentar, adjuntar evidencia y pedir revisión manual. Lo que no se hace nunca
+es dar por buena una llegada que no se pudo comprobar.
+
+### 9.5 Terminar y cobrar son dos acciones de dos personas
+
+El botón del trabajador deja el trabajo esperando; la aprobación del cliente es
+lo único que libera el pago. Sin esa separación, «terminé» y «me pagan» serían
+la misma acción decidida por una sola parte.
+
+### 9.6 La evidencia se valida por contenido, no por lo que dice el navegador
+
+Los archivos se suben desde el servidor. Ahí se pueden mirar los primeros bytes
+antes de guardar, y no solo el tipo declarado: un ejecutable renombrado a `.jpg`
+declara `image/jpeg` en el formulario; su firma, no. SVG queda fuera a
+propósito: es un documento que puede llevar script y se serviría desde el mismo
+origen.
+
+### 9.7 El cobro del tiempo adicional tiene su propio camino
+
+Un pago de extensión llega con el trabajo ya en curso, así que caía en la rama
+de «confirmación tardía» de la Etapa 2.5 y terminaba marcado para devolución.
+Se le dio su propia rama, con las mismas exigencias, y lo único que produce al
+confirmarse es más dinero en el payout que ya existe: no habilita nada.
+
+### 9.8 Las métricas del trabajador se calculan
+
+Trabajos completados, minutos, cancelaciones, cumplimiento y puntualidad salen
+de los hechos, no de un contador que alguien incrementa. Hasta ahora se quedaban
+en cero para siempre. El Índice de Confianza se deriva de esas cifras en la
+aplicación, donde ya vivía: replicarlo en SQL sería la tercera copia de la misma
+regla.
+
+---
+
+## 10. Verificación del esquema
 
 El esquema no se entrega "escrito y sin ejecutar". Se aplica y se prueba contra un
 PostgreSQL real:
@@ -601,16 +685,17 @@ contraste entre el código y el esquema (`scripts/check-db-contract.sh`) que ver
 que cada tabla, vista, función y columna que usa la aplicación exista de verdad.
 Ese contraste encontró el defecto descrito en §6.5.
 
-### 9.1 Tres niveles de verificación, con propósitos distintos
+### 10.1 Niveles de verificación, con propósitos distintos
 
 | Comando | Contra qué | Qué cubre |
 |---|---|---|
-| `npm run db:test` | PostgreSQL local | Esquema, RLS, flujo, concurrencia, semillas, inventario, endurecimiento de las RPC, política de cancelación y pago con carreras reales. 141 comprobaciones |
+| `npm run db:test` | PostgreSQL local | Esquema, RLS, flujo, concurrencia, semillas, inventario, endurecimiento de las RPC, política de cancelación y pago, y ejecución completa del trabajo. Todo con carreras reales. 179 comprobaciones |
 | `npm run db:push:hosted -- --plan` | Supabase real | Qué migraciones faltan por aplicar, sin escribir nada |
 | `npm run verify:schema:hosted` | Supabase real | Inventario, RLS, `security_invoker`, grants, Realtime y advisors. 18 comprobaciones |
 | `npm run verify:supabase` | Supabase real | El mismo recorrido por API, más Realtime, Storage y Auth, y las escrituras directas que deben fallar. 61 comprobaciones |
 | `npm run verify:payments` | Supabase real | Cancelación contra confirmación tardía, duplicada y simultánea, con el proveedor retardado y las piezas de la aplicación. 23 comprobaciones |
-| `npm run e2e` | Supabase real, por navegador | Entrar, publicar, ofertar, aceptar, pagar |
+| `npm run verify:execution` | Supabase real | Ejecución del trabajo con sesiones reales: papeles, privacidad de la ubicación, extensiones, PIN, disputas, transferencia y carreras. 24 comprobaciones |
+| `npm run e2e` | Supabase real, por navegador | Entrar, publicar, ofertar, aceptar, pagar y ejecutar el trabajo hasta la aprobación. 17 pruebas |
 
 Todos se mantienen. El local es rápido y corre siempre, incluso sin
 credenciales; el de integración prueba lo que solo existe en Supabase (Auth,
@@ -618,9 +703,9 @@ Realtime, Storage); el de navegador prueba que la interfaz conecta bien las dos
 cosas. Ninguno reemplaza a los otros.
 
 El inventario del esquema (`05_schema_inventory.sql`) comprueba además que las
-32 tablas tengan RLS activo y que las 5 vistas usen `security_invoker`. Es la
+33 tablas tengan RLS activo y que las 6 vistas usen `security_invoker`. Es la
 comprobación que impide que una tabla nueva quede abierta por olvido.
 
-## 10. Qué queda fuera todavía
+## 11. Qué queda fuera todavía
 
 Ver `docs/HOJA-DE-RUTA.md`.

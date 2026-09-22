@@ -50,13 +50,14 @@ Construido y verificado:
 - [x] Migraciones repetibles donde el proyecto de destino puede traer el objeto
 - [x] Carga de fotografía de perfil a Storage, con nombre generado por la aplicación
 - [x] Indicador de origen de datos visible solo en desarrollo
-- [x] `npm run db:push:hosted`: las 23 migraciones aplicadas por HTTPS
+- [x] `npm run db:push:hosted`: las 27 migraciones aplicadas por HTTPS
 - [x] `npm run db:seed:hosted`: 1 país, 16 regiones, 346 comunas
 - [x] `npm run verify:schema:hosted`: inventario, RLS, `security_invoker`, grants
       de `anon`, `search_path`, publicación de Realtime, URLs de retorno y advisors
 - [x] `npm run verify:supabase`: 61 de 61 comprobaciones
-- [x] `npm run e2e`: 11 de 11, con las siete del marketplace ejecutándose de verdad
-- [x] `npm run db:test`: 141 comprobaciones contra PostgreSQL 16 local
+- [x] `npm run e2e`: 17 de 17, con las siete del marketplace y las seis de la
+      ejecución del trabajo ejecutándose de verdad
+- [x] `npm run db:test`: 179 comprobaciones contra PostgreSQL 16 local
 - [x] Recorrido a mano con dos ventanas: 19 de 21 pasos (los dos restantes
       necesitan que el navegador alcance Supabase, ver abajo)
 - [x] `docs/DESPLIEGUE-SUPABASE.md` con los pasos exactos
@@ -214,17 +215,73 @@ Pendiente, y no es código:
 4. **Payouts**: aprobación en `/admin/payouts` con referencia bancaria y
    liberación automática al vencer `DISPUTE_WINDOW_HOURS`.
 
+## Bloque 3 — Ejecución completa del trabajo (completada)
+
+El recorrido terminaba en «pago confirmado». Las tablas de lo que venía después
+existían desde la Etapa 1 y nadie las escribía. Ver `docs/EJECUCION.md`.
+
+- [x] **Avance del trabajo por funciones del servidor**, no por `UPDATE`:
+      ir en camino, check-in, comenzar, informar, entregar y cerrar. Cada paso
+      comprueba el papel de quien llama y bloquea `jobs → assignments`
+- [x] **Matriz de permisos central** (`src/lib/domain/permissions.ts`): una sola
+      función decide qué se muestra, y la base vuelve a comprobar qué se permite
+- [x] **Check-in con consentimiento y geolocalización**, con las coordenadas
+      fuera del alcance de la contraparte, revisión manual cuando no se verifica
+      y tolerancias en `platform_settings`
+- [x] **Evidencia real en Storage privado**, validada por contenido y no por el
+      tipo declarado, con URL firmadas de 60 segundos
+- [x] **Extensiones de extremo a extremo**: solicitud del trabajador, respuesta
+      definitiva del cliente, importe calculado en la base y cobro separado que
+      solo suma al payout cuando se confirma
+- [x] **PIN de entrega** completo, con un solo uso, cinco intentos, caducidad,
+      regeneración y sin viajar por el chat ni por los avisos
+- [x] **Finalización en dos pasos**: el trabajador pide, el cliente aprueba, y
+      solo la aprobación libera el pago. Con evaluación del bono
+- [x] **Disputas** con pruebas de ambas partes y resolución administrativa que
+      libera, recorta o cancela el pago al trabajador
+- [x] **Payouts**: aprobación, retención con motivo y registro de la
+      transferencia con referencia bancaria, todo desde `/admin/payouts`
+- [x] **Reputación calculada**: trabajos completados, minutos, cancelaciones,
+      cumplimiento y puntualidad salen de los hechos
+- [x] **Mis ganancias** para el trabajador, con el estado real de cada pago
+- [x] **Panel interno** con las colas que esperan una decisión
+- [x] `npm run db:test`: 179 comprobaciones · `npm run verify:execution`: 24 ·
+      `npm run e2e`: 17
+
+Defectos reales que destapó, todos corregidos:
+
+- [x] **El cliente podía marcar «voy en camino» por el trabajador.** El
+      privilegio de columna sobre `assignments.status` existía y la comprobación
+      del rol vivía solo en TypeScript
+- [x] **Un participante podía aceptar su propia extensión.** `job_extensions`
+      tenía `UPDATE` sobre todas sus columnas y una política que dejaba pasar a
+      cualquiera de los dos
+- [x] **Una disputa se podía insertar ya resuelta a favor de quien la abría**,
+      añadiendo `status` y `resolution` al `INSERT` directo
+- [x] **Nadie podía aportar una prueba a una disputa**: `dispute_evidence` tenía
+      política de `INSERT` y ningún privilegio
+- [x] **Un código de entrega vencido no se podía regenerar nunca**, así que la
+      entrega quedaba bloqueada para siempre
+- [x] **La contraparte no podía abrir la evidencia**: la política de Storage solo
+      alcanzaba al autor del archivo
+- [x] **`dispute_deadline_at` no lo escribía nadie**, así que la ventana de
+      reclamo no se aplicaba en ninguna parte
+- [x] **Abrir una disputa sobre un trabajo cancelado reventaba**:
+      `hold_payout_on_dispute` forzaba `DISPUTED` sin mirar el estado previo
+- [x] **Un hito del sistema se podía forjar** escribiendo `job_evidence`
+      directamente con `evidence_type = 'SYSTEM'`
+- [x] **`DELETE` seguía concedido en 28 relaciones** de `public`, con la sola
+      barrera de que no hubiera política
+
 ## Etapa 5 — Ejecución del trabajo
 
-5. **Carga de imágenes** a Supabase Storage: en el asistente de publicación, en
-   el perfil del trabajador y en la evidencia del trabajo.
-6. **Check-in con geolocalización** desde el teléfono.
+5. **Carga de imágenes** del trabajo publicado y del perfil del trabajador (la
+   evidencia del trabajo y de las disputas ya sube de verdad).
 7. **Imágenes en el chat** (el modelo y el bucket ya existen).
-8. **Extensiones de trabajo** de extremo a extremo: solicitud, aceptación
-   explícita del trabajador y cobro del tiempo adicional.
-9. **PIN de entrega** en la interfaz. Las funciones de la base ya están.
-10. **Evaluación del bono por objetivo** al cerrar el trabajo.
+10. **Liberación automática** del payout al vencer la ventana de disputa: hoy la
+    aprobación es siempre del cliente.
 11. **Proceso que marque `EXPIRED`** los trabajos cuya fecha pasó sin asignación.
+12. **FilaPuntos**: `apply_loyalty_transaction` existe y nadie la llama.
 
 ## Etapa 6 — Confianza y comunidad
 
@@ -257,6 +314,8 @@ Pendiente, y no es código:
 | ~~Sin recorrido contra Supabase real~~ | Resuelto: el esquema está aplicado en `hagotufila-dev` y pasaron `verify:supabase` (61/61), `e2e` (11/11) y el recorrido a mano | — |
 | ~~Políticas de Storage sobre `storage.objects`~~ | Resuelto: la migración `…000900` creó las 11 políticas en el proyecto alojado sin intervención manual, y V07 las cuenta | — |
 | ~~`getClaims()` no ejercitado contra un proyecto real~~ | Resuelto: `verify:supabase` abre cuatro sesiones simultáneas y comprueba que ninguna se cruza | — |
+| Ubicación del check-in falseable | Un teléfono puede mentir su posición: comprobar la distancia no lo descarta | Revisión manual con evidencia, y el registro con hora del servidor como respaldo en una disputa |
+| Transferencias al trabajador manuales | Se registran con referencia bancaria, pero las hace una persona fuera de la plataforma | Integración bancaria o de payouts, posterior a la Etapa 4 |
 | Devolución pendiente sin reembolso real | Un pago que llegó tras la cancelación queda `UNDER_REVIEW` con `captured_at`; nadie lo devuelve todavía y ninguna tarea vigila los trabajos que se quedan en `CANCELLATION_PENDING` si el proveedor no responde | Etapa 4: reembolso con el SDK y conciliación de pagos en vuelo (`docs/PAGOS.md` §9) |
 | Realtime no visto desde un navegador | La entrega funciona entre sesiones reales por API, pero el navegador del entorno donde se validó no alcanza Supabase | Repetir M15 y M16 del recorrido a mano en una máquina con salida normal |
 | `database.types.ts` genérico | Los tipos no reflejan las columnas reales, así que un error de nombre solo lo detecta `db:contract` | Generar los tipos con la CLI al crear el proyecto |

@@ -2,9 +2,33 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { CalendarClock, ChevronLeft, Gift, MessageSquare, Target } from "lucide-react";
+import {
+  CalendarClock,
+  ChevronLeft,
+  Gift,
+  MessageSquare,
+  Paperclip,
+  Target,
+} from "lucide-react";
 
-import { AssignmentActions } from "@/components/jobs/assignment-actions";
+import { EvidenceForm } from "@/components/jobs/execution/evidence-form";
+import { EvidenceGallery } from "@/components/jobs/execution/evidence-gallery";
+import {
+  ExtensionAnswer,
+  ExtensionPaymentPrompt,
+  ExtensionRequestForm,
+} from "@/components/jobs/execution/extension-panel";
+import {
+  ApprovalPanel,
+  DisputeForm,
+} from "@/components/jobs/execution/completion-panel";
+import {
+  ClientHandoffPanel,
+  WorkerHandoffPanel,
+} from "@/components/jobs/execution/handoff-panel";
+import { ReviewForm } from "@/components/jobs/execution/review-form";
+import { WorkerSteps } from "@/components/jobs/execution/worker-steps";
+import { WorkTimer } from "@/components/jobs/execution/work-timer";
 import { JobLocationBlock } from "@/components/jobs/job-location";
 import { JobTimeline } from "@/components/jobs/job-timeline";
 import { Amount, Avatar, Badge, ButtonLink, Card, CardContent } from "@/components/ui";
@@ -12,10 +36,28 @@ import { Alert } from "@/components/ui/feedback";
 import { site } from "@/config/site";
 import { requireOnboardedUser } from "@/lib/auth/session";
 import { getData } from "@/lib/data";
-import { AssignmentStatus, JobStatus, PaymentStatus } from "@/lib/domain/enums";
-import { isCancellationPending, isPayable, workerFacingStage } from "@/lib/domain/job-actions";
-import { assignmentStatusLabels } from "@/lib/domain/labels";
-import { formatDate, formatDuration, formatTime } from "@/lib/utils/datetime";
+import {
+  AssignmentStatus,
+  CheckInReview,
+  DisputeStatus,
+  ExtensionStatus,
+  JobStatus,
+  PaymentStatus,
+  PayoutStatus,
+} from "@/lib/domain/enums";
+import { isCancellationPending } from "@/lib/domain/job-actions";
+import { assignmentStatusLabels, payoutStatusLabels } from "@/lib/domain/labels";
+import {
+  assignmentAbilities,
+  checkInNeedsReview,
+  checkInUnlocks,
+  isDisputeOpen,
+  isExtensionPending,
+  nextWorkerStep,
+  waitingFor,
+  type AssignmentFacts,
+} from "@/lib/domain/permissions";
+import { formatDate, formatDuration, formatTime, hasPassed } from "@/lib/utils/datetime";
 import { formatPercent } from "@/lib/utils/format";
 
 export const metadata: Metadata = {
@@ -29,10 +71,13 @@ interface PageProps {
 }
 
 /**
- * Pantalla central del trabajo asignado.
+ * Centro operativo del trabajo asignado.
  *
- * Es la misma para cliente y trabajador; cambian las acciones disponibles, que
- * se derivan del estado y del rol, nunca de condiciones sueltas en el marcado.
+ * Es la misma página para cliente y trabajador. Lo que cambia no lo deciden
+ * condiciones sueltas en el marcado, sino `assignmentAbilities`: una sola
+ * función que mira rol, estados, disputa y extensiones y dice qué se puede
+ * hacer. La base vuelve a comprobarlo todo, así que un botón de más no abre
+ * nada; un botón de menos, en cambio, deja a alguien sin poder trabajar.
  */
 export default async function AssignmentPage({ params, searchParams }: PageProps) {
   const { id } = await params;
@@ -43,25 +88,64 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
 
   if (!detail) notFound();
 
-  const { assignment, job, client, worker, payment, settlement, timeline } = detail;
+  const {
+    assignment,
+    job,
+    client,
+    worker,
+    payment,
+    settlement,
+    timeline,
+    checkIns,
+    extensions,
+    extensionPayments,
+    dispute,
+    payout,
+    reviewAuthors,
+  } = detail;
+
   const isClient = assignment.clientId === session.id;
   const isWorker = assignment.workerId === session.id;
-
-  // RLS ya lo impediría, pero conviene una redirección entendible.
   if (!isClient && !isWorker) redirect("/mis-trabajos");
 
+  const pendingExtension = extensions.find((e) => isExtensionPending(e.status, e.expiresAt));
+  const acceptedUnpaid = extensions.find(
+    (e) =>
+      e.status === ExtensionStatus.ACCEPTED &&
+      extensionPayments[e.id]?.status !== PaymentStatus.PAID,
+  );
+
+  const facts: AssignmentFacts = {
+    party: isClient ? "client" : "worker",
+    jobStatus: job.status,
+    assignmentStatus: assignment.status,
+    paymentStatus: payment?.status ?? null,
+    hasOpenDispute: dispute ? isDisputeOpen(dispute.status) : false,
+    pendingExtension: Boolean(pendingExtension),
+    hasValidCheckIn: checkIns.some((c) => checkInUnlocks(c.result, c.reviewStatus)),
+    hasCheckInUnderReview: checkIns.some((c) => checkInNeedsReview(c.reviewStatus)),
+    payoutStatus: payout?.status ?? null,
+    disputeWindowClosed: hasPassed(assignment.disputeDeadlineAt),
+    hasReviewed: reviewAuthors.includes(session.id),
+  };
+
+  const can = assignmentAbilities(facts);
+  const step = nextWorkerStep(facts, can);
   const status = assignmentStatusLabels[assignment.status];
   const counterpart = isClient ? worker.profile : client;
-  const paid = payment?.status === PaymentStatus.PAID;
   const cancellationPending = isCancellationPending(job.status);
   const cancelled =
     job.status === JobStatus.CANCELLED ||
     assignment.status === AssignmentStatus.CANCELLED_BY_CLIENT ||
     assignment.status === AssignmentStatus.CANCELLED_BY_WORKER;
+  const paid = payment?.status === PaymentStatus.PAID;
   const paymentUnderReview = payment?.status === PaymentStatus.UNDER_REVIEW;
-  // Solo se pide el pago mientras el trabajo de verdad lo espera: nunca con la
-  // cancelación en verificación ni sobre un trabajo cancelado.
-  const canPay = isClient && !paid && isPayable(job.status);
+
+  const lastCheckIn = checkIns[0] ?? null;
+  const checkInReason =
+    lastCheckIn && lastCheckIn.reviewStatus === CheckInReview.PENDING
+      ? lastCheckIn.reviewReason
+      : null;
 
   return (
     <div className="container-page py-6 sm:py-10">
@@ -90,8 +174,30 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
             <h1 className="mt-3 text-2xl font-semibold tracking-tight text-ink-900 sm:text-3xl">
               {job.title}
             </h1>
-            <p className="mt-1.5 text-sm text-ink-600">{workerFacingStage(assignment.status)}</p>
+            <p className="mt-1.5 text-sm text-ink-600">{waitingFor(facts)}</p>
           </header>
+
+          {/* ------------------------------------------------ avisos de estado */}
+
+          {facts.hasOpenDispute && dispute && (
+            <Alert tone="danger" title="Hay una disputa abierta">
+              {dispute.reason}. El pago al trabajador está retenido mientras la administración
+              revisa el caso.
+            </Alert>
+          )}
+
+          {dispute?.status === DisputeStatus.RESOLVED && (
+            <Alert tone="info" title="La disputa se resolvió">
+              {dispute.resolutionNotes}
+              {dispute.refundAmount && dispute.refundAmount.amount > 0 && (
+                <>
+                  {" "}
+                  Se registró una devolución de <Amount value={dispute.refundAmount} /> a favor del
+                  cliente. Queda anotada para procesarse; no es una devolución bancaria hecha.
+                </>
+              )}
+            </Alert>
+          )}
 
           {cancellationPending && (
             <Alert tone="warning" title="Cancelación en verificación">
@@ -133,6 +239,18 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
             </Alert>
           )}
 
+          {/* --------------------------------------------- tiempo del trabajo */}
+
+          {assignment.startedAt && (
+            <WorkTimer
+              startedAt={assignment.startedAt}
+              expectedEndAt={assignment.expectedEndAt}
+              completedAt={assignment.completedAt}
+            />
+          )}
+
+          {/* ------------------------------------------------ contraparte */}
+
           <Card>
             <CardContent className="space-y-6">
               <div className="flex items-center gap-3.5 border-b border-ink-100 pb-5">
@@ -143,7 +261,7 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
                   </p>
                   <p className="font-medium text-ink-900">{counterpart.displayName}</p>
                 </div>
-                {detail.conversationId && (
+                {detail.conversationId && can.canChat && (
                   <ButtonLink
                     href={`/mensajes/${detail.conversationId}`}
                     variant="outline"
@@ -159,7 +277,11 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
               <JobLocationBlock location={job.location} />
 
               <div className="flex gap-3.5">
-                <CalendarClock size={18} className="mt-0.5 shrink-0 text-ink-400" aria-hidden="true" />
+                <CalendarClock
+                  size={18}
+                  className="mt-0.5 shrink-0 text-ink-400"
+                  aria-hidden="true"
+                />
                 <div>
                   <p className="text-xs font-medium tracking-wide text-ink-500 uppercase">Cuándo</p>
                   <p className="mt-1 text-[0.9375rem] text-ink-700 first-letter:uppercase">
@@ -168,6 +290,9 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
                   <p className="text-[0.9375rem] text-ink-500">
                     Desde las {formatTime(job.startsAt, job.timezone)} ·{" "}
                     {formatDuration(assignment.agreedDurationMinutes)}
+                    {assignment.extensionMinutes > 0 && (
+                      <> + {formatDuration(assignment.extensionMinutes)} de extensión</>
+                    )}
                   </p>
                 </div>
               </div>
@@ -211,6 +336,22 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
             </CardContent>
           </Card>
 
+          {/* ------------------------------------------------ actualizaciones */}
+
+          {can.canAddEvidence && (
+            <Card>
+              <CardContent>
+                <h2 className="text-base font-semibold text-ink-900">
+                  {isWorker ? "Informar al cliente" : "Aportar una nota o foto"}
+                </h2>
+                <p className="mt-1 mb-4 text-sm text-ink-500">
+                  Todo lo que envíes queda en la línea de tiempo del trabajo y sirve como evidencia.
+                </p>
+                <EvidenceForm assignmentId={assignment.id} />
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardContent>
               <h2 className="text-base font-semibold text-ink-900">Avance del trabajo</h2>
@@ -219,7 +360,37 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
               </div>
             </CardContent>
           </Card>
+
+          {timeline.some((entry) => entry.storagePath) && (
+            <Card>
+              <CardContent>
+                <h2 className="flex items-center gap-2 text-base font-semibold text-ink-900">
+                  <Paperclip size={17} className="text-ink-400" aria-hidden="true" />
+                  Evidencia adjunta
+                </h2>
+                <div className="mt-4">
+                  <EvidenceGallery entries={timeline} timezone={job.timezone} />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {can.canReview && (
+            <Card>
+              <CardContent>
+                <h2 className="text-base font-semibold text-ink-900">¿Cómo fue tu experiencia?</h2>
+                <div className="mt-4">
+                  <ReviewForm
+                    assignmentId={assignment.id}
+                    counterpartName={counterpart.displayName}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
+
+        {/* ------------------------------------------------------- columna lateral */}
 
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
           <Card>
@@ -240,7 +411,9 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
                 </div>
                 {settlement.bonusAmount.amount > 0 && (
                   <div className="flex justify-between gap-4">
-                    <dt className="text-ink-600">Bono potencial</dt>
+                    <dt className="text-ink-600">
+                      {assignment.bonusAwarded === false ? "Bono no otorgado" : "Bono potencial"}
+                    </dt>
                     <dd className="text-ink-900 tabular-nums">
                       <Amount value={settlement.bonusAmount} />
                     </dd>
@@ -255,22 +428,127 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
                   </dd>
                 </div>
               </dl>
+
+              {isWorker && payout && (
+                <p className="mt-4 border-t border-ink-100 pt-4 text-sm">
+                  <span className="text-ink-600">Estado de tu pago: </span>
+                  <Badge tone={payoutStatusLabels[payout.status].tone}>
+                    {payoutStatusLabels[payout.status].label}
+                  </Badge>
+                  {payout.status === PayoutStatus.PAID && payout.bankReference && (
+                    <span className="mt-1 block text-xs text-ink-500">
+                      Referencia {payout.bankReference}
+                    </span>
+                  )}
+                </p>
+              )}
             </CardContent>
           </Card>
 
-          {isWorker && !cancellationPending && !cancelled && (
+          {/* --- El paso del trabajador --- */}
+          {isWorker && step && (
             <Card>
               <CardContent>
-                <AssignmentActions assignmentId={assignment.id} status={assignment.status} />
+                <WorkerSteps
+                  assignmentId={assignment.id}
+                  step={step}
+                  lastCheckInReason={checkInReason}
+                />
               </CardContent>
             </Card>
           )}
 
-          {canPay && (
+          {/* --- Código de entrega --- */}
+          {(can.canVerifyHandoffCode || (isClient && can.canGenerateHandoffCode)) && (
+            <Card>
+              <CardContent>
+                <h2 className="mb-3 text-base font-semibold text-ink-900">Código de entrega</h2>
+                {isWorker ? (
+                  <WorkerHandoffPanel assignmentId={assignment.id} />
+                ) : (
+                  <ClientHandoffPanel
+                    assignmentId={assignment.id}
+                    canGenerate={can.canGenerateHandoffCode}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* --- Tiempo adicional --- */}
+          {(can.canRequestExtension || (can.canAnswerExtension && pendingExtension)) && (
+            <Card>
+              <CardContent className="space-y-3">
+                <h2 className="text-base font-semibold text-ink-900">Tiempo adicional</h2>
+                {can.canAnswerExtension && pendingExtension ? (
+                  <ExtensionAnswer assignmentId={assignment.id} extension={pendingExtension} />
+                ) : (
+                  <ExtensionRequestForm assignmentId={assignment.id} />
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {isClient && acceptedUnpaid && (
+            <ExtensionPaymentPrompt
+              extension={acceptedUnpaid}
+              payment={extensionPayments[acceptedUnpaid.id] ?? null}
+            />
+          )}
+
+          {isWorker && pendingExtension && (
+            <Alert tone="info" title="Solicitud enviada">
+              El cliente tiene que responder a tu solicitud de{" "}
+              {formatDuration(pendingExtension.additionalMinutes)} más.
+            </Alert>
+          )}
+
+          {/* --- Aprobación del cliente --- */}
+          {can.canApproveCompletion && (
+            <Card>
+              <CardContent className="space-y-3">
+                <h2 className="text-base font-semibold text-ink-900">Cerrar el trabajo</h2>
+                <p className="text-sm text-ink-600">
+                  {assignment.completionRequestedAt
+                    ? "El trabajador dio por terminado el trabajo. Revisa el avance y la evidencia antes de aprobar."
+                    : "Puedes aprobar cuando el trabajo esté hecho a tu conformidad."}
+                </p>
+                {assignment.completionNote && (
+                  <p className="rounded-[var(--radius-control)] bg-ink-50 p-3 text-sm text-ink-700">
+                    {assignment.completionNote}
+                  </p>
+                )}
+                <ApprovalPanel
+                  assignmentId={assignment.id}
+                  bonus={assignment.bonus}
+                  bonusConditions={job.objective.bonusConditions}
+                  workerReceives={settlement.workerReceives}
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* --- Reportar un problema --- */}
+          {can.canOpenDispute && (
+            <Card>
+              <CardContent>
+                <DisputeForm assignmentId={assignment.id} />
+              </CardContent>
+            </Card>
+          )}
+
+          {can.canPay && (
             <ButtonLink href={`/pagar/${assignment.id}`} size="lg" fullWidth>
               Confirmar el pago
             </ButtonLink>
           )}
+
+          <p className="text-center text-xs text-ink-500">
+            ¿Necesitas ayuda?{" "}
+            <Link href="/contacto" className="font-medium underline underline-offset-2">
+              Escríbenos
+            </Link>
+          </p>
         </aside>
       </div>
     </div>

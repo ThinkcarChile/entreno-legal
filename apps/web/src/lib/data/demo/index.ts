@@ -14,14 +14,19 @@ import {
 import { demoProfiles, demoWorkers } from "./people";
 
 import type {
+  AdminDispute,
+  AdminPayout,
+  AdminQueues,
   AdminRepository,
   CategoryRepository,
   ConversationRepository,
   DataAccess,
+  EarningsRepository,
   JobFilters,
   JobRepository,
   NotificationRepository,
   Page,
+  PendingCheckIn,
   PlatformKpis,
   ProfileRepository,
   SessionRepository,
@@ -32,6 +37,8 @@ import type {
   AppNotification,
   AssignmentDetail,
   ClientJobSummary,
+  Earning,
+  EarningsSummary,
   ConversationDetail,
   ConversationSummary,
   Job,
@@ -264,6 +271,36 @@ class DemoAdminRepository implements AdminRepository {
   async listVerifications(): Promise<readonly VerificationRequest[]> {
     return [];
   }
+
+  // El panel interno no tiene datos de demostración: enseñar disputas o pagos
+  // inventados en una pantalla de administración se presta a confusión.
+  async getQueues(): Promise<AdminQueues> {
+    return { checkIns: 0, disputes: 0, payouts: 0, refunds: 0, extensions: 0 };
+  }
+
+  async listPendingCheckIns(): Promise<readonly PendingCheckIn[]> {
+    return [];
+  }
+
+  async listDisputes(): Promise<readonly AdminDispute[]> {
+    return [];
+  }
+
+  async listPayouts(): Promise<readonly AdminPayout[]> {
+    return [];
+  }
+}
+
+/** Sin sesión real no hay ganancias que mostrar. */
+class DemoEarningsRepository implements EarningsRepository {
+  async listMine(): Promise<readonly Earning[]> {
+    return [];
+  }
+
+  async summary(): Promise<EarningsSummary> {
+    const zero = money(0);
+    return { pending: zero, approved: zero, held: zero, paid: zero, cancelled: zero };
+  }
 }
 
 export function createDemoDataAccess(): DataAccess {
@@ -278,5 +315,6 @@ export function createDemoDataAccess(): DataAccess {
     notifications: new DemoNotificationRepository(),
     settings: new DemoSettingsRepository(),
     admin: new DemoAdminRepository(),
+    earnings: new DemoEarningsRepository(),
   };
 }

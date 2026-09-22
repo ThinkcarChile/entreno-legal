@@ -1,10 +1,19 @@
 import { money } from "@/lib/utils/money";
 import { publicDisplayName } from "@/lib/utils/format";
 
-import { type Client } from "./shared";
+import { mapDispute, mapPayout, type DisputeRow, type PayoutRow } from "./mappers";
+import { DISPUTE_COLUMNS, PAYOUT_COLUMNS, type Client } from "./shared";
+import { loadProfiles } from "./jobs";
 
-import type { AdminRepository, PlatformKpis } from "../repositories";
-import type { VerificationStatus } from "@/lib/domain/enums";
+import type {
+  AdminDispute,
+  AdminPayout,
+  AdminQueues,
+  AdminRepository,
+  PendingCheckIn,
+  PlatformKpis,
+} from "../repositories";
+import type { CheckInResult, PayoutStatus, VerificationStatus } from "@/lib/domain/enums";
 import type { VerificationRequest } from "@/lib/domain/types";
 
 interface VerificationRow {
@@ -96,6 +105,184 @@ export class SupabaseAdminRepository implements AdminRepository {
         rejectionReason: row.rejection_reason,
         createdAt: row.created_at,
         reviewedAt: row.reviewed_at,
+      };
+    });
+  }
+
+  /* ------------------------------------------------- colas del Bloque 3 */
+
+  /**
+   * Lo que espera una decisión. Lo cuenta la base con `admin_pending_reviews`,
+   * que comprueba el rol antes de contestar: si alguien sin permiso abre el
+   * panel, no recibe cifras, recibe un error.
+   */
+  async getQueues(): Promise<AdminQueues> {
+    const supabase = await this.getClient();
+    const { data, error } = await supabase.rpc("admin_pending_reviews");
+    if (error) throw error;
+    const row = (data ?? {}) as Record<string, number>;
+    return {
+      checkIns: Number(row.check_ins ?? 0),
+      disputes: Number(row.disputes ?? 0),
+      payouts: Number(row.payouts ?? 0),
+      refunds: Number(row.refunds ?? 0),
+      extensions: Number(row.extensions ?? 0),
+    };
+  }
+
+  async listPendingCheckIns(): Promise<readonly PendingCheckIn[]> {
+    const supabase = await this.getClient();
+    const { data, error } = await supabase
+      .from("assignment_check_ins")
+      .select("id,assignment_id,job_id,worker_id,result,distance_m,review_reason,occurred_at")
+      .eq("review_status", "PENDING")
+      .order("occurred_at", { ascending: true })
+      .limit(100)
+      .returns<
+        {
+          id: string;
+          assignment_id: string;
+          job_id: string;
+          worker_id: string;
+          result: string;
+          distance_m: number | null;
+          review_reason: string | null;
+          occurred_at: string;
+        }[]
+      >();
+
+    if (error) throw error;
+    const rows = data ?? [];
+    if (rows.length === 0) return [];
+
+    const [jobs, profiles] = await Promise.all([
+      supabase
+        .from("jobs")
+        .select("id,title,reference")
+        .in("id", [...new Set(rows.map((r) => r.job_id))])
+        .returns<{ id: string; title: string; reference: string }[]>(),
+      loadProfiles(supabase, [...new Set(rows.map((r) => r.worker_id))]),
+    ]);
+
+    const jobById = new Map((jobs.data ?? []).map((j) => [j.id, j]));
+
+    return rows.map((row) => ({
+      id: row.id,
+      assignmentId: row.assignment_id,
+      jobId: row.job_id,
+      jobTitle: jobById.get(row.job_id)?.title ?? "Trabajo",
+      jobReference: jobById.get(row.job_id)?.reference ?? "",
+      workerName: profiles.get(row.worker_id)?.displayName ?? "Trabajador",
+      result: row.result as CheckInResult,
+      distanceM: row.distance_m,
+      reviewReason: row.review_reason,
+      occurredAt: row.occurred_at,
+    }));
+  }
+
+  async listDisputes(onlyOpen = false): Promise<readonly AdminDispute[]> {
+    const supabase = await this.getClient();
+    let query = supabase
+      .from("disputes")
+      .select(DISPUTE_COLUMNS)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (onlyOpen) query = query.in("status", ["OPEN", "UNDER_REVIEW"]);
+
+    const { data, error } = await query.returns<DisputeRow[]>();
+    if (error) throw error;
+    const rows = data ?? [];
+    if (rows.length === 0) return [];
+
+    const assignmentIds = [...new Set(rows.map((r) => r.assignment_id))];
+    const { data: assignments } = await supabase
+      .from("assignments")
+      .select("id,job_id,client_id,worker_id")
+      .in("id", assignmentIds)
+      .returns<{ id: string; job_id: string; client_id: string; worker_id: string }[]>();
+
+    const assignmentById = new Map((assignments ?? []).map((a) => [a.id, a]));
+
+    const [jobs, profiles, payouts] = await Promise.all([
+      supabase
+        .from("jobs")
+        .select("id,title,reference")
+        .in("id", [...new Set((assignments ?? []).map((a) => a.job_id))])
+        .returns<{ id: string; title: string; reference: string }[]>(),
+      loadProfiles(supabase, [
+        ...new Set((assignments ?? []).flatMap((a) => [a.client_id, a.worker_id])),
+      ]),
+      supabase
+        .from("payouts")
+        .select("assignment_id,status,net_amount")
+        .in("assignment_id", assignmentIds)
+        .returns<{ assignment_id: string; status: string; net_amount: number }[]>(),
+    ]);
+
+    const jobById = new Map((jobs.data ?? []).map((j) => [j.id, j]));
+    const payoutByAssignment = new Map((payouts.data ?? []).map((p) => [p.assignment_id, p]));
+
+    return rows.map((row) => {
+      const assignment = assignmentById.get(row.assignment_id);
+      const job = assignment ? jobById.get(assignment.job_id) : undefined;
+      const payout = payoutByAssignment.get(row.assignment_id);
+      return {
+        dispute: mapDispute(row),
+        jobId: assignment?.job_id ?? "",
+        jobTitle: job?.title ?? "Trabajo",
+        jobReference: job?.reference ?? "",
+        clientName: assignment ? (profiles.get(assignment.client_id)?.displayName ?? "Cliente") : "",
+        workerName: assignment
+          ? (profiles.get(assignment.worker_id)?.displayName ?? "Trabajador")
+          : "",
+        amountHeld: payout ? money(payout.net_amount) : null,
+        payoutStatus: (payout?.status as PayoutStatus | undefined) ?? null,
+      };
+    });
+  }
+
+  async listPayouts(status?: PayoutStatus): Promise<readonly AdminPayout[]> {
+    const supabase = await this.getClient();
+    let query = supabase
+      .from("payouts")
+      .select(PAYOUT_COLUMNS)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (status) query = query.eq("status", status);
+
+    const { data, error } = await query.returns<PayoutRow[]>();
+    if (error) throw error;
+    const rows = data ?? [];
+    if (rows.length === 0) return [];
+
+    const { data: assignments } = await supabase
+      .from("assignments")
+      .select("id,job_id,completed_at")
+      .in("id", [...new Set(rows.map((r) => r.assignment_id))])
+      .returns<{ id: string; job_id: string; completed_at: string | null }[]>();
+
+    const assignmentById = new Map((assignments ?? []).map((a) => [a.id, a]));
+
+    const [jobs, profiles] = await Promise.all([
+      supabase
+        .from("jobs")
+        .select("id,title,reference")
+        .in("id", [...new Set((assignments ?? []).map((a) => a.job_id))])
+        .returns<{ id: string; title: string; reference: string }[]>(),
+      loadProfiles(supabase, [...new Set(rows.map((r) => r.worker_id))]),
+    ]);
+
+    const jobById = new Map((jobs.data ?? []).map((j) => [j.id, j]));
+
+    return rows.map((row) => {
+      const assignment = assignmentById.get(row.assignment_id);
+      const job = assignment ? jobById.get(assignment.job_id) : undefined;
+      return {
+        payout: mapPayout(row),
+        jobTitle: job?.title ?? "Trabajo",
+        jobReference: job?.reference ?? "",
+        workerName: profiles.get(row.worker_id)?.displayName ?? "Trabajador",
+        completedAt: assignment?.completed_at ?? null,
       };
     });
   }
