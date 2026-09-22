@@ -36,11 +36,41 @@ const serverSchema = z.object({
    */
   NEXT_PUBLIC_DATA_SOURCE: z.enum(["demo", "supabase", "auto"]).default("auto"),
 
-  /** mock | transbank */
+  /** mock | mock-delayed | transbank */
   PAYMENT_PROVIDER: z.enum(["mock", "mock-delayed", "transbank"]).default("mock"),
+
+  /**
+   * Ambiente de Webpay Plus. Por defecto integración, siempre.
+   *
+   * No hay forma de llegar a producción por omisión: hace falta poner
+   * `production` aquí Y `TRANSBANK_PRODUCTION_ENABLED=true`, y aun así pasar
+   * todas las guardas de `payments/transbank/config.ts`.
+   */
   TRANSBANK_ENVIRONMENT: z.enum(["integration", "production"]).default("integration"),
-  TRANSBANK_COMMERCE_CODE: z.string().optional(),
-  TRANSBANK_API_KEY: z.string().optional(),
+
+  /**
+   * Interruptor adicional para operar de verdad.
+   *
+   * Existe para que tener las credenciales productivas en el hosting no baste
+   * para cobrar: hace falta un acto explícito y auditable. Mientras esté en
+   * falso, el proveedor productivo se niega a operar aunque todo lo demás esté
+   * puesto.
+   */
+  TRANSBANK_PRODUCTION_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+
+  /**
+   * Credenciales PRODUCTIVAS. Solo servidor, nunca con prefijo NEXT_PUBLIC_,
+   * nunca en el repositorio y nunca en un registro.
+   *
+   * Las de integración no se configuran: las publica Transbank, las trae el
+   * SDK y se usan desde `payments/transbank/config.ts`. Ponerlas aquí sería
+   * invitar a confundirlas con las de verdad.
+   */
+  TRANSBANK_PRODUCTION_COMMERCE_CODE: z.string().optional(),
+  TRANSBANK_PRODUCTION_API_KEY_SECRET: z.string().optional(),
 
   PLATFORM_COMMISSION_BPS: z.coerce.number().int().min(0).max(5000).default(1400),
   DISPUTE_WINDOW_HOURS: z.coerce.number().int().min(1).max(720).default(12),
@@ -76,8 +106,13 @@ function read(): ServerEnv {
     NEXT_PUBLIC_DATA_SOURCE: orUndefined(process.env.NEXT_PUBLIC_DATA_SOURCE),
     PAYMENT_PROVIDER: orUndefined(process.env.PAYMENT_PROVIDER),
     TRANSBANK_ENVIRONMENT: orUndefined(process.env.TRANSBANK_ENVIRONMENT),
-    TRANSBANK_COMMERCE_CODE: orUndefined(process.env.TRANSBANK_COMMERCE_CODE),
-    TRANSBANK_API_KEY: orUndefined(process.env.TRANSBANK_API_KEY),
+    TRANSBANK_PRODUCTION_ENABLED: orUndefined(process.env.TRANSBANK_PRODUCTION_ENABLED),
+    TRANSBANK_PRODUCTION_COMMERCE_CODE: orUndefined(
+      process.env.TRANSBANK_PRODUCTION_COMMERCE_CODE,
+    ),
+    TRANSBANK_PRODUCTION_API_KEY_SECRET: orUndefined(
+      process.env.TRANSBANK_PRODUCTION_API_KEY_SECRET,
+    ),
     PLATFORM_COMMISSION_BPS: orUndefined(process.env.PLATFORM_COMMISSION_BPS),
     DISPUTE_WINDOW_HOURS: orUndefined(process.env.DISPUTE_WINDOW_HOURS),
   });

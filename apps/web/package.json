@@ -9,7 +9,8 @@
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "typecheck": "tsc --noEmit",
-    "check": "npm run lint && npm run typecheck && npm run build",
+    "test:unit": "vitest run",
+    "check": "npm run lint && npm run typecheck && npm run test:unit && npm run build",
     "seed:geo": "node scripts/seed-geo.ts",
     "db:test": "bash scripts/db-test.sh",
     "db:contract": "bash scripts/check-db-contract.sh",
@@ -21,7 +22,8 @@
     "e2e:ui": "playwright test --ui",
     "verify:payments": "node --import ./scripts/loader/alias.mjs scripts/verify-payments.ts",
     "verify:execution": "node --import ./scripts/loader/alias.mjs scripts/verify-execution.ts",
-    "verify:pwa": "node --import ./scripts/loader/alias.mjs scripts/verify-pwa.ts"
+    "verify:pwa": "node --import ./scripts/loader/alias.mjs scripts/verify-pwa.ts",
+    "verify:transbank": "node --import ./scripts/loader/alias.mjs scripts/verify-transbank.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -34,6 +36,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "tailwind-merge": "^3.7.0",
+    "transbank-sdk": "6.1.1",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -45,6 +48,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "3.2.7"
   }
 }

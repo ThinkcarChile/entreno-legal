@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 
 import { PaymentStatus } from "@/lib/domain/enums";
 
+import { maskToken } from "./transbank/sanitize";
+
 import type {
   ConfirmPaymentInput,
   ConfirmPaymentResult,
@@ -9,6 +11,9 @@ import type {
   CreatePaymentResult,
   PaymentProvider,
   PaymentStatusResult,
+  ProviderRefundResult,
+  ProviderSnapshot,
+  ReconcilableProvider,
   RefundPaymentInput,
   RefundPaymentResult,
 } from "./provider";
@@ -41,9 +46,10 @@ interface Entry {
  *
  * Nunca en producción: `getPaymentProvider` lo impide igual que al inmediato.
  */
-export class DelayedMockPaymentProvider implements PaymentProvider {
+export class DelayedMockPaymentProvider implements PaymentProvider, ReconcilableProvider {
   readonly id = "mock-delayed";
   readonly displayName = "Pago simulado retardado (desarrollo)";
+  readonly environment = "mock";
 
   private readonly store = new Map<string, Entry>();
 
@@ -165,5 +171,62 @@ export class DelayedMockPaymentProvider implements PaymentProvider {
    */
   async refund({ amount }: RefundPaymentInput): Promise<RefundPaymentResult> {
     return { status: PaymentStatus.REFUNDED, refundedAmount: amount, raw: { mock: true, delayed: true } };
+  }
+
+  /**
+   * Foto de la transacción SIN esperar al resultado.
+   *
+   * Es a propósito: conciliar un pago que sigue en vuelo tiene que decir «sigue
+   * en vuelo», no quedarse colgado hasta que alguien lo resuelva. Es justo el
+   * caso que hay que poder probar.
+   */
+  async inspect(token: string): Promise<ProviderSnapshot> {
+    const entry = this.store.get(token);
+    const authorized = entry?.outcome === "PAID";
+    return {
+      token,
+      maskedToken: maskToken(token),
+      environment: this.environment,
+      providerStatus:
+        entry == null
+          ? "FAILED"
+          : entry.outcome == null
+            ? "INITIALIZED"
+            : authorized
+              ? "AUTHORIZED"
+              : "FAILED",
+      responseCode: authorized ? 0 : entry?.outcome === "FAILED" ? -1 : null,
+      amount: entry?.input.amount.amount ?? null,
+      buyOrder: entry?.input.buyOrder ?? null,
+      sessionId: entry?.input.sessionId ?? null,
+      authorizationCode: authorized ? "MOCKD-AUTH" : null,
+      authorized,
+      cardLastDigits: authorized ? "4242" : null,
+      paymentTypeCode: authorized ? "VD" : null,
+      installmentsNumber: 0,
+      installmentsAmount: null,
+      transactionDate: new Date().toISOString(),
+      accountingDate: null,
+      vci: authorized ? "TSY" : null,
+      balance: null,
+      raw: { mock: true, delayed: true },
+    };
+  }
+
+  async refundTransaction(input: RefundPaymentInput): Promise<ProviderRefundResult> {
+    const entry = this.store.get(input.token);
+    const total = entry?.input.amount.amount ?? input.amount.amount;
+    const partial = input.amount.amount < total;
+    return {
+      kind: partial ? "NULLIFIED" : "REVERSED",
+      confirmed: true,
+      refundedAmount: input.amount.amount,
+      balance: partial ? total - input.amount.amount : 0,
+      authorizationCode: partial ? "MOCKD-NUL" : null,
+      authorizationDate: partial ? new Date().toISOString() : null,
+      responseCode: partial ? 0 : null,
+      providerEventId: `refund:${input.token}:${input.amount.amount}`,
+      raw: { mock: true, delayed: true, type: partial ? "NULLIFIED" : "REVERSED" },
+    };
   }
 }
