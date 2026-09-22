@@ -35,6 +35,7 @@ en orden alfabético.
 | `…20260501000200_refund_invariants.sql` | Devolución total retiene el payout; invariantes al día |
 | `…20260501000300_payment_no_rollback.sql` | Un pago cobrado no vuelve a estar «en vuelo» |
 | `…20260501000400_hold_payout_on_review.sql` | Un pago en revisión, fallido o devuelto congela el payout |
+| `…20260501000500_reconciliation_window.sql` | La ventana de conciliación pasa a ser configuración; los rezagados van a revisión |
 | `…000500_evidence_and_chat.sql` | Evidencia, vistas `checkins` y `job_updates`, conversaciones, mensajes |
 | `…000600_reviews_disputes.sql` | Reseñas con validación, disputas, evidencia de disputa |
 | `…000700_loyalty_notifications_audit.sql` | FilaPuntos, notificaciones, `audit_logs` y sus triggers |
@@ -217,6 +218,7 @@ supuestos, y todos rodean a una de las dieciséis:
 | Marcar devuelto sin respuesta del proveedor | `CONFIRMED` exige decir si fue reversa o anulación, y solo lo escribe `service_role` | `…20260501000200` |
 | Hacer retroceder un pago cobrado a «en vuelo» | disparador `a_payments_no_rollback`, sin exención para `service_role` | `…20260501000300` |
 | Pagar al trabajador con el pago del cliente en revisión, fallido o devuelto | el payout se retiene solo | `…20260501000400` |
+| Que un pago sin resolver se pierda al salir de la ventana de conciliación | `expire_stale_payments()` lo lleva a `FAILED` o a `UNDER_REVIEW`, y el invariante `stale_payment_out_of_window` lo delata si nadie lo hizo | `…20260501000500` |
 | «Confirmar» el propio pago llamando a la función de confirmación | `confirm_payment_result` es solo del servicio | `…000400` |
 | Marcar «voy en camino» en nombre del trabajador siendo el cliente | `mark_on_the_way` | Bloque 3 `…000100` |
 | Escribir el estado de la asignación a mano, para saltarse el orden | ninguna: el usuario perdió el `UPDATE` | Bloque 3 `…000100` |
@@ -281,10 +283,10 @@ usuario: las políticas de Storage lo exigen.
 PGHOST=/tmp PGPORT=55432 PGUSER=postgres npm run db:test
 ```
 
-Aplica el stub de Supabase, las 27 migraciones, la semilla geográfica y 179
+Aplica el stub de Supabase, las 33 migraciones, la semilla geográfica y 225
 comprobaciones de inventario, RLS, flujo completo, concurrencia, semilla de
-demostración, endurecimiento de las RPC, política de cancelación y pago, y
-ejecución completa del trabajo. Todo con carreras reales entre dos sesiones,
+demostración, endurecimiento de las RPC, política de cancelación y pago,
+ejecución completa del trabajo e integración con Webpay. Todo con carreras reales entre dos sesiones,
 `RACE_REPS` repeticiones. Ver `supabase/tests/`.
 
 Contra el proyecto alojado, los mismos escenarios corren con

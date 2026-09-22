@@ -187,6 +187,33 @@ porque una clave de idempotencia acaba en registros y en índices.
 asentado por el retorno y luego conciliado no produce un segundo evento, ni un
 segundo pago al trabajador, ni una segunda notificación.
 
+### Un estado provisional no gasta la clave
+
+`commit:<token>` es única por token, y el token no se renueva: si se gastara
+con la primera respuesta que llega, la segunda —la que de verdad resuelve el
+pago— no tendría dónde escribirse.
+
+Y Webpay puede contestar en dos tiempos. `INITIALIZED` significa «todavía no
+lo sé», no «no». Es la respuesta que se recibe cuando alguien está aún en el
+formulario del banco, o cuando la red se cortó a mitad.
+
+Por eso el proveedor marca cada respuesta con si es **asentable**:
+
+| Estado del proveedor | ¿Final? | Qué se hace |
+|---|---|---|
+| `AUTHORIZED`, `FAILED`, `REVERSED`, `NULLIFIED`, `PARTIALLY_NULLIFIED`, `CAPTURED` | sí | se asienta y se consume la clave |
+| `INITIALIZED` y cualquier otro | no | se anota la instantánea y el pago **sigue en la cola** |
+
+`isTerminalStatus()` vive en un solo sitio (`transbank/mapping.ts`). El
+proveedor la traslada al contrato como `settleable` en el `commit` y `terminal`
+en la instantánea, y el manejador del retorno devuelve `PENDING` sin tocar el
+trabajo ni crear el pago al trabajador cuando vale `false`. Los proveedores
+simulados declaran lo mismo, así que el camino es idéntico en las pruebas.
+
+La consecuencia importante: un `INITIALIZED` recibido a las 10:00 **no impide**
+registrar el `AUTHORIZED` que llegue a las 10:02. W31 lo comprueba, y W32 deja
+escrito lo que pasaba antes —el pago se perdía— para que no vuelva.
+
 Comprobado con retornos secuenciales (W07) y **simultáneos** (X20, cinco
 repeticiones).
 
@@ -201,14 +228,44 @@ Si el navegador de quien paga muere entre el formulario y el retorno —batería
 cambio de red, pestaña cerrada— nadie va a contarlo. Hay que preguntarlo.
 
 `reconcilePayments()` toma los pagos sin estado final (`PENDING`, `CREATED`,
-`AUTHORIZED`, `UNDER_REVIEW`) con token y de menos de 7 días, pregunta a
+`AUTHORIZED`, `UNDER_REVIEW`) con token y dentro de la ventana, pregunta a
 Transbank y los asienta por la misma vía que el retorno.
 
 - Un pago de **integración nunca se pregunta contra producción**, ni al revés.
 - Que el proveedor no conteste **no cambia nada**: el pago sigue en la cola.
   Jamás se da por fallido por no poder preguntar.
-- La ventana es de 7 días porque es lo que Webpay responde. Pasado ese plazo,
-  hace falta una persona.
+
+### La ventana es configuración, no una constante
+
+`platform_settings.reconciliation_window_days` —7 por omisión, entre 1 y 90 por
+restricción— la fija en un solo lugar. La lee `app_private.reconciliation_window_days()`,
+y de ahí sale tanto la vista `payments_pending_reconciliation` como el barrido
+de rezagados. Cambiarla es un `update` en una fila, no una migración.
+
+El 7 no es arbitrario: es lo que Webpay responde a `status(token)`. Bajarlo
+tiene sentido si se quiere que una persona mire antes; subirlo solo sirve si
+Transbank amplía el plazo. Pasado ese plazo la consulta ya no sirve y hace
+falta el portal.
+
+### Los rezagados no desaparecen
+
+Un pago que sale de la ventana sin resolverse no se puede seguir preguntando,
+pero tampoco puede quedarse callado en la base de datos. `expire_stale_payments()`
+lo saca de la cola **hacia una persona**, no hacia el olvido:
+
+| Estado al expirar | Pasa a | Por qué |
+|---|---|---|
+| `PENDING`, `CREATED` | `FAILED` con motivo `reconciliation_window_expired` | nunca hubo cobro que reclamar |
+| `AUTHORIZED` | `UNDER_REVIEW` | puede haber dinero cobrado: lo mira alguien |
+
+Cada expiración deja su `payment_event` y su fila en `audit_logs`, y vuelve a
+leer el pago bajo cerrojo antes de escribir, así que dos ejecuciones a la vez
+no se pisan. Es idempotente: pasarla dos veces no cambia nada (W36).
+
+Y la red de seguridad: `app_private.refund_invariant_violations()` incluye
+`stale_payment_out_of_window`, de modo que un pago no final y fuera de plazo
+que nadie haya tocado **aparece como violación de invariante**. Olvidarlo no
+es una opción silenciosa.
 
 ### Cómo ejecutarla
 
@@ -225,6 +282,16 @@ haya, la frecuencia recomendada es:
 | Barrido de rezagados | 1 vez al día, con `olderThanMinutes: 1440` |
 
 El servicio es idempotente, así que ejecutarlo de más no hace daño.
+
+La misma acción ejecuta después `expire_stale_payments()` y la pantalla lo
+dice: el resumen de «Conciliar pendientes» muestra cuántos pagos se
+examinaron, cuántos cambiaron y cuántos salieron **fuera de ventana**.
+
+Para cambiar la ventana, con la clave de servicio:
+
+```sql
+update public.platform_settings set reconciliation_window_days = 14;
+```
 
 ---
 
@@ -365,7 +432,7 @@ Lo que hay que reunir y entregar. **No se envía nada sin autorización.**
 
 | Requisito | Estado |
 |---|---|
-| Logo PNG o GIF de **130 × 59 px** | ⛔ pendiente: hay que exportarlo de la identidad de `docs/DISENO.md` |
+| Logo PNG o GIF de **130 × 59 px** | ✅ `brand/logo-transbank-130x59.png`, fondo blanco (ver abajo) |
 | Órdenes de compra de prueba | se toman de `payments.buy_order` tras el recorrido de §8 |
 | Fecha y hora de cada una | `payments.created_at` y `transaction_date` |
 | Flujo aprobado | §8 paso 5 |
@@ -376,6 +443,33 @@ Lo que hay que reunir y entregar. **No se envía nada sin autorización.**
 | URL de retorno | `https://<dominio>/pagos/retorno` |
 | Descripción de la integración | Webpay Plus, venta normal, moneda CLP, sin captura diferida ni mall |
 | SDK y versión | `transbank-sdk` 6.1.1 para Node |
+
+### El logotipo
+
+```bash
+npm run brand:logo
+```
+
+Rehace los dos PNG desde `brand/logo-130x59.html`, que trae incrustado el
+subconjunto latino de Inter (`brand/inter-latin.woff2`, SIL OFL 1.1) —el mismo
+que sirve `next/font` en la aplicación—, de modo que el resultado no depende de
+la red ni de las fuentes instaladas en la máquina.
+
+El script **mide antes de capturar** y falla si el conjunto se sale del lienzo
+o si acabó usando una tipografía de reserva. Un logotipo recortado o con la
+fuente equivocada se ve casi bien en miniatura y mal en el formulario de pago.
+Hoy mide 113,1 × 32,0 px, con 8,5 px de margen a cada lado y 13,5 arriba y
+abajo.
+
+| Archivo | Para qué |
+|---|---|
+| `brand/logo-transbank-130x59.png` | el que se entrega: fondo blanco explícito |
+| `brand/logo-transbank-130x59-transparente.png` | de reserva, por si lo piden sin fondo |
+
+Se entrega el de fondo blanco a propósito: el formulario de Webpay es blanco y
+allí los dos se ven igual, pero el transparente deja de verse en cuanto alguien
+lo pone sobre otro color. Un fondo explícito es una decisión; la transparencia
+es una apuesta.
 
 Para sacar los datos de las órdenes de prueba:
 
@@ -410,8 +504,14 @@ por el trabajo: debe haber **un solo** pago vivo. Si de verdad hay dos
 
 ### Un pago lleva horas en `CREATED`
 
-Es lo normal si alguien abandonó el formulario. La conciliación lo cierra. Si
-tiene más de 7 días, Webpay ya no responde: hace falta el portal.
+Es lo normal si alguien abandonó el formulario. La conciliación lo cierra.
+
+Si ya salió de la ventana (§7), Webpay no responde y el barrido lo habrá
+movido: si nunca hubo cobro, a `FAILED` con motivo
+`reconciliation_window_expired`; si estaba `AUTHORIZED`, a `UNDER_REVIEW`, y
+entonces hay que contrastarlo en el portal de Transbank porque puede haber
+dinero cobrado. Un pago fuera de plazo que siga sin resolver aparece en las
+violaciones de invariante como `stale_payment_out_of_window`.
 
 ### El proveedor no responde
 

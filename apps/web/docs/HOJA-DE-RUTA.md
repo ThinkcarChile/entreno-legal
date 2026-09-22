@@ -211,13 +211,42 @@ completo en `docs/TRANSBANK.md`.
    hoy se ejecuta desde `/admin/pagos`.
 3. ~~**Reembolsos** totales y parciales~~ hechos, con reversa y anulación
    distinguidas. **Queda** ejecutar uno de verdad, que exige la certificación.
-4. **Pendiente de Transbank**: la validación del comercio (falta el logo de
-   130 × 59 px) y el primer cobro productivo, con su lista de comprobación.
+4. **Pendiente de Transbank**: la validación del comercio y el primer cobro
+   productivo, con su lista de comprobación. El logotipo de 130 × 59 px ya
+   está (`brand/logo-transbank-130x59.png`); **el formulario no se envía sin
+   autorización expresa**.
 5. **Pendiente de red**: no se creó ni una transacción real en integración
    desde este entorno; el cortafuegos de Transbank bloquea las IP de centros
-   de datos.
-4. **Payouts**: aprobación en `/admin/payouts` con referencia bancaria y
+   de datos. Las siete comprobaciones que lo necesitan se marcan OMITIDA, no
+   aprobadas, y hay que ejecutarlas desde una red permitida.
+6. **Payouts**: aprobación en `/admin/payouts` con referencia bancaria y
    liberación automática al vencer `DISPUTE_WINDOW_HOURS`.
+
+### Bloque 5.1 — Antes de salir a la red (completado)
+
+Tres defectos que solo se ven cuando el proveedor contesta en dos tiempos o
+tarda más de la cuenta. Los tres corregidos y con pruebas antes de tocar
+Transbank de verdad:
+
+- [x] **Un estado provisional gastaba la clave de idempotencia.** Un
+      `INITIALIZED` consumía `commit:<token>` y el `AUTHORIZED` posterior ya
+      no tenía dónde escribirse: el pago se perdía. Ahora el proveedor declara
+      si la respuesta es asentable (`settleable`, `terminal`) y el retorno
+      devuelve `PENDING` sin tocar nada cuando no lo es. W31 lo comprueba;
+      W32 deja escrito el comportamiento anterior
+- [x] **La ventana de conciliación era una constante.**
+      `platform_settings.reconciliation_window_days` (7 por omisión, entre 1 y
+      90), leída por `app_private.reconciliation_window_days()`, la vista de la
+      cola y el barrido
+- [x] **Los pagos viejos sin resolver desaparecían de la cola.**
+      `expire_stale_payments()` los lleva a `FAILED` si nunca hubo cobro y a
+      `UNDER_REVIEW` si estaban autorizados, con evento y auditoría; el
+      invariante `stale_payment_out_of_window` delata a los que nadie movió
+- [x] Batería completa repetida: `db:test` 225 · `verify:supabase` 62 ·
+      `verify:payments` 23 · `verify:execution` 24 · `verify:pwa` 30 ·
+      `e2e` 51 · `verify:transbank` 24 de 31, con 7 OMITIDA por la red
+- [x] Logotipo de 130 × 59 px reproducible: `npm run brand:logo` mide el
+      conjunto y falla si se sale del lienzo o si no usa Inter
 
 ## Bloque 3 — Ejecución completa del trabajo (completada)
 

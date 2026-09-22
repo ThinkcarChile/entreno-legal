@@ -689,13 +689,15 @@ Ese contraste encontró el defecto descrito en §6.5.
 
 | Comando | Contra qué | Qué cubre |
 |---|---|---|
-| `npm run db:test` | PostgreSQL local | Esquema, RLS, flujo, concurrencia, semillas, inventario, endurecimiento de las RPC, política de cancelación y pago, y ejecución completa del trabajo. Todo con carreras reales. 179 comprobaciones |
+| `npm run db:test` | PostgreSQL local | Esquema, RLS, flujo, concurrencia, semillas, inventario, endurecimiento de las RPC, política de cancelación y pago, ejecución completa del trabajo e integración con Webpay. Todo con carreras reales. 225 comprobaciones |
 | `npm run db:push:hosted -- --plan` | Supabase real | Qué migraciones faltan por aplicar, sin escribir nada |
 | `npm run verify:schema:hosted` | Supabase real | Inventario, RLS, `security_invoker`, grants, Realtime y advisors. 18 comprobaciones |
-| `npm run verify:supabase` | Supabase real | El mismo recorrido por API, más Realtime, Storage y Auth, y las escrituras directas que deben fallar. 61 comprobaciones |
+| `npm run verify:supabase` | Supabase real | El mismo recorrido por API, más Realtime, Storage y Auth, y las escrituras directas que deben fallar. 62 comprobaciones |
 | `npm run verify:payments` | Supabase real | Cancelación contra confirmación tardía, duplicada y simultánea, con el proveedor retardado y las piezas de la aplicación. 23 comprobaciones |
 | `npm run verify:execution` | Supabase real | Ejecución del trabajo con sesiones reales: papeles, privacidad de la ubicación, extensiones, PIN, disputas, transferencia y carreras. 24 comprobaciones |
-| `npm run e2e` | Supabase real, por navegador | Entrar, publicar, ofertar, aceptar, pagar y ejecutar el trabajo hasta la aprobación. 17 pruebas |
+| `npm run verify:pwa` | Estático | Manifiesto, iconos, service worker, metadatos y tokens de diseño. 30 comprobaciones |
+| `npm run verify:transbank` | Webpay Integration | Configuración, guardas de producción, identificadores, criterio de aprobación e ida y vuelta real contra Transbank. 31 comprobaciones |
+| `npm run e2e` | Supabase real, por navegador | Entrar, publicar, ofertar, aceptar, pagar y ejecutar el trabajo hasta la aprobación. 51 pruebas |
 
 Todos se mantienen. El local es rápido y corre siempre, incluso sin
 credenciales; el de integración prueba lo que solo existe en Supabase (Auth,

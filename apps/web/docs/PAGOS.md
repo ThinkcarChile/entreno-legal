@@ -33,7 +33,7 @@ Y, además:
   clave de servicio;
 - `payment_events` es solo de escritura para la aplicación.
 
-Lo comprueban 179 comprobaciones locales (`npm run db:test`, con las carreras
+Lo comprueban 225 comprobaciones locales (`npm run db:test`, con las carreras
 de `07_race_payment.sh` y `08_race_execution.sh`) y 23 contra `hagotufila-dev`
 (`npm run verify:payments`).
 
