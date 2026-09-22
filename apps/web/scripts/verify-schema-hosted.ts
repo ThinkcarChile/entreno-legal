@@ -249,6 +249,14 @@ const AVISOS_ACEPTADOS: Record<string, Record<string, string>> = {
       "La llama el trabajador autor de la oferta. Escribe job_offers.status, columna que quedó " +
       "fuera de su concesión en la migración …000200 precisamente para que no pueda aceptarse " +
       "su propia oferta.",
+    "public.request_payment_refund":
+      "SOLO la administración: primera línea del cuerpo es app_private.is_admin(). Está " +
+      "concedida a authenticated porque el panel la llama con la sesión de quien administra, " +
+      "no con la clave de servicio; un usuario común que la invoque por su cuenta choca con " +
+      "esa comprobación. Escribe payment_refunds, que no tiene ninguna vía de escritura para " +
+      "el usuario, comprueba el saldo devolvible y exige que la disputa esté resuelta. NO " +
+      "devuelve dinero: solo deja la petición. La llamada al proveedor y el cierre son de " +
+      "settle_payment_refund, que es exclusiva de service_role.",
   },
 };
 
@@ -291,18 +299,18 @@ async function main(): Promise<void> {
       (select count(*) from supabase_migrations.schema_migrations)       as migraciones;
   `);
 
-  check("tablas en public", inv.tablas, 33);
-  check("vistas en public", inv.vistas, 6);
-  check("funciones en public", inv.funciones, 37);
-  check("enums", inv.enums, 22);
-  check("políticas RLS en public", inv.politicas, 74);
+  check("tablas en public", inv.tablas, 34);
+  check("vistas en public", inv.vistas, 7);
+  check("funciones en public", inv.funciones, 43);
+  check("enums", inv.enums, 24);
+  check("políticas RLS en public", inv.politicas, 75);
   check("buckets de Storage", inv.buckets, 5);
   check("políticas de Storage", inv.politicas_storage, 11);
   check("comunas", inv.comunas, 346);
   check("regiones", inv.regiones, 16);
   check("categorías de trabajo", inv.categorias, 9);
   check("comisión (puntos base)", inv.comision_pb, 1400);
-  check("migraciones en el historial", inv.migraciones, 27);
+  check("migraciones en el historial", inv.migraciones, 32);
 
   console.log("\n── Seguridad del esquema ──\n");
 

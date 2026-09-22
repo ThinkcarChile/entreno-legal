@@ -30,6 +30,11 @@ en orden alfabético.
 | `…000200_identity.sql` | Perfiles, datos privados, trabajadores, verificación, cuentas de pago |
 | `…000300_jobs.sql` | Trabajos, imágenes, ofertas, asignaciones, extensiones, PIN |
 | `…000400_payments.sql` | Pagos, eventos de pago, payouts |
+| `…20260501000000_transbank_enums.sql` | `refund_status`, `refund_kind` y dos avisos |
+| `…20260501000100_transbank_payments.sql` | Columnas de Webpay, `payment_refunds`, intento, retorno sin cobro y cola de conciliación |
+| `…20260501000200_refund_invariants.sql` | Devolución total retiene el payout; invariantes al día |
+| `…20260501000300_payment_no_rollback.sql` | Un pago cobrado no vuelve a estar «en vuelo» |
+| `…20260501000400_hold_payout_on_review.sql` | Un pago en revisión, fallido o devuelto congela el payout |
 | `…000500_evidence_and_chat.sql` | Evidencia, vistas `checkins` y `job_updates`, conversaciones, mensajes |
 | `…000600_reviews_disputes.sql` | Reseñas con validación, disputas, evidencia de disputa |
 | `…000700_loyalty_notifications_audit.sql` | FilaPuntos, notificaciones, `audit_logs` y sus triggers |
@@ -207,6 +212,11 @@ supuestos, y todos rodean a una de las dieciséis:
 | Reescribir el contenido de los propios avisos | `mark_notifications_read` | `…000200` |
 | Crear un payout a mano, sobre un pago sin confirmar o sobre un trabajo cancelado | `confirm_payment_result` (y `payouts_guard` para el propio sistema) | `…000400` |
 | Reescribir o borrar `payments`, `payment_events` o `payouts` | ninguna: el usuario perdió `UPDATE`, `DELETE` y `TRUNCATE` | `…000400` |
+| Escribir en `payment_refunds` | ninguna: sin `INSERT`, `UPDATE`, `DELETE` ni `TRUNCATE` para `authenticated`; solo lectura y solo administración | `…20260501000100` |
+| Devolver más de lo cobrado | la suma de lo pedido y lo confirmado no puede superar el importe | `…20260501000100` |
+| Marcar devuelto sin respuesta del proveedor | `CONFIRMED` exige decir si fue reversa o anulación, y solo lo escribe `service_role` | `…20260501000200` |
+| Hacer retroceder un pago cobrado a «en vuelo» | disparador `a_payments_no_rollback`, sin exención para `service_role` | `…20260501000300` |
+| Pagar al trabajador con el pago del cliente en revisión, fallido o devuelto | el payout se retiene solo | `…20260501000400` |
 | «Confirmar» el propio pago llamando a la función de confirmación | `confirm_payment_result` es solo del servicio | `…000400` |
 | Marcar «voy en camino» en nombre del trabajador siendo el cliente | `mark_on_the_way` | Bloque 3 `…000100` |
 | Escribir el estado de la asignación a mano, para saltarse el orden | ninguna: el usuario perdió el `UPDATE` | Bloque 3 `…000100` |

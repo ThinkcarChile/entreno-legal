@@ -1,13 +1,17 @@
 # Pagos: política de cancelación, atomicidad y candados
 
-Guía del dinero en HagoTuFila tal como está hoy: qué garantiza la base, qué
-hace la aplicación, qué es simulado y qué queda para la integración real con
-Webpay Plus. Complementa `ARQUITECTURA.md` (§3.8, §3.9, §6.7 y §8) y
-`BASE-DE-DATOS.md`.
+Guía del dinero en HagoTuFila: qué garantiza la base, qué hace la aplicación y
+cómo se comporta ante una cancelación con un pago en vuelo. Complementa
+`ARQUITECTURA.md` (§3.8, §3.9, §6.7 y §8) y `BASE-DE-DATOS.md`.
 
-> **Nada de esto afirma que exista un reembolso bancario real.** Hasta integrar
-> Transbank, «devolución pendiente» es un registro contable: hay dinero recibido
-> que la plataforma debe devolver. El reembolso real es de la Etapa 4.
+> **La integración con Webpay Plus está en `docs/TRANSBANK.md`.** Este
+> documento cubre el dominio —estados, candados, cancelación— que es
+> independiente del proveedor y que no cambió al integrarlo.
+
+> **Las devoluciones ya existen** (`payment_refunds`, y el proveedor las
+> ejecuta), pero ninguna se ha hecho en producción. Un pago `UNDER_REVIEW` con
+> `captured_at` sigue siendo la cola de entrada: dinero recibido que hay que
+> devolver, y que ahora sí tiene botón.
 
 ---
 

@@ -1,3 +1,4 @@
+import { expect, type Page } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 /**
@@ -143,3 +144,17 @@ export async function ensureFixtures(): Promise<{
 
 /** Marca única para no confundir los datos de una ejecución con los de otra. */
 export const runTag = `e2e-${Date.now()}`;
+
+/**
+ * Entra a la aplicación por la interfaz, como lo haría una persona.
+ *
+ * Espera a que la cabecera muestre la sesión y no a un tiempo fijo: lo primero
+ * es una condición y lo segundo es una prueba que falla los martes.
+ */
+export async function signIn(page: Page, email: string, password: string): Promise<void> {
+  await page.goto("/entrar");
+  await page.getByLabel("Correo electrónico").fill(email);
+  await page.getByLabel("Contraseña").fill(password);
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("link", { name: "Mensajes" })).toBeVisible();
+}

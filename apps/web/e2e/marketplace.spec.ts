@@ -7,6 +7,7 @@ import {
   runTag,
   supabaseReady,
   workerAccount,
+  signIn,
 } from "./fixtures";
 
 /**
@@ -57,15 +58,6 @@ test.describe("marketplace de punta a punta", () => {
       if (await page.getByText(title).first().isVisible().catch(() => false)) return;
     }
     throw new Error(`"${title}" no aparece en ninguna de las ${total} pestañas`);
-  }
-
-  async function signIn(page: Page, email: string, password: string): Promise<void> {
-    await page.goto("/entrar");
-    await page.getByLabel("Correo electrónico").fill(email);
-    await page.getByLabel("Contraseña").fill(password);
-    await page.getByRole("button", { name: "Entrar" }).click();
-    // Se espera a que la cabecera muestre la sesión, no a un tiempo fijo.
-    await expect(page.getByRole("link", { name: "Mensajes" })).toBeVisible();
   }
 
   test("1. el cliente entra a su cuenta", async ({ page }) => {

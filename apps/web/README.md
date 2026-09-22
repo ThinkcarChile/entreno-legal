@@ -30,7 +30,7 @@ con datos realistas en pesos chilenos. Es la forma más rápida de revisar la in
 | `npm run build` | Compilación de producción |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript sin emitir |
-| `npm run check` | Lint + typecheck + build |
+| `npm run check` | Lint + typecheck + pruebas unitarias + build |
 | `npm run seed:geo` | Regenera la semilla de regiones y comunas |
 | `npm run db:test` | Aplica el esquema a un PostgreSQL y corre todas las pruebas |
 | `npm run db:contract` | Comprueba que el código y el esquema coincidan |
@@ -40,6 +40,8 @@ con datos realistas en pesos chilenos. Es la forma más rápida de revisar la in
 | `npm run db:push:hosted` | Aplica las migraciones a un proyecto alojado por HTTPS, cuando el puerto 5432 está cerrado |
 | `npm run db:seed:hosted` | Aplica la semilla geográfica oficial a un proyecto alojado de desarrollo, por HTTPS |
 | `npm run verify:schema:hosted` | Inventario del esquema alojado y advisors de seguridad y rendimiento |
+| `npm run verify:transbank` | Webpay Plus: SDK, guardas, identificadores, retornos, secretos y ambiente de integración |
+| `npm run test:unit` | Pruebas unitarias del dominio financiero (Vitest) |
 | `npm run verify:pwa` | Manifiesto, iconos, service worker, tokens y contrastes. Sin servidor ni Supabase |
 | `npm run e2e` | Recorrido por navegador con Playwright, más la revisión responsive, de consola y de accesibilidad |
 
@@ -132,6 +134,7 @@ Detalle en [`docs/BASE-DE-DATOS.md`](docs/BASE-DE-DATOS.md).
 - [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) — capas, decisiones y deuda evitada
 - [`docs/BASE-DE-DATOS.md`](docs/BASE-DE-DATOS.md) — esquema, RLS, funciones, Storage
 - [`docs/DESPLIEGUE-SUPABASE.md`](docs/DESPLIEGUE-SUPABASE.md) — poner el proyecto en marcha
+- [`docs/TRANSBANK.md`](docs/TRANSBANK.md) — Webpay Plus: integración, conciliación, devoluciones y producción
 - [`docs/DISENO.md`](docs/DISENO.md) — identidad, tokens, componentes, responsive y PWA
 - [`docs/EJECUCION.md`](docs/EJECUCION.md) — del pago confirmado a la aprobación
 - [`docs/PAGOS.md`](docs/PAGOS.md) — el dinero hasta la confirmación, y la cancelación
@@ -149,7 +152,7 @@ Lo que **todavía es simulado**:
 
 | Función | Estado |
 |---|---|
-| Pasarela de pago | Simulada, con `MockPaymentProvider`. **No hay ninguna pasarela conectada** y la interfaz no afirma que la haya. El flujo es el definitivo, cambia solo el `PaymentProvider`. La política de cancelación con un pago en vuelo ya es la definitiva (`docs/PAGOS.md`); el reembolso real no existe todavía |
+| Pasarela de pago | **Webpay Plus integrado con el SDK oficial, en ambiente de integración.** Producción está desactivada y necesita `TRANSBANK_PRODUCTION_ENABLED=true` más credenciales (`docs/TRANSBANK.md` §9). `MockPaymentProvider` se conserva para desarrollo. Las devoluciones están implementadas contra el proveedor; ninguna se ha ejecutado en producción |
 | Verificación de identidad | Real pero manual. La resuelve una persona desde `/admin/verificaciones`, sin proveedor biométrico |
 | Transferencia al trabajador | El payout se calcula, se aprueba y se registra con su referencia bancaria; la transferencia se hace fuera de la plataforma |
 | Imágenes | La evidencia del trabajo y de las disputas sube de verdad, validada por contenido; faltan las del trabajo publicado y las del chat |

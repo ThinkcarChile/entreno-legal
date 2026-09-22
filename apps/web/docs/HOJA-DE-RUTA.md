@@ -199,19 +199,23 @@ Pendiente, y no es código:
 
 ## Etapa 4 — Pagos reales
 
-1. **Integrar Webpay Plus** con el SDK oficial vigente de Transbank, en ambiente
-   de integración. Implementar los cuatro métodos de `TransbankPaymentProvider`
-   y mapear sus respuestas a los estados internos. No inventar endpoints.
-   La acción de servidor y la ruta `/pagos/retorno` ya están escritas para no
-   tener que cambiarlas.
-2. **Conciliación**: la idempotencia por evento y la entrada única
-   (`confirm_payment_result`) ya existen; falta la tarea que consulte los pagos
-   en vuelo (`getStatus`) pasado un plazo y los asiente, y que saque de
-   `CANCELLATION_PENDING` a un trabajo cuyo proveedor nunca respondió.
-   Definir el `provider_event_id` de Webpay con el SDK delante.
-3. **Reembolsos** totales y parciales. Los pagos `UNDER_REVIEW` con
-   `captured_at` son la cola de entrada: hoy son un registro contable, no un
-   reembolso bancario. Ver los riesgos de `docs/PAGOS.md` §9.
+Hecha en el Bloque 5, salvo lo que depende de Transbank y del hosting. Detalle
+completo en `docs/TRANSBANK.md`.
+
+1. ~~**Integrar Webpay Plus**~~ hecho: `transbank-sdk` 6.1.1, los cuatro
+   métodos, los cuatro flujos de retorno y el criterio de aprobación de la
+   documentación (`status = AUTHORIZED` **y** `response_code = 0`).
+2. ~~**Conciliación**~~ hecha: `reconcilePayments` consulta el estado real y
+   asienta por la misma vía y con la misma clave de evento que el retorno.
+   **Queda** programarla: no hay planificador en el hosting y no se inventó uno;
+   hoy se ejecuta desde `/admin/pagos`.
+3. ~~**Reembolsos** totales y parciales~~ hechos, con reversa y anulación
+   distinguidas. **Queda** ejecutar uno de verdad, que exige la certificación.
+4. **Pendiente de Transbank**: la validación del comercio (falta el logo de
+   130 × 59 px) y el primer cobro productivo, con su lista de comprobación.
+5. **Pendiente de red**: no se creó ni una transacción real en integración
+   desde este entorno; el cortafuegos de Transbank bloquea las IP de centros
+   de datos.
 4. **Payouts**: aprobación en `/admin/payouts` con referencia bancaria y
    liberación automática al vencer `DISPUTE_WINDOW_HOURS`.
 
@@ -318,6 +322,9 @@ Defectos reales que destapó, todos corregidos:
 | ~~Políticas de Storage sobre `storage.objects`~~ | Resuelto: la migración `…000900` creó las 11 políticas en el proyecto alojado sin intervención manual, y V07 las cuenta | — |
 | ~~`getClaims()` no ejercitado contra un proyecto real~~ | Resuelto: `verify:supabase` abre cuatro sesiones simultáneas y comprueba que ninguna se cruza | — |
 | Ubicación del check-in falseable | Un teléfono puede mentir su posición: comprobar la distancia no lo descarta | Revisión manual con evidencia, y el registro con hora del servidor como respaldo en una disputa |
+| Transacción real de integración sin ejecutar | El cortafuegos de Transbank (Imperva) devuelve 403 a las IP de centros de datos, incluida la de este entorno: no se creó ni una transacción real. Todo lo demás está probado | Recorrer `docs/TRANSBANK.md` §8 desde una red que alcance a Transbank, y volver a correr `npm run verify:transbank` |
+| Logo de 130 × 59 px para Transbank | La validación lo exige y todavía no está exportado | Exportarlo de la identidad de `docs/DISENO.md` antes de enviar el formulario |
+| Aviso moderado de @vitest/mocker | Recorrido de rutas en la función de redirección de mocks; el crítico (servidor de la interfaz de Vitest) ya está corregido en 3.2.7 | Subir a Vitest 5 cuando toque tocar la suite; no se usa `vi.mock` ni el servidor de la interfaz |
 | Transferencias al trabajador manuales | Se registran con referencia bancaria, pero las hace una persona fuera de la plataforma | Integración bancaria o de payouts, posterior a la Etapa 4 |
 | Devolución pendiente sin reembolso real | Un pago que llegó tras la cancelación queda `UNDER_REVIEW` con `captured_at`; nadie lo devuelve todavía y ninguna tarea vigila los trabajos que se quedan en `CANCELLATION_PENDING` si el proveedor no responde | Etapa 4: reembolso con el SDK y conciliación de pagos en vuelo (`docs/PAGOS.md` §9) |
 | Realtime no visto desde un navegador | La entrega funciona entre sesiones reales por API, pero el navegador del entorno donde se validó no alcanza Supabase | Repetir M15 y M16 del recorrido a mano en una máquina con salida normal |

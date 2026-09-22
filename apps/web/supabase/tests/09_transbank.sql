@@ -527,3 +527,92 @@ begin
     (case when v_detalle = '' then '' else ' [' || v_detalle || ']' end) ||
     (case when v_pago = 0 and v_ref = 0 then '' else ' FALLO' end);
 end $$;
+
+-- W26 · Un pago cobrado no vuelve atrás, ni con la clave de servicio.
+--
+-- Lo encontró la prueba de navegador: sin esta guarda, un PAID podía volver a
+-- CREATED y dejaba huérfano el pago al trabajador que ese PAID había creado.
+do $$
+declare m record; v_a boolean := false; v_b boolean := false; v_c boolean := false;
+begin
+  select * into m from pg_temp.montar_pago('w26', true);
+
+  begin
+    update public.payments set status = 'CREATED' where id = m.payment_id;
+  exception when check_violation then v_a := true;
+  end;
+
+  begin
+    update public.payments set status = 'PENDING' where id = m.payment_id;
+  exception when check_violation then v_b := true;
+  end;
+
+  -- Y lo que sí se puede: dejarlo en revisión, que deja rastro.
+  begin
+    update public.payments set status = 'UNDER_REVIEW', review_reason = 'revisión manual'
+     where id = m.payment_id;
+    v_c := true;
+  exception when others then v_c := false;
+  end;
+
+  raise notice '%', 'W26 sin retroceso: a CREATED ' || v_a || ', a PENDING ' || v_b ||
+    ', a revisión permitido ' || v_c ||
+    (case when v_a and v_b and v_c then '' else ' FALLO' end);
+end $$;
+
+-- W27 · Un pago devuelto tampoco retrocede.
+do $$
+declare m record; v_refund uuid; v_total bigint; v_ok boolean := false;
+begin
+  select * into m from pg_temp.montar_pago('w27', true);
+  select amount into v_total from public.payments where id = m.payment_id;
+
+  perform set_config('request.jwt.claim.sub', m.admin_id::text, true);
+  v_refund := public.request_payment_refund(m.payment_id, v_total, 'Devolución total para la prueba', 'refund:w27');
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform public.settle_payment_refund(v_refund, true, 'REVERSED', v_total, jsonb_build_object('response_code', 0));
+
+  begin
+    update public.payments set status = 'CREATED' where id = m.payment_id;
+  exception when check_violation then v_ok := true;
+  end;
+
+  raise notice '%', 'W27 devuelto sin retroceso: rechazado ' || v_ok ||
+    (case when v_ok then '' else ' FALLO' end);
+end $$;
+
+-- W28 · Poner un pago en revisión congela el pago al trabajador.
+--
+-- Tercera vez que aparece el mismo patrón: se duda del dinero que entró y se
+-- seguía adelante con el dinero que sale.
+do $$
+declare m record; o_antes public.payouts; o_despues public.payouts;
+begin
+  select * into m from pg_temp.montar_pago('w28', true);
+  select * into o_antes from public.payouts where payment_id = m.payment_id;
+
+  update public.payments
+     set status = 'UNDER_REVIEW', review_reason = 'importe que no cuadra'
+   where id = m.payment_id;
+
+  select * into o_despues from public.payouts where payment_id = m.payment_id;
+
+  raise notice '%', 'W28 revisión congela el pago al trabajador: antes ' ||
+    coalesce(o_antes.status::text, 'sin payout') || ', después ' ||
+    coalesce(o_despues.status::text, 'sin payout') ||
+    (case when o_antes.status = 'PENDING' and o_despues.status = 'HELD' then '' else ' FALLO' end);
+end $$;
+
+-- W29 · Y los invariantes, después de todo lo anterior.
+do $$
+declare v_pago int; v_ref int; v_detalle text;
+begin
+  select count(*) into v_pago from app_private.payment_invariant_violations();
+  select count(*) into v_ref from app_private.refund_invariant_violations();
+  select coalesce(string_agg(rule || ':' || entity_id, ', '), '') into v_detalle
+    from app_private.payment_invariant_violations();
+  raise notice '%', 'W29 invariantes tras revisión y devoluciones: pago ' || v_pago ||
+    ', devolución ' || v_ref ||
+    (case when v_detalle = '' then '' else ' [' || v_detalle || ']' end) ||
+    (case when v_pago = 0 and v_ref = 0 then '' else ' FALLO' end);
+end $$;
