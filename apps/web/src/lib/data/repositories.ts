@@ -193,6 +193,13 @@ export interface AdminPayout {
   jobReference: string;
   workerName: string;
   completedAt: ISODateTime | null;
+  /**
+   * Fin del plazo para reportar problemas. Antes de esa hora la transferencia no
+   * se registra (salvo que una disputa ya se haya resuelto): lo exige la base.
+   */
+  disputeDeadlineAt: ISODateTime | null;
+  /** Si al leer el dato el plazo seguía abierto. Se calcula al consultar, no al pintar. */
+  disputeWindowOpen: boolean;
 }
 
 /** Un pago visto desde administración. Nunca incluye el token. */

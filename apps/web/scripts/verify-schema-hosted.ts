@@ -14,6 +14,7 @@
  * Sale con código distinto de cero si alguna comprobación falla o si los
  * advisors reportan algún aviso de seguridad.
  */
+import { readdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -23,6 +24,11 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
 
 loadEnvLocal(root);
+
+/** Migraciones del repositorio: lo que el historial remoto tiene que tener. */
+function repoMigrations(): number {
+  return readdirSync(resolve(root, "supabase/migrations")).filter((f) => f.endsWith(".sql")).length;
+}
 
 const TOKEN = process.env.SUPABASE_ACCESS_TOKEN ?? "";
 const API = process.env.SUPABASE_API_URL ?? "https://api.supabase.com";
@@ -310,7 +316,9 @@ async function main(): Promise<void> {
   check("regiones", inv.regiones, 16);
   check("categorías de trabajo", inv.categorias, 9);
   check("comisión (puntos base)", inv.comision_pb, 1400);
-  check("migraciones en el historial", inv.migraciones, 33);
+  // El esperado sale del propio repositorio: cada archivo de
+  // supabase/migrations/ es una migración que tiene que estar aplicada.
+  check("migraciones en el historial", inv.migraciones, repoMigrations());
 
   console.log("\n── Seguridad del esquema ──\n");
 

@@ -744,9 +744,12 @@ end $$;
 \echo ''
 \echo '--- Pago al trabajador y reseñas'
 
--- E23 · Aprobar, transferir con referencia, y que sea idempotente.
+-- E23 · Aprobar, transferir con referencia, y que sea idempotente. La
+-- transferencia espera a que cierre la ventana de disputa: antes de eso, el
+-- cliente todavía puede reclamar y el pago tiene que poder retenerse.
 do $$
 declare m record; v_admin uuid; v_po uuid; r1 jsonb; r2 jsonb; v record; a text := 'permitido';
+        w text := 'permitido';
 begin
   select * into m from pg_temp.montar_trabajo('e23');
   perform pg_temp.hasta_en_curso(m.assignment_id, m.worker_id);
@@ -759,8 +762,16 @@ begin
   select id into v_po from public.payouts where assignment_id = m.assignment_id;
   select id into v_admin from public.profiles where role = 'ADMIN' limit 1;
 
-  -- Sin referencia bancaria no se registra nada.
+  -- Con la ventana abierta no se transfiere.
   perform set_config('request.jwt.claim.sub', v_admin::text, true);
+  begin perform public.mark_payout_paid(v_po, 'TRX-2026-0001', now(), null);
+  exception when check_violation then w := 'rechazado'; end;
+
+  -- Vence la ventana.
+  update public.assignments set dispute_deadline_at = now() - interval '1 minute'
+   where id = m.assignment_id;
+
+  -- Sin referencia bancaria no se registra nada.
   begin perform public.mark_payout_paid(v_po, 'x', null, null);
   exception when check_violation then a := 'rechazado'; end;
 
@@ -769,9 +780,11 @@ begin
   perform set_config('request.jwt.claim.sub', '', true);
 
   select status, bank_reference, paid_at into v from public.payouts where id = v_po;
-  raise notice '%', 'E23 transferencia: referencia corta ' || a || ', estado ' || v.status
+  raise notice '%', 'E23 transferencia: con ventana abierta ' || w || ', referencia corta ' || a
+    || ', estado ' || v.status
     || ', referencia ' || v.bank_reference || ', repetida ' || (r2 ->> 'repeated')
-    || case when a = 'rechazado' and v.status = 'PAID' and v.bank_reference = 'TRX-2026-0001'
+    || case when w = 'rechazado' and a = 'rechazado' and v.status = 'PAID'
+             and v.bank_reference = 'TRX-2026-0001'
              and v.paid_at is not null and (r2 ->> 'repeated') = 'true' then '' else ' FALLO' end;
 end $$;
 

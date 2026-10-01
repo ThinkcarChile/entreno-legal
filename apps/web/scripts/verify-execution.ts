@@ -777,6 +777,26 @@ async function main(): Promise<void> {
       ) as { id: string }
     ).id;
 
+    // La ventana de disputa retiene el pago: con ella abierta no se transfiere.
+    const early = await adminUser.client.rpc("mark_payout_paid", {
+      p_payout_id: payoutId,
+      p_bank_reference: `TRX-${RUN}`,
+      p_paid_at: null,
+      p_notes: null,
+    });
+    expect(
+      early.error?.code === "23514",
+      `transferir con la ventana abierta debía rechazarse: ${early.error?.code ?? "se aceptó"}`,
+    );
+
+    // Vence la ventana (solo el reloj de esta asignación de prueba).
+    orThrow(
+      await admin
+        .from("assignments")
+        .update({ dispute_deadline_at: new Date(Date.now() - 60_000).toISOString() })
+        .eq("id", f.assignmentId),
+    );
+
     const short = await adminUser.client.rpc("mark_payout_paid", {
       p_payout_id: payoutId,
       p_bank_reference: "x",

@@ -321,6 +321,31 @@ marcadas. Si no, el chat no recibe mensajes sin recargar.
 
 ---
 
+### 4.4 Tareas programadas (verificar)
+
+La migración `20260601000100` habilita **pg_cron** y programa
+`app_private.run_scheduled_tasks()` cada 10 minutos: aprobación automática de
+trabajos sin respuesta del cliente, caducidad de trabajos publicados sin
+trabajador y cierre de pagos que salieron de la ventana de conciliación. No hay
+que configurar nada en el panel; solo comprobar que quedó:
+
+```sql
+select jobname, schedule, active from cron.job;
+-- hagotufila-tareas-programadas | */10 * * * * | t
+
+select status, return_message, start_time
+  from cron.job_run_details order by start_time desc limit 5;
+```
+
+Si la extensión no está disponible, la migración no falla: avisa con un
+`NOTICE` y las tareas quedan sin programar. En ese caso se pueden ejecutar a
+mano con `select app_private.run_scheduled_tasks();`.
+
+La **conciliación con Transbank no está aquí**: necesita hablar con el
+proveedor y corre en la aplicación (`/admin/pagos`). Ver `docs/TRANSBANK.md` §7.
+
+---
+
 ## 5. Datos de demostración (solo entornos de prueba)
 
 Crean usuarios con contraseña conocida. **No los apliques en producción.**

@@ -79,6 +79,14 @@ export default async function AdminPayoutsPage() {
                             <Amount value={row.payout.netAmount} />
                           </strong>
                         </p>
+                        {row.payout.status === "APPROVED" &&
+                          row.disputeWindowOpen &&
+                          row.disputeDeadlineAt && (
+                            <p className="mt-1 text-small text-ink-600">
+                              Transferible desde {formatDateTime(row.disputeDeadlineAt)}: hasta
+                              entonces el cliente puede reportar un problema.
+                            </p>
+                          )}
                         {row.payout.heldReason && (
                           <p className="mt-1 text-small text-warning-700">{row.payout.heldReason}</p>
                         )}

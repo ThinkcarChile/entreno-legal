@@ -204,6 +204,7 @@ export const NotificationType = {
   NEW_REVIEW: "NEW_REVIEW",
   VERIFICATION_UPDATED: "VERIFICATION_UPDATED",
   JOB_CANCELLED: "JOB_CANCELLED",
+  JOB_EXPIRED: "JOB_EXPIRED",
 } as const;
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType];
 

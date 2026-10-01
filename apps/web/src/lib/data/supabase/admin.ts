@@ -259,9 +259,16 @@ export class SupabaseAdminRepository implements AdminRepository {
 
     const { data: assignments } = await supabase
       .from("assignments")
-      .select("id,job_id,completed_at")
+      .select("id,job_id,completed_at,dispute_deadline_at")
       .in("id", [...new Set(rows.map((r) => r.assignment_id))])
-      .returns<{ id: string; job_id: string; completed_at: string | null }[]>();
+      .returns<
+        {
+          id: string;
+          job_id: string;
+          completed_at: string | null;
+          dispute_deadline_at: string | null;
+        }[]
+      >();
 
     const assignmentById = new Map((assignments ?? []).map((a) => [a.id, a]));
 
@@ -275,6 +282,7 @@ export class SupabaseAdminRepository implements AdminRepository {
     ]);
 
     const jobById = new Map((jobs.data ?? []).map((j) => [j.id, j]));
+    const readAt = Date.now();
 
     return rows.map((row) => {
       const assignment = assignmentById.get(row.assignment_id);
@@ -285,6 +293,10 @@ export class SupabaseAdminRepository implements AdminRepository {
         jobReference: job?.reference ?? "",
         workerName: profiles.get(row.worker_id)?.displayName ?? "Trabajador",
         completedAt: assignment?.completed_at ?? null,
+        disputeDeadlineAt: assignment?.dispute_deadline_at ?? null,
+        disputeWindowOpen: assignment?.dispute_deadline_at
+          ? new Date(assignment.dispute_deadline_at).getTime() > readAt
+          : false,
       };
     });
   }

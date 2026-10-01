@@ -97,6 +97,10 @@ export const notificationTemplates: Record<NotificationType, Template> = {
     title: "El trabajo se canceló",
     body: `"${c.jobTitle ?? "El trabajo"}" quedó cancelado.`,
   }),
+  JOB_EXPIRED: (c) => ({
+    title: "Tu trabajo venció sin trabajador",
+    body: `"${c.jobTitle ?? "El trabajo"}" pasó su hora de inicio sin una oferta aceptada. Puedes publicarlo otra vez.`,
+  }),
   VERIFICATION_UPDATED: () => ({
     title: "Estado de verificación actualizado",
     body: "Revisa el estado de tu verificación de identidad en tu perfil.",

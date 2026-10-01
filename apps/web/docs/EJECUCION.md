@@ -266,6 +266,26 @@ El bono es una decisión del cliente al aprobar: si el objetivo no se cumplió, 
 bono sale del payout. Aprobar dos veces no cambia nada (`E18`), y con una
 disputa abierta no se puede aprobar (`E22`).
 
+### Si el cliente no responde
+
+Pasadas `platform_settings.auto_approve_after_hours` (12 por omisión) desde que
+el trabajador pidió el cierre, sin aprobación ni disputa del cliente, el sistema
+aprueba solo (`app_private.auto_approve_completions`). Usa **el mismo núcleo**
+que la aprobación manual (`app_private.approve_completion_core`), así que no
+puede divergir de ella, y la misma regla para el bono: se otorga salvo que el
+cliente diga lo contrario. Queda en la línea de tiempo como «aprobado
+automáticamente» y se avisa a las dos partes.
+
+El cliente **no pierde su derecho a reclamar**: la ventana de disputa empieza a
+correr desde esa aprobación, igual que con la manual (`V21`).
+
+Antes de esto, un cliente que no volvía dejaba el payout en `PENDING` para
+siempre: el trabajador hacía el trabajo y no había camino para pagarle.
+
+> **Decisión del propietario.** Las 12 horas y el «bono otorgado por omisión»
+> son los valores que ya usaba la aprobación manual. Cambiarlos es un `update`
+> sobre `platform_settings`, no una migración.
+
 `dispute_deadline_at` no lo escribía nadie hasta ahora, así que la ventana de
 reclamo no se aplicaba en ninguna parte.
 
@@ -340,7 +360,7 @@ aunque la consulta no filtre.
 | Estado | Qué significa |
 |---|---|
 | `PENDING` | El cliente todavía no aprueba |
-| `APPROVED` | Aprobado, listo para transferir |
+| `APPROVED` | Aprobado. Transferible cuando vence la ventana de disputa, o antes si una disputa ya se resolvió |
 | `HELD` | Retenido: hay una disputa o una retención manual |
 | `PROCESSING` → `PAID` | Transferido, con su referencia bancaria |
 | `CANCELLED` | Una disputa se resolvió a favor del cliente |
@@ -353,6 +373,29 @@ Desde `/admin/payouts` se aprueba, se retiene con motivo y se registra la
 transferencia. Registrarla exige referencia bancaria y es idempotente: hacerlo
 dos veces no duplica nada. **Ninguna de estas acciones mueve dinero**, y la
 pantalla lo dice con esas palabras.
+
+### La ventana retiene de verdad
+
+`mark_payout_paid` se niega a registrar una transferencia mientras haya una
+disputa viva o mientras no haya vencido la ventana de un trabajo aprobado
+(`app_private.payout_transfer_blocker`). La única excepción es una disputa ya
+resuelta: la decisión de la administración es final. El panel muestra
+«Transferible desde …» para que nadie tenga que intentarlo para saberlo.
+
+Defecto que esto cerró, reproducido sobre la base antes de corregirlo: el
+cliente aprobaba; administración registraba la transferencia con la ventana
+abierta; el cliente reclamaba dentro de su plazo; `hold_payout_on_dispute`
+solo retiene `PENDING` o `APPROVED`, así que el payout seguía `PAID`, y a las
+dos partes se les avisaba «el pago queda retenido mientras tanto». Si la
+disputa se resolvía a favor del cliente, la devolución salía del bolsillo de
+la plataforma.
+
+Por la misma razón, sobre un trabajo con una disputa ya resuelta, o con el
+payout ya transferido, no se abre otra disputa
+(`disputes_guard_after_resolution`): avisaría de una retención imposible.
+
+Pruebas: `supabase/tests/10_payout_window.sql` (`V01`–`V28`) y `E23`, que antes
+transfería en el acto y ahora exige el rechazo con la ventana abierta.
 
 ---
 
@@ -386,11 +429,14 @@ la espera es por elemento visible.
 ## 15. Lo que queda fuera
 
 1. **Transferencias y reembolsos reales.** Etapa 4.
-2. **Liberación automática** del payout al vencer la ventana de disputa: hoy la
-   aprobación es siempre del cliente y no hay proceso programado.
+2. ~~Liberación automática del payout~~ y ~~caducidad de trabajos~~: resueltas
+   con `app_private.run_scheduled_tasks()` (aprobación automática, trabajos
+   `EXPIRED`, pagos fuera de la ventana de conciliación), que la migración
+   `20260601000100` programa con **pg_cron** cada 10 minutos donde la
+   extensión existe —Supabase alojado la trae—. Lo que no puede ir ahí es la
+   conciliación con Transbank, porque necesita la red: sigue en `/admin/pagos`
+   hasta que el hosting tenga un programador.
 3. **FilaPuntos**: `apply_loyalty_transaction` existe y nadie la llama.
-4. **Caducidad de trabajos** sin asignación (`EXPIRED`): no hay proceso que la
-   marque.
 5. **Retirar una disputa** (`WITHDRAWN`) desde la interfaz.
 6. **Chat con imágenes**: el bucket y el tipo de mensaje existen; la subida no
    está conectada.
