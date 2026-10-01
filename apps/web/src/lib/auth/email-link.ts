@@ -139,7 +139,7 @@ const MENSAJES: Record<"entrar" | "recuperar", Record<AuthLinkError, AuthLinkMes
         "correo, copiándolo entero, o entra con tu correo y tu contraseña.",
     },
     "otro-navegador": {
-      title: "Abre el enlace en el mismo navegador",
+      title: "El enlace se abrió en otro navegador",
       body:
         "Lo abriste en un navegador distinto del que usaste para registrarte. Es probable que tu " +
         "correo ya haya quedado confirmado: prueba entrar con tu correo y tu contraseña.",
@@ -158,11 +158,14 @@ const MENSAJES: Record<"entrar" | "recuperar", Record<AuthLinkError, AuthLinkMes
       title: "No pudimos abrir el enlace",
       body: "Llegó incompleto o no es válido. Pide uno nuevo aquí abajo.",
     },
+    // El enlace ya quedó usado: Supabase lo consume al verificarlo, antes de
+    // que falle el canje en este navegador. Volver a abrirlo en el otro no
+    // serviría; lo único que funciona es pedir uno nuevo.
     "otro-navegador": {
-      title: "Abre el enlace en el mismo navegador",
+      title: "El enlace se abrió en otro navegador",
       body:
-        "Lo abriste en un navegador distinto del que usaste para pedirlo. Ábrelo desde ese " +
-        "navegador, o pide uno nuevo aquí abajo y ábrelo en este.",
+        "Lo abriste en un navegador distinto del que usaste para pedirlo, y ya no sirve: cada " +
+        "enlace se usa una sola vez. Pide uno nuevo aquí abajo y ábrelo en este mismo navegador.",
     },
     auth: {
       title: "No pudimos validar el enlace",

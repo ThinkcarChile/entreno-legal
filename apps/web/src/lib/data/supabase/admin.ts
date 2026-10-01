@@ -258,8 +258,13 @@ export class SupabaseAdminRepository implements AdminRepository {
       (r) => pendingDisputeRefund(r.refund_amount, confirmed.get(r.id) ?? 0) > 0,
     );
 
+    // Por instante, no por texto: `localeCompare` ordena «.» antes que «+», y
+    // PostgreSQL omite los decimales en cero, así que dentro de un mismo
+    // segundo el texto no sigue al reloj. El desempate por `id` es el de la base.
     const rows = [...open, ...pendingRefund].sort(
-      (a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id),
+      (a, b) =>
+        Date.parse(a.created_at) - Date.parse(b.created_at) ||
+        (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
     );
     return this.enrichDisputes(supabase, rows, confirmed);
   }

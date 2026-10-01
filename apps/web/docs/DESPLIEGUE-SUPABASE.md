@@ -659,7 +659,7 @@ llega es el de la otra persona hasta recargar.
 | "Supabase no está configurado en este entorno" | Falta `NEXT_PUBLIC_SUPABASE_URL` o la clave pública en `.env.local` |
 | El registro no envía correo | Confirmación desactivada, o límite de envío alcanzado |
 | El enlace del correo lleva a otro sitio | Falta la URL en *Redirect URLs* |
-| Al abrir el enlace de «Olvidé mi contraseña» la pantalla pide abrirlo en el mismo navegador | La plantilla del correo sigue con `{{ .ConfirmationURL }}` (flujo PKCE): cámbiala según §4.1.c |
+| Al abrir el enlace de «Olvidé mi contraseña» la pantalla dice que se abrió en otro navegador | La plantilla del correo sigue con `{{ .ConfirmationURL }}` (flujo PKCE): cámbiala según §4.1.c |
 | `/nueva-clave` dice «Este enlace ya no sirve» | El enlace venció, ya se usó o no abrió sesión. Se pide otro desde `/recuperar-clave` |
 | El chat no actualiza sin recargar | La tabla `messages` no está en la publicación de Realtime |
 | "Falta la clave privada de Supabase" al pagar | Falta `SUPABASE_SECRET_KEY` |

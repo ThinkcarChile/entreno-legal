@@ -14,7 +14,11 @@
 /** Tamaño de página del historial. */
 export const HISTORY_PAGE_SIZE = 25;
 
-/** Tamaño de cada tramo de `fetchAllPages`: por debajo de `max_rows` (1000). */
+/**
+ * Tamaño de cada tramo que pide `fetchAllPages`: por debajo de `max_rows`
+ * (1000 en `config.toml` y por omisión en Supabase). Si un proyecto lo baja,
+ * los tramos llegan más cortos y `fetchAllPages` sigue pidiendo igual.
+ */
 export const FETCH_ALL_CHUNK = 500;
 
 /**
@@ -50,12 +54,18 @@ export function chunk<T>(items: readonly T[], size: number): T[][] {
 }
 
 /**
- * Trae TODAS las filas de una consulta, por tramos de `chunkSize`.
+ * Trae TODAS las filas de una consulta, por tramos de hasta `chunkSize`.
  *
  * `fetchRange(from, to)` es inclusivo en los dos extremos, como `.range()` de
  * supabase-js, y la consulta tiene que llevar un orden total (por ejemplo
  * `created_at` y luego `id`): sin él, dos tramos pueden repetir o saltarse una
  * fila.
+ *
+ * Termina solo con un tramo vacío, no con uno «corto». PostgREST recorta cada
+ * respuesta a `max_rows` sin avisar: si el proyecto lo tuviera por debajo de
+ * `chunkSize`, un tramo de 100 filas no significaría «no hay más», y cortar
+ * ahí devolvería la lista recortada que esta función existe para evitar. El
+ * precio es una consulta vacía al final.
  *
  * El tope de tramos no es un límite de negocio: existe para que una consulta
  * mal armada —una que ignore el rango— no deje la petición dando vueltas. Si
@@ -67,12 +77,17 @@ export async function fetchAllPages<T>(
 ): Promise<T[]> {
   const rows: T[] = [];
   for (let index = 0; index < maxChunks; index += 1) {
-    const from = index * chunkSize;
+    // Cada tramo empieza donde terminó lo recibido, no donde se pidió que
+    // terminara: así un tramo recortado por `max_rows` no deja un hueco.
+    const from = rows.length;
     const batch = await fetchRange(from, from + chunkSize - 1);
+    if (batch.length === 0) return rows;
+    if (batch.length > chunkSize) {
+      throw new Error("La consulta devolvió más filas que el tramo pedido: ignora el rango.");
+    }
     rows.push(...batch);
-    if (batch.length < chunkSize) return rows;
   }
   throw new Error(
-    `La consulta superó ${maxChunks * chunkSize} filas; no se muestra una lista recortada como si estuviera completa.`,
+    `La consulta siguió devolviendo filas tras ${maxChunks} tramos (${rows.length} filas); no se muestra una lista recortada como si estuviera completa.`,
   );
 }

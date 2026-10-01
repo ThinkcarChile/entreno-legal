@@ -64,11 +64,27 @@ describe("fetchAllPages", () => {
     expect(filas).toHaveLength(1234);
     expect(filas[100]).toBe(100);
     expect(filas[1233]).toBe(1233);
+    // Termina con un tramo vacío: uno corto no prueba que no haya más.
     expect(llamadas).toEqual([
       [0, 499],
       [500, 999],
       [1000, 1499],
+      [1234, 1733],
     ]);
+  });
+
+  it("no se corta si PostgREST recorta cada respuesta por debajo del tramo (max_rows)", async () => {
+    // `max_rows = 100`: pide 500, recibe 100. Antes se leía como «no hay más»
+    // y la lista volvía a quedar en las cien primeras filas.
+    const filas = tabla(1234);
+    const llamadas: [number, number][] = [];
+    const conTope = async (from: number, to: number) => {
+      llamadas.push([from, to]);
+      return filas.slice(from, Math.min(to + 1, from + 100));
+    };
+    const todas = await fetchAllPages(conTope, { chunkSize: 500 });
+    expect(todas).toEqual(filas);
+    expect(llamadas[1]).toEqual([100, 599]);
   });
 
   it("con un múltiplo exacto pide un tramo más y termina en vacío", async () => {
@@ -87,8 +103,10 @@ describe("fetchAllPages", () => {
   it("falla en voz alta si la consulta ignora el rango, en vez de dar vueltas", async () => {
     const siempreLlena = async () => tabla(5);
     await expect(fetchAllPages(siempreLlena, { chunkSize: 5, maxChunks: 3 })).rejects.toThrow(
-      /superó 15 filas/,
+      /tras 3 tramos \(15 filas\)/,
     );
+    const desbordada = async () => tabla(6);
+    await expect(fetchAllPages(desbordada, { chunkSize: 5 })).rejects.toThrow(/ignora el rango/);
   });
 
   it("propaga el error de la base", async () => {
