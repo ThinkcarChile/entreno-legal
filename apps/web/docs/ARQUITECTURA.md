@@ -434,7 +434,11 @@ La foto de perfil se guarda en `avatars/<userId>/<uuid>.<ext>`:
   la rechaza.
 
 La subida va directo del navegador a Storage con la sesión del usuario. El
-servidor solo guarda la URL, y antes comprueba que la ruta sea suya.
+servidor solo guarda la URL, y antes comprueba que la ruta sea suya. Una vez
+guardada la nueva, retira la anterior; y si el perfil no toma la nueva, el
+navegador la retira. Las dos cosas las permite `avatars_own_delete` (solo la
+carpeta propia), que no existía: hasta la migración `20260601001210` cada
+cambio de foto dejaba la vieja pública para siempre.
 
 ### 7.5 Indicador de origen de datos, solo en desarrollo
 

@@ -181,15 +181,18 @@ las 62 comprobaciones de `npm run verify:supabase`, las 23 de
 de `npm run e2e` —siete del marketplace y seis de la ejecución— y el recorrido a mano de
 `docs/DESPLIEGUE-SUPABASE.md` §8.4.
 
-Desde esa validación el repositorio sumó migraciones correctivas (hoy son 41
+Desde esa validación el repositorio sumó migraciones correctivas (hoy son 45
 archivos en `supabase/migrations/`) que **no** están aplicadas en el proyecto
 alojado ni probadas contra él. Antes de usarlo: `npm run db:push:hosted -- --plan`
 muestra cuáles faltan, `npm run db:push:hosted` las aplica, y después se repiten
 `verify:schema:hosted`, `verify:supabase` y `e2e`.
 
-Lo único que queda del proyecto alojado es la protección contra contraseñas
-filtradas, que Supabase solo ofrece desde el plan Pro: hay que activarla al pasar
-a producción. Está anotada, con su motivo, en la lista de avisos revisados de
-`npm run verify:schema:hosted`. Ver `docs/DESPLIEGUE-SUPABASE.md` §4.
+Del proyecto alojado quedan pasos que no caben en una migración. La protección
+contra contraseñas filtradas, que Supabase solo ofrece desde el plan Pro: hay
+que activarla al pasar a producción, y está anotada, con su motivo, en la lista
+de avisos revisados de `npm run verify:schema:hosted`. Y los límites de Supabase
+Auth y el CAPTCHA del registro y el ingreso, que **no están configurados**: el
+CAPTCHA además necesita que los formularios envíen el token antes de activarlo.
+Ver `docs/DESPLIEGUE-SUPABASE.md` §4.1.b y §4.5.
 
 Ver `docs/HOJA-DE-RUTA.md` para el detalle y los riesgos pendientes.

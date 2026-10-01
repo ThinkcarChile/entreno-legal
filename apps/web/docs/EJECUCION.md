@@ -66,8 +66,9 @@ Resumen de quién puede qué, cuando el trabajo está vivo y pagado:
 | Actualización o evidencia | sí | sí | no |
 | Pedir más tiempo | sí, en curso y sin otra pendiente | no | no |
 | Responder al tiempo extra | no | sí, una sola vez | no |
-| Generar y ver el PIN | no | sí | no |
-| Validar el PIN | sí | no | no |
+| Generar el PIN | no | sí, en curso | no |
+| Ver el PIN | no | sí | no |
+| Pedir y validar el PIN | sí, en curso | no | no |
 | Pedir la finalización | sí | no | no |
 | Aprobar | no | sí | no |
 | Abrir disputa | sí | sí | no |
@@ -116,7 +117,15 @@ automáticos ni notificaciones. `E07` y `W04` lo comprueban.
 | Dentro del radio y con precisión suficiente | `VERIFIED` | Se puede comenzar |
 | Lejos del lugar | `OUT_OF_RANGE` | Queda en revisión, no se puede comenzar |
 | Precisión insuficiente | `LOW_ACCURACY` | Idem |
+| Coordenadas sin precisión informada | `LOW_ACCURACY` | Idem |
 | Sin ubicación (negada, no disponible) | `NO_LOCATION` | Idem |
+
+Una ubicación sin precisión no vale como verificada: sin ese dato no se sabe
+cuánto vale el punto. El navegador siempre la informa
+(`GeolocationCoordinates.accuracy` es obligatoria), así que esto solo alcanza a
+una llamada hecha a mano a `register_check_in` con `p_accuracy_m` nulo. Hasta la
+migración `20260601001230` esa llamada, con un punto dentro del radio, quedaba
+`VERIFIED` y dejaba comenzar (`Q70`–`Q72`).
 
 Se puede **reintentar**: cada intento deja su fila, y basta uno verificado.
 También se puede adjuntar una foto y pedir revisión: la administración aprueba o
@@ -164,22 +173,33 @@ Cada hito lleva un `event_key` (`on_the_way`, `check_in`, `work_started`,
 
 ## 6. Evidencia y Storage
 
-La subida es **del servidor**, no del navegador. La diferencia importa: aquí se
-miran los primeros bytes del archivo antes de guardarlo, y no solo lo que el
-navegador dice que es. Un ejecutable renombrado a `.jpg` declara `image/jpeg` en
-el formulario; su firma, no.
+La subida de la aplicación es **del servidor**, no del navegador. La diferencia
+importa: ahí se miran los primeros bytes del archivo antes de guardarlo, y no
+solo lo que el navegador dice que es. Un ejecutable renombrado a `.jpg` declara
+`image/jpeg` en el formulario; su firma, no.
 
-| Control | Cómo |
-|---|---|
-| Formatos | JPG, PNG, WebP y PDF. **SVG queda fuera**: es un documento que puede llevar script |
-| Tipo real | Se comprueban las firmas de los primeros bytes (`validateEvidence`) |
-| Tamaño | 8 MB por archivo, en el cliente, en el servidor y en `platform_settings` |
-| Cantidad | Máximo por asignación, en `platform_settings` |
-| Nombre | Lo genera la aplicación: `<usuario>/<asignación>/<uuid>.<ext>`. La extensión sale del tipo, nunca del nombre original |
-| Path traversal | Se rechaza cualquier ruta con `..` o que no empiece por el identificador de quien sube |
-| Sobrescritura | `upsert: false`, y la política de Storage exige que la primera carpeta sea la propia |
-| Lectura | Bucket privado. Se abre con URL firmada de 60 segundos, emitida solo si quien pregunta puede leer la fila con SU sesión |
-| Huérfanos | Si la fila no se registra, el archivo subido se retira |
+Pero quien tiene una sesión puede hablar con Storage y con las RPC sin pasar
+por la aplicación. Por eso cada control dice dónde vive:
+
+| Control | Dónde | Cómo |
+|---|---|---|
+| Formatos | Storage y base | JPG, PNG, WebP y PDF (`allowed_mime_types` del bucket). **SVG queda fuera**: es un documento que puede llevar script |
+| Tipo real | Solo la aplicación | Firmas de los primeros bytes (`validateEvidence`). La base no lee bytes: quien sube directo con su sesión se salta esta comprobación, no las demás |
+| Tamaño | Storage y base | 8 MB por archivo: `file_size_limit` del bucket, y `add_job_evidence` / `add_dispute_evidence` toman el tamaño **que midió Storage** (`storage.objects.metadata`), lo contrastan con `evidence_max_bytes` y exigen que coincida con el declarado |
+| Existencia | Base | El archivo tiene que estar en `storage.objects`, en esa ruta, al registrarlo. Antes se podía registrar un archivo que no existía |
+| Cantidad | Base | Máximo por persona y asignación, y por persona y disputa, en `evidence_max_per_assignment`. La administración no tiene tope en las disputas |
+| Ruta | Storage y base | `<usuario>/<asignación o disputa>/<uuid>.<ext>`, generada por la aplicación; la extensión sale del tipo, nunca del nombre original. La política de subida exige que la primera carpeta sea la propia y la segunda una asignación o disputa en la que se participa; la RPC exige que sea justo la que se registra |
+| Path traversal | Storage y base | Se rechaza cualquier ruta con `..` |
+| Sobrescritura | Storage | `upsert: false`, y no hay política de `UPDATE` en `evidence` ni en `dispute-files` |
+| Lectura | Storage | Bucket privado. Se abre con URL firmada de 60 segundos, emitida solo si quien pregunta puede leer la fila con SU sesión |
+| Huérfanos | Storage | Si la fila no se registra, la aplicación retira el archivo con la sesión de quien lo subió. Lo permite la política de borrado, que solo alcanza a **lo propio que todavía no está registrado** |
+| Borrado | Storage | Una vez registrada, la evidencia no la borra nadie con sesión: ni su autor, ni la contraparte, ni la administración |
+
+Registrar y borrar el mismo archivo a la vez no deja una fila sin archivo: la
+RPC y la política de borrado toman el mismo candado por objeto, y el segundo en
+llegar ve lo que hizo el primero (`app_private.storage_object_deletable`). Los
+dos órdenes se comprobaron a mano con dos sesiones `psql`; todavía no hay una
+carrera permanente en la batería, como las de `08_race_execution.sh`.
 
 La política `evidence_read` se corrigió: antes solo dejaba leer al autor del
 archivo, así que el cliente veía en la línea de tiempo que había una fotografía
@@ -187,8 +207,20 @@ y no podía abrirla. Ahora alcanza también a los participantes del trabajo, por
 la fila de `job_evidence` que referencia esa ruta. Lo mismo para
 `dispute-files`.
 
+Los otros buckets:
+
+| Bucket | Subir | Borrar |
+|---|---|---|
+| `avatars` (público) | Carpeta propia | Carpeta propia: la aplicación retira la foto anterior al reemplazarla, y la nueva si el perfil no la toma |
+| `job-images` (público) | Carpeta propia y un trabajo propio en `DRAFT` o `PUBLISHED` (`<usuario>/<trabajo>/<archivo>`). La aplicación todavía no sube fotos de trabajos | Nadie con sesión |
+| `verification` (privado) | Carpeta propia | Nadie con sesión |
+
 No se guardan URLs públicas de archivos privados: una dirección permanente a un
 archivo privado deja de ser privada en cuanto alguien la copia.
+
+Todo esto se comprueba en `supabase/tests/15_abuse_storage.sql` (`Q20`–`Q56`),
+con las políticas evaluadas como `authenticated`. Contra el proyecto alojado
+no se ha comprobado todavía.
 
 ---
 
@@ -231,10 +263,11 @@ tiempo. Por eso el cliente lo ve y el trabajador lo escribe, nunca al revés.
 
 | Regla | Cómo |
 |---|---|
-| Se genera en el servidor | `generate_handoff_code`, solo el cliente, y solo con el trabajo en curso |
+| Se genera en el servidor | `generate_handoff_code`, solo el cliente, y solo con el trabajo en curso (`IN_PROGRESS`) |
+| Se usa en un solo estado | Pedirlo, generarlo y validarlo, solo con la asignación en `IN_PROGRESS` y sin disputa abierta. La interfaz muestra el panel exactamente ahí |
 | Se lee por función | `get_handoff_code`, solo el cliente. `handoff_codes` dejó de tener política de lectura: el PIN no sale por una consulta a la tabla |
 | Caduca | 12 horas |
-| Intentos | 5. **Solo los fallos consumen intento** |
+| Intentos | 5. **Solo los fallos consumen intento**, y solo cuando acertar habría cerrado la entrega: antes de comenzar, con la entrega ya registrada o con una disputa abierta, la validación se rechaza con su motivo y no gasta nada |
 | Un solo uso | Un código validado no vuelve a servir |
 | Regenerable | Un código vencido se puede volver a generar. Antes era imposible: `on conflict do update set code = code` conservaba el código y no tocaba la expiración, así que la entrega quedaba bloqueada para siempre |
 | No viaja | No aparece en el chat, ni en las notificaciones, ni en la bitácora de auditoría |
@@ -242,6 +275,18 @@ tiempo. Por eso el cliente lo ve y el trabajador lo escribe, nunca al revés.
 Validarlo deja la asignación en `HANDOFF_COMPLETED` y escribe el hito
 `handoff_verified`. Dos validaciones simultáneas del mismo código dejan una sola
 entrega, un solo hito y cero intentos gastados: es la carrera `X11`.
+
+**Por qué en curso y no desde el check-in.** Hasta la migración
+`20260601001220` el panel aparecía con la llegada registrada (`CHECKED_IN`),
+pero desde ahí la máquina de estados no admite `HANDOFF_COMPLETED`: acertar
+hacía fallar la validación entera, y cada fallo sí sumaba intento, hasta
+bloquear el código 12 horas. Se eligió el estado que ya decían la máquina y
+esta guía en vez de abrir la transición `CHECKED_IN → HANDOFF_COMPLETED`, que
+saltaría el inicio —el paso que exige un check-in verificado o aprobado— y el
+tiempo acordado no habría empezado a correr. Los intentos que se gastaron en
+una asignación que sigue en `CHECKED_IN` se devolvieron en la misma migración;
+los de una que ya avanzó no se pueden separar de los legítimos y se dejaron
+como estaban. `Q60`–`Q67`.
 
 ---
 
@@ -296,7 +341,7 @@ reclamo no se aplicaba en ninguna parte.
 | Momento | Qué ocurre |
 |---|---|
 | Abrir (`open_dispute`) | El payout pasa a `HELD`, el trabajo a `DISPUTED`, se avisa a las dos partes. El cliente ya no puede aprobar |
-| Pruebas (`add_dispute_evidence`) | Texto, archivo o las dos cosas, con las mismas validaciones que la evidencia del trabajo |
+| Pruebas (`add_dispute_evidence`) | Texto, archivo o las dos cosas, con las mismas validaciones que la evidencia del trabajo (§6), incluido el tope por persona |
 | Resolver (`resolve_dispute`) | **Solo la administración.** Exige motivo escrito |
 
 Resultados y su efecto sobre el pago al trabajador:
@@ -418,6 +463,7 @@ Realtime actualiza la interfaz; la base sigue siendo la fuente de verdad.
 |---|---|
 | `supabase/tests/08_job_execution.sql` | E01–E28: recorrido completo, check-in y sus cuatro resultados, papeles, escrituras directas, extensiones, PIN, finalización, disputas, payouts, reseñas, idempotencia de hitos e invariantes |
 | `supabase/tests/08_race_execution.sh` | X10 aceptar y rechazar la misma extensión a la vez, X11 dos validaciones del mismo PIN, X12 dos aprobaciones, X13 invariantes. `RACE_REPS` repeticiones, dos sesiones `psql` reales |
+| `supabase/tests/15_abuse_storage.sql` | Q01–Q72: límites por usuario, subida y borrado en Storage con las políticas como `authenticated`, evidencia contrastada con `storage.objects`, el PIN solo en curso y el check-in sin precisión |
 | `scripts/verify-execution.ts` | W01–W24 contra `hagotufila-dev`, con sesiones reales y RLS del proyecto: separación de roles, privacidad de la ubicación, extensiones, disputas, transferencia, reseñas y dos carreras |
 | `e2e/execution.spec.ts` | Seis pruebas de navegador: el recorrido con el ratón, que cada parte ve solo sus acciones, y que la línea de tiempo no lleva coordenadas |
 

@@ -260,20 +260,63 @@ tardía), `create_payout_for_assignment` (idempotente) y
 `payment_invariant_violations()` (devuelve toda fila que rompa los invariantes;
 las pruebas exigen cero).
 
+Y las de abuso y archivos (`20260601001200`–`…001210`): `enforce_rate_limit`
+(BEFORE INSERT en `jobs`, `job_offers` y `messages`, ver abajo),
+`rate_limit_wait_text`, `storage_upload_allowed` y `storage_object_deletable`
+(las evalúan las políticas de Storage como `authenticated`),
+`storage_lock_key` y `verified_upload` (el archivo que registran
+`add_job_evidence` y `add_dispute_evidence` es el que está en
+`storage.objects`).
+
+### Límites por usuario
+
+Cada alta que una persona hace **con su sesión** en `jobs`, `job_offers` o
+`messages` deja una marca en `app_private.rate_limit_events`, y un disparador
+rechaza la siguiente si ya llegó al límite de la ventana:
+
+| Columna de `platform_settings` | Por omisión | Ventana |
+|---|---|---|
+| `rate_limit_jobs_per_day` | 30 trabajos | 24 horas móviles |
+| `rate_limit_offers_per_hour` | 30 ofertas, retiradas incluidas | 1 hora móvil |
+| `rate_limit_messages_per_minute` | 20 mensajes | 1 minuto móvil |
+
+Vale para cualquier cliente, también para quien llama a PostgREST directo con
+la clave pública. No cuentan ni se limitan: lo que crea el sistema sin sesión
+(rol de servicio, tareas programadas, semillas), la administración, ni los
+avisos `SYSTEM` del chat. El error sale con SQLSTATE `PT429` —PostgREST lo
+devuelve como HTTP 429— y dice cuándo se puede volver a intentar («Podrás
+publicar otro en 3 h 20 min.»). Cambiar un límite es un `update` sobre
+`platform_settings`, no una migración.
+
+> Las verificaciones contra el proyecto alojado (`verify:execution`,
+> `verify:payments`, `verify:supabase`) publican y ofertan por el camino real,
+> con las mismas cuentas de control de calidad: entre las tres, unos 23
+> trabajos del mismo cliente y otras tantas ofertas del mismo trabajador. Una
+> pasada cabe en los valores por omisión; dos el mismo día, no. Para
+> repetirlas sobre `hagotufila-dev`, sube `rate_limit_jobs_per_day` y
+> `rate_limit_offers_per_hour` en ese proyecto. En producción, no.
+
+El registro y el ingreso no pasan por aquí: los limita Supabase Auth, que se
+configura en el panel (`DESPLIEGUE-SUPABASE.md` §4.5).
+
 ---
 
 ## Storage
 
-| Bucket | Público | Contenido |
-|---|---|---|
-| `avatars` | Sí | Fotos de perfil |
-| `job-images` | Sí | Fotos del trabajo publicado |
-| `evidence` | No | Fotos de check-in y avance |
-| `verification` | No | Documento y selfie de verificación |
-| `dispute-files` | No | Archivos adjuntos a una disputa |
+| Bucket | Público | Contenido | Subir (con sesión) | Borrar (con sesión) |
+|---|---|---|---|---|
+| `avatars` | Sí | Fotos de perfil | Carpeta propia | Carpeta propia |
+| `job-images` | Sí | Fotos del trabajo publicado | Carpeta propia, en un trabajo propio en `DRAFT` o `PUBLISHED` | Nadie |
+| `evidence` | No | Fotos de check-in y avance | Carpeta propia, en una asignación en la que participa | Lo propio, mientras no esté registrado |
+| `verification` | No | Documento y selfie de verificación | Carpeta propia | Nadie |
+| `dispute-files` | No | Archivos adjuntos a una disputa | Carpeta propia, en una disputa sin resolver en la que participa | Lo propio, mientras no esté registrado |
 
-En los buckets privados la primera carpeta de la ruta debe ser el identificador del
-usuario: las políticas de Storage lo exigen.
+La primera carpeta de la ruta es siempre el identificador del usuario, y en
+`evidence`, `dispute-files` y `job-images` la segunda es el ámbito: la
+asignación, la disputa o el trabajo (`<usuario>/<ámbito>/<archivo>`). Lo exigen
+las políticas de Storage (migración `20260601001210`), no solo la aplicación.
+Una evidencia registrada no la borra nadie con sesión. Tamaño y tipos por
+bucket: migración `20260601000600`.
 
 ---
 
