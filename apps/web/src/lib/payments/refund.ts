@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { getPaymentProvider } from "./index";
+import { getPaymentProviderForExistingPayments } from "./index";
 import { errorCategory, paymentLog } from "./logging";
 import { isReconcilable } from "./provider";
 
@@ -85,7 +85,7 @@ export async function performRefund(
   admin: SupabaseClient,
   request: RefundRequest,
 ): Promise<RefundOutcome> {
-  const provider = getPaymentProvider();
+  const provider = getPaymentProviderForExistingPayments();
 
   const { data: refundId, error: requestError } = await requester.rpc("request_payment_refund", {
     p_payment_id: request.paymentId,

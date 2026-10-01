@@ -120,3 +120,28 @@ describe("destino de la redirección", () => {
     }
   });
 });
+
+describe("ámbito de las guardas: pagos nuevos y pagos existentes", () => {
+  const apagado = { ...GOOD, productionEnabled: false };
+
+  it("con el interruptor apagado no se abren pagos nuevos", () => {
+    expect(productionBlockers(apagado)).toContain("falta TRANSBANK_PRODUCTION_ENABLED=true");
+    expect(productionBlockers({ ...apagado, scope: "new" })).toContain(
+      "falta TRANSBANK_PRODUCTION_ENABLED=true",
+    );
+  });
+
+  it("pero los existentes se siguen cerrando: retorno, conciliación y devoluciones", () => {
+    expect(productionBlockers({ ...apagado, scope: "existing" })).toEqual([]);
+  });
+
+  it.each([
+    ["credenciales de integración", { commerceCode: String(INTEGRATION_COMMERCE_CODE) }],
+    ["modo demostración", { demoMode: true }],
+    ["NODE_ENV que no es production", { nodeEnv: "development" }],
+    ["URL sin HTTPS", { siteUrl: "http://hagotufila.cl" }],
+    ["sin llave", { apiKeySecret: undefined }],
+  ])("el ámbito de existentes NO relaja %s", (_label, patch) => {
+    expect(productionBlockers({ ...apagado, scope: "existing", ...patch }).length).toBeGreaterThan(0);
+  });
+});

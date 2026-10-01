@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { getPaymentProvider } from "./index";
+import { getPaymentProviderForExistingPayments } from "./index";
 import { errorCategory, paymentLog } from "./logging";
 import { recordSnapshot } from "./checkout";
 import { applyProviderResult } from "./settle";
@@ -90,7 +90,7 @@ export async function reconcilePayments(
   admin: SupabaseClient,
   options: ReconcileOptions = {},
 ): Promise<ReconcileSummary> {
-  const provider = getPaymentProvider();
+  const provider = getPaymentProviderForExistingPayments();
 
   if (!isReconcilable(provider)) {
     return { examined: 0, changed: 0, expired: 0, results: [] };
@@ -178,7 +178,7 @@ async function loadQueue(
 
 async function reconcileOne(
   admin: SupabaseClient,
-  provider: ReturnType<typeof getPaymentProvider> & {
+  provider: ReturnType<typeof getPaymentProviderForExistingPayments> & {
     environment: string;
     inspect: (token: string) => Promise<ProviderSnapshot>;
   },

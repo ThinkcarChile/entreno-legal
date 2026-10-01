@@ -150,6 +150,14 @@ export class TransbankPaymentProvider implements PaymentProvider, ReconcilablePr
   /* ----------------------------------------------------------------- crear */
 
   async createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
+    // Una instancia para cerrar pagos existentes nunca abre uno nuevo: es la
+    // que sigue operando con el interruptor de producción apagado.
+    if (this.guards.scope === "existing") {
+      throw new PaymentProviderError(
+        this.id,
+        "Este proveedor solo cierra pagos existentes: no abre pagos nuevos.",
+      );
+    }
     const { buyOrder, sessionId } = requireIdentifiers(input);
 
     if (input.amount.currency !== "CLP") {

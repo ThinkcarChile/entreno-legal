@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { paymentLog } from "./logging";
-import { getPaymentProvider } from "./index";
+import { getPaymentProviderForExistingPayments } from "./index";
 import { applyProviderResult, type SettlementOutcome } from "./settle";
 import { PAYMENT_COLUMNS, recordSnapshot, type PaymentRow } from "./checkout";
 import { findMismatches } from "./transbank/mapping";
@@ -120,7 +120,7 @@ export async function handleReturn(
   flow: ReturnFlow,
   viewerId: string,
 ): Promise<ReturnOutcome> {
-  const provider = getPaymentProvider();
+  const provider = getPaymentProviderForExistingPayments();
   const payment = await findPaymentForReturn(admin, flow);
 
   if (!payment) {

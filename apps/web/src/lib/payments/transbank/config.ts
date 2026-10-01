@@ -47,6 +47,16 @@ export interface GuardContext {
   demoMode: boolean;
   /** Proveedor seleccionado en `PAYMENT_PROVIDER`. */
   selectedProvider: string;
+  /**
+   * Para qué se quiere el proveedor.
+   *
+   * · `new` (por omisión): abrir pagos nuevos. Exige TODAS las guardas.
+   * · `existing`: cerrar pagos que ya existen —retorno, conciliación,
+   *   devoluciones—. Exige todas menos el interruptor
+   *   `TRANSBANK_PRODUCTION_ENABLED`. Apagar el interruptor detiene los cobros
+   *   nuevos; no puede dejar sin cerrar ni sin devolver el dinero que ya entró.
+   */
+  scope?: "new" | "existing";
 }
 
 /**
@@ -78,7 +88,7 @@ export function productionBlockers(context: GuardContext): string[] {
   if (context.environment !== "production") {
     blockers.push("TRANSBANK_ENVIRONMENT no es exactamente \"production\"");
   }
-  if (!context.productionEnabled) {
+  if (!context.productionEnabled && context.scope !== "existing") {
     blockers.push("falta TRANSBANK_PRODUCTION_ENABLED=true");
   }
   if (context.nodeEnv !== "production") {

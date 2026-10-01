@@ -457,8 +457,18 @@ Después, comprobar **todo** esto antes del segundo:
 
 Por orden de rapidez:
 
-1. `TRANSBANK_PRODUCTION_ENABLED=false` y redesplegar. El proveedor deja de
-   operar; los pagos en vuelo se cierran con la conciliación.
+1. `TRANSBANK_PRODUCTION_ENABLED=false` y redesplegar. Se detienen los
+   **cobros nuevos**: nadie puede abrir un pago. Los pagos que ya existen se
+   siguen cerrando —el retorno confirma, la conciliación consulta, las
+   devoluciones se ejecutan— porque usan
+   `getPaymentProviderForExistingPayments()`, que exige todas las guardas
+   salvo el interruptor, y que se niega a abrir pagos nuevos.
+
+   > Hasta la corrección de esta sección, apagar el interruptor impedía
+   > construir cualquier proveedor productivo: el dinero que ya había entrado
+   > no se podía confirmar, conciliar ni devolver, y esta misma línea decía lo
+   > contrario. Lo encontró la auditoría; lo cubren
+   > `transbank/config.test.ts` y `transbank/provider-scope.test.ts`.
 2. Si hace falta parar todo: `PAYMENT_PROVIDER` a un valor que no sea
    `transbank` en un entorno que no sea producción, o retirar el despliegue.
 3. Los cobros ya hechos **no se deshacen solos**: se devuelven uno a uno desde

@@ -25,6 +25,9 @@ export * from "./transbank/mapping";
 export * from "./transbank/sanitize";
 
 let provider: PaymentProvider | null = null;
+let existingProvider: PaymentProvider | null = null;
+/** Proveedor puesto a mano (pruebas): manda en las dos puertas. */
+let injected = false;
 
 /**
  * Contexto que ven las guardas de producción.
@@ -33,8 +36,9 @@ let provider: PaymentProvider | null = null;
  * verdad?» dependa siempre de las mismas señales, las lea quien las lea: el
  * proveedor al construirse, el verificador, o la pantalla de administración.
  */
-export function transbankGuardContext(): GuardContext {
+export function transbankGuardContext(scope: "new" | "existing" = "new"): GuardContext {
   return {
+    scope,
     environment: env.TRANSBANK_ENVIRONMENT,
     productionEnabled: env.TRANSBANK_PRODUCTION_ENABLED,
     commerceCode: env.TRANSBANK_PRODUCTION_COMMERCE_CODE,
@@ -63,9 +67,35 @@ export function transbankGuardContext(): GuardContext {
  */
 export function getPaymentProvider(): PaymentProvider {
   if (provider) return provider;
+  provider = buildPaymentProvider("new");
+  return provider;
+}
 
+/**
+ * Proveedor para CERRAR pagos que ya existen: retorno, conciliación y
+ * devoluciones.
+ *
+ * Exige las mismas guardas que `getPaymentProvider` salvo el interruptor
+ * `TRANSBANK_PRODUCTION_ENABLED`. Así, apagar el interruptor —el primer paso
+ * del rollback en docs/TRANSBANK.md §9— detiene los cobros nuevos y deja que
+ * los pagos en vuelo se confirmen, se concilien y se devuelvan. Antes, con el
+ * interruptor apagado no se construía ningún proveedor y el dinero que ya
+ * había entrado no se podía cerrar ni devolver.
+ *
+ * Esta instancia se niega a abrir pagos nuevos (`createPayment`).
+ */
+export function getPaymentProviderForExistingPayments(): PaymentProvider {
+  // Los simulados guardan estado en memoria: las dos puertas comparten la misma
+  // instancia. Y uno inyectado en pruebas manda en ambas.
+  if (injected || env.PAYMENT_PROVIDER !== "transbank") return getPaymentProvider();
+  if (existingProvider) return existingProvider;
+  existingProvider = buildPaymentProvider("existing");
+  return existingProvider;
+}
+
+function buildPaymentProvider(scope: "new" | "existing"): PaymentProvider {
   if (env.PAYMENT_PROVIDER === "transbank") {
-    const guards = transbankGuardContext();
+    const guards = transbankGuardContext(scope);
     const production = env.TRANSBANK_ENVIRONMENT === "production";
 
     if (production) {
@@ -79,7 +109,7 @@ export function getPaymentProvider(): PaymentProvider {
       }
     }
 
-    provider = new TransbankPaymentProvider(
+    return new TransbankPaymentProvider(
       {
         environment: env.TRANSBANK_ENVIRONMENT,
         commerceCode: production
@@ -92,7 +122,6 @@ export function getPaymentProvider(): PaymentProvider {
       },
       guards,
     );
-    return provider;
   }
 
   // Los dos simulados —inmediato y retardado— quedan fuera de producción sin
@@ -103,15 +132,15 @@ export function getPaymentProvider(): PaymentProvider {
     );
   }
 
-  provider =
-    env.PAYMENT_PROVIDER === "mock-delayed"
-      ? new DelayedMockPaymentProvider()
-      : new MockPaymentProvider();
-  return provider;
+  return env.PAYMENT_PROVIDER === "mock-delayed"
+    ? new DelayedMockPaymentProvider()
+    : new MockPaymentProvider();
 }
 
 export function setPaymentProvider(next: PaymentProvider | null): void {
   provider = next;
+  existingProvider = null;
+  injected = next !== null;
 }
 
 /** ¿El proveedor activo cobra de verdad? Para avisos en pantalla y registros. */
