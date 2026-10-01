@@ -43,10 +43,11 @@ export default async function ClientJobDetailPage({ params, searchParams }: Page
   // Una URL ajena no da acceso: quien no es el dueño va al detalle público.
   if (job.clientId !== session.id) redirect(`/trabajos/${id}`);
 
-  const [offers, timeline, assignment] = await Promise.all([
+  const [offers, timeline, assignment, instructions] = await Promise.all([
     data.jobs.listOffers(job.id),
     data.jobs.getTimeline(job.id),
     data.jobs.getAssignmentByJob(job.id),
+    data.jobs.getInstructions(job.id),
   ]);
 
   const permissions = jobPermissions(job.status, "client");
@@ -196,6 +197,21 @@ export default async function ClientJobDetailPage({ params, searchParams }: Page
                   </div>
                 </div>
               )}
+
+              {instructions && (
+                <div>
+                  <p className="text-caption font-medium tracking-wide text-ink-500 uppercase">
+                    Instrucciones
+                  </p>
+                  <p className="mt-1.5 text-[0.9375rem] whitespace-pre-line text-ink-700">
+                    {instructions}
+                  </p>
+                  <p className="mt-1.5 text-caption text-ink-500">
+                    No aparecen en la página pública del trabajo. Las verá la persona que elijas,
+                    desde que aceptes su oferta, y el equipo de soporte si revisa un caso.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -218,8 +234,9 @@ export default async function ClientJobDetailPage({ params, searchParams }: Page
 
             {offers.length === 0 ? (
               <p className="mt-3 text-small text-ink-500">
-                Todavía no tienes ofertas. Los trabajadores verificados de la zona ya pueden ver tu
-                publicación.
+                Todavía no tienes ofertas. Tu trabajo ya está publicado: cualquiera puede verlo, sin
+                la dirección exacta ni las instrucciones, y los trabajadores verificados pueden
+                enviarte una oferta.
               </p>
             ) : (
               <>

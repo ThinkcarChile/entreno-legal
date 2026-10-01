@@ -16,10 +16,24 @@ export interface TemplateContext {
 
 type Template = (ctx: TemplateContext) => { title: string; body: string };
 
+/**
+ * El nombre de una persona va entre comillas angulares —«Camila F.»— y nunca
+ * suelto en la frase. Lo escribe quien lo elige, y suelto se puede leer como
+ * parte del aviso: «HagoTuFila: tu pago fue rechazado envió una oferta…». La
+ * base cita igual en los avisos que genera ella (migración …001120). Sin
+ * nombre, el genérico va sin comillas: ese texto es nuestro.
+ */
+export function quotedName(name: string | undefined, fallback: string): string {
+  // La base ya no admite comillas en un nombre (…001120); se quitan igual aquí
+  // para que ningún nombre pueda cerrar la cita que lo encierra.
+  const clean = name?.replace(/["«»‹›“”„‟〝〞＂]/g, " ").replace(/\s+/g, " ").trim();
+  return clean ? `«${clean}»` : fallback;
+}
+
 export const notificationTemplates: Record<NotificationType, Template> = {
   NEW_OFFER: (c) => ({
     title: "Nueva oferta recibida",
-    body: `${c.actorName ?? "Un trabajador"} envió una oferta para "${c.jobTitle ?? "tu trabajo"}".`,
+    body: `Recibiste una oferta de ${quotedName(c.actorName, "un trabajador")} para "${c.jobTitle ?? "tu trabajo"}".`,
   }),
   OFFER_ACCEPTED: (c) => ({
     title: "Tu oferta fue aceptada",
@@ -31,15 +45,15 @@ export const notificationTemplates: Record<NotificationType, Template> = {
   }),
   WORKER_ON_THE_WAY: (c) => ({
     title: "El trabajador va en camino",
-    body: `${c.actorName ?? "El trabajador"} se dirige al lugar acordado.`,
+    body: `${quotedName(c.actorName, "El trabajador")} se dirige al lugar acordado.`,
   }),
   CHECK_IN: (c) => ({
     title: "Check-in realizado",
-    body: `${c.actorName ?? "El trabajador"} llegó al lugar y registró su check-in.`,
+    body: `${quotedName(c.actorName, "El trabajador")} llegó al lugar y registró su check-in.`,
   }),
   NEW_MESSAGE: (c) => ({
     title: "Nuevo mensaje",
-    body: `${c.actorName ?? "Tienes un mensaje nuevo"} te escribió sobre "${c.jobTitle ?? "el trabajo"}".`,
+    body: `Tienes un mensaje de ${quotedName(c.actorName, "alguien")} sobre "${c.jobTitle ?? "el trabajo"}".`,
   }),
   EXTENSION_REQUESTED: (c) => ({
     title: "Solicitud de extensión",
@@ -47,7 +61,7 @@ export const notificationTemplates: Record<NotificationType, Template> = {
   }),
   EXTENSION_ANSWERED: (c) => ({
     title: "Respuesta a la extensión",
-    body: `${c.actorName ?? "El trabajador"} respondió a la solicitud de extensión.`,
+    body: `${quotedName(c.actorName, "El trabajador")} respondió a la solicitud de extensión.`,
   }),
   JOB_FINISHED: (c) => ({
     title: "Trabajo terminado",
@@ -63,15 +77,15 @@ export const notificationTemplates: Record<NotificationType, Template> = {
   }),
   NEW_REVIEW: (c) => ({
     title: "Nueva reseña",
-    body: `${c.actorName ?? "Alguien"} te calificó con ${c.rating ?? "una nueva reseña"}.`,
+    body: `${quotedName(c.actorName, "Alguien")} te calificó con ${c.rating ?? "una nueva reseña"}.`,
   }),
   JOB_STARTED: (c) => ({
     title: "El trabajo comenzó",
-    body: `${c.actorName ?? "El trabajador"} empezó "${c.jobTitle ?? "el trabajo"}". Te avisamos de cada avance.`,
+    body: `${quotedName(c.actorName, "El trabajador")} empezó "${c.jobTitle ?? "el trabajo"}". Te avisamos de cada avance.`,
   }),
   JOB_UPDATE: (c) => ({
     title: "Nueva actualización del trabajo",
-    body: `${c.actorName ?? "El trabajador"} envió novedades de "${c.jobTitle ?? "el trabajo"}".`,
+    body: `${quotedName(c.actorName, "El trabajador")} envió novedades de "${c.jobTitle ?? "el trabajo"}".`,
   }),
   NEW_EVIDENCE: (c) => ({
     title: "Nueva evidencia del trabajo",
@@ -79,7 +93,7 @@ export const notificationTemplates: Record<NotificationType, Template> = {
   }),
   HANDOFF_REQUESTED: (c) => ({
     title: "Te piden el código de entrega",
-    body: `${c.actorName ?? "El trabajador"} está listo para entregarte lo acordado.`,
+    body: `${quotedName(c.actorName, "El trabajador")} está listo para entregarte lo acordado.`,
   }),
   JOB_APPROVED: (c) => ({
     title: "El cliente aprobó el trabajo",

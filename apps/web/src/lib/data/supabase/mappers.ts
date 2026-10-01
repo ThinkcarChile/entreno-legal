@@ -1,4 +1,5 @@
 import { communeName, regionName, timezoneFor } from "@/lib/geo/chile";
+import { avatarPublicUrl } from "@/lib/storage/avatars";
 import { isOvernight } from "@/lib/utils/datetime";
 import { publicDisplayName } from "@/lib/utils/format";
 import { money, proratePerHour } from "@/lib/utils/money";
@@ -14,7 +15,6 @@ import type {
   OfferStatus,
   PaymentPurpose,
   PaymentStatus,
-  UserRole,
   VerificationStatus,
   WorkerLevel,
 } from "@/lib/domain/enums";
@@ -46,15 +46,16 @@ import type {
  * columna, se corrige aquí y no en veinte componentes.
  */
 
+/** Las columnas de `PROFILE_COLUMNS`: lo que se puede leer de un perfil ajeno. */
 export interface ProfileRow {
   id: string;
   first_name: string;
   last_name_initial: string | null;
+  /** Ruta dentro del bucket `avatars`, no una URL. */
   avatar_url: string | null;
   bio: string | null;
   city: string | null;
   region_code: string | null;
-  roles: string[] | null;
   created_at: string;
 }
 
@@ -64,12 +65,11 @@ export function mapProfile(row: ProfileRow): PublicProfile {
     firstName: row.first_name,
     lastNameInitial: row.last_name_initial,
     displayName: publicDisplayName(row.first_name, row.last_name_initial),
-    avatarUrl: row.avatar_url,
+    avatarUrl: avatarPublicUrl(row.avatar_url),
     bio: row.bio,
     city: row.city,
     regionCode: row.region_code,
     memberSince: row.created_at,
-    roles: (row.roles ?? ["CLIENT"]) as UserRole[],
   };
 }
 
@@ -110,7 +110,6 @@ export interface JobRow {
   status: string;
   title: string;
   description: string;
-  instructions: string | null;
   country_code: string;
   region_code: string;
   commune_code: string;
@@ -147,10 +146,15 @@ export interface JobPrivateLocationRow {
   lng: number | null;
 }
 
+/**
+ * `client` llega en `null` cuando quien mira no puede ver el perfil de quien
+ * publicó (un visitante, o alguien sin relación con el trabajo). Las
+ * instrucciones nunca vienen en la fila: las agrega quien las pidió aparte.
+ */
 export function mapJob(
   row: JobRow,
   category: JobCategory,
-  client: PublicProfile,
+  client: PublicProfile | null,
   images: Job["images"] = [],
   exactLocation?: JobPrivateLocationRow | null,
 ): Job {
@@ -166,7 +170,7 @@ export function mapJob(
     status: row.status as JobStatus,
     title: row.title,
     description: row.description,
-    instructions: row.instructions,
+    instructions: null,
     location: {
       countryCode: row.country_code,
       regionCode: row.region_code,
@@ -232,8 +236,8 @@ export function mapJobSummary(job: Job): JobSummary {
     proposedTotal: job.proposedTotal,
     bonus: job.objective.bonus,
     offerCount: job.offerCount,
-    clientDisplayName: job.client.displayName,
-    clientAvatarUrl: job.client.avatarUrl,
+    clientDisplayName: job.client?.displayName ?? null,
+    clientAvatarUrl: job.client?.avatarUrl ?? null,
     publishedAt: job.publishedAt,
   };
 }
@@ -364,7 +368,7 @@ export function mapReview(row: ReviewRow): Review {
       row.author_first_name ?? "Usuario",
       row.author_last_name_initial,
     ),
-    authorAvatarUrl: row.author_avatar_url,
+    authorAvatarUrl: avatarPublicUrl(row.author_avatar_url),
     subjectId: row.subject_id,
     punctuality: row.punctuality,
     communication: row.communication,

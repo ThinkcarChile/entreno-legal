@@ -30,7 +30,7 @@ export function StepDescription({ draft, errors, update }: StepProps) {
         label="Descripción"
         htmlFor="description"
         error={errors.description}
-        hint="Explica qué necesitas, cómo se coordina la entrega y qué esperas de la persona."
+        hint="Explica qué necesitas, cómo se coordina la entrega y qué esperas de la persona. Es pública: no incluyas tu dirección, teléfonos ni claves."
         required
       >
         <Textarea
@@ -47,7 +47,7 @@ export function StepDescription({ draft, errors, update }: StepProps) {
       <Field
         label="Instrucciones"
         htmlFor="instructions"
-        hint="Opcional. Detalles operativos: accesos, qué llevar, cómo avisar."
+        hint="Opcional. Accesos, qué llevar, cómo avisar. No se publican: las verá la persona que elijas, desde que aceptes su oferta, y el equipo de soporte si revisa un caso."
       >
         <Textarea
           id="instructions"

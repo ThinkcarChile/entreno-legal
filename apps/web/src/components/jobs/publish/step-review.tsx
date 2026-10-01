@@ -71,7 +71,14 @@ export function StepReview({
         {draft.instructions && (
           <Row
             label="Instrucciones"
-            value={<span className="whitespace-pre-line">{draft.instructions}</span>}
+            value={
+              <>
+                <span className="whitespace-pre-line">{draft.instructions}</span>
+                <span className="mt-1 block text-caption text-ink-500">
+                  No se publican: las verá la persona que elijas, desde que aceptes su oferta.
+                </span>
+              </>
+            }
           />
         )}
         <Row label="Objetivo" value={objectiveText(draft)} />

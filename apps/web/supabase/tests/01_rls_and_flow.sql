@@ -33,7 +33,11 @@ select 'T05 datos privados ajenos visibles = ' || count(*)
   from user_private_data where user_id = '11111111-1111-1111-1111-111111111111';
 select 'T06 datos privados propios visibles = ' || count(*)
   from user_private_data where user_id = '33333333-3333-3333-3333-333333333333';
-select 'T07 perfil publico ajeno visible = ' || count(*)
+-- Antes esta línea solo informaba «perfil publico ajeno visible = 1»: era el
+-- defecto. Desde la migración …001110 el perfil de un cliente lo ven él, la
+-- administración y sus contrapartes reales, no cualquiera con sesión.
+select 'T07 perfil de un cliente sin relacion visible = ' || count(*)
+       || case when count(*) = 0 then '' else ' FALLO' end
   from profiles where id = '11111111-1111-1111-1111-111111111111';
 
 reset role;

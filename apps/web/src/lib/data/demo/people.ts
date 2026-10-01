@@ -28,6 +28,7 @@ interface PersonSeed {
   city: string;
   regionCode: string;
   memberSinceDays: number;
+  /** Describe a la persona de la semilla. No forma parte del perfil público. */
   roles: readonly UserRole[];
   bio?: string;
 }
@@ -43,7 +44,6 @@ function toProfile(seed: PersonSeed): PublicProfile {
     city: seed.city,
     regionCode: seed.regionCode,
     memberSince: daysAgo(seed.memberSinceDays),
-    roles: seed.roles,
   };
 }
 

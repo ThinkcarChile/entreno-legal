@@ -168,7 +168,8 @@ const AVISOS_ACEPTADOS: Record<string, Record<string, string>> = {
     "public.review_worker_verification":
       "SOLO la administración: primera línea del cuerpo es app_private.is_admin(), que lee " +
       "profiles.role, columna que ningún usuario puede escribir (ni por UPDATE ni por INSERT). " +
-      "Resuelve la verificación y mueve el nivel del trabajador.",
+      "Resuelve solo una solicitud PENDING, con la fila bloqueada (…001140), y mueve el nivel " +
+      "del trabajador.",
     "public.set_account_modes":
       "La llama el propio usuario. Escribe profiles.roles, fuera de su concesión de columna.",
     "public.set_worker_service_areas":
@@ -251,6 +252,15 @@ const AVISOS_ACEPTADOS: Record<string, Record<string, string>> = {
     "public.admin_pending_reviews":
       "SOLO la administración: primera línea es app_private.is_admin(). Devuelve recuentos de " +
       "las colas del panel; sin el rol, lanza excepción en vez de contestar cero.",
+    "public.get_job_instructions":
+      "La llama cualquiera con sesión, y solo devuelve algo al cliente del trabajo, al " +
+      "trabajador asignado con la asignación viva o a la administración; a cualquier otro, " +
+      "NULL. Necesita LEER jobs.instructions, columna sin privilegio de lectura para anon y " +
+      "authenticated desde la migración …001100: es la única vía, igual que get_handoff_code.",
+    "public.get_my_account":
+      "La llama el propio usuario y solo devuelve su fila (where id = auth.uid()). Lee " +
+      "profiles.role, roles e is_suspended, columnas sin privilegio de lectura para nadie con " +
+      "sesión desde la migración …001110: así nadie averigua quién administra.",
     "public.withdraw_job_offer":
       "La llama el trabajador autor de la oferta. Escribe job_offers.status, columna que quedó " +
       "fuera de su concesión en la migración …000200 precisamente para que no pueda aceptarse " +
@@ -319,7 +329,7 @@ async function main(): Promise<void> {
 
   check("tablas en public", inv.tablas, 35);
   check("vistas en public", inv.vistas, 7);
-  check("funciones en public", inv.funciones, 51);
+  check("funciones en public", inv.funciones, 53);
   check("enums", inv.enums, 24);
   check("políticas RLS en public", inv.politicas, 76);
   check("buckets de Storage", inv.buckets, 5);

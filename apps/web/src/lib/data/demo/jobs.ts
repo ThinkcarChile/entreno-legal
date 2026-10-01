@@ -49,6 +49,7 @@ interface JobSeed {
   status: JobStatus;
   title: string;
   description: string;
+  /** Como la dirección: existe en la semilla, pero un visitante no la recibe. */
   instructions?: string;
   regionCode: string;
   communeCode: string;
@@ -363,8 +364,9 @@ function buildJob(seed: JobSeed): Job {
   const category = findDemoCategory(seed.categoryId);
   if (!category) throw new Error(`Categoría de demostración inexistente: ${seed.categoryId}`);
 
-  const client = demoClients.find((c) => c.id === seed.clientId);
-  if (!client) throw new Error(`Cliente de demostración inexistente: ${seed.clientId}`);
+  if (!demoClients.some((c) => c.id === seed.clientId)) {
+    throw new Error(`Cliente de demostración inexistente: ${seed.clientId}`);
+  }
 
   const timezone = timezoneFor(seed.regionCode, seed.communeCode);
   const suggestion = getPricingEngine().suggest({
@@ -388,12 +390,14 @@ function buildJob(seed: JobSeed): Job {
     id: seed.id,
     reference: seed.reference,
     clientId: seed.clientId,
-    client,
+    // En demostración nadie tiene sesión: se ve lo mismo que ve un visitante en
+    // producción, que no lee el perfil de quien publica ni sus instrucciones.
+    client: null,
     category,
     status: seed.status,
     title: seed.title,
     description: seed.description,
-    instructions: seed.instructions ?? null,
+    instructions: null,
     location: {
       countryCode: "CL",
       regionCode: seed.regionCode,
@@ -456,8 +460,8 @@ export function toSummary(job: Job): JobSummary {
     proposedTotal: job.proposedTotal,
     bonus: job.objective.bonus,
     offerCount: job.offerCount,
-    clientDisplayName: job.client.displayName,
-    clientAvatarUrl: job.client.avatarUrl,
+    clientDisplayName: job.client?.displayName ?? null,
+    clientAvatarUrl: job.client?.avatarUrl ?? null,
     publishedAt: job.publishedAt,
   };
 }

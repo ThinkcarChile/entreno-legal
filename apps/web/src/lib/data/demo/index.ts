@@ -138,6 +138,11 @@ class DemoJobRepository implements JobRepository {
     return demoJobs().find((j) => j.id === id) ?? null;
   }
 
+  // Sin sesión no hay a quién entregarle las instrucciones de un trabajo.
+  async getInstructions(): Promise<string | null> {
+    return null;
+  }
+
   async listOffers(jobId: string): Promise<readonly JobOffer[]> {
     return demoOffers(jobId);
   }

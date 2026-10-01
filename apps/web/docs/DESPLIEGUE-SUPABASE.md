@@ -226,7 +226,7 @@ select
 |---|---|
 | `tablas` | 35 |
 | `vistas` | 7 |
-| `funciones_rpc` | 46 |
+| `funciones_rpc` | 53 |
 | `enums` | 24 |
 | `politicas_rls` | 76 |
 | `comunas` | 346 |

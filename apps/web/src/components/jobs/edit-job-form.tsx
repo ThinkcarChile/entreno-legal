@@ -91,7 +91,11 @@ export function EditJobForm({ job }: { job: Job }) {
         />
       </Field>
 
-      <Field label="Instrucciones" htmlFor="instructions">
+      <Field
+        label="Instrucciones"
+        htmlFor="instructions"
+        hint="No se publican: las verá la persona que elijas, desde que aceptes su oferta, y el equipo de soporte si revisa un caso."
+      >
         <Textarea
           id="instructions"
           name="instructions"

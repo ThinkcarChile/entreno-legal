@@ -12,16 +12,23 @@ export type Client = Awaited<ReturnType<typeof createClient>>;
 
 export const getClient = (): Promise<Client> => createClient();
 
+// Sin `instructions`: desde la migración …001100 nadie la lee con la clave
+// pública ni con sesión. Las instrucciones se piden aparte, a
+// `get_job_instructions`, que solo las entrega a quien corresponde; pedirlas
+// aquí haría fallar entera cualquier lectura de un trabajo.
 export const JOB_COLUMNS =
-  "id,reference,client_id,category_id,status,title,description,instructions,country_code," +
+  "id,reference,client_id,category_id,status,title,description,country_code," +
   "region_code,commune_code,place_name,approx_lat,approx_lng,timezone,starts_at," +
   "estimated_duration_minutes,urgency,objective_type,objective_target_position," +
   "objective_description,bonus_amount,bonus_conditions,hourly_rate,currency,offer_count," +
   "view_count,published_at,expires_at,created_at,updated_at,suggested_hourly_min," +
   "suggested_hourly_max";
 
+// Exactamente las columnas que `anon` y `authenticated` pueden leer de un
+// perfil ajeno (migración …001110). El rol, los modos y el estado de la cuenta
+// propia llegan por `get_my_account`.
 export const PROFILE_COLUMNS =
-  "id,first_name,last_name_initial,avatar_url,bio,city,region_code,roles,created_at";
+  "id,first_name,last_name_initial,avatar_url,bio,city,region_code,created_at";
 
 export const WORKER_COLUMNS =
   "user_id,headline,verification_status,level,trust_index,base_hourly_rate,availability_note," +

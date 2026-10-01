@@ -30,7 +30,11 @@ export type ISODateTime = string;
 
 /* ----------------------------------------------------------------- Personas */
 
-/** Perfil público. Nunca contiene RUT, teléfono, dirección ni datos bancarios. */
+/**
+ * Perfil público. Nunca contiene RUT, teléfono, dirección ni datos bancarios, y
+ * tampoco el rol ni los modos de la cuenta: eso solo lo lee su dueño, y viaja en
+ * `SessionUser`.
+ */
 export interface PublicProfile {
   id: UUID;
   firstName: string;
@@ -42,7 +46,6 @@ export interface PublicProfile {
   city: string | null;
   regionCode: string | null;
   memberSince: ISODateTime;
-  roles: readonly UserRole[];
 }
 
 /** Datos personales sensibles. Solo titular y administración. */
@@ -182,11 +185,23 @@ export interface Job {
   id: UUID;
   reference: string;
   clientId: UUID;
-  client: PublicProfile;
+  /**
+   * Quien publicó. `null` cuando quien mira no puede ver su perfil: un visitante
+   * sin sesión, o alguien sin relación con el trabajo. Solo lo ven sus
+   * contrapartes (quien ofertó, el trabajador asignado) y la administración.
+   */
+  client: PublicProfile | null;
   category: JobCategory;
   status: JobStatus;
   title: string;
   description: string;
+  /**
+   * Instrucciones operativas («accesos»). Una lectura general del trabajo las
+   * trae siempre en `null`: solo las completan las lecturas privadas
+   * (`getInstructions`, el detalle de la asignación) para el cliente, el
+   * trabajador asignado y la administración. Nunca se pintan en la página
+   * pública del trabajo.
+   */
   instructions: string | null;
   location: JobLocation;
   timezone: string;
@@ -229,7 +244,8 @@ export interface JobSummary {
   proposedTotal: Money;
   bonus: Money | null;
   offerCount: number;
-  clientDisplayName: string;
+  /** `null` si quien mira no puede ver el perfil de quien publicó. */
+  clientDisplayName: string | null;
   clientAvatarUrl: string | null;
   publishedAt: ISODateTime | null;
 }

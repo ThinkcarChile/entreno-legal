@@ -69,20 +69,20 @@ en orden alfabético.
 
 | Tabla | Visibilidad | Notas |
 |---|---|---|
-| `jobs` | Pública mientras está publicado | Comuna, región, lugar y punto redondeado a ~1 km |
+| `jobs` | Pública mientras está publicado | Comuna, región, lugar y punto redondeado a ~1 km. `instructions` no: sin privilegio de lectura con la clave pública; las entrega `get_job_instructions` (`…001100`) |
 | `job_private_location` | Cliente, trabajador asignado y administración | Dirección exacta, referencias y coordenadas |
 
 ### Identidad
 
 | Tabla | Visibilidad | Notas |
 |---|---|---|
-| `profiles` | Lectura pública | Solo nombre, inicial del apellido, foto, bio, comuna |
+| `profiles` | Titular, administración y contrapartes (oferta, conversación o asignación); cualquiera si es trabajador verificado | Se leen nombre, inicial del apellido, foto (ruta en `avatars`), bio, comuna y región. `role`, `roles`, `is_suspended` y el estado del onboarding no son legibles con la clave pública: la propia cuenta, con `get_my_account` (`…001110`) |
 | `user_private_data` | Titular + administración | RUT, teléfono, correo de contacto, dirección |
-| `worker_profiles` | Lectura pública | Tarifa, verificaciones booleanas, reputación, nivel |
+| `worker_profiles` | Cualquiera si está verificado; si no, titular, administración y contrapartes | Tarifa, verificaciones booleanas, reputación, nivel |
 | `worker_verifications` | Titular + administración | Rutas en Storage privado, resultado del proveedor |
 | `worker_payout_accounts` | Titular + administración | Cuenta bancaria |
-| `worker_service_areas` | Lectura pública | Región, comuna y radio |
-| `worker_categories` | Lectura pública | Categorías que atiende |
+| `worker_service_areas` | Como `worker_profiles` | Región, comuna y radio |
+| `worker_categories` | Como `worker_profiles` | Categorías que atiende |
 
 ### Trabajos
 
@@ -95,6 +95,35 @@ Restricciones que codifican reglas de producto:
 - `job_offers_single_accepted_idx`: una sola oferta aceptada por trabajo.
 - `assignments_worker_not_client`: nadie se contrata a sí mismo.
 - `worker_profiles_verified_to_accept`: sin verificación no se aceptan trabajos.
+- `job_offers_compute_total` (disparador): el total de una oferta pendiente es
+  `round(tarifa × duración / 60)`; lo que envíe quien oferta se ignora (`…001130`).
+  Lee la duración con la fila del trabajo bloqueada, así que una oferta que
+  llega mientras el cliente cambia la duración se calcula con la nueva.
+- `assignments_agreed_total` (disparador): al crearse una asignación,
+  `agreed_total` —lo que se cobra— es `round(tarifa × duración / 60)` de la
+  tarifa y la duración que ella misma registra, aunque `accept_job_offer` haya
+  leído la oferta antes de que el cliente cambiara la duración (`…001130`).
+- `profiles_first_name_valid`, `profiles_last_name_initial_valid` y
+  `profiles_avatar_own_path`: el nombre público va recortado, de 1 a 60
+  caracteres, sin saltos de línea, caracteres invisibles, comillas, direcciones
+  web ni «HagoTuFila»; la inicial es una letra; la foto es una ruta dentro de la propia
+  carpeta del bucket `avatars` (`…001120`). Los avisos citan el nombre entre
+  comillas angulares: «Camila F.».
+
+#### Total de una oferta
+
+Las ofertas aceptadas antes de `…001130` conservan su importe (están congeladas
+y su asignación ya lo copió). Para ver si alguna se aparta de la fórmula:
+
+```sql
+select o.id, o.status, o.estimated_total,
+       app_private.offer_total(o.hourly_rate, j.estimated_duration_minutes) as esperado
+  from public.job_offers o join public.jobs j on j.id = o.job_id
+ where o.estimated_total <> app_private.offer_total(o.hourly_rate, j.estimated_duration_minutes);
+```
+
+Una que difiera y cuya asignación siga en `AWAITING_PAYMENT` se revisa a mano
+antes de cobrarla.
 
 ### Dinero
 
@@ -133,7 +162,9 @@ con `security_invoker = true`.
 | `set_account_modes(client, worker)` | Cualquier usuario conectado | Activa o desactiva el modo trabajador |
 | `set_worker_service_areas(jsonb)` | El trabajador | Reemplaza sus zonas en bloque |
 | `request_worker_verification(...)` | El trabajador | Crea la solicitud y deja el estado en `PENDING` |
-| `review_worker_verification(...)` | Administración | Aprueba, rechaza o suspende, y avisa a la persona |
+| `review_worker_verification(...)` | Administración | Aprueba, rechaza o suspende una solicitud **pendiente**, y avisa a la persona. Una ya resuelta no se vuelve a resolver: falla diciendo en qué quedó (`…001140`) |
+| `get_job_instructions(job)` | Cliente, trabajador asignado (asignación viva) y administración | Las instrucciones del trabajo. A cualquier otro, `NULL` |
+| `get_my_account()` | Cualquier usuario conectado | Su propio perfil con rol, modos y estado de la cuenta |
 | `publish_job(jsonb)` | El cliente | Crea el trabajo y su dirección privada en una sola operación |
 | `update_open_job(id, jsonb)` | El cliente | Edita mientras el trabajo siga abierto y avisa a quien ofertó |
 | `cancel_job(id, motivo)` | El cliente | Cancela mirando el pago: sin dinero en juego, en el acto; con un pago en vuelo, deja el trabajo en `CANCELLATION_PENDING` hasta que el proveedor responda; con pago confirmado, la rechaza (reembolso o disputa). Ver `PAGOS.md` |
@@ -249,6 +280,11 @@ supuestos, y todos rodean a una de las dieciséis:
 | Leer el PIN de entrega con una consulta a `handoff_codes` | `get_handoff_code` | Bloque 3 `…000100` |
 | Insertar una disputa ya RESUELTA a favor de quien la abre | `open_dispute` | Bloque 3 `…000200` |
 | Borrar cualquier fila de `public` | ninguna: el `DELETE` se revocó en 28 relaciones | Bloque 3 `…000200` |
+| Leer sin sesión las instrucciones («accesos») de un trabajo publicado | `get_job_instructions` | `20260601001100` |
+| Listar sin sesión todos los perfiles, clientes incluidos, y saber quién administra | ninguna: RLS por relación y privilegio de columna | `20260601001110` |
+| Ponerse un nombre que se lee como aviso de la plataforma, o una foto de otro dominio | ninguna: restricciones `CHECK` sobre `profiles` | `20260601001120` |
+| Fijar el total de la propia oferta, que es lo que se cobra | `accept_job_offer` (copia el total) | `20260601001130` |
+| Resolver dos veces una verificación, o aprobar una ya rechazada | `review_worker_verification` | `20260601001140` |
 
 Y ocho de las dieciséis **no fallaban sin sesión**: se apoyaban en una
 comparación `dueño <> auth.uid()`, y con `auth.uid()` nulo esa expresión vale
@@ -282,6 +318,17 @@ tardía), `create_payout_for_assignment` (idempotente) y
 `payment_invariant_violations()` (devuelve toda fila que rompa los invariantes;
 las pruebas exigen cero).
 
+Y las de qué se lee y qué se escribe en público (`20260601001100`–`…001140`):
+`can_see_profile` (la regla única de visibilidad de `profiles`,
+`worker_profiles`, zonas y categorías), `review_author_card` (nombre, inicial y
+foto de quien escribió una reseña publicada, para `public_reviews`),
+`person_name_problem`, `is_valid_initial`, `is_own_avatar_path` y
+`clean_person_name` (las reglas del nombre y la foto, usadas por las
+restricciones `CHECK` y por el alta), `quoted_display_name` (el nombre citado en
+los avisos), y `offer_total`, `compute_offer_total`,
+`sync_pending_offer_totals` y `compute_agreed_total` (el total de una oferta y
+el importe acordado de la asignación que sale de ella).
+
 ---
 
 ## Storage
@@ -305,11 +352,13 @@ usuario: las políticas de Storage lo exigen.
 PGHOST=/tmp PGPORT=55432 PGUSER=postgres npm run db:test
 ```
 
-Aplica el stub de Supabase, las 33 migraciones, la semilla geográfica y 225
+Aplica el stub de Supabase, las 46 migraciones, la semilla geográfica y 340
 comprobaciones de inventario, RLS, flujo completo, concurrencia, semilla de
 demostración, endurecimiento de las RPC, política de cancelación y pago,
-ejecución completa del trabajo e integración con Webpay. Todo con carreras reales entre dos sesiones,
-`RACE_REPS` repeticiones. Ver `supabase/tests/`.
+ejecución completa del trabajo, integración con Webpay y lo que leen y escriben
+un visitante sin sesión y los demás usuarios (`14_public_data.sql` y
+`14_race_duration.sh`, prefijo U).
+Todo con carreras reales entre dos sesiones, `RACE_REPS` repeticiones. Ver `supabase/tests/`.
 
 Contra el proyecto alojado, los mismos escenarios corren con
 `npm run verify:payments` (ver `PAGOS.md` §8) y `npm run verify:execution`
