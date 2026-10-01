@@ -66,15 +66,15 @@ check_column() {
 
 echo "→ Columnas críticas"
 for pair in \
+  "platform_settings:dispute_window_hours" "disputes:refund_amount" \
+  "payment_refunds:dispute_id" "payment_refunds:amount" "payment_refunds:status" \
   "jobs:approx_lat" "jobs:approx_lng" "jobs:suggested_hourly_min" "jobs:offer_count" \
   "job_private_location:address_line" "profiles:onboarding_completed_at" \
   "profiles:commune_code" "profiles:roles" "worker_profiles:verification_status" \
   "worker_profiles:is_accepting_jobs" "job_offers:estimated_arrival_at" \
   "conversations:is_primary" "conversations:offer_id" "payments:provider_token" \
   "assignments:agreed_total" "notifications:read_at" "platform_settings:commission_bps" \
-  "assignment_payment_summary:worker_receives" "assignment_payment_summary:commission_bps" \
-  "platform_settings:dispute_window_hours" "disputes:refund_amount" \
-  "payment_refunds:dispute_id" "payment_refunds:amount" "payment_refunds:status"
+  "assignment_payment_summary:worker_receives" "assignment_payment_summary:commission_bps"
 do
   check_column "${pair%%:*}" "${pair##*:}"
 done

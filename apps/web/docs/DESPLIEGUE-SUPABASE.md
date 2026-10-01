@@ -240,13 +240,15 @@ que si difieren es que faltó aplicar alguna migración.
 
 ## 4. Configuración del panel que NO viene en las migraciones
 
-Estas cosas se configuran en el panel. No hay forma de dejarlas en una
-migración, así que quedan documentadas aquí.
-
 > **Pasos manuales pendientes** (nadie los ha hecho todavía en ningún
 > proyecto): el mínimo de 8 caracteres en Auth (§4.1.b) y las plantillas de
-> correo (§4.1.c). Hasta hacerlos, `npm run verify:schema:hosted` falla en
-> esas cuatro comprobaciones, a propósito.
+> correo (§4.1.c), en cada proyecto, también el de producción: son
+> configuración del proyecto y no viajan con las migraciones. Hasta hacerlos,
+> `npm run verify:schema:hosted` falla en esas cuatro comprobaciones, a
+> propósito.
+
+Estas tres cosas se configuran en el panel. No hay forma de dejarlas en una
+migración, así que quedan documentadas aquí.
 
 ### 4.1 URLs de redirección (obligatorio)
 
@@ -647,9 +649,6 @@ llega es el de la otra persona hasta recargar.
 5. Revisa que la clave secreta esté solo en las variables del servidor de tu
    plataforma de despliegue, nunca en el repositorio.
 6. En **Authentication → Rate Limits**, ajusta los límites de envío de correo.
-7. Repite en el proyecto de producción los pasos de §4.1.b (mínimo de 8
-   caracteres) y §4.1.c (plantillas de correo): son configuración del proyecto
-   y no viajan con las migraciones.
 
 ---
 
