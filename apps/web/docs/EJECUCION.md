@@ -409,11 +409,12 @@ La ventana no es lo único. Antes de mirarla —y antes de la excepción de la
 disputa resuelta— `payout_transfer_blocker` exige que el cobro del cliente
 respalde la transferencia: pago `PAID` o `PARTIALLY_REFUNDED`, sin devoluciones
 sin respuesta del banco, con cifras que cuadren, y del ambiente `production`
+—el cobro del trabajo y cada cobro del tiempo adicional que sumó al payout—
 salvo en una base de desarrollo o de pruebas que lo admita
 (`allow_non_production_payouts`). `approve_payout` tampoco saca de la retención
 un payout cuyo cobro esté devuelto entero o en revisión. El detalle está en
 `PAGOS.md` §4 bis; las pruebas, en `supabase/tests/11_payment_health.sql`
-(`L01`–`L39`).
+(`L01`–`L44`).
 
 Las baterías `08_job_execution.sql` y `10_payout_window.sql` transfieren sobre
 cobros del proveedor simulado: encienden `allow_non_production_payouts` al

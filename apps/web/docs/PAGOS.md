@@ -165,16 +165,18 @@ trabajador pagado por el mismo trabajo. Desde la migración `20260601000800`:
 | `approve_payout` | No aprueba sobre un pago devuelto entero, en revisión ni en ningún estado que no sea un cobro confirmado |
 | `resolve_dispute` | A favor del trabajador o repartida, no sobre un pago devuelto entero. Si deja el payout aprobado, las cifras tienen que cuadrar o no se resuelve nada. Si el pago está en revisión o con una devolución sin respuesta, la decisión se registra pero el payout queda `HELD` hasta que `approve_payout` lo encuentre sano |
 
-Además, desde `20260601000810`, `mark_payout_paid` no transfiere sobre un cobro
-cuyo `environment` no sea `production` —simulado o de integración: no hubo
-dinero— salvo que `platform_settings.allow_non_production_payouts` esté
+Además, desde `20260601000810`, `mark_payout_paid` no transfiere si algún cobro
+que respalda el payout tiene un `environment` que no sea `production` —simulado
+o de integración: no hubo dinero—. Se mira el cobro del trabajo y también cada
+cobro del tiempo adicional que llegó a cobrarse, porque ese también sube el
+neto del payout. La excepción es `platform_settings.allow_non_production_payouts`
 encendida, cosa que solo se hace en SQL y solo en bases de desarrollo o de
 pruebas (`DESPLIEGUE-SUPABASE.md` §4.5). Un cobro de producción se transfiere
 igual que siempre, sujeto a lo de la tabla y a la ventana de disputa.
 
 Todas las negativas dicen el motivo con las cifras y qué hacer, en las palabras
 que ve administración. Pruebas: `supabase/tests/11_payment_health.sql`
-(`L01`–`L39`).
+(`L01`–`L44`).
 
 ---
 
@@ -250,7 +252,7 @@ en `src/lib/domain/job-actions.ts` son la única fuente de esas decisiones.
 | `supabase/tests/07_payment_cancellation.sql` | P01–P17: los escenarios de las secciones 2 y 5, lo que nadie puede hacer a mano, invariantes y `payment_events` append-only |
 | `supabase/tests/07_race_payment.sh` | R10 duplicado simultáneo, R11 aprobación contra cancelación, R12 invariantes. `RACE_REPS` repeticiones (5 por defecto), dos sesiones `psql` reales |
 | `scripts/verify-payments.ts` | Lo mismo contra `hagotufila-dev`, con `DelayedMockPaymentProvider` y `applyProviderResult` —las piezas que usa la aplicación— hablando con PostgREST. `RACE_REPS=10 npm run verify:payments` |
-| `supabase/tests/11_payment_health.sql` | L01–L39: la §4 bis. Devolución total, revisión, devolución sin respuesta y cifras que no cuadran frente a aprobar, resolver y transferir; el ambiente del cobro y la bandera `allow_non_production_payouts` |
+| `supabase/tests/11_payment_health.sql` | L01–L44: la §4 bis. Devolución total, revisión, devolución sin respuesta y cifras que no cuadran frente a aprobar, resolver y transferir; el ambiente de cada cobro (el del trabajo y el del tiempo adicional) y la bandera `allow_non_production_payouts` |
 
 Sin `sleep` en ninguna: en SQL serializan los bloqueos de fila; en Node, la
 barrera del proveedor.

@@ -15,9 +15,10 @@
 --   La aplicación ya no opera Webpay así: `src/lib/payments/transbank/config.ts`
 --   exige el ambiente escrito cuando NODE_ENV=production. Esto es la segunda
 --   línea, en la base: `mark_payout_paid` se niega a transferir sobre un pago
---   del trabajo cuyo `environment` no sea 'production'. Un pago sin
---   `environment` —los del proveedor simulado anteriores a Webpay— cuenta como
---   no productivo.
+--   del trabajo cuyo `environment` no sea 'production', y tampoco si el payout
+--   incluye un cobro del tiempo adicional que no lo sea (ese cobro también
+--   sube el neto). Un pago sin `environment` —los del proveedor simulado
+--   anteriores a Webpay— cuenta como no productivo.
 --
 --   Las bases de desarrollo y de pruebas (staging) SÍ transfieren sobre pagos
 --   simulados o de integración: es lo que recorren las pruebas. Para ellas está
@@ -66,7 +67,15 @@ create trigger platform_settings_guard_payout_flag
   before update on public.platform_settings
   for each row execute function app_private.guard_non_production_payouts_flag();
 
--- ¿El pago del trabajo es dinero de verdad?
+-- ¿El dinero detrás del payout es de verdad?
+--
+-- No basta con el pago del trabajo. Un cobro del tiempo adicional que se
+-- confirma sube el neto del payout (`on_extension_paid`), así que un cobro de
+-- integración por el tiempo adicional, sobre un trabajo pagado en producción,
+-- terminaba igualmente en una transferencia real por un cobro que no existió.
+-- Se mira cada cobro de la asignación que llegó a cobrarse —también los ya
+-- devueltos o en revisión: el payout lo sumó igual—. Los intentos que nunca se
+-- cobraron no subieron nada y no cuentan.
 create or replace function app_private.payout_environment_blocker(p_assignment_id uuid)
 returns text
 language plpgsql
@@ -76,30 +85,51 @@ set search_path = public, pg_temp
 as $$
 declare
   v_payment public.payments;
+  v_other public.payments;
   v_allowed boolean;
 begin
-  v_payment := app_private.payout_job_payment(p_assignment_id);
-
-  -- Sin pago lo dice `job_payment_blocker`, antes que esto.
-  if v_payment.id is null or v_payment.environment = 'production' then
-    return null;
-  end if;
-
   select allow_non_production_payouts into v_allowed from public.platform_settings where id;
   if coalesce(v_allowed, false) then
     return null;
   end if;
 
-  return 'El pago del cliente es del ambiente '
-    || coalesce('«' || v_payment.environment || '»', 'simulado (sin ambiente registrado)')
-    || ', no de producción: ese cobro no movió dinero real y no se transfiere dinero real por él. '
-    || 'Si esta es una base de desarrollo o de pruebas, se habilita en SQL con '
-    || 'platform_settings.allow_non_production_payouts; en producción, nunca';
+  -- Sin pago del trabajo lo dice `job_payment_blocker`, antes que esto.
+  v_payment := app_private.payout_job_payment(p_assignment_id);
+  if v_payment.id is not null and v_payment.environment is distinct from 'production' then
+    return 'El pago del cliente es del ambiente '
+      || coalesce('«' || v_payment.environment || '»', 'simulado (sin ambiente registrado)')
+      || ', no de producción: ese cobro no movió dinero real y no se transfiere dinero real por él. '
+      || 'Si esta es una base de desarrollo o de pruebas, se habilita en SQL con '
+      || 'platform_settings.allow_non_production_payouts; en producción, nunca';
+  end if;
+
+  select p.* into v_other
+    from public.payments p
+   where p.assignment_id = p_assignment_id
+     and p.id is distinct from v_payment.id
+     and p.status in ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED', 'UNDER_REVIEW')
+     and p.environment is distinct from 'production'
+   order by p.created_at
+   limit 1;
+
+  if v_other.id is not null then
+    return 'Un cobro '
+      || case when v_other.purpose = 'EXTENSION' then 'del tiempo adicional'
+              else 'adicional (' || v_other.purpose::text || ')' end
+      || ' de este trabajo (' || app_private.format_clp(v_other.amount) || ') es del ambiente '
+      || coalesce('«' || v_other.environment || '»', 'simulado (sin ambiente registrado)')
+      || ', no de producción, y el payout lo incluye: no se transfiere dinero real por un cobro '
+      || 'que no lo movió. Retén el pago y revisa el caso con soporte. Si esta es una base de '
+      || 'desarrollo o de pruebas, se habilita en SQL con '
+      || 'platform_settings.allow_non_production_payouts; en producción, nunca';
+  end if;
+
+  return null;
 end;
 $$;
 
 comment on function app_private.payout_environment_blocker is
-  'Motivo si el pago del trabajo no es de producción y la base no admite transferir sobre pagos de prueba, o NULL.';
+  'Motivo si algún cobro que respalda el payout (el del trabajo o uno del tiempo adicional) no es de producción y la base no admite transferir sobre pagos de prueba, o NULL.';
 
 -- Idéntica a 20260601000800 más el ambiente, al final: si el cobro está
 -- devuelto o en duda, ese motivo es más útil que el del ambiente.

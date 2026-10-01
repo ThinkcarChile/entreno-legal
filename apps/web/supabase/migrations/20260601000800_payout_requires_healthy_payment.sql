@@ -49,11 +49,12 @@
 -- 1. Piezas: el pago del trabajo y lo que lo deja en duda
 -- -----------------------------------------------------------------------------
 
--- Pesos chilenos para un mensaje: $21.000.
+-- Pesos chilenos para un mensaje: $21.000. STABLE y no IMMUTABLE: `to_char`
+-- lo es, y declarar más de lo que garantiza lo que se llama no se hace.
 create or replace function app_private.format_clp(p_amount bigint)
 returns text
 language sql
-immutable
+stable
 set search_path = public, pg_temp
 as $$
   select '$' || replace(to_char(coalesce(p_amount, 0), 'FM999,999,999,999,990'), ',', '.')

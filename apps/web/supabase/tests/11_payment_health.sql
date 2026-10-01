@@ -498,6 +498,82 @@ select pg_temp.expect('L36 y se transfiere sin esperar la ventana, como antes',
 
 
 \echo ''
+\echo '--- Cada cobro que sube el payout, no solo el del trabajo'
+
+-- Un trabajo pagado con `p_ambiente_trabajo` al que, ya en curso, se le paga
+-- tiempo adicional con `p_ambiente_extra`. Ese cobro sube el neto del payout
+-- (`on_extension_paid`). Termina aprobado y con la ventana vencida.
+create function pg_temp.con_tiempo_adicional(p_tag text, p_ambiente_trabajo text, p_ambiente_extra text)
+returns uuid language plpgsql as $$
+declare
+  m record;
+  v_ext uuid;
+  v_pay uuid;
+begin
+  select * into m from pg_temp.montar_trabajo(p_tag, p_ambiente_trabajo);
+
+  perform pg_temp.como(m.worker_id);
+  perform public.mark_on_the_way(m.assignment_id);
+  perform public.register_check_in(m.assignment_id, true, -33.4265, -70.6153, 20, 'device');
+  perform public.start_job_work(m.assignment_id);
+  v_ext := public.request_job_extension(m.assignment_id, 60, null);
+
+  perform pg_temp.como(m.client_id);
+  perform public.answer_job_extension(v_ext, true);
+  v_pay := public.start_extension_payment(v_ext);
+  perform pg_temp.como(null);
+
+  update public.payments
+     set status = 'CREATED', provider = 'mock',
+         provider_transaction_id = 'mock-' || p_tag || '-ext-' || substr(md5(random()::text), 1, 6),
+         provider_token = 'tok-' || p_tag || '-ext-' || substr(md5(random()::text), 1, 6),
+         environment = p_ambiente_extra
+   where id = v_pay;
+  perform public.confirm_payment_result(v_pay, 'mock',
+    'evt-' || p_tag || '-ext-' || substr(md5(random()::text), 1, 6), 'PAID', 9000, '{}');
+
+  perform pg_temp.como(m.worker_id);
+  perform public.request_job_completion(m.assignment_id, 'Listo.');
+  perform pg_temp.como(null);
+  perform pg_temp.aprobar(m.assignment_id);
+  update public.assignments set dispute_deadline_at = now() - interval '1 minute'
+   where id = m.assignment_id;
+  return m.assignment_id;
+end $$;
+
+-- El valor que de verdad escribe la aplicación con el proveedor simulado.
+select * from pg_temp.listo_para_transferir('l-mockenv', 'mock') \gset k5_
+insert into l_ctx values ('k5', :'k5_assignment_id');
+
+select pg_temp.expect_like('L40 un pago del ambiente «mock» tampoco se transfiere con la bandera en FALSE',
+  pg_temp.transferir(:'k5_assignment_id'),
+  'RECHAZADO: El pago del cliente es del ambiente «mock», no de producción%');
+
+-- Trabajo cobrado en producción; el tiempo adicional, en integración.
+select pg_temp.con_tiempo_adicional('l-ext-int', 'production', 'integration') as k6 \gset
+insert into l_ctx values ('k6', :'k6');
+
+select pg_temp.expect('L41 el cobro del tiempo adicional sí subió el payout (18.480 + 7.740)',
+  (select net_amount::text from payouts where assignment_id = :'k6'), '26220');
+
+select pg_temp.expect_like('L42 con ese cobro de integración dentro, no se transfiere aunque el del trabajo sea de producción',
+  pg_temp.transferir(:'k6'),
+  'RECHAZADO: Un cobro del tiempo adicional de este trabajo ($9.000) es del ambiente «integration», no de producción%');
+
+-- Los dos en producción: se transfiere como siempre.
+select pg_temp.con_tiempo_adicional('l-ext-prod', 'production', 'production') as k7 \gset
+insert into l_ctx values ('k7', :'k7');
+
+select pg_temp.expect('L43 con el trabajo y el tiempo adicional cobrados en producción, se transfiere',
+  pg_temp.transferir(:'k7'), 'PAID');
+
+update public.platform_settings set allow_non_production_payouts = true where id;
+select pg_temp.expect('L44 en una base de pruebas con la bandera encendida, el de integración también',
+  pg_temp.transferir(:'k6'), 'PAID');
+update public.platform_settings set allow_non_production_payouts = false where id;
+
+
+\echo ''
 \echo '--- Lo que queda en la base'
 
 select pg_temp.expect('L37 ningún invariante del dinero roto en estos trabajos',

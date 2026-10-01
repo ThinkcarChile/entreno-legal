@@ -352,9 +352,10 @@ proveedor y corre en la aplicación (`/admin/pagos`). Ver `docs/TRANSBANK.md` §
 ### 4.5 Transferencias sobre cobros de prueba (desarrollo y pruebas: sí; producción: nunca)
 
 Desde la migración `20260601000810`, `mark_payout_paid` no registra la
-transferencia de un pago al trabajador si el cobro del cliente no es del
-ambiente `production`: un pago del proveedor simulado o del ambiente de
-integración de Webpay no movió dinero real, y no se paga dinero real por él.
+transferencia de un pago al trabajador si el cobro del cliente —el del trabajo
+o uno del tiempo adicional que sumó al payout— no es del ambiente `production`:
+un pago del proveedor simulado o del ambiente de integración de Webpay no movió
+dinero real, y no se paga dinero real por él.
 Lo decide la columna `platform_settings.allow_non_production_payouts`, que nace
 en `false`.
 

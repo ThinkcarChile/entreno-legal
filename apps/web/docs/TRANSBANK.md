@@ -430,8 +430,9 @@ vale: es un despliegue de pruebas (staging). Opera, pero no en silencio: la
 guarda lo marca (`environmentNotices`) y el servidor lo deja en su registro
 («Webpay opera en INTEGRACIÓN con NODE_ENV=production…»).
 
-La base es la segunda línea: `mark_payout_paid` no transfiere sobre un cobro
-cuyo `environment` no sea `production` salvo que la base lo admita con
+La base es la segunda línea: `mark_payout_paid` no transfiere si el cobro del
+trabajo, o uno del tiempo adicional que sumó al payout, tiene un `environment`
+que no sea `production`, salvo que la base lo admita con
 `platform_settings.allow_non_production_payouts`, que nace en `false` y solo se
 enciende, en SQL, en bases de desarrollo o de pruebas
 (`docs/DESPLIEGUE-SUPABASE.md` §4.5). Un staging con Webpay de integración la
