@@ -317,7 +317,11 @@ export class SupabaseAdminRepository implements AdminRepository {
       .order("created_at", { ascending: false })
       .limit(100);
 
-    if (filter === "review") query = query.eq("status", "UNDER_REVIEW");
+    // «En revisión» incluye los pagos con una devolución sin resultado final:
+    // es la cola a la que lleva «Devoluciones por procesar».
+    if (filter === "review") {
+      query = query.or("status.eq.UNDER_REVIEW,open_refund_status.not.is.null");
+    }
     if (filter === "pending") query = query.in("status", ["PENDING", "CREATED", "AUTHORIZED"]);
     if (filter === "refunded") query = query.in("status", ["REFUNDED", "PARTIALLY_REFUNDED"]);
 
@@ -358,6 +362,17 @@ export class SupabaseAdminRepository implements AdminRepository {
       refundCount: Number(row.refund_count ?? 0),
       disputeId: (row.dispute_id as string | null) ?? null,
       payoutId: (row.payout_id as string | null) ?? null,
+      openRefund: row.open_refund_id
+        ? {
+            refundId: String(row.open_refund_id),
+            status: row.open_refund_status === "UNKNOWN" ? "UNKNOWN" : "REQUESTED",
+            amount: Number(row.open_refund_amount ?? 0),
+            requestedAt: String(row.open_refund_requested_at),
+            unknownReason: (row.open_refund_unknown_reason as string | null) ?? null,
+            lastCheckedAt: (row.open_refund_last_checked_at as string | null) ?? null,
+            lastCheckResult: (row.open_refund_last_check_result as string | null) ?? null,
+          }
+        : null,
     }));
   }
 

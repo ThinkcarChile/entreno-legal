@@ -229,6 +229,7 @@ export default async function AdminPaymentsPage({
                           refundable={row.refundableAmount}
                           disputeId={row.disputeId}
                           canRefund={refundable}
+                          openRefund={row.openRefund}
                         />
                       </div>
                     </CardContent>

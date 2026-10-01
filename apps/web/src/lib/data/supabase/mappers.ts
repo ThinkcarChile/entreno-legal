@@ -463,6 +463,17 @@ export function mapPayment(row: PaymentRow): Payment {
   };
 }
 
+/**
+ * Fila de `assignment_payment_states`: lo que las dos partes de un trabajo
+ * pueden saber de sus pagos. Sin `provider_transaction_id`, que con Webpay es
+ * el token, ni nada más del proveedor.
+ */
+export type PaymentStateRow = Omit<PaymentRow, "provider_transaction_id">;
+
+export function mapPaymentState(row: PaymentStateRow): Payment {
+  return mapPayment({ ...row, provider_transaction_id: null });
+}
+
 export interface PaymentSummaryRow {
   assignment_id: string;
   service_amount: number;

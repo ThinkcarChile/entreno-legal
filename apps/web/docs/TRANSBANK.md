@@ -178,10 +178,28 @@ autenticación 3-D Secure, no la autorización financiera.
 | `commit` | `commit:<token>` | `payment_events (provider, provider_event_id)` |
 | `status` | `commit:<token>` | la misma que el commit, a propósito |
 | conciliación | `commit:<token>` | la misma; por eso conciliar no duplica |
-| `refund` | `refund:<sha256(pago:importe:discriminante)>` | índice único en `payment_refunds` |
+| `refund` | `refund:<sha256(pago:petición)>` | índice único en `payment_refunds` |
 
 Ninguna clave lleva datos secretos: el token no entra en la de devolución
 porque una clave de idempotencia acaba en registros y en índices.
+
+**La de devolución identifica una petición, no un importe.** «Petición» es un
+identificador que genera el formulario de `/admin/pagos` al abrirse y que
+cambia en cuanto llega una respuesta. Un doble clic o un reenvío tras perder la
+respuesta llevan el mismo y reciben la misma devolución, esté como esté; una
+segunda devolución parcial del mismo importe, o el reintento de una rechazada,
+es otra petición y sí ocurre. Hasta la migración `20260601000910` la clave salía
+de (pago, importe, disputa): la segunda devolución parcial de 5.000 recibía la
+fila confirmada de la primera y el panel decía «confirmada» sin que saliera un
+peso, y una rechazada no se podía reintentar. `request_payment_refund` mira la
+clave **antes** que cualquier otra regla, y rechaza reusarla con otro pago u
+otro importe.
+
+Y la clave de la base no alcanza a la llamada al banco, que viene después: dos
+envíos simultáneos de la misma petición recibían la misma fila `REQUESTED` y
+los dos llamaban a `refund`. `claim_payment_refund` marca el envío
+(`dispatched_at`) y solo contesta `true` a la primera llamada; las demás
+devuelven lo que haya pasado con ella sin tocar el banco.
 
 **Que el `commit` y la conciliación compartan clave es el punto.** Un pago
 asentado por el retorno y luego conciliado no produce un segundo evento, ni un
@@ -314,6 +332,67 @@ Para cambiar la ventana, con la clave de servicio:
 ```sql
 update public.platform_settings set reconciliation_window_days = 14;
 ```
+
+### Devoluciones por confirmar
+
+`refund(token, importe)` contesta una sola vez. Si esa respuesta se pierde —se
+agota el tiempo, se corta la red, Transbank contesta 5xx o algo que no se
+entiende— el banco **pudo haber devuelto el dinero**. Hasta la migración
+`20260601000910` eso se registraba como `FAILED`: el saldo volvía a quedar
+libre y el reintento devolvía dos veces. Ahora:
+
+| Lo que pasó | Estado | Qué significa |
+|---|---|---|
+| Reversa, o anulación con `response_code` 0 | `CONFIRMED` | se devolvió; baja el saldo del pago |
+| La petición no salió (credenciales, guardas, validación), o Transbank contestó 4xx, o una anulación con otro código | `FAILED` | no se devolvió nada; se puede volver a pedir por lo que quede |
+| Tiempo agotado, red, 5xx, respuesta sin tipo o anulación sin código | `UNKNOWN` | no se sabe; compromete saldo y **bloquea cualquier otra devolución del pago** hasta resolverse |
+
+Cómo se distingue (`classifyRefundError` en `src/lib/payments/refund.ts`): el
+SDK envuelve todo fallo de red o HTTP en un `TransbankError` cuyo mensaje empieza
+por el de axios («Request failed with status code 422», «timeout of … exceeded»);
+lo demás se lanza antes de que la petición salga. `TransbankPaymentProvider`
+deja en el error si salió y con qué código. Ante la duda, `UNKNOWN`: suponer que
+no salió es lo que permitía devolver dos veces.
+
+La base sostiene la regla con un índice único: una sola devolución abierta
+(`REQUESTED` o `UNKNOWN`) por pago. Y un disparador fija los pasos para todos,
+también para la clave de servicio: `REQUESTED → UNKNOWN | CONFIRMED | FAILED |
+CANCELLED`, `UNKNOWN → CONFIRMED | FAILED`, el resto es final.
+
+La resuelve la misma ruta programada, después de los pagos
+(`src/lib/payments/refund-reconcile.ts`), y el botón «Consultar al proveedor»
+para un pago concreto:
+
+1. Una `REQUESTED` enviada y sin respuesta pasados 15 minutos (el SDK espera
+   hasta 10) pasa a `UNKNOWN` con motivo `stale_request`. Una que ni siquiera
+   llegó a enviarse se cierra `FAILED` (`not_dispatched`).
+2. Una `UNKNOWN` se contrasta con `status(token)`, que describe la
+   transacción: estado, importe y, si se anuló en parte, saldo (`balance`). Solo
+   se cierra si eso la explica sin ambigüedad con lo ya registrado:
+
+   | Estado de la transacción | Se cierra como |
+   |---|---|
+   | `REVERSED`, y lo pedido era el total sin nada devuelto antes | `CONFIRMED` (reversa) |
+   | `NULLIFIED`, y lo pedido completa el total | `CONFIRMED` (anulación) |
+   | `PARTIALLY_NULLIFIED` con saldo = cobrado − (devuelto + pedido) | `CONFIRMED` (anulación) |
+   | `PARTIALLY_NULLIFIED` con saldo = cobrado − devuelto | `FAILED` |
+   | `AUTHORIZED` sin saldo menor y sin devoluciones previas | `FAILED` |
+
+   «No se hizo» exige además 30 minutos desde el envío. Cualquier otra cosa —un
+   importe que no coincide, un saldo que falta o no cuadra, un estado
+   inesperado, una transacción de más de 7 días a la que Webpay ya no
+   contesta— se anota (`last_check_result`) y se deja para una persona.
+
+Los tipos de `transbank-sdk` 6.1.1 declaran `status()` como `Promise<any>`: no
+dicen qué campos trae. Los que se usan son los que ya traduce
+`transbank/mapping.ts` —`status`, `amount`, `balance`— y nada más. **No se probó
+contra el ambiente de integración** (§12).
+
+Lo que no se resuelve solo aparece en `/admin/pagos` (filtro «En revisión», al
+que lleva la tarjeta «Devoluciones por procesar» del panel) con su motivo y lo
+que concluyó la última consulta. Se contrasta en el portal de Transbank y se
+cierra ahí mismo como hecha (anulación o, si era por el total, reversa) o no
+hecha, con una nota que queda en `audit_logs` (`resolve_unknown_refund`).
 
 ---
 
@@ -578,12 +657,33 @@ Solo administración, desde `/admin/pagos`:
 3. Confirmar.
 
 Por el total dentro del mismo día es una **reversa**; por menos o más tarde,
-una **anulación**. Lo devuelto es lo que diga el banco, no lo que se pidió. Si
-el banco no confirma, no se devolvió nada y queda registrado como fallida.
+una **anulación**. Lo devuelto es lo que diga el banco, no lo que se pidió. La
+pantalla dice en qué quedó:
+
+- **Confirmada**: salió el dinero.
+- **Rechazada**: el banco dijo que no, o la petición no llegó a salir. No se
+  devolvió nada; se puede volver a pedir.
+- **Por confirmar**: el banco no dio una respuesta en firme y puede que la haya
+  hecho. No se puede pedir otra sobre ese pago hasta resolverla (§7,
+  «Devoluciones por confirmar»). **No se reintenta**.
+- **En curso**: la misma petición ya la está procesando otra llamada.
+
+Si la respuesta del servidor se pierde, confirmar otra vez en el mismo
+formulario no duplica nada: lleva el mismo identificador de petición.
 
 Una devolución **total** retiene automáticamente el pago al trabajador. Retener
 y no cancelar: puede que el trabajador sí hiciera el trabajo, y esa decisión es
 de una persona.
+
+### Una devolución quedó «por confirmar»
+
+1. Esperar a la conciliación (o pulsar «Consultar al proveedor» en el pago): si
+   el estado de la transacción lo deja claro, la cierra sola.
+2. Si no puede, el pago muestra por qué. Buscar la transacción en el portal de
+   Transbank por la orden de compra.
+3. Cerrarla en `/admin/pagos` con lo que muestre el portal —hecha como anulación,
+   hecha como reversa (solo si era por el total) o no hecha— y una nota. Si
+   estaba hecha, baja el saldo; si no, el pago queda libre para pedir otra.
 
 ---
 
@@ -631,6 +731,10 @@ Lo que queda pendiente de ejecutar desde una red que alcance a Transbank
 - abortar desde el formulario
 - agotar el tiempo del formulario
 - una devolución real de integración (reversa y anulación parcial)
+- un fallo real de `refund` (4xx, 5xx, tiempo agotado) y la clasificación que
+  hace de él `TransbankPaymentProvider`, y la consulta de estado de una
+  transacción anulada en parte (`PARTIALLY_NULLIFIED` y su `balance`) de la que
+  depende la conciliación de devoluciones por confirmar
 - el recorrido de §8 completo
 
 Todo lo demás —los cuatro flujos de retorno, la idempotencia, la conciliación,

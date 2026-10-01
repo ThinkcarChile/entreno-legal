@@ -237,6 +237,22 @@ export interface AdminPayment {
   refundCount: number;
   disputeId: UUID | null;
   payoutId: UUID | null;
+  /** La devolución en curso o por confirmar, si la hay. Bloquea pedir otra. */
+  openRefund: AdminOpenRefund | null;
+}
+
+/** Una devolución sin resultado final, con lo que explica por qué. */
+export interface AdminOpenRefund {
+  refundId: UUID;
+  /** REQUESTED: enviada y esperando respuesta. UNKNOWN: el banco no dio respuesta en firme. */
+  status: "REQUESTED" | "UNKNOWN";
+  amount: number;
+  requestedAt: ISODateTime;
+  /** Por qué no se sabe: timeout, network, provider_http_5xx… */
+  unknownReason: string | null;
+  lastCheckedAt: ISODateTime | null;
+  /** Qué concluyó la última consulta automática que no pudo decidir. */
+  lastCheckResult: string | null;
 }
 
 /** Filtro de la pantalla de pagos. */
