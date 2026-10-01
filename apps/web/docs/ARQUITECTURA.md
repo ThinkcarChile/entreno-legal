@@ -328,6 +328,16 @@ Tenerla en dos sitios garantizaba que tarde o temprano divergieran.
 tabla y el respaldo del modo demostración. El valor inicial es 1400 puntos base,
 es decir 14 %.
 
+Lo mismo vale para lo que se **promete** en las páginas públicas. `/precios`,
+`/pago-protegido` y `/como-funciona` leían la comisión y el plazo para reportar
+un problema de las variables de entorno, así que bastaba cambiar
+`platform_settings` para que la página dijera una cosa y la base cobrara otra.
+Ahora los leen de la base en modo Supabase (`lib/data/public-terms-reader.ts`):
+con la clave pública y sin sesión —`anon` puede leer esa tabla, y estos dos
+números son públicos por definición—, guardados cinco minutos con
+`unstable_cache` para no hacer una consulta por visita, y con el valor por
+defecto si la base no responde. El cobro y el payout no pasan por esa caché.
+
 ### 6.7 El pago simulado recorre el flujo real
 
 No hay un botón que escriba `PAID` a mano. El botón crea el pago en la base,
@@ -503,6 +513,44 @@ El script analiza el SQL antes de enviarlo y se niega si toca algo que no sean
 traer contraseñas o credenciales, o si algún `insert` no lleva `on conflict`. Es
 deliberado que sea una comprobación de la máquina: el archivo está generado desde
 `src/lib/geo/chile.ts` y podría cambiar sin que nadie vuelva a leerlo entero.
+
+### 7.9 Los enlaces de correo funcionan en cualquier navegador
+
+Con la plantilla por omisión de Supabase, el enlace de «Olvidé mi contraseña» y
+el de confirmar la cuenta pasan por PKCE: `/auth/callback` canjea un código con
+un verificador guardado en una cookie del navegador donde se pidió el correo.
+Abierto en otro navegador o en la app de correo, falla, y fallaba en silencio
+(`/entrar?error=auth` no lo mostraba nadie).
+
+`/auth/confirm` recibe `token_hash` y `type`, valida los dos
+(`lib/auth/email-link.ts`, con pruebas) y verifica con `verifyOtp` en el
+servidor: la sesión queda en el navegador que abre el enlace. La recuperación
+termina siempre en `/nueva-clave`, diga lo que diga `next`; el resto pasa por
+`safeNextPath`. Un enlace que no sirve vuelve a `/entrar` o a `/recuperar-clave`
+con un motivo (`enlace-vencido`, `enlace-invalido`, `otro-navegador`) que la
+pantalla explica en español, y `/nueva-clave` sin sesión lo dice antes de pedir
+la contraseña dos veces.
+
+Para que los correos traigan ese enlace hay que cambiar las plantillas en el
+panel: es un paso manual, todavía pendiente (`DESPLIEGUE-SUPABASE.md` §4.1.c).
+`/auth/callback` se mantiene para los correos con la plantilla antigua.
+
+El mínimo de 8 caracteres de los formularios tampoco es el de Supabase, que
+trae 6 y es el que rige para quien llama a la API de Auth directamente: también
+es un paso manual pendiente (§4.1.b).
+
+### 7.10 Pantallas de error sin traza
+
+`error.tsx` en la raíz, en `(app)`, en `(marketing)` y en `admin`, más
+`global-error.tsx` para un fallo del layout raíz. Siguen el patrón de la 404: el
+cuerpo vive en `components/layout/error-content.tsx` y cada sitio lo envuelve
+según lo que su layout ya pinte. Ofrecen reintentar (`retry`, que vuelve a pedir
+el segmento al servidor) y volver al inicio; nunca muestran `error.message` ni la
+traza, solo el `digest`, que es la referencia con la que se encuentra el error en
+el registro del servidor. `src/instrumentation.ts` (`onRequestError`) escribe en
+ese registro una línea con el `digest`, la ruta sin consulta —puede llevar un
+`token_hash` o un `token_ws`— y el tipo de error. No hay proveedor externo de
+errores: elegir uno es una decisión pendiente.
 
 ## 8. Etapa 2.5: cancelar con un pago en vuelo, sin carreras
 
@@ -695,7 +743,7 @@ Ese contraste encontró el defecto descrito en §6.5.
 | `npm run verify:supabase` | Supabase real | El mismo recorrido por API, más Realtime, Storage y Auth, y las escrituras directas que deben fallar. 62 comprobaciones |
 | `npm run verify:payments` | Supabase real | Cancelación contra confirmación tardía, duplicada y simultánea, con el proveedor retardado y las piezas de la aplicación. 23 comprobaciones |
 | `npm run verify:execution` | Supabase real | Ejecución del trabajo con sesiones reales: papeles, privacidad de la ubicación, extensiones, PIN, disputas, transferencia y carreras. 24 comprobaciones |
-| `npm run verify:pwa` | Estático | Manifiesto, iconos, service worker, metadatos y tokens de diseño. 30 comprobaciones |
+| `npm run verify:pwa` | Estático | Manifiesto, iconos (incluido el PNG de iOS), service worker, metadatos y tokens de diseño. 31 comprobaciones |
 | `npm run verify:transbank` | Webpay Integration | Configuración, guardas de producción, identificadores, criterio de aprobación e ida y vuelta real contra Transbank. 31 comprobaciones |
 | `npm run e2e` | Supabase real, por navegador | Entrar, publicar, ofertar, aceptar, pagar y ejecutar el trabajo hasta la aprobación. 51 pruebas |
 

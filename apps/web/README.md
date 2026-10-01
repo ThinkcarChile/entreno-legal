@@ -45,6 +45,7 @@ con datos realistas en pesos chilenos. Es la forma más rápida de revisar la in
 | `npm run verify:pwa` | Manifiesto, iconos, service worker, tokens y contrastes. Sin servidor ni Supabase |
 | `npm run evidence:webpay` | Evidencia de una prueba contra Webpay Integration: las doce comprobaciones, sin secretos |
 | `npm run brand:logo` | Rehace el logotipo de 130 × 59 px para la validación de Transbank |
+| `npm run brand:apple-icon` | Rehace `src/app/apple-icon.png` (180 × 180, el icono de iOS) desde `brand/apple-icon.svg` |
 | `npm run e2e` | Recorrido por navegador con Playwright, más la revisión responsive, de consola y de accesibilidad |
 
 ---
@@ -67,7 +68,7 @@ Todas en `.env.example`. Ninguna credencial real vive en el repositorio.
 | `TRANSBANK_PRODUCTION_API_KEY_SECRET` | Solo producción | Llave secreta que entrega Transbank al certificar. Solo servidor |
 | `CRON_SECRET` | En producción | Autoriza `/api/cron/conciliar-pagos`. Al menos 32 caracteres (`docs/TRANSBANK.md` §7) |
 | `PLATFORM_COMMISSION_BPS` | No | Comisión por defecto en puntos base. `1400` = 14%. En modo Supabase manda `platform_settings` |
-| `DISPUTE_WINDOW_HOURS` | No | Plazo para reportar un problema. Por defecto 12 |
+| `DISPUTE_WINDOW_HOURS` | No | Plazo para reportar un problema. Por defecto 12. En modo Supabase manda `platform_settings`, también en las páginas públicas |
 
 `SUPABASE_SERVICE_ROLE_KEY` nunca debe llevar el prefijo `NEXT_PUBLIC_`.
 

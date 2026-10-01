@@ -374,6 +374,14 @@ transferencia. Registrarla exige referencia bancaria y es idempotente: hacerlo
 dos veces no duplica nada. **Ninguna de estas acciones mueve dinero**, y la
 pantalla lo dice con esas palabras.
 
+La pantalla muestra arriba todo lo que no está transferido ni cancelado, sin
+tope y del más antiguo al más reciente, y abajo el historial por páginas. Antes
+era una sola lista con los cien más recientes de cualquier estado: pasados cien
+payouts, uno aprobado y sin transferir desaparecía de la única pantalla donde
+se transfiere. `/admin/disputas` sigue la misma regla con las disputas abiertas
+y las resueltas cuya devolución no está confirmada (el importe de la resolución
+menos las devoluciones `CONFIRMED` de esa disputa).
+
 ### La ventana retiene de verdad
 
 `mark_payout_paid` se niega a registrar una transferencia mientras haya una

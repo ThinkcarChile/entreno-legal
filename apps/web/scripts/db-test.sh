@@ -109,6 +109,11 @@ run -d "$DB_NAME" -f "$ROOT/supabase/seed/001_geo.sql" > /dev/null \
     | grep -vE "$FILTER" | sed -E 's/^psql:[^ ]+ //; s/^NOTICE:  //'
 
   echo ""
+  echo "════ Lo que la aplicación da por hecho: páginas públicas y panel ════"
+  psql -d "$DB_NAME" -f "$ROOT/supabase/tests/16_app.sql" 2>&1 \
+    | grep -vE "$FILTER" | sed -E 's/^psql:[^ ]+ //; s/^NOTICE:  //'
+
+  echo ""
   echo "════ Contrato entre la aplicación y el esquema ════"
   DB_NAME="$DB_NAME" bash "$ROOT/scripts/check-db-contract.sh"
 } | tee "$REPORT"
@@ -136,6 +141,6 @@ fi
 # ejecutaban y un FALLO suyo seguía tumbando la batería —eso lo decide el grep
 # de "FALLO" de más arriba—, pero no entraban en el total, así que el número
 # que se publicaba era menor que el real.
-TOTAL=$(grep -cE "^(T|E|R|S|I|H|P|W|X|V)[0-9]+" "$REPORT")
+TOTAL=$(grep -cE "^(T|E|R|S|I|H|P|W|X|V|Z)[0-9]+" "$REPORT")
 echo "✓ $TOTAL comprobaciones pasaron"
 rm -f "$REPORT"
