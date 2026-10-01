@@ -45,6 +45,9 @@ en orden alfabético.
 | `…20260601001400_refund_after_payout.sql` | Con el payout transferido, una devolución no pasa de lo que queda de la plataforma; una confirmada que descuadra las cifras retiene el payout; pedir, cerrar y resolver a mano una devolución bloquean trabajo → asignación → pagos → devolución |
 | `…20260601001410_attempt_clock_and_lock_order.sql` | La ventana de conciliación corre desde el intento vigente; `register_payment_attempt` bloquea trabajo → asignación → pago |
 | `…20260601001420_attempt_refunds.sql` | `payment_attempt_refunds`: devolver un cobro duplicado contra el token de su intento, con su conciliación y su cierre a mano |
+| `…20260601001500_integrity_alert_notification.sql` | `notification_type.INTEGRITY_ALERT`: aviso a administración de un invariante roto |
+| `…20260601001510_payment_review_queue.sql` | La cola «En revisión» de `/admin/pagos` se define una vez (`payment_review_queue`); `admin_pending_reviews.refunds` cuenta sus filas, cada pago una vez |
+| `…20260601001520_invariants_in_scheduled_tasks.sql` | `run_scheduled_tasks` corre todos los invariantes, registra las reglas rotas en `app_private.integrity_alerts` y avisa a administración como mucho una vez al día por regla |
 | `…000500_evidence_and_chat.sql` | Evidencia, vistas `checkins` y `job_updates`, conversaciones, mensajes |
 | `…000600_reviews_disputes.sql` | Reseñas con validación, disputas, evidencia de disputa |
 | `…000700_loyalty_notifications_audit.sql` | FilaPuntos, notificaciones, `audit_logs` y sus triggers |
@@ -220,7 +223,10 @@ exige sesión y comprueba el papel de quien llama. Ver `docs/EJECUCION.md`.
 | `approve_payout(payout, nota)` | **Administración** | Aprueba el pago al trabajador. No sobre un cobro devuelto entero ni en revisión |
 | `mark_payout_paid(payout, referencia, fecha, nota)` | **Administración** | Registra una transferencia hecha por fuera. Idempotente. Exige el cobro del cliente sano, las cifras cuadradas, la ventana cerrada y un cobro de producción (o `allow_non_production_payouts` en una base de pruebas). Ver `PAGOS.md` §4 bis |
 | `hold_payout(payout, motivo)` | **Administración** | Retiene con motivo escrito |
-| `admin_pending_reviews()` | **Administración** | Recuentos de las colas del panel |
+| `admin_pending_reviews()` | **Administración** | Recuentos de las colas del panel. `refunds` es el número de filas de `admin_payment_review_queue`: un pago cuenta una vez aunque tenga varios motivos (`…001510`) |
+| `admin_payment_review_queue()` | **Administración** | La cola «En revisión» de `/admin/pagos`: un pago por fila —en revisión, con una devolución sin resultado final, con un intento en revisión o con la devolución de una disputa resuelta sin pedir— y el porqué. Admite `order`, `limit` y filtros de PostgREST |
+| `admin_integrity_alerts()` | **Administración** | Las reglas de invariante rotas según la última pasada de las tareas programadas, y si alguien ya las vio (`…001520`) |
+| `acknowledge_integrity_alerts()` | **Administración** | Marca como vistas las reglas rotas sin ver; queda en `audit_logs`. No las resuelve ni detiene el aviso diario |
 
 El trabajador **no puede leer** `handoff_codes`: RLS solo permite la lectura al
 cliente. Por eso el PIN sirve como prueba de presencia simultánea.
@@ -330,7 +336,8 @@ trabajador), `guard_job_terminal` (un trabajo cancelado no revive),
 `finalize_job_cancellation` (lo que comparten `cancel_job` y la confirmación
 tardía), `create_payout_for_assignment` (idempotente) y
 `payment_invariant_violations()` (devuelve toda fila que rompa los invariantes;
-las pruebas exigen cero).
+las pruebas exigen cero, y desde `…001520` también la corren las tareas
+programadas).
 
 Y las del seguimiento de pagos (`20260601001400`–`…001420`):
 `refund_after_payout_blocker` (lo que queda de la plataforma con el payout
@@ -352,6 +359,22 @@ restricciones `CHECK` y por el alta), `quoted_display_name` (el nombre citado en
 los avisos), y `offer_total`, `compute_offer_total`,
 `sync_pending_offer_totals` y `compute_agreed_total` (el total de una oferta y
 el importe acordado de la asignación que sale de ella).
+
+Y las de vigilancia (`20260601001510`–`…001520`): `payment_review_queue` (la
+única definición de la cola «En revisión»: la cuenta `admin_pending_reviews` y
+la listan `admin_payment_review_queue` y `/admin/pagos`; los motivos del pago
+los lee de la vista `admin_payments`, la misma de la pantalla) y `check_invariants`
+(corre cada `app_private.*_invariant_violations()` —las que no reciben
+argumentos y devuelven `(rule text, entity_id uuid)`, buscadas en el
+catálogo—, cada una aislada; guarda las reglas rotas en
+`app_private.integrity_alerts`, una fila por función y regla, con cuántos casos,
+hasta cinco ejemplos y desde cuándo; y avisa a cada administrador con
+`INTEGRITY_ALERT` como mucho una vez cada 24 horas por regla mientras siga
+rota). La llama `run_scheduled_tasks`, que devuelve lo encontrado en la clave
+`invariantes`. Una regla que deja de aparecer se da por resuelta, salvo que la
+función que la delata haya fallado en esa pasada; la de una función que ya no
+existe, también; si vuelve, es un caso nuevo, sin ver. Nadie con sesión lee ni escribe `integrity_alerts`: el panel pasa por
+`admin_integrity_alerts` y `acknowledge_integrity_alerts`.
 
 Y las de abuso y archivos (`20260601001200`–`…001210`): `enforce_rate_limit`
 (BEFORE INSERT en `jobs`, `job_offers` y `messages`, ver abajo),

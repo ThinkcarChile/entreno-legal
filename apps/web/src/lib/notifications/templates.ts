@@ -115,6 +115,11 @@ export const notificationTemplates: Record<NotificationType, Template> = {
     title: "Tu trabajo venció sin trabajador",
     body: `"${c.jobTitle ?? "El trabajo"}" pasó su hora de inicio sin una oferta aceptada. Puedes publicarlo otra vez.`,
   }),
+  // Lo escribe la base con la regla y el número de casos; esto es el genérico.
+  INTEGRITY_ALERT: () => ({
+    title: "Datos inconsistentes",
+    body: "Una regla del dinero está rota. Revísalo en el panel de administración.",
+  }),
   VERIFICATION_UPDATED: () => ({
     title: "Estado de verificación actualizado",
     body: "Revisa el estado de tu verificación de identidad en tu perfil.",

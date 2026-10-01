@@ -12,10 +12,10 @@ import { DisputeResolution } from "@/lib/domain/enums";
  * Resolución de una disputa.
  *
  * Define quién se queda con qué dentro de la plataforma. **No ejecuta ninguna
- * devolución bancaria**: el importe a favor del cliente queda anotado para
- * procesarse cuando exista la integración con el medio de pago. La pantalla lo
- * dice con esas palabras, porque la alternativa es que alguien crea que el
- * dinero ya salió.
+ * devolución bancaria**: el importe a favor del cliente queda anotado, y la
+ * devolución se pide después desde Pagos de clientes (`/admin/pagos`), donde
+ * la ejecuta el proveedor del pago. La pantalla lo dice con esas palabras,
+ * porque la alternativa es que alguien crea que el dinero ya salió.
  */
 const OPTIONS = [
   {
@@ -124,8 +124,9 @@ export function DisputeResolutionForm({ disputeId }: { disputeId: string }) {
       </Field>
 
       <Alert tone="warning">
-        No se ejecuta ningún reembolso bancario automático. Esta decisión define la liberación de
-        fondos dentro de la plataforma y deja anotado el monto a devolver.
+        Guardar la resolución no devuelve dinero. Define la liberación de fondos dentro de la
+        plataforma y deja anotado el monto a devolver; la devolución se pide después desde Pagos
+        de clientes y solo cuenta como hecha cuando el banco la confirma.
       </Alert>
 
       <label className="flex items-start gap-2 text-small text-ink-700">

@@ -3,9 +3,12 @@ import Link from "next/link";
 
 import { AlertTriangle, BadgeCheck, Banknote, MapPin, ShieldAlert, Timer } from "lucide-react";
 
+import { AcknowledgeIntegrityAlerts } from "@/components/admin/acknowledge-integrity-alerts";
 import { Card, CardContent, Stat } from "@/components/ui";
+import { Alert } from "@/components/ui/feedback";
 import { requireAdmin } from "@/lib/auth/session";
-import { getData, isDemoMode } from "@/lib/data";
+import { getData, isDemoMode, type IntegrityAlert } from "@/lib/data";
+import { formatDateTime } from "@/lib/utils/datetime";
 import { formatPercent, formatNumber } from "@/lib/utils/format";
 import { formatMoney } from "@/lib/utils/money";
 
@@ -20,7 +23,18 @@ export default async function AdminDashboardPage() {
   await requireAdmin("/admin");
 
   const data = getData();
-  const [kpis, queues] = await Promise.all([data.admin.getKpis(), data.admin.getQueues()]);
+  const [kpis, queues, alerts] = await Promise.all([
+    data.admin.getKpis(),
+    data.admin.getQueues(),
+    // Si no se pueden leer, el resumen se muestra igual y lo dice: no saber
+    // si algo está roto no es lo mismo que saber que no lo está.
+    data.admin.listIntegrityAlerts().catch((error: unknown) => {
+      console.error("[admin] no se pudieron leer las alertas de integridad", {
+        code: typeof error === "object" && error !== null && "code" in error ? error.code : null,
+      });
+      return null;
+    }),
+  ]);
 
   return (
     <div className="container-page py-8 sm:py-10">
@@ -35,6 +49,8 @@ export default async function AdminDashboardPage() {
           </p>
         )}
       </header>
+
+      <IntegrityAlerts alerts={alerts} />
 
       <section className="mt-8">
         <h2 className="text-small font-semibold tracking-wide text-ink-500 uppercase">Negocio</h2>
@@ -89,7 +105,7 @@ export default async function AdminDashboardPage() {
           <QueueCard
             href="/admin/payouts"
             icon={<Banknote size={18} aria-hidden="true" />}
-            label="Pagos por resolver"
+            label="Pagos a trabajadores por resolver"
             value={queues.payouts}
             tone="text-success-600"
           />
@@ -114,14 +130,81 @@ export default async function AdminDashboardPage() {
           <h2 className="text-base font-semibold text-ink-950">Qué queda por hacer a mano</h2>
           <p className="mt-2 text-small text-ink-600">
             Las transferencias a los trabajadores se hacen fuera de la plataforma y se registran
-            aquí con su referencia bancaria. Las devoluciones al cliente quedan anotadas, pero no
-            se ejecutan: eso necesita la integración con el medio de pago. Toda acción
-            administrativa queda registrada en{" "}
+            en{" "}
+            <Link href="/admin/payouts" className="font-medium text-brand-700 hover:underline">
+              Pagos a trabajadores
+            </Link>{" "}
+            con su referencia bancaria: ahí nada mueve dinero. Las devoluciones al cliente, en
+            cambio, sí salen: se piden desde{" "}
+            <Link href="/admin/pagos" className="font-medium text-brand-700 hover:underline">
+              Pagos de clientes
+            </Link>{" "}
+            y las ejecuta el proveedor del pago (Webpay, en producción). Solo cuentan como hechas
+            cuando el banco las confirma; una que queda «por confirmar» se resuelve con «Conciliar»
+            —o sola, si el hosting llama a la conciliación programada— o se cierra a mano con lo
+            que muestre el portal de Transbank. Toda acción administrativa queda registrada en{" "}
             <code className="rounded bg-ink-100 px-1.5 py-0.5 text-caption">audit_logs</code>.
           </p>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/**
+ * Lo que encontró la última pasada de los invariantes
+ * (`app_private.check_invariants`, cada 10 minutos con las tareas
+ * programadas). Roja mientras haya una regla rota que nadie marcó como vista;
+ * ámbar si ya se vio y sigue rota; nada si no hay ninguna.
+ */
+function IntegrityAlerts({ alerts }: { alerts: readonly IntegrityAlert[] | null }) {
+  if (alerts === null) {
+    return (
+      <Alert tone="warning" className="mt-6" title="No pudimos comprobar los invariantes">
+        La lectura de las alertas de integridad falló. Eso no significa que esté todo bien: vuelve
+        a cargar la página y, si sigue, revisa que la base tenga la migración 20260601001520.
+      </Alert>
+    );
+  }
+  if (alerts.length === 0) return null;
+
+  const unseen = alerts.filter((alert) => alert.unacknowledged);
+  const list = (
+    <ul className="mt-2 space-y-1">
+      {alerts.map((alert) => (
+        <li key={alert.alertId}>
+          <code>{alert.kind}</code> · {formatNumber(alert.violationCount)}{" "}
+          {alert.violationCount === 1 ? "caso" : "casos"} · desde{" "}
+          {formatDateTime(alert.firstSeenAt)}
+          {alert.sampleIds.length > 0 && (
+            <>
+              {" "}
+              · p. ej. <code>{alert.sampleIds[0]}</code>
+            </>
+          )}
+          {!alert.unacknowledged && " · vista"}
+        </li>
+      ))}
+    </ul>
+  );
+
+  if (unseen.length > 0) {
+    return (
+      <Alert tone="danger" className="mt-6" title="Hay datos que rompen una regla del dinero">
+        Las tareas programadas encontraron {unseen.length === 1 ? "una regla" : `${unseen.length} reglas`}{" "}
+        sin ver. No muevas dinero sobre esos registros hasta entender qué pasó; cada caso trae el
+        identificador de la fila que la rompe.
+        {list}
+        <AcknowledgeIntegrityAlerts />
+      </Alert>
+    );
+  }
+
+  return (
+    <Alert tone="warning" className="mt-6" title="Reglas rotas, ya vistas">
+      Siguen rotas y el aviso diario sigue llegando hasta que se corrija el dato.
+      {list}
+    </Alert>
   );
 }
 

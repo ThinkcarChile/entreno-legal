@@ -75,8 +75,8 @@ export async function reviewCheckInAction(
  *
  * Decide qué corresponde y lo deja escrito: libera, recorta o cancela el pago
  * al trabajador y anota el importe a devolver al cliente. **No ejecuta ninguna
- * devolución**: eso necesita el proveedor de pago integrado, y la interfaz lo
- * dice con esas palabras.
+ * devolución**: esa se pide después desde `/admin/pagos` y la hace Webpay
+ * (`lib/payments/refund.ts`), y la interfaz lo dice con esas palabras.
  */
 export async function resolveDisputeAction(
   disputeId: string,
@@ -190,5 +190,24 @@ export async function holdPayoutAction(
     return actionOk();
   } catch (error) {
     return actionError(error, "No pudimos retener el pago.");
+  }
+}
+
+/**
+ * «Visto» sobre las reglas de invariante rotas que muestra el resumen.
+ *
+ * No arregla nada ni detiene el aviso diario: quita la alerta roja hasta que
+ * aparezcan más casos o la regla se resuelva y vuelva. Queda en `audit_logs`
+ * con quién lo marcó.
+ */
+export async function acknowledgeIntegrityAlertsAction(): Promise<ActionResult<{ acknowledged: number }>> {
+  try {
+    const { supabase } = await requireSession();
+    const { data, error } = await supabase.rpc("acknowledge_integrity_alerts");
+    if (error) return actionError(error, "No pudimos marcar las alertas como vistas.");
+    revalidatePath("/admin");
+    return actionOk({ acknowledged: Number(data ?? 0) });
+  } catch (error) {
+    return actionError(error, "No pudimos marcar las alertas como vistas.");
   }
 }
