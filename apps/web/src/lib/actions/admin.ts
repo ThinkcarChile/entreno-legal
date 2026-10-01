@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { actionError, actionOk, type ActionResult } from "@/lib/utils/errors";
+import { MIN_ADJUSTMENT_REASON } from "@/lib/validation/payout-adjustment";
 
 import { requireSession } from "./guards";
 
@@ -190,6 +191,58 @@ export async function holdPayoutAction(
     return actionOk();
   } catch (error) {
     return actionError(error, "No pudimos retener el pago.");
+  }
+}
+
+/**
+ * Baja el neto de un pago a un trabajador que todavía no se transfirió, o lo
+ * cancela con $0.
+ *
+ * Es la salida de un payout retenido porque una devolución dejó las cifras sin
+ * cuadrar, o porque el cliente recibió todo de vuelta fuera de una disputa. La
+ * base (`adjust_payout`) comprueba el rol, que no esté transferido ni con una
+ * disputa abierta y que el neto solo baje; deja el motivo en la auditoría y en
+ * la línea de tiempo, y se lo avisa al trabajador. Si las cifras todavía no
+ * cuadran tras el ajuste, lo devuelve en `overrun`.
+ */
+export async function adjustPayoutAction(
+  payoutId: string,
+  netAmount: number,
+  reason: string,
+): Promise<ActionResult<{ payoutStatus: string; netAmount: number; overrun: string | null }>> {
+  try {
+    if (!Number.isInteger(netAmount) || netAmount < 0) {
+      return {
+        ok: false,
+        error: "El nuevo neto es un número entero de pesos, cero o más.",
+        field: "netAmount",
+      };
+    }
+    if (reason.trim().length < MIN_ADJUSTMENT_REASON) {
+      return {
+        ok: false,
+        error: `Escribe el motivo (al menos ${MIN_ADJUSTMENT_REASON} caracteres): lo lee el trabajador.`,
+        field: "reason",
+      };
+    }
+    const { supabase } = await requireSession();
+    const { data, error } = await supabase.rpc("adjust_payout", {
+      p_payout_id: payoutId,
+      p_net_amount: netAmount,
+      p_reason: reason.trim(),
+    });
+    if (error) return actionError(error, "No pudimos ajustar el pago.");
+
+    const row = (data ?? {}) as Record<string, unknown>;
+    revalidatePath("/admin/payouts");
+    revalidatePath("/admin");
+    return actionOk({
+      payoutStatus: String(row.payout_status ?? ""),
+      netAmount: Number(row.net_amount ?? netAmount),
+      overrun: (row.overrun as string | null) ?? null,
+    });
+  } catch (error) {
+    return actionError(error, "No pudimos ajustar el pago.");
   }
 }
 

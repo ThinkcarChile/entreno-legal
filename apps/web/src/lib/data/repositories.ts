@@ -200,8 +200,10 @@ export interface AdminDispute {
    */
   refundPending: Money | null;
   /**
-   * El pago del trabajo sobre el que se pide esa devolución: a él lleva el
-   * enlace «Devolución pendiente», aunque sea antiguo. `null` si no hay.
+   * El cobro sobre el que se pide esa devolución: el primero con parte de la
+   * deuda según la cola (el del trabajo, después el del tiempo adicional), o el
+   * del trabajo si ya está todo pedido. A él lleva el enlace «Devolución
+   * pendiente», aunque sea antiguo. `null` si no hay.
    */
   paymentId: UUID | null;
 }
@@ -254,6 +256,12 @@ export interface AdminPayment {
   reconciledAt: ISODateTime | null;
   eventCount: number;
   refundCount: number;
+  /**
+   * La disputa de la asignación, para «Ver la disputa». NO es la que se liga
+   * al devolver: la vista la pone en todos los cobros de la asignación, también
+   * en el del tiempo adicional y con la disputa abierta. Esa es
+   * `disputeRefundId`.
+   */
   disputeId: UUID | null;
   payoutId: UUID | null;
   /**
@@ -266,11 +274,18 @@ export interface AdminPayment {
   /** La devolución en curso o por confirmar, si la hay. Bloquea pedir otra. */
   openRefund: AdminOpenRefund | null;
   /**
-   * Lo que falta PEDIR de una disputa resuelta a favor del cliente cuyo pago
-   * es este (lo resuelto menos lo ya pedido o devuelto con esa disputa). Cero
-   * si no hay nada. Es uno de los motivos de la cola «En revisión».
+   * Lo que falta PEDIR sobre este cobro de una disputa resuelta a favor del
+   * cliente: su parte de lo que la disputa todavía debe, nunca más de lo que
+   * este cobro puede devolver (`dispute_refund_allocation`, migración
+   * 20260601001610). Cero si no hay nada. Es uno de los motivos de la cola
+   * «En revisión».
    */
   disputeRefundPending: number;
+  /**
+   * La disputa de esa parte: la única a la que se liga una devolución pedida
+   * desde la tarjeta de este cobro. `null` si no hay nada que pedir.
+   */
+  disputeRefundId: UUID | null;
   /**
    * Cada intento en revisión —también los ya devueltos— con su cobro y su
    * última devolución. Es lo que se devuelve desde el panel, contra el token

@@ -141,7 +141,7 @@ Lo que impide que un error de código —o un `UPDATE` a mano— rompa la garant
 | Disparador `jobs_guard_terminal` | Revivir un trabajo `CANCELLED` o `EXPIRED` (solo pueden ir a `CLOSED`); `CANCELLATION_PENDING` solo va a `CANCELLED` |
 | Disparador `payments_a_guard_settlement` | `REFUNDED` → en vuelo; `PAID` / `UNDER_REVIEW` → `FAILED`; y toda decisión de `PAID` fuera de los bloqueos |
 | Disparador `payouts_guard_transitions` (Bloque 3) | Saltarse la máquina de estados del pago al trabajador: `PAID` y `CANCELLED` son terminales para todos |
-| `app_private.payout_transfer_blocker` → `payout_money_blocker` | Transferir sobre un cobro devuelto, en revisión, con una devolución sin respuesta, con cifras que no cuadran o de un ambiente que no es producción (§4 bis) |
+| `app_private.payout_transfer_blocker` → `payout_money_blocker` | Transferir sobre un cobro devuelto, en revisión, con una devolución sin respuesta, con un bono que el cliente negó, con cifras que no cuadran o de un ambiente que no es producción (§4 bis) |
 | `app_private.refund_after_payout_blocker` (en `request_payment_refund`) | Devolver, con el trabajador ya pagado, más de lo que queda de la plataforma (§4 bis) |
 | Disparador `payments_hold_payout_on_review` (ampliado en `20260601001400`) | Que una devolución confirmada que deja las cifras sin cuadrar deje el payout pagable: pasa a `HELD` con el motivo |
 | Índice único `payment_attempt_refunds_one_committed_idx` y disparador `payment_attempts_guard_money` | Devolver dos veces el cobro de un intento, o que un intento devuelto pase después a ser el dinero del pago (§8 quater) |
@@ -166,8 +166,8 @@ trabajador pagado por el mismo trabajo. Desde la migración `20260601000800`:
 | Quién | Qué exige del pago del trabajo |
 |---|---|
 | `mark_payout_paid` (la transferencia, barrera definitiva) | `PAID` o `PARTIALLY_REFUNDED`; ninguna devolución sin respuesta del banco (cualquier estado de `payment_refunds` que no sea `CONFIRMED`, `FAILED` ni `CANCELLED`); y cifras que cuadren: lo devuelto al cliente, lo pedido y sin respuesta, lo que se le debe por una disputa resuelta y el neto del payout no pueden sumar más de lo que el cliente pagó por la asignación (trabajo más tiempo adicional). Se comprueba antes de la excepción de la disputa resuelta: una resolución exime de esperar la ventana, no de que el cobro siga en pie |
-| `approve_payout` | No aprueba sobre un pago devuelto entero, en revisión ni en ningún estado que no sea un cobro confirmado |
-| `resolve_dispute` | A favor del trabajador o repartida, no sobre un pago devuelto entero. Si deja el payout aprobado, las cifras tienen que cuadrar o no se resuelve nada. Si el pago está en revisión o con una devolución sin respuesta, la decisión se registra pero el payout queda `HELD` hasta que `approve_payout` lo encuentre sano |
+| `approve_payout` | No aprueba sobre un pago devuelto entero, en revisión ni en ningún estado que no sea un cobro confirmado. Desde `20260601001610`, tampoco con una devolución sin respuesta del banco ni con cifras que no cuadran (antes lo volvía a `APPROVED` y borraba el motivo, y la transferencia lo frenaba otra vez): primero se ajusta (abajo). Si el payout todavía incluye un bono que el cliente negó, lo descuenta y lo deja en la auditoría |
+| `resolve_dispute` | A favor del trabajador o repartida, no sobre un pago devuelto entero. Si deja el payout aprobado, las cifras tienen que cuadrar o no se resuelve nada. Si el pago está en revisión o con una devolución sin respuesta, la decisión se registra pero el payout queda `HELD` hasta que `approve_payout` lo encuentre sano. Un importe a devolver se mide contra lo cobrado en la asignación —trabajo más tiempo adicional— y contra lo que todavía se puede devolver (§8 ter bis) |
 
 Además, desde `20260601000810`, `mark_payout_paid` no transfiere si algún cobro
 que respalda el payout tiene un `environment` que no sea `production` —simulado
@@ -181,6 +181,34 @@ igual que siempre, sujeto a lo de la tabla y a la ventana de disputa.
 Todas las negativas dicen el motivo con las cifras y qué hacer, en las palabras
 que ve administración. Pruebas: `supabase/tests/11_payment_health.sql`
 (`L01`–`L44`).
+
+**Ajustar un payout que no cuadra** (migración `20260601001610`). Un payout
+retenido porque una devolución dejó las cifras sin cuadrar, o porque el cliente
+recibió la devolución total fuera de una disputa, no tenía salida: ninguna
+función bajaba su neto y había que escribir SQL. Ahora `adjust_payout` —«Ajustar»
+en `/admin/payouts`— lo hace:
+
+| Regla | Por qué |
+|---|---|
+| Solo administración, con un motivo de al menos 10 caracteres | Lo lee el trabajador en el aviso `PAYOUT_ADJUSTED`; queda en `audit_logs` (neto antes y después) y en la línea de tiempo, solo para administración |
+| Solo `PENDING`, `APPROVED` o `HELD`, sin una disputa abierta | Uno transferido ya pagó; uno con disputa lo decide su resolución |
+| Solo baja el neto; con $0 lo cancela | Subirlo sería pagar más de lo que entró sin nada que lo mida. El mismo neto otra vez no hace nada |
+| El estado no cambia salvo al cancelar | Uno retenido sigue retenido y lo libera `approve_payout`, que vuelve a medir las cifras |
+| Bloquea trabajo → asignación → pagos → payout | El orden de la transferencia y de pedir una devolución: se esperan |
+
+Si tras el ajuste las cifras todavía no cuadran, la función lo dice y la
+aprobación y la transferencia se siguen negando. Los motivos de retención que
+deja una devolución lo indican («baja el neto … con «Ajustar» … o cancélalo con
+$0»). Pruebas: B27–B41 (`supabase/tests/19_payout_decisions.sql`).
+
+**El bono negado** (misma migración). Al aprobar el trabajo, el bono que el
+cliente no otorga sale del payout esté `PENDING`, `APPROVED` (aprobado por
+administración antes de tiempo) o `HELD` (retenido a mano o por un cobro en
+duda). Antes solo salía en `PENDING`, y uno retenido se liberaba y transfería
+con el bono. Solo `PENDING` cambia de estado; la aprobación devuelve el estado
+real del payout y el aviso al trabajador no dice «aprobado» de uno retenido. La
+transferencia se niega si `assignments.bonus_awarded` es falso y el payout
+todavía lleva bono. Pruebas: B20–B26.
 
 **Y del lado de la devolución** (migración `20260601001400`). La transferencia
 medía el invariante; pedir una devolución no, así que con el payout ya `PAID`
@@ -291,6 +319,7 @@ es legible para ninguna sesión.
 | `supabase/tests/07_race_payment.sh` | R10 duplicado simultáneo, R11 aprobación contra cancelación, R12 invariantes. `RACE_REPS` repeticiones (5 por defecto), dos sesiones `psql` reales |
 | `scripts/verify-payments.ts` | Lo mismo contra `hagotufila-dev`, con `DelayedMockPaymentProvider` y `applyProviderResult` —las piezas que usa la aplicación— hablando con PostgREST. `RACE_REPS=10 npm run verify:payments` |
 | `supabase/tests/11_payment_health.sql` | L01–L44: la §4 bis. Devolución total, revisión, devolución sin respuesta y cifras que no cuadran frente a aprobar, resolver y transferir; el ambiente de cada cobro (el del trabajo y el del tiempo adicional) y la bandera `allow_non_production_payouts` |
+| `supabase/tests/19_payout_decisions.sql` | B01–B42: la deuda de una disputa repartida entre los cobros y la devolución ligada solo en su parte (§8 ter bis), el bono negado y el ajuste de un payout que no cuadra (§4 bis) |
 | `supabase/tests/13_payment_attempts.sql` | N01–N47: historial de intentos, guardas del reintento, cobro duplicado, retornos sin cobro de otro intento, revisión sin pasar por `PAID`, cola y vencimiento de intentos (también el vigente con commit pedido, y su autorización tardía), privilegios |
 | `src/lib/payments/return-handler.test.ts`, `reconcile.test.ts`, `return-target.test.ts` | Qué intento resuelve cada retorno, cuándo se llama al banco, con qué identidad se asienta, el barrido de intentos anteriores y a qué pantalla vuelve cada resultado según lo pagado |
 
@@ -365,6 +394,53 @@ Riesgo que queda, a sabiendas: mientras una devolución **total** está por
 confirmar, el pago al trabajador no se retiene solo (se retiene al confirmarse,
 como cualquier devolución total). Si administración transfiere en ese intervalo
 y la devolución resulta hecha, queda para resolución manual.
+
+---
+
+## 8 ter bis. Lo que se le debe al cliente por una disputa
+
+Una disputa resuelta a favor del cliente —entera o repartida— anota en
+`disputes.refund_amount` lo que hay que devolverle; la devolución la pide
+después una persona desde `/admin/pagos`. Hasta `20260601001610` esa deuda
+vivía entera en el cobro del TRABAJO:
+
+- CLIENT_WINS sin importe anotaba solo el saldo de ese cobro, aunque el payout
+  cancelado incluyera el tiempo adicional: el cliente que ganaba recuperaba el
+  trabajo y los $9.000 del tiempo adicional se quedaban en la plataforma, sin
+  que ninguna pantalla los mostrara. Un importe explícito mayor que ese cobro
+  se rechazaba.
+- El panel ligaba a la disputa cualquier devolución de cualquier cobro de la
+  asignación, y la base no lo impedía: devolver el tiempo adicional desde su
+  tarjeta gastaba la deuda de la disputa sobre el trabajo, y el cliente
+  terminaba recibiendo menos de lo decidido. Con la disputa abierta, ningún
+  cobro de la asignación se podía devolver desde el panel.
+- Con una devolución en vuelo al resolver, la deuda la contaba otra vez, y la
+  cola mostraba para siempre una «devolución sin pedir» sobre un cobro ya
+  devuelto entero.
+
+Ahora:
+
+| Pieza | Qué hace |
+|---|---|
+| `app_private.dispute_refund_allocation` | Lo que la disputa todavía debe (`refund_amount` menos sus devoluciones ligadas pedidas, por confirmar o confirmadas) se reparte entre los cobros de la asignación que admiten devolución: primero el del trabajo, después el tiempo adicional, cada uno hasta lo que le queda por devolver (lo cobrado menos todo lo comprometido, ligado o no). Lo que no cabe en ningún cobro no aparece |
+| `default_client_wins_refund` | CLIENT_WINS sin importe anota todo lo que queda por devolver de todos esos cobros, sin contar otra vez lo que ya está en devolución |
+| `resolve_dispute` | Un importe explícito no pasa de lo cobrado en la asignación ni de lo que todavía se puede devolver |
+| `payment_review_queue` | Cada cobro con su parte, y la disputa a la que se liga su devolución (`dispute_id`) |
+| `request_payment_refund` | Ligada a una disputa: de la misma asignación, resuelta, que todavía deba algo, con parte sobre ESTE cobro, y por no más de esa parte. Sin ligar: no se come la parte reservada a una disputa |
+| `/admin/pagos` | «Devolver» manda el id de la disputa solo en la tarjeta del cobro al que la cola le asigna una parte; nunca el de la vista, que lo pone en todos los cobros de la asignación |
+| `/admin/disputas` | «Devolución pendiente» lleva al primer cobro con parte |
+
+Un ejemplo: trabajo de $21.000 y una hora de tiempo adicional de $9.000; el
+cliente gana. Se anotan $30.000; la cola muestra $21.000 sobre el trabajo y
+$9.000 sobre el tiempo adicional, y cada tarjeta liga su devolución a la
+disputa. Resuelta en parte por $25.000, el trabajador queda con $1.220 de los
+$26.220 y la cola pide $21.000 al trabajo y $4.000 al tiempo adicional.
+
+Queda a sabiendas: si una devolución que estaba en vuelo al resolver termina
+rechazada por el banco, su importe vuelve al cobro pero la disputa no lo cuenta
+(se descontó al anotar). La devolución rechazada se ve en la tarjeta del pago y
+se vuelve a pedir desde ahí. Pruebas: B01–B19
+(`supabase/tests/19_payout_decisions.sql`).
 
 ---
 

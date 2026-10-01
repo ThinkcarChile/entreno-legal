@@ -127,11 +127,13 @@ const CHARGED_PAYMENT_STATUSES: readonly string[] = [
 ];
 
 /**
- * El pago que devuelve una disputa: el del TRABAJO de su asignación que llegó
- * a cobrarse —el más reciente, si hubo reintentos—, o el último si ninguno.
- * Es la misma regla de `app_private.payment_review_queue` (migración
- * 20260601001510): el enlace de `/admin/disputas` lleva al mismo pago que la
- * cola «En revisión» cuenta por esa disputa.
+ * El pago del TRABAJO de una asignación que llegó a cobrarse —el más reciente,
+ * si hubo reintentos—, o el último si ninguno.
+ *
+ * Es el destino del enlace «Devolución pendiente» de `/admin/disputas` cuando
+ * la cola no reparte la deuda de la disputa sobre ningún cobro (todo lo que
+ * debía ya está pedido y falta que el banco lo confirme): ahí se ve la
+ * devolución abierta. Cuando sí la reparte, manda `disputeRefundTarget`.
  */
 export function disputePaymentId(jobPayments: readonly JobPaymentRow[]): string | null {
   const ranked = [...jobPayments].sort((a, b) => {
@@ -144,4 +146,55 @@ export function disputePaymentId(jobPayments: readonly JobPaymentRow[]): string 
     return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
   });
   return ranked[0]?.id ?? null;
+}
+
+/* ------------------------------------------------ devolución de una disputa */
+
+/**
+ * Una fila de la cola «En revisión» con la parte de una disputa sobre un cobro
+ * (`admin_payment_review_queue`, migración 20260601001610).
+ */
+export interface DisputeShareRow {
+  payment_id: string;
+  created_at: string;
+  dispute_refund_pending: number;
+}
+
+/**
+ * El cobro al que lleva «Devolución pendiente» en `/admin/disputas`: el
+ * primero que tiene parte de la deuda, en el orden en que la base la reparte
+ * (`app_private.dispute_refund_allocation`): el del trabajo antes que el del
+ * tiempo adicional, después el más antiguo, y a igual hora el id menor.
+ * `null` si ningún cobro tiene parte.
+ */
+export function disputeRefundTarget(
+  shares: readonly DisputeShareRow[],
+  jobPaymentIds: ReadonlySet<string>,
+): string | null {
+  const ranked = shares
+    .filter((share) => Number(share.dispute_refund_pending) > 0)
+    .sort((a, b) => {
+      const job = Number(jobPaymentIds.has(b.payment_id)) - Number(jobPaymentIds.has(a.payment_id));
+      if (job !== 0) return job;
+      const time = Date.parse(a.created_at) - Date.parse(b.created_at);
+      if (time !== 0) return time;
+      return a.payment_id < b.payment_id ? -1 : a.payment_id > b.payment_id ? 1 : 0;
+    });
+  return ranked[0]?.payment_id ?? null;
+}
+
+/**
+ * La disputa a la que se liga una devolución pedida desde la tarjeta de un
+ * cobro en `/admin/pagos`: solo la que la cola reparte sobre ESE cobro, y solo
+ * mientras le quede algo por pedir. Nunca la de la vista (`admin_payments`
+ * toma la disputa de la asignación con un `limit 1`, también sobre el cobro
+ * del tiempo adicional y con la disputa todavía abierta): ligar ahí una
+ * devolución gastaba la deuda de la disputa en otro cobro, o la base la
+ * rechazaba por estar abierta.
+ */
+export function refundDisputeId(payment: {
+  disputeRefundPending: number;
+  disputeRefundId: string | null;
+}): string | null {
+  return payment.disputeRefundPending > 0 ? payment.disputeRefundId : null;
 }

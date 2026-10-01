@@ -249,6 +249,11 @@ const AVISOS_ACEPTADOS: Record<string, Record<string, string>> = {
     "public.hold_payout":
       "SOLO la administración: primera línea es app_private.is_admin(). Retiene un pago con " +
       "motivo escrito.",
+    "public.adjust_payout":
+      "SOLO la administración: primera línea es app_private.is_admin(). authenticated no tiene " +
+      "UPDATE sobre payouts. Baja el neto de un payout sin transferir —o lo cancela con 0—, " +
+      "nunca lo sube, con motivo escrito; deja audit_logs, línea de tiempo y aviso al trabajador " +
+      "(B27–B41, …001610).",
     "public.admin_pending_reviews":
       "SOLO la administración: primera línea es app_private.is_admin(). Devuelve recuentos de " +
       "las colas del panel; sin el rol, lanza excepción en vez de contestar cero.",
@@ -283,7 +288,8 @@ const AVISOS_ACEPTADOS: Record<string, Record<string, string>> = {
       "concedida a authenticated porque el panel la llama con la sesión de quien administra, " +
       "no con la clave de servicio; un usuario común que la invoque por su cuenta choca con " +
       "esa comprobación. Escribe payment_refunds, que no tiene ninguna vía de escritura para " +
-      "el usuario, comprueba el saldo devolvible y exige que la disputa esté resuelta. NO " +
+      "el usuario, comprueba el saldo devolvible y, ligada a una disputa, que sea de la misma " +
+      "asignación, esté resuelta y la devolución no pase de su parte sobre ese cobro (…001610). NO " +
       "devuelve dinero: solo deja la petición. La llamada al proveedor y el cierre son de " +
       "settle_payment_refund, que es exclusiva de service_role.",
     "public.resolve_unknown_refund":
@@ -353,7 +359,7 @@ async function main(): Promise<void> {
 
   check("tablas en public", inv.tablas, 36);
   check("vistas en public", inv.vistas, 7);
-  check("funciones en public", inv.funciones, 62);
+  check("funciones en public", inv.funciones, 63);
   check("enums", inv.enums, 24);
   check("políticas RLS en public", inv.politicas, 77);
   check("buckets de Storage", inv.buckets, 5);

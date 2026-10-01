@@ -5,6 +5,7 @@ import { DisputeStatus, PayoutStatus } from "@/lib/domain/enums";
 import {
   confirmedRefundsByDispute,
   disputePaymentId,
+  disputeRefundTarget,
   isActionablePaymentFilter,
   isDisputeClosed,
   isPayoutClosed,
@@ -13,6 +14,7 @@ import {
   parseUuidParam,
   pendingDisputeRefund,
   postgrestList,
+  refundDisputeId,
 } from "./admin-queues";
 
 describe("qué pide una acción", () => {
@@ -146,5 +148,63 @@ describe("el pago que devuelve una disputa", () => {
         { id: "b", status: "PAID", created_at: "2026-06-01T10:00:00Z" },
       ]),
     ).toBe("b");
+  });
+});
+
+describe("a qué cobro va la devolución de una disputa", () => {
+  const job = new Set(["p-trabajo"]);
+
+  it("primero el cobro del trabajo, aunque el del tiempo adicional sea igual de antiguo", () => {
+    expect(
+      disputeRefundTarget(
+        [
+          { payment_id: "a-extension", created_at: "2026-06-01T10:00:00Z", dispute_refund_pending: 9000 },
+          { payment_id: "p-trabajo", created_at: "2026-06-01T10:00:00Z", dispute_refund_pending: 21000 },
+        ],
+        job,
+      ),
+    ).toBe("p-trabajo");
+  });
+
+  it("devuelto el trabajo, el tiempo adicional; entre dos, el más antiguo y después el id menor", () => {
+    expect(
+      disputeRefundTarget(
+        [
+          { payment_id: "x-2", created_at: "2026-06-02T10:00:00Z", dispute_refund_pending: 4000 },
+          { payment_id: "x-1", created_at: "2026-06-01T10:00:00Z", dispute_refund_pending: 9000 },
+        ],
+        job,
+      ),
+    ).toBe("x-1");
+    expect(
+      disputeRefundTarget(
+        [
+          { payment_id: "x-b", created_at: "2026-06-01T10:00:00Z", dispute_refund_pending: 1 },
+          { payment_id: "x-a", created_at: "2026-06-01T10:00:00Z", dispute_refund_pending: 1 },
+        ],
+        job,
+      ),
+    ).toBe("x-a");
+  });
+
+  it("sin parte en ningún cobro, ninguno: el enlace cae en el pago del trabajo", () => {
+    expect(disputeRefundTarget([], job)).toBeNull();
+    expect(
+      disputeRefundTarget(
+        [{ payment_id: "p-trabajo", created_at: "2026-06-01T10:00:00Z", dispute_refund_pending: 0 }],
+        job,
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("a qué disputa se liga una devolución pedida desde /admin/pagos", () => {
+  it("solo a la que la cola reparte sobre ese cobro, mientras le quede algo por pedir", () => {
+    expect(refundDisputeId({ disputeRefundPending: 9000, disputeRefundId: "d-1" })).toBe("d-1");
+  });
+
+  it("un cobro sin parte de la disputa (el tiempo adicional de una repartida, o con la disputa abierta) no la liga", () => {
+    expect(refundDisputeId({ disputeRefundPending: 0, disputeRefundId: null })).toBeNull();
+    expect(refundDisputeId({ disputeRefundPending: 0, disputeRefundId: "d-1" })).toBeNull();
   });
 });

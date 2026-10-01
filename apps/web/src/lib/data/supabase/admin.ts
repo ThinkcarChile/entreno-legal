@@ -13,12 +13,14 @@ import {
   CLOSED_PAYOUT_STATUSES,
   confirmedRefundsByDispute,
   disputePaymentId,
+  disputeRefundTarget,
   orderByIds,
   pendingDisputeRefund,
   postgrestList,
   REFUNDED_PAYMENT_STATUSES,
   UNRESOLVED_PAYMENT_STATUSES,
   type ActionablePaymentFilter,
+  type DisputeShareRow,
   type JobPaymentRow,
   type PaymentHistoryFilter,
   type RefundRow,
@@ -338,7 +340,7 @@ export class SupabaseAdminRepository implements AdminRepository {
     );
     const assignmentById = new Map(assignments.map((a) => [a.id, a]));
 
-    const [jobs, profiles, payouts, jobPayments] = await Promise.all([
+    const [jobs, profiles, payouts, jobPayments, shares] = await Promise.all([
       selectByIds(
         assignments.map((a) => a.job_id),
         (part) =>
@@ -376,6 +378,21 @@ export class SupabaseAdminRepository implements AdminRepository {
             .returns<(JobPaymentRow & { assignment_id: string })[]>(),
         "pagos",
       ),
+      // La parte de cada disputa sobre cada cobro, de la cola: el enlace va al
+      // primero que todavía tiene algo por pedir, que puede ser el del tiempo
+      // adicional. Si la lectura falla, cae en el pago del trabajo.
+      selectByIds(
+        rows.filter((r) => r.status === "RESOLVED" && (r.refund_amount ?? 0) > 0).map((r) => r.id),
+        async (part) => {
+          const { data, error } = await supabase
+            .rpc("admin_payment_review_queue")
+            .select("payment_id,created_at,dispute_id,dispute_refund_pending")
+            .in("dispute_id", part)
+            .gt("dispute_refund_pending", 0);
+          return { data: asRows<DisputeShareRow & { dispute_id: string }>(data), error };
+        },
+        "devoluciones de disputas",
+      ),
     ]);
 
     const jobById = new Map(jobs.map((j) => [j.id, j]));
@@ -385,6 +402,12 @@ export class SupabaseAdminRepository implements AdminRepository {
       const list = paymentsByAssignment.get(payment.assignment_id) ?? [];
       list.push(payment);
       paymentsByAssignment.set(payment.assignment_id, list);
+    }
+    const sharesByDispute = new Map<string, DisputeShareRow[]>();
+    for (const share of shares) {
+      const list = sharesByDispute.get(share.dispute_id) ?? [];
+      list.push(share);
+      sharesByDispute.set(share.dispute_id, list);
     }
 
     return rows.map((row) => {
@@ -404,7 +427,11 @@ export class SupabaseAdminRepository implements AdminRepository {
         amountHeld: payout ? money(payout.net_amount) : null,
         payoutStatus: (payout?.status as PayoutStatus | undefined) ?? null,
         refundPending: pending > 0 ? money(pending) : null,
-        paymentId: disputePaymentId(paymentsByAssignment.get(row.assignment_id) ?? []),
+        paymentId:
+          disputeRefundTarget(
+            sharesByDispute.get(row.id) ?? [],
+            new Set((paymentsByAssignment.get(row.assignment_id) ?? []).map((p) => p.id)),
+          ) ?? disputePaymentId(paymentsByAssignment.get(row.assignment_id) ?? []),
       };
     });
   }
@@ -562,9 +589,9 @@ export class SupabaseAdminRepository implements AdminRepository {
           .in("payment_id", part)
           .returns<PaymentRow[]>(),
       );
-      const pendingById = new Map(queue.map((q) => [q.payment_id, Number(q.dispute_refund_pending ?? 0)]));
+      const shareById = new Map(queue.map((q) => [q.payment_id, disputeShareOf(q)]));
       return orderByIds(rows, ids, (row) => String(row.payment_id)).map((row) =>
-        mapAdminPayment(row, pendingById.get(String(row.payment_id)) ?? 0),
+        mapAdminPayment(row, shareById.get(String(row.payment_id)) ?? NO_DISPUTE_SHARE),
       );
     }
 
@@ -629,9 +656,10 @@ export class SupabaseAdminRepository implements AdminRepository {
   }
 
   /**
-   * Lo que falta pedir por una disputa, para los pagos de una lista que no
-   * salió de la cola. Si la lectura falla, el pago se muestra igual, sin ese
-   * aviso: la cola «En revisión» lo sigue teniendo.
+   * Lo que falta pedir por una disputa sobre cada cobro, y la disputa a la que
+   * se liga, para los pagos de una lista que no salió de la cola. Si la
+   * lectura falla, el pago se muestra igual, sin ese aviso y sin ligar ninguna
+   * devolución a una disputa: la cola «En revisión» lo sigue teniendo.
    */
   private async withDisputeRefunds(
     supabase: Client,
@@ -643,15 +671,20 @@ export class SupabaseAdminRepository implements AdminRepository {
       async (part) => {
         const { data, error } = await supabase
           .rpc("admin_payment_review_queue")
-          .select("payment_id,dispute_refund_pending")
+          .select("payment_id,dispute_id,dispute_refund_pending")
           .in("payment_id", part)
           .gt("dispute_refund_pending", 0);
-        return { data: asRows<Pick<ReviewQueueRow, "payment_id" | "dispute_refund_pending">>(data), error };
+        return {
+          data: asRows<Pick<ReviewQueueRow, "payment_id" | "dispute_id" | "dispute_refund_pending">>(data),
+          error,
+        };
       },
       "devoluciones de disputas",
     );
-    const pendingById = new Map(queue.map((q) => [q.payment_id, Number(q.dispute_refund_pending ?? 0)]));
-    return rows.map((row) => mapAdminPayment(row, pendingById.get(String(row.payment_id)) ?? 0));
+    const shareById = new Map(queue.map((q) => [q.payment_id, disputeShareOf(q)]));
+    return rows.map((row) =>
+      mapAdminPayment(row, shareById.get(String(row.payment_id)) ?? NO_DISPUTE_SHARE),
+    );
   }
 
   /**
@@ -714,7 +747,20 @@ function asRows<T>(data: unknown): T[] {
   return Array.isArray(data) ? (data as T[]) : [];
 }
 
-function mapAdminPayment(row: PaymentRow, disputeRefundPending: number): AdminPayment {
+/** La parte de una disputa sobre un cobro, según la cola. */
+interface DisputeShare {
+  pending: number;
+  disputeId: string | null;
+}
+
+const NO_DISPUTE_SHARE: DisputeShare = { pending: 0, disputeId: null };
+
+function disputeShareOf(row: Pick<ReviewQueueRow, "dispute_id" | "dispute_refund_pending">): DisputeShare {
+  const pending = Number(row.dispute_refund_pending ?? 0);
+  return { pending, disputeId: pending > 0 ? (row.dispute_id ?? null) : null };
+}
+
+function mapAdminPayment(row: PaymentRow, disputeShare: DisputeShare): AdminPayment {
   return {
     paymentId: String(row.payment_id),
     jobId: String(row.job_id),
@@ -763,7 +809,8 @@ function mapAdminPayment(row: PaymentRow, disputeRefundPending: number): AdminPa
         }
       : null,
     reviewAttempts: reviewAttemptsOf(row.attempts_review),
-    disputeRefundPending,
+    disputeRefundPending: disputeShare.pending,
+    disputeRefundId: disputeShare.disputeId,
   };
 }
 
