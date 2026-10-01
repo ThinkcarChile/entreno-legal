@@ -42,7 +42,7 @@ en orden alfabético.
 | `…20260601001000_payment_attempts.sql` | `payment_attempts`: historial de intentos con su token; el token se ata a su intento; cola de intentos anteriores; la vista de administración los cuenta |
 | `…20260601001010_attempt_aware_confirmation.sql` | `confirm_payment_result` resuelve el intento del token (cobro duplicado → `DOUBLE_CHARGE`) y manda un descuadre a revisión sin pasar por `PAID` |
 | `…20260601001020_abandonment_scoped_to_attempt.sql` | Un retorno sin cobro cierra solo su intento; los intentos anteriores también vencen con la ventana |
-| `…20260601001400_refund_after_payout.sql` | Con el payout transferido, una devolución no pasa de lo que queda de la plataforma; una confirmada que descuadra las cifras retiene el payout |
+| `…20260601001400_refund_after_payout.sql` | Con el payout transferido, una devolución no pasa de lo que queda de la plataforma; una confirmada que descuadra las cifras retiene el payout; pedir, cerrar y resolver a mano una devolución bloquean trabajo → asignación → pagos → devolución |
 | `…20260601001410_attempt_clock_and_lock_order.sql` | La ventana de conciliación corre desde el intento vigente; `register_payment_attempt` bloquea trabajo → asignación → pago |
 | `…20260601001420_attempt_refunds.sql` | `payment_attempt_refunds`: devolver un cobro duplicado contra el token de su intento, con su conciliación y su cierre a mano |
 | `…000500_evidence_and_chat.sql` | Evidencia, vistas `checkins` y `job_updates`, conversaciones, mensajes |
