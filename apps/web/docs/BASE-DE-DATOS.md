@@ -36,6 +36,9 @@ en orden alfabético.
 | `…20260501000300_payment_no_rollback.sql` | Un pago cobrado no vuelve a estar «en vuelo» |
 | `…20260501000400_hold_payout_on_review.sql` | Un pago en revisión, fallido o devuelto congela el payout |
 | `…20260501000500_reconciliation_window.sql` | La ventana de conciliación pasa a ser configuración; los rezagados van a revisión |
+| `…20260601001000_payment_attempts.sql` | `payment_attempts`: historial de intentos con su token; el token se ata a su intento; cola de intentos anteriores; la vista de administración los cuenta |
+| `…20260601001010_attempt_aware_confirmation.sql` | `confirm_payment_result` resuelve el intento del token (cobro duplicado → `DOUBLE_CHARGE`) y manda un descuadre a revisión sin pasar por `PAID` |
+| `…20260601001020_abandonment_scoped_to_attempt.sql` | Un retorno sin cobro cierra solo su intento; los intentos anteriores también vencen con la ventana |
 | `…000500_evidence_and_chat.sql` | Evidencia, vistas `checkins` y `job_updates`, conversaciones, mensajes |
 | `…000600_reviews_disputes.sql` | Reseñas con validación, disputas, evidencia de disputa |
 | `…000700_loyalty_notifications_audit.sql` | FilaPuntos, notificaciones, `audit_logs` y sus triggers |
@@ -95,6 +98,12 @@ Restricciones que codifican reglas de producto:
 `payments` (cobro al cliente) → `payment_events` (append-only, escrito por trigger)
 y `payouts` (liquidación al trabajador, con monto bruto, comisión, descuentos, bono,
 retenciones, monto neto, estado y referencia bancaria).
+
+`payment_attempts` guarda cada intento de un pago en Webpay —orden de compra,
+sesión, número, token, fechas y resultado (`CREATED`, `FAILED`, `SETTLED`,
+`DOUBLE_CHARGE`, `UNDER_REVIEW`)—. El pago lleva el token del intento vigente;
+los anteriores no se sobrescriben. Solo lo escribe el rol de servicio y solo lo
+lee administración, sin el token.
 
 ### Evidencia
 
@@ -219,6 +228,8 @@ supuestos, y todos rodean a una de las dieciséis:
 | Hacer retroceder un pago cobrado a «en vuelo» | disparador `a_payments_no_rollback`, sin exención para `service_role` | `…20260501000300` |
 | Pagar al trabajador con el pago del cliente en revisión, fallido o devuelto | el payout se retiene solo | `…20260501000400` |
 | Que un pago sin resolver se pierda al salir de la ventana de conciliación | `expire_stale_payments()` lo lleva a `FAILED` o a `UNDER_REVIEW`, y el invariante `stale_payment_out_of_window` lo delata si nadie lo hizo | `…20260501000500` |
+| Leer o escribir el historial de intentos, o el token de uno | ninguna: sin privilegios para `anon`; `authenticated` solo lee columnas sin token y solo administración ve filas | `…20260601001000` |
+| Que un segundo cobro de otro intento se pierda, o que un descuadre habilite el trabajo | `confirm_payment_result` resuelve el intento del token bajo cerrojo: `DOUBLE_CHARGE` a la vista, revisión sin pasar por `PAID` | `…20260601001010` |
 | «Confirmar» el propio pago llamando a la función de confirmación | `confirm_payment_result` es solo del servicio | `…000400` |
 | Marcar «voy en camino» en nombre del trabajador siendo el cliente | `mark_on_the_way` | Bloque 3 `…000100` |
 | Escribir el estado de la asignación a mano, para saltarse el orden | ninguna: el usuario perdió el `UPDATE` | Bloque 3 `…000100` |
