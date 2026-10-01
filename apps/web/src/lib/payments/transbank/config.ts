@@ -97,17 +97,30 @@ export function looksLikeIntegrationCredential(
  *
  * `integration` escrito a mano en producción sí vale —es un despliegue de
  * pruebas (staging)—, pero se ve: lo dice `environmentNotices`.
+ *
+ * Salvo con `TRANSBANK_PRODUCTION_ENABLED=true`. Ese interruptor es el acto
+ * explícito de «cobrar de verdad», y junto a `integration` la configuración
+ * se contradice: es el hosting de producción armado sobre `.env.example`,
+ * que traía `TRANSBANK_ENVIRONMENT=integration` escrito. Antes pasaba con un
+ * aviso en el registro y los cobros eran de prueba con el interruptor
+ * encendido. Un despliegue de pruebas lo deja apagado; volver atrás desde
+ * producción también (interruptor apagado, ambiente `production`).
  */
 export function environmentBlockers(context: GuardContext): string[] {
-  if (
-    context.nodeEnv === "production" &&
-    context.selectedProvider === "transbank" &&
-    !context.environmentExplicit
-  ) {
+  if (context.nodeEnv !== "production" || context.selectedProvider !== "transbank") return [];
+
+  if (!context.environmentExplicit) {
     return [
       "falta TRANSBANK_ENVIRONMENT: con NODE_ENV=production hay que escribir el ambiente de Webpay " +
         '("production" para cobrar de verdad, "integration" solo en un despliegue de pruebas); ' +
         "no se toma integración por omisión",
+    ];
+  }
+  if (context.environment === "integration" && context.productionEnabled) {
+    return [
+      "TRANSBANK_PRODUCTION_ENABLED=true con TRANSBANK_ENVIRONMENT=integration: la configuración " +
+        'se contradice. Para cobrar de verdad escribe "production"; en un despliegue de pruebas, ' +
+        "apaga TRANSBANK_PRODUCTION_ENABLED",
     ];
   }
   return [];

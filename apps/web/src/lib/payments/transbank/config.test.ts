@@ -205,3 +205,44 @@ describe("el ambiente no se toma por omisión en producción", () => {
     expect(environmentNotices(GOOD)).toEqual([]);
   });
 });
+
+describe("integración con el interruptor de producción encendido", () => {
+  /**
+   * El hosting de producción armado sobre `.env.example`, que traía
+   * `TRANSBANK_ENVIRONMENT=integration` escrito: el ambiente es explícito, así
+   * que la guarda de «falta el ambiente» no salta, y con el interruptor
+   * encendido alguien quiso cobrar de verdad.
+   */
+  const CONTRADICTORIA: GuardContext = {
+    ...GOOD,
+    environment: "integration",
+    environmentExplicit: true,
+    productionEnabled: true,
+  };
+
+  it("se niega a operar y dice cómo salir", () => {
+    const blockers = environmentBlockers(CONTRADICTORIA);
+    expect(blockers).toHaveLength(1);
+    expect(blockers[0]).toContain("TRANSBANK_PRODUCTION_ENABLED=true con TRANSBANK_ENVIRONMENT=integration");
+    expect(blockers[0]).toContain('escribe "production"');
+  });
+
+  it("también al cerrar pagos existentes: la configuración hay que arreglarla igual", () => {
+    expect(environmentBlockers({ ...CONTRADICTORIA, scope: "existing" })).toHaveLength(1);
+  });
+
+  it("con el interruptor apagado es un despliegue de pruebas: opera y avisa", () => {
+    const staging = { ...CONTRADICTORIA, productionEnabled: false };
+    expect(environmentBlockers(staging)).toEqual([]);
+    expect(environmentNotices(staging)).toHaveLength(1);
+  });
+
+  it("volver atrás desde producción (ambiente production, interruptor apagado) no bloquea aquí", () => {
+    expect(environmentBlockers({ ...GOOD, productionEnabled: false })).toEqual([]);
+  });
+
+  it("fuera de producción, o con otro proveedor, no aplica", () => {
+    expect(environmentBlockers({ ...CONTRADICTORIA, nodeEnv: "development" })).toEqual([]);
+    expect(environmentBlockers({ ...CONTRADICTORIA, selectedProvider: "mock" })).toEqual([]);
+  });
+});

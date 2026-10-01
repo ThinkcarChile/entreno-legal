@@ -85,8 +85,13 @@ const serverSchema = z.object({
    * Secreto de las tareas programadas. Quien llama a `/api/cron/*` lo envía como
    * `Authorization: Bearer <secreto>` (el formato de Vercel Cron). Sin él, esas
    * rutas responden 503 en vez de quedar abiertas. Mínimo 32 caracteres.
+   *
+   * El mínimo NO se valida aquí sino donde se usa (`cronSecretState`, que llama
+   * cada ruta de `/api/cron/`). Aquí tumbaba la aplicación entera: un secreto
+   * corto pegado en el hosting daba «Variables de entorno inválidas» en todas
+   * las páginas, por una ruta que solo usa el programador.
    */
-  CRON_SECRET: z.string().min(32).optional(),
+  CRON_SECRET: z.string().optional(),
 
   PLATFORM_COMMISSION_BPS: z.coerce.number().int().min(0).max(5000).default(1400),
   DISPUTE_WINDOW_HOURS: z.coerce.number().int().min(1).max(720).default(12),
@@ -174,6 +179,25 @@ export function isExplicitTransbankEnvironment(raw: string | undefined): boolean
 export const transbankEnvironmentExplicit = isExplicitTransbankEnvironment(
   process.env.TRANSBANK_ENVIRONMENT,
 );
+
+/** Largo mínimo de `CRON_SECRET` (`openssl rand -hex 32` da 64). */
+export const CRON_SECRET_MIN_LENGTH = 32;
+
+export type CronSecretState =
+  | { ok: true; secret: string }
+  | { ok: false; reason: "missing" | "too_short" };
+
+/**
+ * ¿Sirve el secreto de las tareas programadas? Lo pregunta la ruta que lo usa,
+ * no el arranque: con uno ausente o demasiado corto, esa ruta responde 503 y
+ * el resto de la aplicación sigue funcionando.
+ */
+export function cronSecretState(secret: string | undefined): CronSecretState {
+  const value = orUndefined(secret);
+  if (value === undefined) return { ok: false, reason: "missing" };
+  if (value.length < CRON_SECRET_MIN_LENGTH) return { ok: false, reason: "too_short" };
+  return { ok: true, secret: value };
+}
 
 /** Clave pública efectiva: la nueva si existe, la heredada si no. */
 export const supabasePublishableKey =
