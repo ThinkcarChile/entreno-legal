@@ -145,18 +145,87 @@ function literal(value: string): string {
 }
 
 /**
- * ¿Abre o cierra el archivo su propia transacción? Se mira fuera de los
- * comentarios de línea y de los cuerpos entre `$$` —el `begin` y el `end;` de
- * PL/pgSQL no son control de transacción—.
+ * Las sentencias de primer nivel del archivo, sin comentarios, literales,
+ * identificadores entre comillas ni cuerpos entre `$$`: un `;` dentro de
+ * cualquiera de ellos no separa sentencias.
+ */
+function topLevelStatements(sql: string): string[] {
+  const statements: string[] = [];
+  let current = "";
+  let i = 0;
+  while (i < sql.length) {
+    const c = sql[i];
+    const next = sql[i + 1];
+    if (c === "-" && next === "-") {
+      const end = sql.indexOf("\n", i);
+      i = end < 0 ? sql.length : end;
+      current += " ";
+    } else if (c === "/" && next === "*") {
+      // PostgreSQL anida los comentarios de bloque.
+      let depth = 1;
+      i += 2;
+      while (i < sql.length && depth > 0) {
+        if (sql[i] === "/" && sql[i + 1] === "*") {
+          depth += 1;
+          i += 2;
+        } else if (sql[i] === "*" && sql[i + 1] === "/") {
+          depth -= 1;
+          i += 2;
+        } else {
+          i += 1;
+        }
+      }
+      current += " ";
+    } else if (c === "'") {
+      // E'…' admite \' además de ''.
+      const backslash = /(^|[^A-Za-z0-9_$])[eE]$/.test(current);
+      i += 1;
+      while (i < sql.length) {
+        if (backslash && sql[i] === "\\") i += 2;
+        else if (sql[i] === "'" && sql[i + 1] === "'") i += 2;
+        else if (sql[i] === "'") break;
+        else i += 1;
+      }
+      i += 1;
+      current += "''";
+    } else if (c === '"') {
+      const end = sql.indexOf('"', i + 1);
+      i = end < 0 ? sql.length : end + 1;
+      current += '""';
+    } else if (c === "$" && !/[A-Za-z0-9_$]$/.test(current)) {
+      const tag = /^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/.exec(sql.slice(i))?.[0];
+      if (tag) {
+        const end = sql.indexOf(tag, i + tag.length);
+        i = end < 0 ? sql.length : end + tag.length;
+        current += " $$ ";
+      } else {
+        current += c;
+        i += 1;
+      }
+    } else if (c === ";") {
+      statements.push(current.trim());
+      current = "";
+      i += 1;
+    } else {
+      current += c;
+      i += 1;
+    }
+  }
+  statements.push(current.trim());
+  return statements.filter(Boolean);
+}
+
+/**
+ * ¿Abre, cierra o parte el archivo su propia transacción? Mira la primera
+ * palabra de cada sentencia de primer nivel: el `begin` y el `end;` de un
+ * cuerpo PL/pgSQL, o el `end` de un `case`, no cuentan; `begin isolation level
+ * …`, `commit and chain` o un `savepoint`, sí.
  */
 function hasTransactionControl(sql: string): boolean {
-  const code = sql
-    .split("\n")
-    .map((line) => line.replace(/--.*$/, ""))
-    .join("\n")
-    .replace(/\$([A-Za-z_]*)\$[\s\S]*?\$\1\$/g, " ");
-  return /(^|;)\s*(begin|start\s+transaction|commit|end|rollback)(\s+(transaction|work))?\s*;/im.test(
-    code,
+  return topLevelStatements(sql).some((s) =>
+    /^(begin|start\s+transaction|commit|end|rollback|abort|savepoint|release|prepare\s+transaction)\b/i.test(
+      s,
+    ),
   );
 }
 
@@ -280,9 +349,12 @@ async function main(): Promise<void> {
       console.error(`\n✗ ${m.file}\n  ${(error as Error).message}\n`);
       console.error(
         recorded === false
-          ? "No se aplicó nada de este archivo: la migración y su registro van en la\n" +
-              "misma transacción. Corrige la causa y vuelve a ejecutar: se retomará\n" +
-              "desde este mismo archivo.\n"
+          ? "No quedó registrada, y la migración y su registro van en la misma\n" +
+              "transacción: no se aplicó nada de este archivo. Corrige la causa y vuelve\n" +
+              "a ejecutar: se retomará desde este mismo archivo.\n" +
+              "Si lo que falló fue la conexión o un tiempo de espera —no un error de\n" +
+              "PostgreSQL—, la transacción puede seguir en curso: espera unos minutos\n" +
+              "antes de reintentar; si terminó, estará registrada y se saltará.\n"
           : "No se pudo comprobar si quedó aplicada. Vuelve a ejecutar cuando haya\n" +
               "conexión: si quedó, estará registrada y se saltará; si no, se aplicará.\n",
       );

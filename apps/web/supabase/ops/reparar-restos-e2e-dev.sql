@@ -78,6 +78,23 @@ begin
     return;
   end if;
 
+  -- Primero los bloqueos, en el orden canónico (trabajo → asignación → cobro →
+  -- intento → payout), aunque el borrado vaya al revés por las claves
+  -- foráneas: así esta reparación no se cruza en un interbloqueo con una
+  -- tarea que recorra las mismas filas en el orden de siempre.
+  perform 1 from public.jobs where id = any (v_jobs) order by id for update;
+  perform 1 from public.assignments where job_id = any (v_jobs) order by id for update;
+  perform 1 from public.payments where job_id = any (v_jobs) order by id for update;
+  if to_regclass('public.payment_attempts') is not null then
+    execute 'select 1 from public.payment_attempts
+              where payment_id in (select p.id from public.payments p where p.job_id = any ($1))
+              order by id for update'
+      using v_jobs;
+  end if;
+  perform 1 from public.payouts
+   where assignment_id in (select a.id from public.assignments a where a.job_id = any (v_jobs))
+   order by id for update;
+
   -- Orden de dependencias: payout → intentos → cobro → trabajo. El trabajo
   -- arrastra en cascada asignación, ofertas, conversación y notificaciones.
   delete from public.payouts
@@ -100,9 +117,11 @@ begin
 end;
 $$;
 
--- Comprobación. `restos_e2e` debe ser 0. `invariantes_rotos` cuenta TODO el
--- proyecto: si no es 0, lo que queda no es de esta prueba y se mira con
--- `select * from app_private.payment_invariant_violations();`.
+-- Comprobación. `restos_e2e` debe ser 0. Si no lo es, queda un trabajo de la
+-- prueba que la reparación no borra a propósito —con un cobro de Webpay, una
+-- disputa o una devolución— y se revisa a mano. `invariantes_rotos` cuenta
+-- TODO el proyecto: si no es 0, lo que queda no es de esta prueba y se mira
+-- con `select * from app_private.payment_invariant_violations();`.
 select
   (select count(*) from public.jobs j
     where j.title like 'Fila para lanzamiento de zapatillas e2e-%'

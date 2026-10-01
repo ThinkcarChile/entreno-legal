@@ -50,7 +50,7 @@ test.describe("marketplace de punta a punta", () => {
     // trabajo se queda como está: pagado y coherente. Si el recorrido se cortó
     // antes del pago, se cancela de verdad. Los restos de la limpieza antigua
     // se reparan con supabase/ops/reparar-restos-e2e-dev.sql
-    // (docs/DESPLIEGUE-SUPABASE.md §8.2).
+    // (docs/DESPLIEGUE-SUPABASE.md §8.3).
     if (!jobId) return;
     const client = createClient(supabaseUrl, publishableKey, {
       auth: { persistSession: false, autoRefreshToken: false },

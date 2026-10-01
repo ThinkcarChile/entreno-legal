@@ -26,12 +26,13 @@ Anota el **project ref**: es el identificador que aparece en la URL del panel,
 > `https://xwgobslgldxzatjrcxhl.supabase.co`. Tiene aplicadas las 27
 > migraciones de su primera validación y la semilla geográfica, pero **no** las
 > correctivas posteriores: corre `npm run db:push:hosted -- --plan` para ver
-> cuáles faltan y `npm run db:push:hosted` para aplicarlas. Después, en este
-> orden: §2; «Comprobar que quedó completo» de §3; §4.1.b (mínimo de 8) y
-> §4.1.c (plantillas), pendientes en todos los proyectos; §4.4 (pg_cron);
-> §4.5 (encender la bandera, solo en este proyecto); la reparación de los
-> restos de las pruebas e2e de §8.3; y §8, empezando por subir los límites de
-> §8.1. La lista completa está en `PUESTA-EN-MARCHA.md`.
+> cuáles faltan y `npm run db:push:hosted` para aplicarlas. Justo después, antes
+> de la primera pasada de pg_cron, la reparación de los restos de las pruebas
+> e2e de §8.3. Luego, en este orden: §2; «Comprobar que quedó completo» de §3;
+> §4.1.b (mínimo de 8) y §4.1.c (plantillas), pendientes en todos los
+> proyectos; §4.4 (pg_cron); §4.5 (encender la bandera, solo en este
+> proyecto); y §8, empezando por subir los límites de §8.1. La lista completa
+> está en `PUESTA-EN-MARCHA.md`.
 
 ---
 
@@ -822,8 +823,12 @@ editor SQL del panel el contenido de `supabase/ops/reparar-restos-e2e-dev.sql`:
   cuyos cobros sean todos simulados y sin disputa ni devolución;
 - al final vuelve a pasar los invariantes, así que la alerta, si ya saltó,
   queda resuelta;
-- la consulta del final debe dar `restos_e2e = 0`; `invariantes_rotos` cuenta
-  todo el proyecto, y si no es 0 lo que queda no viene de esta prueba;
+- la consulta del final debe dar `restos_e2e = 0`; si no, queda un trabajo de
+  la prueba que no se borra a propósito (cobro de Webpay, disputa o
+  devolución) y se revisa a mano. `invariantes_rotos` cuenta todo el
+  proyecto, y si no es 0 lo que queda no viene de esta prueba;
+- toma los bloqueos en el orden canónico (trabajo → asignación → cobro →
+  intento → payout) antes de borrar;
 - repetirlo no hace nada.
 
 Un trabajo cancelado no se puede reabrir (`guard_job_terminal`) y el cobro era
@@ -945,7 +950,7 @@ Transbank:
 | Todas las páginas dan 500 con `PGRST205` | Hay credenciales pero el esquema no está aplicado: la aplicación habla con el proyecto y el proyecto está vacío |
 | "Variables de entorno inválidas" al arrancar | Un valor presente pero mal formado. Una variable *vacía* no da este error: se trata como ausente. `CRON_SECRET` tampoco: si es corto, solo falla su ruta (fila siguiente) |
 | `/api/cron/conciliar-pagos` responde 503 | «CRON_SECRET no configurado»: falta la variable. «CRON_SECRET inválido»: tiene menos de 32 caracteres; el registro del servidor lo dice. Genera otro con `openssl rand -hex 32` y ponlo también en el programador |
-| `db:push:hosted` se detiene en un archivo | No aplicó nada de ese archivo: corrige la causa y vuelve a ejecutarlo, retoma desde ahí. Si dice que la respuesta se perdió pero quedó registrada, siguió solo |
+| `db:push:hosted` se detiene en un archivo | Con un error de PostgreSQL no aplicó nada de ese archivo: corrige la causa y vuelve a ejecutarlo, retoma desde ahí. Si fue la conexión o un tiempo de espera, la transacción puede seguir en curso: espera unos minutos antes de reintentar. Si dice que la respuesta se perdió pero quedó registrada, siguió solo |
 | Las pruebas del marketplace salen «omitidas» | Playwright no encontró las cuentas. Mira el motivo que imprime: falta alguna `E2E_*` en `.env.local` |
 | `npm run e2e` no encuentra el navegador | La versión de Chromium instalada no es la que espera Playwright: `PLAYWRIGHT_CHROMIUM_PATH=/ruta/al/chromium npm run e2e` |
 | El pago simulado devuelve a un puerto donde no escucha nadie | `NEXT_PUBLIC_SITE_URL` no coincide con la URL real del servidor. La URL de retorno se construye con esa variable |

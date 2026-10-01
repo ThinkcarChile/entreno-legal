@@ -45,14 +45,19 @@ npm run db:push:hosted               # aplica
 ```
 
 Con el puerto 5432 abierto vale también `npx supabase db push`. Si se detiene en
-un archivo, no aplicó nada de él: corrige la causa y vuelve a ejecutarlo.
+un archivo con un error de PostgreSQL, no aplicó nada de él: corrige la causa y
+vuelve a ejecutarlo. Si fue un corte de conexión o un tiempo de espera, espera
+unos minutos antes de reintentar: lo que haya terminado aparece registrado y se
+salta.
 → D §1 (recuadro), D §3.a, D §3.b, D §10.
 
 **A3. Restos de las pruebas e2e antiguas.** Justo después del push, antes de que
 pg_cron haga su primera pasada (cada 10 minutos), pega en el editor SQL del
 panel el contenido de `supabase/ops/reparar-restos-e2e-dev.sql`. La consulta del
-final debe dar `restos_e2e = 0`. Si la alerta de integridad ya había saltado, la
-misma reparación la deja resuelta. → D §8.3.
+final debe dar `restos_e2e = 0`; si no, queda un trabajo de la prueba que no se
+borra a propósito (cobro de Webpay, disputa o devolución) y se revisa a mano. Si
+la alerta de integridad ya había saltado, la misma reparación la deja resuelta.
+→ D §8.3.
 
 **A4. Mínimo de 8 caracteres en Auth.** En el panel, o con el `PATCH` de la
 Management API. → D §4.1.b.
