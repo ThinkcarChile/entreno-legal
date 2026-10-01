@@ -70,6 +70,8 @@ select pg_temp.expect('Z02 hay una sola fila de configuración',
   (select count(*)::text from public.platform_settings), '1');
 
 -- Leer no es escribir: que la página pueda leerla no abre la tabla.
+select commission_bps as z_comision from public.platform_settings \gset
+
 create function pg_temp.cambiar_comision_como(p_rol text, p_user uuid)
 returns text language plpgsql as $$
 declare n integer;
@@ -98,14 +100,14 @@ select pg_temp.expect('Z03 anon no cambia la comisión',
 select pg_temp.expect('Z04 un usuario sin rol de administración tampoco',
   pg_temp.cambiar_comision_como('authenticated', pg_temp.usuario_id()), 'RECHAZADO');
 select pg_temp.expect('Z05 la comisión sigue intacta',
-  (select (commission_bps > 0)::text from public.platform_settings), 'true');
+  (select commission_bps::text from public.platform_settings), :'z_comision');
 
 \echo ''
 \echo '--- El panel separa lo pendiente del historial por estado'
 
 -- `admin-queues.ts` enumera los estados cerrados y trata todo lo demás como
--- pendiente. Si uno de esos nombres deja de existir, el historial quedaría
--- vacío y la cuenta de pendientes, inflada.
+-- pendiente. Si uno de esos nombres deja de existir, las dos consultas del
+-- panel fallan: PostgreSQL rechaza comparar un enum con un valor que no tiene.
 select pg_temp.expect('Z06 PAID y CANCELLED existen en payout_status',
   (select count(*)::text from pg_enum e join pg_type t on t.oid = e.enumtypid
     where t.typname = 'payout_status' and e.enumlabel in ('PAID', 'CANCELLED')), '2');
