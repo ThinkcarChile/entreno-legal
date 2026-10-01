@@ -66,7 +66,7 @@ export default async function AdminDisputesPage({
         Define la liberación de fondos dentro de la plataforma y deja anotado el monto a devolver
         al cliente. La devolución en sí se pide desde{" "}
         <Link href="/admin/pagos" className="font-medium underline underline-offset-2">
-          Pagos
+          los pagos de los clientes
         </Link>
         , y solo cuenta como hecha cuando el medio de pago la confirma.
       </Alert>
@@ -182,7 +182,7 @@ function DisputeCard({ row }: { row: AdminDispute }) {
                   <>
                     falta confirmar <Amount value={row.refundPending} />. Se pide desde{" "}
                     <Link href="/admin/pagos" className="font-medium underline underline-offset-2">
-                      Pagos
+                      los pagos de los clientes
                     </Link>
                     .
                   </>
