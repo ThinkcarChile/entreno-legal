@@ -23,6 +23,8 @@ en orden alfabético.
 
 ## Migraciones
 
+En el orden en que se aplican. Las de 2026-01 llevan el prefijo `20260101`.
+
 | Archivo | Contenido |
 |---|---|
 | `…000000_foundation.sql` | Esquemas, extensiones, todos los enums, utilidades |
@@ -30,24 +32,6 @@ en orden alfabético.
 | `…000200_identity.sql` | Perfiles, datos privados, trabajadores, verificación, cuentas de pago |
 | `…000300_jobs.sql` | Trabajos, imágenes, ofertas, asignaciones, extensiones, PIN |
 | `…000400_payments.sql` | Pagos, eventos de pago, payouts |
-| `…20260501000000_transbank_enums.sql` | `refund_status`, `refund_kind` y dos avisos |
-| `…20260501000100_transbank_payments.sql` | Columnas de Webpay, `payment_refunds`, intento, retorno sin cobro y cola de conciliación |
-| `…20260501000200_refund_invariants.sql` | Devolución total retiene el payout; invariantes al día |
-| `…20260501000300_payment_no_rollback.sql` | Un pago cobrado no vuelve a estar «en vuelo» |
-| `…20260501000400_hold_payout_on_review.sql` | Un pago en revisión, fallido o devuelto congela el payout |
-| `…20260501000500_reconciliation_window.sql` | La ventana de conciliación pasa a ser configuración; los rezagados van a revisión |
-| `…20260601000900_refund_unknown_enum.sql` | `refund_status.UNKNOWN`: devolución enviada sin respuesta en firme |
-| `…20260601000910_refund_outcome_unknown.sql` | Clave de devolución por petición, una abierta por pago, máquina de estados, devoluciones por confirmar y su resolución |
-| `…20260601000920_payments_worker_privacy.sql` | La fila del pago es del cliente y de administración; `assignment_payment_states` para las dos partes |
-| `…20260601001000_payment_attempts.sql` | `payment_attempts`: historial de intentos con su token; el token se ata a su intento; cola de intentos anteriores; la vista de administración los cuenta |
-| `…20260601001010_attempt_aware_confirmation.sql` | `confirm_payment_result` resuelve el intento del token (cobro duplicado → `DOUBLE_CHARGE`) y manda un descuadre a revisión sin pasar por `PAID` |
-| `…20260601001020_abandonment_scoped_to_attempt.sql` | Un retorno sin cobro cierra solo su intento; los intentos anteriores también vencen con la ventana |
-| `…20260601001400_refund_after_payout.sql` | Con el payout transferido, una devolución no pasa de lo que queda de la plataforma; una confirmada que descuadra las cifras retiene el payout; pedir, cerrar y resolver a mano una devolución bloquean trabajo → asignación → pagos → devolución |
-| `…20260601001410_attempt_clock_and_lock_order.sql` | La ventana de conciliación corre desde el intento vigente; `register_payment_attempt` bloquea trabajo → asignación → pago |
-| `…20260601001420_attempt_refunds.sql` | `payment_attempt_refunds`: devolver un cobro duplicado contra el token de su intento, con su conciliación y su cierre a mano |
-| `…20260601001500_integrity_alert_notification.sql` | `notification_type.INTEGRITY_ALERT`: aviso a administración de un invariante roto |
-| `…20260601001510_payment_review_queue.sql` | La cola «En revisión» de `/admin/pagos` se define una vez (`payment_review_queue`); `admin_pending_reviews.refunds` cuenta sus filas, cada pago una vez |
-| `…20260601001520_invariants_in_scheduled_tasks.sql` | `run_scheduled_tasks` corre todos los invariantes, registra las reglas rotas en `app_private.integrity_alerts` y avisa a administración como mucho una vez al día por regla |
 | `…000500_evidence_and_chat.sql` | Evidencia, vistas `checkins` y `job_updates`, conversaciones, mensajes |
 | `…000600_reviews_disputes.sql` | Reseñas con validación, disputas, evidencia de disputa |
 | `…000700_loyalty_notifications_audit.sql` | FilaPuntos, notificaciones, `audit_logs` y sus triggers |
@@ -66,6 +50,74 @@ en orden alfabético.
 | `20260201000400_publish_job.sql` | `publish_job` y `update_open_job` |
 | `20260201000500_settings_and_payments.sql` | `platform_settings`, `start_protected_payment`, payout automático, vista de desglose |
 | `20260201000600_offer_write_scope.sql` | Corrige el permiso que dejaba al cliente reescribir una oferta |
+
+### Etapa 2.5
+
+| Archivo | Contenido |
+|---|---|
+| `20260301000000_hosted_privileges.sql` | Privilegios que solo se ven en un proyecto real: se revocan la escritura de `anon` que Supabase concede por omisión y el EXECUTE público de las RPC, y se fija el `search_path` de cuatro funciones de `app_private` |
+| `20260301000100_write_scope.sql` | Qué puede escribir un usuario con sesión: el INSERT directo, abierto a todas las columnas, se cierra donde una RPC hace el trabajo |
+| `20260301000200_rpc_hardening.sql` | Endurecimiento de las RPC de la Etapa 2.5 |
+| `20260301000300_cancellation_pending_enum.sql` | `job_status.CANCELLATION_PENDING`: «cancelación en verificación» |
+| `20260301000400_payment_settlement.sql` | Cancelar con un pago en vuelo, sin carreras: `cancel_job`, guarda de liquidación e invariantes del pago |
+
+### Bloque 3
+
+| Archivo | Contenido |
+|---|---|
+| `20260401000000_execution_enums.sql` | Valores de enumeración para la ejecución |
+| `20260401000100_job_execution.sql` | Ejecución del trabajo, de punta a punta: en camino, check-in, comienzo, evidencia, extensiones, código de entrega, cierre |
+| `20260401000200_disputes_and_payouts.sql` | Disputas, payouts y administración |
+| `20260401000300_execution_indexes.sql` | Índices de las claves foráneas nuevas |
+
+### Webpay Plus
+
+| Archivo | Contenido |
+|---|---|
+| `20260501000000_transbank_enums.sql` | `refund_status`, `refund_kind` y dos avisos |
+| `20260501000100_transbank_payments.sql` | Columnas de Webpay, `payment_refunds`, intento, retorno sin cobro y cola de conciliación |
+| `20260501000200_refund_invariants.sql` | Devolución total retiene el payout; invariantes al día |
+| `20260501000300_payment_no_rollback.sql` | Un pago cobrado no vuelve a estar «en vuelo» |
+| `20260501000400_hold_payout_on_review.sql` | Un pago en revisión, fallido o devuelto congela el payout |
+| `20260501000500_reconciliation_window.sql` | La ventana de conciliación pasa a ser configuración; los rezagados van a revisión |
+
+### Correctivas
+
+| Archivo | Contenido |
+|---|---|
+| `20260601000000_job_expired_notification.sql` | `notification_type.JOB_EXPIRED`: aviso de un trabajo que vence sin trabajador |
+| `20260601000100_payout_window_and_scheduled_tasks.sql` | La ventana de disputa retiene el payout de verdad; aprobación automática, caducidad y pg_cron (`run_scheduled_tasks` cada 10 minutos) |
+| `20260601000200_scheduled_tasks_isolation.sql` | Una fila mala no detiene las tareas programadas; `job_is_approvable` |
+| `20260601000300_client_wins_refund.sql` | Una disputa ganada por el cliente deja su devolución pendiente |
+| `20260601000400_retry_keeps_charge.sql` | Un reintento no borra el rastro de un cobro posible |
+| `20260601000500_chat_system_messages.sql` | Nadie publica avisos del sistema desde su sesión |
+| `20260601000600_storage_limits.sql` | Cada bucket admite solo lo que la aplicación admite |
+| `20260601000700_payment_token_privacy.sql` | El token de Webpay no se lee con una sesión de usuario |
+| `20260601000800_payout_requires_healthy_payment.sql` | Al trabajador no se le paga sobre un cobro devuelto o en duda |
+| `20260601000810_non_production_payouts.sql` | `platform_settings.allow_non_production_payouts`; `mark_payout_paid` no transfiere sobre cobros que no sean de producción |
+| `20260601000900_refund_unknown_enum.sql` | `refund_status.UNKNOWN`: devolución enviada sin respuesta en firme |
+| `20260601000910_refund_outcome_unknown.sql` | Clave de devolución por petición, una abierta por pago, máquina de estados, devoluciones por confirmar y su resolución |
+| `20260601000920_payments_worker_privacy.sql` | La fila del pago es del cliente y de administración; `assignment_payment_states` para las dos partes |
+| `20260601001000_payment_attempts.sql` | `payment_attempts`: historial de intentos con su token; el token se ata a su intento; cola de intentos anteriores; la vista de administración los cuenta |
+| `20260601001010_attempt_aware_confirmation.sql` | `confirm_payment_result` resuelve el intento del token (cobro duplicado → `DOUBLE_CHARGE`) y manda un descuadre a revisión sin pasar por `PAID` |
+| `20260601001020_abandonment_scoped_to_attempt.sql` | Un retorno sin cobro cierra solo su intento; los intentos anteriores también vencen con la ventana |
+| `20260601001100_job_instructions_private.sql` | Las instrucciones de un trabajo no son públicas: `get_job_instructions` |
+| `20260601001110_profiles_visibility.sql` | Los perfiles no se listan sin sesión; columnas legibles de un perfil ajeno |
+| `20260601001120_profile_name_avatar_validation.sql` | Nombre y foto de perfil validados en la base |
+| `20260601001130_offer_total_from_rate.sql` | El total de una oferta lo calcula la base |
+| `20260601001140_verification_review_pending_only.sql` | Solo se revisa una verificación pendiente |
+| `20260601001200_rate_limits.sql` | Límites por usuario para publicar, ofertar y escribir (`rate_limit_*`, `PT429`) |
+| `20260601001210_storage_evidence_verified.sql` | La evidencia se comprueba contra Storage (`verified_upload`), y Storage se cierra |
+| `20260601001220_handoff_pin_in_progress.sql` | El código de entrega se usa con el trabajo en curso, y solo ahí |
+| `20260601001230_check_in_accuracy_required.sql` | Un check-in sin precisión no se da por verificado |
+| `20260601001400_refund_after_payout.sql` | Con el payout transferido, una devolución no pasa de lo que queda de la plataforma; una confirmada que descuadra las cifras retiene el payout; pedir, cerrar y resolver a mano una devolución bloquean trabajo → asignación → pagos → devolución |
+| `20260601001410_attempt_clock_and_lock_order.sql` | La ventana de conciliación corre desde el intento vigente; `register_payment_attempt` bloquea trabajo → asignación → pago |
+| `20260601001420_attempt_refunds.sql` | `payment_attempt_refunds`: devolver un cobro duplicado contra el token de su intento, con su conciliación y su cierre a mano |
+| `20260601001500_integrity_alert_notification.sql` | `notification_type.INTEGRITY_ALERT`: aviso a administración de un invariante roto |
+| `20260601001510_payment_review_queue.sql` | La cola «En revisión» de `/admin/pagos` se define una vez (`payment_review_queue`); `admin_pending_reviews.refunds` cuenta sus filas, cada pago una vez |
+| `20260601001520_invariants_in_scheduled_tasks.sql` | `run_scheduled_tasks` corre todos los invariantes, registra las reglas rotas en `app_private.integrity_alerts` y avisa a administración como mucho una vez al día por regla |
+| `20260601001900_geo_reference_data.sql` | Las 16 regiones y 346 comunas viajan con las migraciones, en todos los entornos (generada desde `src/lib/geo/chile.ts`, las mismas filas que `seed/001_geo.sql`) |
+| `20260601001910_job_is_approvable_search_path.sql` | `job_is_approvable` con `search_path` fijo |
 
 ---
 
@@ -451,6 +503,13 @@ un visitante sin sesión y los demás usuarios (`14_public_data.sql` y
 `14_race_duration.sh`, prefijo U).
 Todo con carreras reales entre dos sesiones, `RACE_REPS` repeticiones. Ver `supabase/tests/`.
 
+Antes de la semilla geográfica se detiene si las migraciones solas no dejan 16
+regiones y 346 comunas. Al final, `22_ops.sql` (prefijo M) comprueba lo que
+toca al despliegue: los datos de referencia que traen las migraciones, el
+`search_path` de `job_is_approvable` (I14 mira además todas las funciones de
+`public` y `app_private`, no solo las SECURITY DEFINER), la limpieza de las
+pruebas e2e y la reparación de sus restos (`supabase/ops/`).
+
 Contra el proyecto alojado, los mismos escenarios corren con
 `npm run verify:payments` (ver `PAGOS.md` §8) y `npm run verify:execution`
 (ver `EJECUCION.md` §14).
@@ -482,6 +541,21 @@ npm run seed:geo
 
 Lee `src/lib/geo/chile.ts` y reescribe `supabase/seed/001_geo.sql`
 (16 regiones, 346 comunas).
+
+Las mismas filas están en la migración `20260601001900_geo_reference_data.sql`,
+que es la que lleva los datos a todos los entornos, producción incluida, y que
+no se reescribe nunca. Si cambia la lista de comunas, se regenera la semilla y
+se escribe **otra** migración con las filas nuevas:
+
+```bash
+node scripts/seed-geo.ts --migracion supabase/migrations/<marca>_<nombre>.sql
+```
+
+(se niega a sobrescribir un archivo existente; las filas que ya están no se
+tocan, por el `on conflict do nothing`). `npm run db:test` comprueba que las
+migraciones solas dejen 16 regiones y 346 comunas, antes de aplicar la semilla,
+y que la semilla no cambie nada después (M01–M02): una semilla regenerada sin su
+migración lo delata.
 
 ## Regenerar los tipos de TypeScript
 

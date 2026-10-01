@@ -269,8 +269,16 @@ propósito.
 ### 14. Conciliación
 
 **Qué**: crear una transacción (prueba 1), pagarla en el formulario y **cerrar
-la pestaña antes de volver**. Después, en `/admin/pagos`, «Conciliar
-pendientes».
+la pestaña antes de volver**. Después, **espera al menos 15 minutos desde que se
+creó la transacción** y entonces, en `/admin/pagos`, «Conciliar pendientes».
+
+La espera no es de cortesía. La conciliación ignora lo que tiene menos de 5
+minutos (para no pisar un retorno en curso: pulsada al momento, examina 0) y
+solo confirma —`commit`— un token con más de 15 desde su intento; antes de eso
+solo pregunta el estado. Si la pulsas entre los 5 y los 15 minutos, anota qué
+respondió `status()` para esa transacción autorizada y sin confirmar: es la
+medición que pide `docs/TRANSBANK.md` §12, y el resultado puede no ser todavía
+`PAID`.
 
 Esperado: el pago pasa a `PAID` por la vía de la conciliación —con
 `reconciled_at` puesto— y con el mismo evento que habría escrito el retorno. El
@@ -336,6 +344,16 @@ deshacer.
 ---
 
 ## 6. Al terminar: la batería completa
+
+Antes, vuelve a `PAYMENT_PROVIDER=mock` en `.env.local` (o quita las líneas de
+§2.1): `e2e` y las verificaciones usan el proveedor simulado. Con `transbank`,
+el botón «Simular pago aprobado» no aparece y la prueba del marketplace falla en
+el pago. Además, contra `hagotufila-dev`:
+
+- `verify:execution` exige `allow_non_production_payouts` encendida
+  (`DESPLIEGUE-SUPABASE.md` §4.5) y se niega a correr sin ella;
+- una pasada completa necesita los límites por persona subidos
+  (`DESPLIEGUE-SUPABASE.md` §8.1); con los de omisión se corta a la mitad.
 
 ```bash
 npm run check                 # lint, tipos, 76 pruebas unitarias, build

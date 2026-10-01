@@ -396,29 +396,34 @@ del intento. Runbook: `TRANSBANK.md` §11 «Me cobraron dos veces».
 
 ## 9. Riesgos que quedan para Webpay real
 
-Lo que esta etapa **no** resuelve y hay que tener delante al integrar Transbank:
+Lo que esta etapa **no** resolvía y había que tener delante al integrar
+Transbank. Los puntos 1, 3 y 5 ya están resueltos y se conservan con su número,
+porque otros documentos los citan; el 4 sigue abierto (`TRANSBANK.md` §12).
 
-1. **El reembolso real no existe.** `UNDER_REVIEW + captured_at` dice que hay
-   dinero que devolver; devolverlo (reversa o anulación con el SDK) y pasar el
-   pago a `REFUNDED` es de la Etapa 4, con su propio registro en `payment_events`.
+1. **Resuelto: el reembolso real.** Antes no existía. Ahora las devoluciones existen
+   (`payment_refunds`, ejecutadas contra el proveedor), sin devolver dos veces
+   ni dar por fallida una sin saberlo: §8 ter, y §8 quater para los cobros
+   duplicados. Ninguna se ha hecho todavía en producción.
 2. **Identidad del evento.** Con Webpay Plus el `provider_event_id` tendrá que
    derivarse de lo que el SDK devuelve en `commit` (token + `buy_order` +
    fecha de transacción). Si se elige mal, dos respuestas legítimas distintas
    podrían tratarse como duplicado, o una repetida como nueva. Se decide con el
    SDK delante, no antes.
-3. **Confirmación sin retorno.** Si el cliente cierra el navegador entre Webpay
-   y `/pagos/retorno`, nadie llama a `confirmPayment`. Hace falta la
-   conciliación: consultar el estado de los pagos en vuelo (`getStatus`) pasado
-   un plazo y asentarlos con `confirm_payment_result`. La función ya sirve
-   para eso.
+3. **Resuelto: la confirmación sin retorno.** La conciliación existe:
+   `reconcilePayments` consulta los pagos en vuelo pasado un margen y los
+   asienta con `confirm_payment_result`, desde «Conciliar pendientes» en
+   `/admin/pagos` y desde `/api/cron/conciliar-pagos`, que en producción llama un
+   programador externo cada 10 minutos con `CRON_SECRET` (`TRANSBANK.md` §7).
 4. **Ventana de `commit`.** Transbank exige confirmar en un plazo tras el
    retorno; una transacción autorizada y no confirmada se revierte sola. La
    máquina de estados lo representa (`AUTHORIZED` → `FAILED`), pero el plazo
    concreto y qué mostrar al cliente se definen con el ambiente de integración.
-5. **`CANCELLATION_PENDING` sin salida.** Si el proveedor nunca responde, el
-   trabajo se queda en verificación. Con el simulado no pasa (alguien decide);
-   con Webpay lo cierra la conciliación del punto 3 o una persona desde
-   administración. Hoy no hay tarea programada que lo haga.
+5. **Resuelto: `CANCELLATION_PENDING` sin salida.** Si el proveedor
+   nunca responde, lo cierra la conciliación del punto 3, programada; y pg_cron
+   corre `run_scheduled_tasks()` cada 10 minutos, que con
+   `expire_stale_payments` cierra lo que sale de la ventana de conciliación
+   (`DESPLIEGUE-SUPABASE.md` §4.4, `TRANSBANK.md` §7 «Los rezagados no
+   desaparecen»).
 6. **Importe verificado, moneda no.** `confirm_payment_result` compara el
    importe; asume CLP. Webpay Plus solo opera en CLP, pero hay que dejarlo
    explícito al mapear la respuesta.

@@ -3,6 +3,10 @@
 Guía para partir de un proyecto vacío y llegar a la aplicación funcionando, sin
 pasos manuales no documentados.
 
+La lista ordenada de esos pasos —primero el proyecto de desarrollo, después
+producción—, cada uno con la sección de esta guía que lo explica, está en
+[`PUESTA-EN-MARCHA.md`](PUESTA-EN-MARCHA.md).
+
 Tiempo aproximado: 20 minutos.
 
 ---
@@ -22,8 +26,12 @@ Anota el **project ref**: es el identificador que aparece en la URL del panel,
 > `https://xwgobslgldxzatjrcxhl.supabase.co`. Tiene aplicadas las 27
 > migraciones de su primera validación y la semilla geográfica, pero **no** las
 > correctivas posteriores: corre `npm run db:push:hosted -- --plan` para ver
-> cuáles faltan y `npm run db:push:hosted` para aplicarlas. Después basta con
-> la sección 2 y la 8.
+> cuáles faltan y `npm run db:push:hosted` para aplicarlas. Después, en este
+> orden: §2; «Comprobar que quedó completo» de §3; §4.1.b (mínimo de 8) y
+> §4.1.c (plantillas), pendientes en todos los proyectos; §4.4 (pg_cron);
+> §4.5 (encender la bandera, solo en este proyecto); la reparación de los
+> restos de las pruebas e2e de §8.3; y §8, empezando por subir los límites de
+> §8.1. La lista completa está en `PUESTA-EN-MARCHA.md`.
 
 ---
 
@@ -65,14 +73,21 @@ npx supabase link --project-ref <project-ref>
 # Vista previa: muestra qué migraciones se aplicarían
 npx supabase db push --dry-run
 
-# Aplicar. Incluye la semilla geográfica (16 regiones, 346 comunas),
-# que es obligatoria: los trabajos referencian comunas por clave foránea.
-npx supabase db push --include-seed
+# Aplicar
+npx supabase db push
 ```
 
 Esto crea, en orden: extensiones, enums, funciones auxiliares, tablas, triggers,
 vistas, políticas RLS, privilegios de tabla y de columna, buckets de Storage y
-las funciones RPC.
+las funciones RPC. Y los datos de referencia: el país, las 9 categorías y,
+desde `20260601001900_geo_reference_data.sql`, las 16 regiones y las 346
+comunas. Son obligatorios en **todos** los entornos, producción incluida: sin
+ellos nadie termina el registro (`profiles.region_code` y `commune_code` son
+claves foráneas) ni publica un trabajo.
+
+`--include-seed` añade `supabase/seed/001_geo.sql`, lo único que lista
+`supabase/config.toml`: las mismas filas, sin cuentas. Reaplicarlo no cambia
+nada (`on conflict do nothing`).
 
 ### 3.b Si el puerto de PostgreSQL está cerrado
 
@@ -107,8 +122,21 @@ npm run db:push:hosted              # aplica
 API sobre HTTPS, y lleva el mismo registro en
 `supabase_migrations.schema_migrations` que usa el CLI. Un `supabase db push`
 posterior desde otra máquina ve las migraciones como aplicadas y no las repite.
+
+Cada archivo viaja **en la misma petición que su fila del historial**, y la
+API ejecuta una petición con varias sentencias como una sola transacción: o
+quedan aplicados y registrados los dos, o ninguno. Antes iban en dos peticiones,
+y si la segunda se perdía la migración quedaba aplicada sin registrar; al
+reintentar se aplicaba otra vez, y cuatro migraciones no aguantan eso (crean un
+tipo, un disparador o una restricción sin `if not exists`): el despliegue quedaba
+atascado hasta insertar la fila a mano. Si ahora la respuesta no llega, el
+script mira el historial antes de dar el archivo por fallido.
+
 No reconstruye SQL ni omite comprobaciones: si una migración falla, se detiene
-en ese archivo, no la registra y sale con código distinto de cero.
+en ese archivo sin aplicar nada de él y sale con código distinto de cero;
+volver a ejecutarlo retoma desde ahí. Se niega a enviar una migración que abra
+o cierre su propia transacción (`begin;` / `commit;`), porque partiría esa
+garantía.
 
 ### 3.c Riesgos del token de acceso personal
 
@@ -128,11 +156,12 @@ de la cuenta, no como una clave de proyecto.
 
 ---
 
-### 3.d La semilla geográfica, por HTTPS
+### 3.d La semilla geográfica, por HTTPS (desarrollo)
 
-`--include-seed` no tiene equivalente en la Management API, y sin las 346
-comunas no se puede publicar un trabajo: `jobs.commune_id` es una clave foránea.
-Para eso está:
+Desde `20260601001900` las regiones y comunas llegan con las migraciones, así
+que `npm run db:push:hosted` ya las deja y esta sección casi nunca hace falta.
+Queda para reaplicar `001_geo.sql` en un proyecto de **desarrollo** por HTTPS
+(`--include-seed` no tiene equivalente en la Management API):
 
 ```bash
 npm run db:seed:hosted -- --plan                        # lee, no escribe
@@ -142,15 +171,15 @@ npm run db:seed:hosted -- --project-ref <project-ref>   # aplica
 Aplica `supabase/seed/001_geo.sql`, el mismo archivo que usan `db push
 --include-seed` y `npm run db:test`, generado desde `src/lib/geo/chile.ts`.
 
-**No se registra en el historial de migraciones**, y es deliberado: las
-migraciones describen el esquema, esto son datos de referencia. Anotarla allí
-haría que `supabase db push` creyera aplicada una migración inexistente.
+**No se registra en el historial de migraciones**: anotarla allí haría que
+`supabase db push` creyera aplicada una migración inexistente. Las mismas filas
+ya están en una migración de verdad, `20260601001900`.
 
 Salvaguardas, todas comprobadas por la máquina y no solo prometidas:
 
 | Qué impide | Cómo |
 |---|---|
-| Sembrar producción | Se niega con `NODE_ENV=production` |
+| Usar el token personal contra producción | Se niega con `NODE_ENV=production`. Restringe la herramienta, no los datos: producción los recibe con la migración |
 | Sembrar el proyecto equivocado | Hay que escribir el ref en la orden, y debe coincidir con el del entorno |
 | Que la semilla haga algo más | Analiza el SQL antes de enviarlo: solo `countries`, `regions` y `communes`; nada de `auth.` ni `storage.`; nada que parezca contraseña o credencial; ningún `drop`/`truncate`/`alter table` |
 | Duplicados al repetir | Exige que cada `insert` traiga `on conflict`; el archivo lo cumple |
@@ -159,9 +188,17 @@ Salvaguardas, todas comprobadas por la máquina y no solo prometidas:
 Al terminar comprueba que queden exactamente 1 país, 16 regiones y 346 comunas,
 y falla si no.
 
-> **Nunca en producción.** Ni `--include-seed`, ni `db:seed:hosted`, ni las
-> semillas `002_demo_accounts.sql` / `003_demo_content.sql`: estas dos últimas
-> crean cuentas con una contraseña conocida y publicada en esta misma guía.
+> **Nunca en producción: las semillas de demostración** `002_demo_accounts.sql`
+> y `003_demo_content.sql`, que crean cuentas con una contraseña conocida y
+> publicada en esta misma guía.
+>
+> Los datos geográficos, en cambio, son **obligatorios también en producción**,
+> y llegan con las migraciones (`20260601001900`). Esta guía decía antes
+> «nunca en producción» también de `--include-seed` y de `db:seed:hosted`, y
+> quien la siguiera dejaba producción sin comunas. Si hiciera falta reaplicarlos
+> allí, la vía es `supabase db push --include-seed` desde la integración
+> continua o `psql "$DATABASE_URL" -f supabase/seed/001_geo.sql`; `db:seed:hosted`
+> es solo para proyectos de desarrollo, por el token personal que usa (§3.c).
 
 ### Comprobar que quedó completo
 
@@ -176,11 +213,12 @@ funciones, enums, políticas, buckets, políticas de Storage, datos de referenci
 comisión y que el historial de migraciones del proyecto coincida con los
 archivos de `supabase/migrations/`— y además que ninguna tabla esté sin
 RLS, que ninguna vista se salte `security_invoker`, que el rol `anon` no tenga
-escritura en ninguna tabla, que toda función `SECURITY DEFINER` fije su
-`search_path`, y que la publicación de Realtime traiga las cuatro tablas
-esperadas. Comprueba además que la URL de retorno de autenticación esté
-autorizada en el panel (§4.1), que es lo único de esa sección que se puede
-verificar desde fuera. Termina leyendo los **advisors** de seguridad y
+escritura en ninguna tabla, que toda función de `public` y `app_private` fije
+su `search_path` —también las SECURITY INVOKER, que el advisor revisa igual—, y
+que la publicación de Realtime traiga las cuatro tablas esperadas. Comprueba
+además lo que se puede leer del panel por la Management API: la URL de retorno
+de autenticación (§4.1), el mínimo de contraseña (§4.1.b) y las plantillas de
+correo (§4.1.c). Termina leyendo los **advisors** de seguridad y
 rendimiento del proyecto. Solo lee; sale con código distinto de cero si algo no
 cuadra.
 
@@ -189,11 +227,15 @@ haber podido mirar no es lo mismo que estar limpio.
 
 La única excepción es una lista explícita dentro del propio script,
 `AVISOS_ACEPTADOS`: cada aviso aceptado va con su objeto y el motivo por el que
-se acepta. Hoy tiene una sola entrada, las 16 RPC que un usuario con sesión debe
-poder ejecutar. La lista se comprueba en los dos sentidos: un aviso que no esté
-en ella falla aunque sea del mismo tipo que otro ya aceptado —una función nueva
-se revisa antes de aceptarse—, y una entrada que el advisor ya no reporte
-también falla, para que la lista no envejezca sola.
+se acepta. Hoy tiene dos tipos de aviso: `auth_leaked_password_protection`,
+porque el proyecto de desarrollo es Free y no puede activar esa protección
+(§4.1.b), y `authenticated_security_definer_function_executable`, con una
+entrada por cada RPC que un usuario con sesión debe poder ejecutar. Contra
+producción se corre con `--produccion`, que exige `NEXT_PUBLIC_SITE_URL` con
+HTTPS y deja de aceptar el primero. La lista se comprueba en los dos sentidos:
+un aviso que no esté en ella falla aunque sea del mismo tipo que otro ya
+aceptado —una función nueva se revisa antes de aceptarse—, y una entrada que el
+advisor ya no reporte también falla, para que la lista no envejezca sola.
 
 Los avisos del advisor de **rendimiento** se resumen por tipo y no bloquean: son
 consejos de optimización, no agujeros.
@@ -217,6 +259,7 @@ select
   (select count(*) from pg_type t join pg_namespace n on n.oid = t.typnamespace
     where n.nspname = 'public' and t.typtype = 'e')                    as enums,
   (select count(*) from pg_policies where schemaname = 'public')       as politicas_rls,
+  (select count(*) from public.regions)                                as regiones,
   (select count(*) from public.communes)                               as comunas,
   (select count(*) from storage.buckets)                               as buckets,
   (select commission_bps from public.platform_settings)                as comision_pb;
@@ -229,6 +272,7 @@ select
 | `funciones_rpc` | 62 |
 | `enums` | 24 |
 | `politicas_rls` | 77 |
+| `regiones` | 16 |
 | `comunas` | 346 |
 | `buckets` | 5 |
 | `comision_pb` | 1400 |
@@ -245,7 +289,8 @@ que si difieren es que faltó aplicar alguna migración.
 > correo (§4.1.c), en cada proyecto, también el de producción: son
 > configuración del proyecto y no viajan con las migraciones. Hasta hacerlos,
 > `npm run verify:schema:hosted` falla en esas cuatro comprobaciones, a
-> propósito.
+> propósito. También los límites de Auth (§4.6), antes de producción. Y, solo
+> en desarrollo, encender la bandera de §4.5 y subir los límites de §8.1.
 
 Estas cosas se configuran en el panel. No hay forma de dejarlas en una
 migración, así que quedan documentadas aquí.
@@ -289,10 +334,16 @@ disponible desde el plan Pro**: en un proyecto Free la Management API responde
 `402`. `hagotufila-dev` es Free, así que el aviso figura en la lista
 `AVISOS_ACEPTADOS` de `verify:schema:hosted` con ese motivo escrito.
 
-> **Al pasar a producción**, que será un proyecto de pago: activa esta casilla y
-> **quita la entrada de `AVISOS_ACEPTADOS`**. No hay que acordarse: en cuanto
-> esté activa, el advisor deja de reportarla y la verificación falla por tener
-> en la lista algo que ya no corresponde.
+> **En producción**, que será un proyecto de pago: activa esta casilla. La
+> entrada de `AVISOS_ACEPTADOS` **se queda**: sigue haciendo falta mientras el
+> mismo script se use contra `hagotufila-dev`, que es Free. Contra producción
+> se corre `npm run verify:schema:hosted -- --produccion`, que no la acepta y
+> falla mientras la protección no esté activa.
+>
+> Esta guía decía antes que bastaba con quitar la entrada al pasar a producción
+> y que «no había que acordarse». Las dos cosas fallaban: quitarla dejaba en
+> rojo la verificación del proyecto de desarrollo, y sin quitarla un proyecto de
+> pago con la casilla apagada pasaba en verde.
 
 #### Mínimo de 8 caracteres en Auth (**pendiente**)
 
@@ -474,7 +525,12 @@ Si la extensión no está disponible, la migración no falla: avisa con un
 mano con `select app_private.run_scheduled_tasks();`.
 
 La **conciliación con Transbank no está aquí**: necesita hablar con el
-proveedor y corre en la aplicación (`/admin/pagos`). Ver `docs/TRANSBANK.md` §7.
+proveedor y corre en la aplicación, por dos caminos: «Conciliar pendientes» en
+`/admin/pagos`, y `/api/cron/conciliar-pagos`, que necesita `CRON_SECRET` y un
+programador externo que la llame cada 10 minutos (`docs/TRANSBANK.md` §7). Sin
+ninguno de los dos, a un pago cuyo navegador no volvió nadie le pregunta a
+Transbank: al salir de la ventana, `expire_stale_payments` lo cierra como
+fallido.
 
 **Invariantes rotos.** Cada pasada corre todas las funciones
 `app_private.*_invariant_violations()`; si una regla está rota, cada
@@ -522,6 +578,11 @@ aplicación». Va por el editor SQL o con la clave de servicio, a propósito.
 > integración por error— terminaría en una transferencia real al trabajador.
 
 ### 4.6 Límites de Auth y CAPTCHA (a mano; obligatorio antes de producción)
+
+> El comentario de la migración `20260601001200` remite a «§4.5» para esto. Es
+> esta sección: la numeración cambió después de escribirla (§4.5 pasó a ser la
+> de transferencias sobre cobros de prueba) y una migración ya escrita no se
+> reescribe.
 
 Publicar, ofertar y escribir en el chat tienen límites por persona dentro de la
 base (migración `20260601001200`, ver `BASE-DE-DATOS.md`, «Límites por
@@ -736,6 +797,40 @@ mismo lector que los scripts. Si faltan, las siete pruebas del marketplace se
 omiten indicando el motivo. Conviene mirar ese motivo: una omisión silenciosa se
 parece demasiado a un éxito.
 
+`e2e` usa el proveedor simulado: con `PAYMENT_PROVIDER=transbank` en
+`.env.local` no aparece el botón «Simular pago aprobado» y el marketplace falla
+en el pago.
+
+**Qué deja en el proyecto.** El recorrido del marketplace termina con su
+trabajo pagado, y así se queda: al final la prueba lo retira con `cancel_job` y
+la sesión del cliente, y la base se niega a cancelar un trabajo cobrado
+—corresponde una devolución o una disputa—. Queda un trabajo de las cuentas de
+control de calidad, pagado y coherente, que ninguna regla de invariante marca.
+Si la pasada se corta antes del pago, la misma llamada lo cancela de verdad.
+
+**Restos de versiones anteriores: repáralos una vez en `hagotufila-dev`.**
+Hasta esta versión la limpieza forzaba `status = 'CANCELLED'` con la clave de
+servicio sobre el trabajo ya pagado. Cada pasada dejó un trabajo cancelado con
+su cobro PAID, su asignación confirmada y su payout pendiente: cuatro reglas de
+`app_private.payment_invariant_violations()` rotas, que desde `20260601001520`
+las tareas programadas avisan a cada administrador cada día. Justo después del
+`db:push:hosted` (sirve también antes, con el esquema antiguo), pega en el
+editor SQL del panel el contenido de `supabase/ops/reparar-restos-e2e-dev.sql`:
+
+- borra, en orden de dependencias, solo los trabajos con el título de esa
+  prueba («Fila para lanzamiento de zapatillas e2e-…») en estado CANCELLED,
+  cuyos cobros sean todos simulados y sin disputa ni devolución;
+- al final vuelve a pasar los invariantes, así que la alerta, si ya saltó,
+  queda resuelta;
+- la consulta del final debe dar `restos_e2e = 0`; `invariantes_rotos` cuenta
+  todo el proyecto, y si no es 0 lo que queda no viene de esta prueba;
+- repetirlo no hace nada.
+
+Un trabajo cancelado no se puede reabrir (`guard_job_terminal`) y el cobro era
+simulado, así que borrar los restos es lo correcto. `npm run db:test` ejecuta el
+mismo archivo contra ese estado roto (M13–M19). En producción no hay pruebas
+e2e: no se aplica.
+
 Si tu entorno ya trae Chromium instalado aparte, y con una versión distinta a la
 que Playwright espera:
 
@@ -771,22 +866,64 @@ llega es el de la otra persona hasta recargar.
 
 ## 9. Producción
 
-1. Proyecto Supabase aparte del de pruebas. No compartas la base.
-2. `NEXT_PUBLIC_SITE_URL` con el dominio real y HTTPS.
-3. `PAYMENT_PROVIDER` **no** puede quedar en `mock` ni en `mock-delayed`: la aplicación se niega a
-   iniciar un pago con `NODE_ENV=production` y proveedor simulado.
-4. `TRANSBANK_ENVIRONMENT` **escrita**. Con `NODE_ENV=production` y
-   `PAYMENT_PROVIDER=transbank`, si falta, Webpay no opera en ningún ambiente
-   (`docs/TRANSBANK.md` §9).
-5. `platform_settings.allow_non_production_payouts` en `false`, que es como
-   nace (§4.5). No la enciendas.
-6. No apliques las semillas de demostración.
-7. Revisa que la clave secreta esté solo en las variables del servidor de tu
-   plataforma de despliegue, nunca en el repositorio.
-8. Límites de Auth —también los de envío de correo— y CAPTCHA: §4.6. Y revisa
-   los límites por persona de `platform_settings` (`rate_limit_*`): en
-   producción, con los valores por omisión o más bajos, nunca los que se hayan
-   subido para probar.
+La lista entera, en orden y junto con el proyecto de desarrollo, está en
+`PUESTA-EN-MARCHA.md`. Lo de producción, una vez aprobado el comercio por
+Transbank:
+
+1. Proyecto Supabase aparte del de pruebas, de pago (hace falta para §4.1.b). No
+   compartas la base. Las migraciones van desde la integración continua con el
+   CLI y un token de servicio propio, no con el token personal (§3.c).
+2. Datos de referencia: 1 país, 16 regiones y 346 comunas. Llegan con las
+   migraciones (`20260601001900`); compruébalos con la consulta de §3. **Nunca**
+   las semillas de demostración `002`/`003` (§3.d, §5).
+3. Panel de Auth, con el dominio real:
+   - §4.1: *Site URL* `https://hagotufila.cl` y `https://hagotufila.cl/auth/callback`
+     en *Redirect URLs*.
+   - §4.1.b: mínimo de 8 caracteres y *Prevent use of leaked passwords*
+     activado.
+   - §4.1.c: las plantillas de correo con `token_hash` (obligatorio).
+   - §4.2: *Confirm email* activado.
+   - §4.3: las cuatro tablas en la publicación de Realtime.
+4. `npm run verify:schema:hosted -- --produccion` en verde contra este proyecto,
+   con `SUPABASE_PROJECT_REF` y `NEXT_PUBLIC_SITE_URL=https://hagotufila.cl`.
+   Comprueba el punto 2, la URL de retorno, el mínimo de 8, las plantillas y los
+   advisors, y no acepta el aviso de contraseñas filtradas.
+5. §4.4: `select jobname, schedule, active from cron.job;` debe mostrar
+   `hagotufila-tareas-programadas | */10 * * * * | t`, y `cron.job_run_details`
+   pasadas sin error.
+6. Invariantes: `select * from app_private.payment_invariant_violations();` y
+   `select * from app_private.refund_invariant_violations();` sin filas, y
+   `select * from app_private.integrity_alerts where resolved_at is null;`
+   vacío. Decide por dónde avisar fuera de la aplicación (§4.4): hoy solo avisa
+   dentro.
+7. `select allow_non_production_payouts from public.platform_settings;` →
+   `false`, que es como nace (§4.5). No la enciendas.
+8. Límites por persona de `platform_settings` (`rate_limit_*`) con los valores
+   por omisión o más bajos, nunca los que se subieron para probar (§8.1).
+9. Límites de Auth y de envío de correo, con SMTP propio si hace falta: §4.6.
+   El CAPTCHA, solo cuando la aplicación envíe `captchaToken` en sus
+   formularios (hoy no): activarlo antes deja a todos fuera.
+10. Variables del hosting, escritas una por una con la tabla de
+    `docs/TRANSBANK.md` §9 —**no uses `.env.example` como base**: trae valores de
+    desarrollo—:
+    - `NODE_ENV=production` y `NEXT_PUBLIC_SITE_URL` con el dominio real y HTTPS.
+    - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` y
+      `SUPABASE_SECRET_KEY` de **este** proyecto. La clave secreta, solo en las
+      variables del servidor: nunca en el repositorio ni con prefijo
+      `NEXT_PUBLIC_`.
+    - `PAYMENT_PROVIDER=transbank`. No puede quedar en `mock` ni en
+      `mock-delayed`: la aplicación se niega a iniciar un pago simulado con
+      `NODE_ENV=production`.
+    - `TRANSBANK_ENVIRONMENT=production`, **escrita**. Si falta, Webpay no opera
+      en ningún ambiente; `integration` junto con
+      `TRANSBANK_PRODUCTION_ENABLED=true` se contradice y tampoco opera.
+    - `CRON_SECRET` de 32 caracteres o más (`openssl rand -hex 32`).
+11. Un programador externo que llame a `/api/cron/conciliar-pagos` cada 10
+    minutos con `Authorization: Bearer $CRON_SECRET` (`docs/TRANSBANK.md` §7), y
+    que reciba `200` con `ok: true`.
+12. El primer cobro real: la «Lista para el primer cobro real» de
+    `docs/TRANSBANK.md` §9, que es donde se enciende
+    `TRANSBANK_PRODUCTION_ENABLED=true`.
 
 ---
 
@@ -806,10 +943,14 @@ llega es el de la otra persona hasta recargar.
 | Un trabajador verificado no puede ofertar | Revisa `worker_profiles.verification_status`; debe ser `VERIFIED` |
 | `db push` se queda colgado sin mensaje | El puerto 5432/6543 está bloqueado en tu red: usa `npm run db:push:hosted` (sección 3.b) |
 | Todas las páginas dan 500 con `PGRST205` | Hay credenciales pero el esquema no está aplicado: la aplicación habla con el proyecto y el proyecto está vacío |
-| "Variables de entorno inválidas" al arrancar | Un valor presente pero mal formado. Una variable *vacía* no da este error: se trata como ausente |
+| "Variables de entorno inválidas" al arrancar | Un valor presente pero mal formado. Una variable *vacía* no da este error: se trata como ausente. `CRON_SECRET` tampoco: si es corto, solo falla su ruta (fila siguiente) |
+| `/api/cron/conciliar-pagos` responde 503 | «CRON_SECRET no configurado»: falta la variable. «CRON_SECRET inválido»: tiene menos de 32 caracteres; el registro del servidor lo dice. Genera otro con `openssl rand -hex 32` y ponlo también en el programador |
+| `db:push:hosted` se detiene en un archivo | No aplicó nada de ese archivo: corrige la causa y vuelve a ejecutarlo, retoma desde ahí. Si dice que la respuesta se perdió pero quedó registrada, siguió solo |
 | Las pruebas del marketplace salen «omitidas» | Playwright no encontró las cuentas. Mira el motivo que imprime: falta alguna `E2E_*` en `.env.local` |
 | `npm run e2e` no encuentra el navegador | La versión de Chromium instalada no es la que espera Playwright: `PLAYWRIGHT_CHROMIUM_PATH=/ruta/al/chromium npm run e2e` |
 | El pago simulado devuelve a un puerto donde no escucha nadie | `NEXT_PUBLIC_SITE_URL` no coincide con la URL real del servidor. La URL de retorno se construye con esa variable |
 | El chat no recibe los mensajes de la otra persona | El navegador no logra abrir el WebSocket con Supabase. Míralo en la consola: si la conexión ni se establece, es la red, no la aplicación |
 | El registro deja el correo y la contraseña en la URL | No debería volver a pasar: los formularios de credenciales van por POST desde la Etapa 2.5. Si lo ves, la página no hidrató Y el formulario perdió su `method` |
 | `verify:schema:hosted` falla con un aviso de seguridad nuevo | Es lo que tiene que hacer. Corrígelo, o —si es correcto por diseño— añádelo a `AVISOS_ACEPTADOS` con su motivo |
+| `verify:schema:hosted` reporta `function_search_path_mutable` | Una función sin `search_path` fijo. `npm run db:test` lo detecta antes (I14): fíjalo con `alter function … set search_path = public, pg_temp` en una migración nueva |
+| `/admin` muestra alertas de integridad en `hagotufila-dev` con reglas `…_on_cancelled_job` | Restos de la limpieza antigua de las pruebas e2e: §8.3 |

@@ -328,8 +328,9 @@ desglosa (`attemptsExamined`, `doubleCharges`).
 
 `platform_settings.reconciliation_window_days` —7 por omisión, entre 1 y 90 por
 restricción— la fija en un solo lugar. La lee `app_private.reconciliation_window_days()`,
-y de ahí sale tanto la vista `payments_pending_reconciliation` como el barrido
-de rezagados. Cambiarla es un `update` en una fila, no una migración.
+y de ahí sale tanto la función `payments_pending_reconciliation()` (SECURITY
+DEFINER, no una vista) como el barrido de rezagados. Cambiarla es un `update`
+en una fila, no una migración.
 
 El 7 no es arbitrario: es lo que Webpay responde a `status(token)`. Bajarlo
 tiene sentido si se quiere que una persona mire antes; subirlo solo sirve si
@@ -377,9 +378,17 @@ proveedor» sobre un pago concreto cuando alguien escribe preguntando.
 Y programada: `GET` o `POST /api/cron/conciliar-pagos`, con
 `Authorization: Bearer $CRON_SECRET`. Ejecuta **el mismo servicio** que el
 botón, con el mismo margen de 5 minutos para no pisar un retorno en curso. Sin
-`CRON_SECRET` responde 503; con un secreto equivocado, 401; ante un error, 500
-sin detalle (el detalle queda en el registro con su categoría). Comprobado con
-la aplicación compilada.
+`CRON_SECRET` responde 503 («CRON_SECRET no configurado»); con uno de menos de
+32 caracteres, también 503 («CRON_SECRET inválido») y lo deja en el registro
+del servidor —antes un secreto corto tumbaba la aplicación entera al
+arrancar—; con un secreto equivocado, 401; ante un error, 500 sin detalle (el
+detalle queda en el registro con su categoría). Si todo fue bien, 200 con
+`ok: true`. Comprobado con la aplicación compilada antes del cambio del
+secreto corto; ese cambio lo cubren las pruebas unitarias de `src/lib/env.ts`.
+
+En producción es **obligatoria**: sin programador, a un pago cuyo navegador no
+volvió nadie le pregunta a Transbank, salvo que alguien pulse «Conciliar
+pendientes»; al salir de la ventana, `expire_stale_payments` lo cierra.
 
 Quién la llama depende del hosting, que todavía no está elegido:
 
@@ -403,7 +412,11 @@ La frecuencia recomendada para la conciliación es:
 |---|---|
 | Horario de uso | 10 minutos |
 | Resto del día | 1 hora |
-| Barrido de rezagados | 1 vez al día, con `olderThanMinutes: 1440` |
+| Rezagados | no hace falta otra tarea: cada pasada incluye todo lo que tenga más de 5 minutos, y lo que sale de la ventana lo cierra `expire_stale_payments` (pg_cron y esta misma ruta) |
+
+Esta tabla recomendaba antes un barrido diario con `olderThanMinutes: 1440`,
+que no se puede configurar: la ruta fija `olderThanMinutes: 5` y no lee
+parámetros, y el botón usa 5 (o 0 para un pago concreto). Tampoco hacía falta.
 
 El servicio es idempotente, así que ejecutarlo de más no hace daño.
 
@@ -581,6 +594,15 @@ datos personales.
 | `TRANSBANK_PRODUCTION_API_KEY_SECRET` | la llave | solo servidor |
 | `NEXT_PUBLIC_SITE_URL` | `https://hagotufila.cl` | HTTPS, sin puerto |
 | `NODE_ENV` | `production` | |
+| `NEXT_PUBLIC_SUPABASE_URL` | la URL del proyecto de **producción** | sin ella la aplicación queda en modo demostración y las guardas no construyen el proveedor |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | su clave publicable | |
+| `SUPABASE_SECRET_KEY` | su clave secreta | solo servidor. La usan el retorno de pago, la conciliación y la ruta programada |
+| `CRON_SECRET` | 32 caracteres o más (`openssl rand -hex 32`) | solo servidor. Sin él la conciliación programada (§7) responde 503 |
+
+Las variables se escriben una por una con esta tabla. **No uses `.env.example`
+como base**: es la plantilla de desarrollo. Traía `TRANSBANK_ENVIRONMENT=integration`
+escrito y, copiado, producción heredaba integración sin que nadie la eligiera;
+hoy esa línea va comentada.
 
 Las credenciales productivas **nunca** llevan prefijo `NEXT_PUBLIC_`, nunca se
 serializan, nunca se imprimen, nunca aparecen en una página de error, en un
@@ -605,6 +627,15 @@ que no existió.
 vale: es un despliegue de pruebas (staging). Opera, pero no en silencio: la
 guarda lo marca (`environmentNotices`) y el servidor lo deja en su registro
 («Webpay opera en INTEGRACIÓN con NODE_ENV=production…»).
+
+Salvo con `TRANSBANK_PRODUCTION_ENABLED=true`: el interruptor es el acto
+explícito de cobrar de verdad, y junto a `integration` la configuración se
+contradice. Entonces tampoco opera, en ningún ambiente, y el error dice
+«TRANSBANK_PRODUCTION_ENABLED=true con TRANSBANK_ENVIRONMENT=integration».
+Antes pasaba con el aviso del registro: con el interruptor encendido, los
+cobros eran de prueba. Un staging lo deja apagado, y volver atrás desde
+producción también (interruptor apagado, ambiente `production`): ninguno de
+los dos se bloquea.
 
 La base es la segunda línea: `mark_payout_paid` no transfiere si el cobro del
 trabajo, o uno del tiempo adicional que sumó al payout, tiene un `environment`
@@ -638,13 +669,20 @@ explícito y auditable.
 Antes:
 
 - [ ] Transbank aprobó la validación (§10)
-- [ ] `TRANSBANK_ENVIRONMENT=production` escrita en el hosting
-- [ ] `platform_settings.allow_non_production_payouts` en `false` en la base de
-      producción (es como nace; nadie debe haberla encendido)
+- [ ] `docs/DESPLIEGUE-SUPABASE.md` §9 completo en el proyecto de producción
+      (datos de referencia, panel de Auth, `verify:schema:hosted -- --produccion`,
+      pg_cron, invariantes y límites)
+- [ ] Todas las variables de la tabla de arriba en el hosting, escritas una por
+      una, con `TRANSBANK_ENVIRONMENT=production` escrita
+- [ ] `select allow_non_production_payouts from public.platform_settings;`
+      devuelve `false` en la base de producción (es como nace; nadie debe
+      haberla encendido)
 - [ ] Dominio productivo con HTTPS y certificado válido
 - [ ] URL de retorno accesible desde fuera
 - [ ] Registros llegando a algún sitio que se pueda consultar
-- [ ] Conciliación programada, o alguien que la ejecute a mano
+- [ ] `/api/cron/conciliar-pagos` responde `200` con `ok: true` cuando lo llama
+      el programador (§7); mientras no exista, una persona que pulse
+      «Conciliar pendientes» en `/admin/pagos` al menos cada hora
 - [ ] Una persona de guardia durante la ventana
 - [ ] Acceso al portal de Transbank para contrastar
 
@@ -664,7 +702,9 @@ Después, comprobar **todo** esto antes del segundo:
 - [ ] Un solo `payment_event` con `commit:<token>`
 - [ ] Un solo payout, con el neto correcto
 - [ ] El trabajador recibió la notificación
-- [ ] `app_private.payment_invariant_violations()` devuelve cero filas
+- [ ] `app_private.payment_invariant_violations()` y
+      `app_private.refund_invariant_violations()` devuelven cero filas, y
+      `app_private.integrity_alerts` no tiene filas con `resolved_at is null`
 - [ ] La conciliación sobre ese pago no cambia nada
 
 ### Rollback
