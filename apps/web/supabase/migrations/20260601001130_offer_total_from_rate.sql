@@ -28,6 +28,18 @@
 -- (`freeze_offer_terms`, …000200 de la Etapa 2), y este disparador no lo toca:
 -- cualquier intento de cambiarlo sigue chocando con esa guarda.
 --
+-- Lo mismo vale para lo que se cobra. `accept_job_offer` lee la oferta ANTES
+-- de bloquear la fila del trabajo, y toma la duración de la fila ya bloqueada.
+-- Si el cliente edita la duración (`update_open_job`) y acepta a la vez, la
+-- aceptación espera el bloqueo con el total viejo en la mano y lo copia junto
+-- a la duración nueva: comprobado sobre la base, una asignación de 600
+-- minutos a 10.000 por hora quedaba con `agreed_total` = 10.000, y eso era lo
+-- que se cobraba. Por eso un segundo disparador, BEFORE INSERT en
+-- `assignments`, fija `agreed_total` con la misma fórmula sobre la tarifa y la
+-- duración que la propia asignación registra. Solo al insertar: después nadie
+-- con sesión puede escribir esas columnas, y el pago y la transferencia salen
+-- de ese número.
+--
 -- Las ofertas pendientes que ya existan se recalculan aquí mismo. Una oferta
 -- aceptada antes de esta migración conserva su importe: está congelada y su
 -- asignación ya lo copió. Si alguna difiere de la fórmula, lo muestra la
@@ -107,9 +119,34 @@ create trigger jobs_sync_offer_totals
   after update of estimated_duration_minutes on public.jobs
   for each row execute function app_private.sync_pending_offer_totals();
 
+-- Lo que se cobra: el importe acordado sale de la tarifa y la duración que la
+-- asignación registra, no de un total leído antes de bloquear el trabajo.
+-- SECURITY DEFINER para que la clave de servicio, que también inserta
+-- asignaciones (pruebas de navegador), no necesite EXECUTE sobre offer_total.
+create or replace function app_private.compute_agreed_total()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  new.agreed_total := app_private.offer_total(new.agreed_hourly_rate, new.agreed_duration_minutes);
+  return new;
+end;
+$$;
+
+comment on function app_private.compute_agreed_total() is
+  'El importe acordado de una asignación nueva es tarifa × duración / 60 de la propia asignación; lo enviado se ignora.';
+
+drop trigger if exists assignments_agreed_total on public.assignments;
+create trigger assignments_agreed_total
+  before insert on public.assignments
+  for each row execute function app_private.compute_agreed_total();
+
 revoke all on function app_private.offer_total(bigint, integer) from public, anon, authenticated;
 revoke all on function app_private.compute_offer_total() from public, anon, authenticated;
 revoke all on function app_private.sync_pending_offer_totals() from public, anon, authenticated;
+revoke all on function app_private.compute_agreed_total() from public, anon, authenticated;
 
 -- Las pendientes que ya existan.
 update public.job_offers o

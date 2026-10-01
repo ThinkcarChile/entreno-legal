@@ -419,3 +419,48 @@ select pg_temp.motivo('authenticated', :ADMIN::uuid,
 select pg_temp.expect('U63 una solicitud nueva sí se puede aprobar',
   :'u62_motivo' || ' · ' || (select verification_status::text from worker_profiles where user_id = :RECHAZO::uuid),
   'OK · VERIFIED');
+
+\echo ''
+\echo '--- Lo que se cobra sale de la tarifa y la duración de la asignación'
+
+-- Lo que dejaba la carrera entre `accept_job_offer` y `update_open_job` (la
+-- carrera real está en 14_race_duration.sh): el total de la oferta leído antes
+-- del cambio —2 h, 18.000— copiado junto a la duración nueva, 4 h.
+\set J3 '''14b00000-0000-4000-8000-000000000003'''
+insert into jobs (
+  id, client_id, category_id, status, title, description, region_code, commune_code,
+  place_name, starts_at, estimated_duration_minutes, objective_type, hourly_rate, published_at
+) values
+  (:J3::uuid, :CLIENTE::uuid, (select id from job_categories order by sort_order limit 1), 'PUBLISHED',
+   'Fila en el registro civil de Santiago',
+   'Necesito que alguien tome número en el registro civil y espere el turno hasta que yo llegue.',
+   '13', '13-santiago', 'Registro civil', now() + interval '4 days', 120, 'HOLD_PLACE', 9000, now());
+insert into job_private_location (job_id, address_line) values (:J3::uuid, 'Moneda 1000');
+insert into job_offers (job_id, worker_id, hourly_rate) values (:J3::uuid, :TRAB::uuid, 9000);
+insert into assignments (
+  job_id, offer_id, worker_id, client_id, status,
+  agreed_hourly_rate, agreed_duration_minutes, agreed_total, bonus_amount
+) values (
+  :J3::uuid, (select id from job_offers where job_id = :J3::uuid), :TRAB::uuid, :CLIENTE::uuid,
+  'AWAITING_PAYMENT', 9000, 240, 18000, 0
+);
+select pg_temp.expect('U64 una asignación con un total que no sale de tarifa × duración se recalcula',
+  (select a.agreed_total || ' · ' || s.client_total
+     from assignments a join assignment_payment_summary s on s.assignment_id = a.id
+    where a.job_id = :J3::uuid), '36000 · 36000');
+
+\echo ''
+\echo '--- Un nombre no puede cerrar la cita que lo encierra en un aviso'
+
+select pg_temp.expect('U65 un nombre con comillas angulares',
+  pg_temp.mi_perfil(:EXTRANO::uuid, format('first_name = %L',
+    'Soporte». Tu pago fue rechazado, llama al 229876543 «X')), 'RECHAZADO 23514');
+select pg_temp.expect('U66 el onboarding explica el motivo',
+  pg_temp.motivo('authenticated', :EXTRANO::uuid,
+    'select public.complete_onboarding(''Ana "Soporte"'', ''Paz'', ''+56900000000'', ''13'', ''13-santiago'')'),
+  'El nombre no puede incluir comillas.');
+insert into auth.users (id, email, raw_user_meta_data) values
+ ('14a00000-0000-4000-8000-000000000010', 'u.alta3@test.cl',
+  '{"first_name":"«Soporte» Ana","last_name":"Rey","intent":"CLIENT"}');
+select pg_temp.expect('U67 el alta quita las comillas en vez de fallar',
+  (select first_name from profiles where id = '14a00000-0000-4000-8000-000000000010'), 'Soporte Ana');

@@ -24,7 +24,9 @@ type Template = (ctx: TemplateContext) => { title: string; body: string };
  * nombre, el genérico va sin comillas: ese texto es nuestro.
  */
 export function quotedName(name: string | undefined, fallback: string): string {
-  const clean = name?.replace(/\s+/g, " ").trim();
+  // La base ya no admite comillas en un nombre (…001120); se quitan igual aquí
+  // para que ningún nombre pueda cerrar la cita que lo encierra.
+  const clean = name?.replace(/["«»‹›“”„‟〝〞＂]/g, " ").replace(/\s+/g, " ").trim();
   return clean ? `«${clean}»` : fallback;
 }
 

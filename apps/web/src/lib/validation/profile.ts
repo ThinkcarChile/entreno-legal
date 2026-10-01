@@ -10,8 +10,8 @@ import { z } from "zod";
  * se separan, manda la base. Los mensajes son los mismos a propósito.
  *
  * El motivo de la regla: el nombre entra en el texto de los avisos que recibe la
- * contraparte. Un nombre con saltos de línea, una dirección web o «HagoTuFila»
- * se leía como un mensaje de la plataforma.
+ * contraparte. Un nombre con saltos de línea, comillas, una dirección web o
+ * «HagoTuFila» se leía como un mensaje de la plataforma.
  */
 
 /**
@@ -25,6 +25,12 @@ const INVISIBLE = new RegExp(
   "u",
 );
 const WEB = /(:\/\/|www\.|@|[a-z0-9-]\.[a-z]{2,})/i;
+/**
+ * Comillas dobles, angulares y tipográficas: son las que delimitan el nombre en
+ * los avisos («Camila F.»). Con una dentro, el nombre cerraba la cita y el resto
+ * se leía como texto de la plataforma. El apóstrofo sí se admite (O'Higgins).
+ */
+const QUOTES = /["«»‹›“”„‟〝〞＂]/;
 
 /** Lo que no es una letra de ningún alfabeto, con la misma lista que la base. */
 const NOT_A_LETTER = new RegExp(
@@ -45,6 +51,7 @@ export function personNameProblem(name: string): string | null {
   if (name !== name.replace(/^ +| +$/g, "") || name.includes("  ")) {
     return "El nombre no puede empezar ni terminar con espacios, ni tener espacios dobles.";
   }
+  if (QUOTES.test(name)) return "El nombre no puede incluir comillas.";
   if (WEB.test(name)) return "El nombre no puede incluir direcciones web ni correos.";
   if (name.toLowerCase().includes("hagotufila")) return "El nombre no puede incluir «HagoTuFila».";
   return null;

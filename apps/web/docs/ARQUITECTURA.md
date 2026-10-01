@@ -330,7 +330,11 @@ El total tampoco lo decide quien oferta. Desde la migración `…001130` lo
 calcula un disparador como `round(tarifa × duración / 60)` —la misma cuenta que
 `proratePerHour`—, ignorando lo que venga en `estimated_total`. Es lo que
 `accept_job_offer` copia a `agreed_total` y lo que se cobra. Mientras la oferta
-está pendiente, sigue a la duración si el cliente la edita.
+está pendiente, sigue a la duración si el cliente la edita. Y como
+`accept_job_offer` lee la oferta antes de bloquear el trabajo, un segundo
+disparador fija `agreed_total` al crear la asignación con la tarifa y la
+duración que ella misma registra: aceptar mientras el cliente cambia la
+duración ya no deja una asignación de diez horas cobrada como una.
 
 ### 6.6 La comisión vive en la base, no en el código
 
@@ -706,7 +710,7 @@ Ese contraste encontró el defecto descrito en §6.5.
 
 | Comando | Contra qué | Qué cubre |
 |---|---|---|
-| `npm run db:test` | PostgreSQL local | Esquema, RLS, flujo, concurrencia, semillas, inventario, endurecimiento de las RPC, política de cancelación y pago, ejecución completa del trabajo e integración con Webpay, y qué leen y escriben un visitante y los demás usuarios. Todo con carreras reales. 334 comprobaciones |
+| `npm run db:test` | PostgreSQL local | Esquema, RLS, flujo, concurrencia, semillas, inventario, endurecimiento de las RPC, política de cancelación y pago, ejecución completa del trabajo e integración con Webpay, y qué leen y escriben un visitante y los demás usuarios. Todo con carreras reales. 339 comprobaciones |
 | `npm run db:push:hosted -- --plan` | Supabase real | Qué migraciones faltan por aplicar, sin escribir nada |
 | `npm run verify:schema:hosted` | Supabase real | Inventario, RLS, `security_invoker`, grants, Realtime y advisors. 18 comprobaciones |
 | `npm run verify:supabase` | Supabase real | El mismo recorrido por API, más Realtime, Storage y Auth, y las escrituras directas que deben fallar. 63 comprobaciones |

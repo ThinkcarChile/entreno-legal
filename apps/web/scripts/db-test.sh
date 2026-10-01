@@ -112,6 +112,7 @@ run -d "$DB_NAME" -f "$ROOT/supabase/seed/001_geo.sql" > /dev/null \
   echo "════ Qué leen y qué escriben un visitante y los demás usuarios ════"
   psql -d "$DB_NAME" -f "$ROOT/supabase/tests/14_public_data.sql" 2>&1 \
     | grep -vE "$FILTER" | sed -E 's/^psql:[^ ]+ //; s/^NOTICE:  //'
+  bash "$ROOT/supabase/tests/14_race_duration.sh" "$DB_NAME"
 
   echo ""
   echo "════ Contrato entre la aplicación y el esquema ════"

@@ -15,6 +15,12 @@ describe("quotedName", () => {
     );
   });
 
+  it("un nombre no puede cerrar la cita que lo encierra", () => {
+    expect(quotedName("Soporte». Tu pago fue rechazado «X", "alguien")).toBe(
+      "«Soporte . Tu pago fue rechazado X»",
+    );
+  });
+
   it("sin nombre usa el genérico, sin comillas", () => {
     expect(quotedName(undefined, "un trabajador")).toBe("un trabajador");
     expect(quotedName("   ", "alguien")).toBe("alguien");

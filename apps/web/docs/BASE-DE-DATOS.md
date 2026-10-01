@@ -91,10 +91,14 @@ Restricciones que codifican reglas de producto:
 - `worker_profiles_verified_to_accept`: sin verificación no se aceptan trabajos.
 - `job_offers_compute_total` (disparador): el total de una oferta pendiente es
   `round(tarifa × duración / 60)`; lo que envíe quien oferta se ignora (`…001130`).
+- `assignments_agreed_total` (disparador): al crearse una asignación,
+  `agreed_total` —lo que se cobra— es `round(tarifa × duración / 60)` de la
+  tarifa y la duración que ella misma registra, aunque `accept_job_offer` haya
+  leído la oferta antes de que el cliente cambiara la duración (`…001130`).
 - `profiles_first_name_valid`, `profiles_last_name_initial_valid` y
   `profiles_avatar_own_path`: el nombre público va recortado, de 1 a 60
-  caracteres, sin saltos de línea, caracteres invisibles, direcciones web ni
-  «HagoTuFila»; la inicial es una letra; la foto es una ruta dentro de la propia
+  caracteres, sin saltos de línea, caracteres invisibles, comillas, direcciones
+  web ni «HagoTuFila»; la inicial es una letra; la foto es una ruta dentro de la propia
   carpeta del bucket `avatars` (`…001120`). Los avisos citan el nombre entre
   comillas angulares: «Camila F.».
 
@@ -297,8 +301,9 @@ foto de quien escribió una reseña publicada, para `public_reviews`),
 `person_name_problem`, `is_valid_initial`, `is_own_avatar_path` y
 `clean_person_name` (las reglas del nombre y la foto, usadas por las
 restricciones `CHECK` y por el alta), `quoted_display_name` (el nombre citado en
-los avisos), y `offer_total`, `compute_offer_total` y
-`sync_pending_offer_totals` (el total de una oferta).
+los avisos), y `offer_total`, `compute_offer_total`,
+`sync_pending_offer_totals` y `compute_agreed_total` (el total de una oferta y
+el importe acordado de la asignación que sale de ella).
 
 ---
 
@@ -323,11 +328,12 @@ usuario: las políticas de Storage lo exigen.
 PGHOST=/tmp PGPORT=55432 PGUSER=postgres npm run db:test
 ```
 
-Aplica el stub de Supabase, las 46 migraciones, la semilla geográfica y 334
+Aplica el stub de Supabase, las 46 migraciones, la semilla geográfica y 339
 comprobaciones de inventario, RLS, flujo completo, concurrencia, semilla de
 demostración, endurecimiento de las RPC, política de cancelación y pago,
 ejecución completa del trabajo, integración con Webpay y lo que leen y escriben
-un visitante sin sesión y los demás usuarios (`14_public_data.sql`, prefijo U).
+un visitante sin sesión y los demás usuarios (`14_public_data.sql` y
+`14_race_duration.sh`, prefijo U).
 Todo con carreras reales entre dos sesiones, `RACE_REPS` repeticiones. Ver `supabase/tests/`.
 
 Contra el proyecto alojado, los mismos escenarios corren con

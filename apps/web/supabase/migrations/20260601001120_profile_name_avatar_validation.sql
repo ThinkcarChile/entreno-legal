@@ -15,9 +15,13 @@
 -- Qué cambia:
 --
 --   * `first_name`: sin espacios al borde ni dobles, de 1 a 60 caracteres, sin
---     saltos de línea ni caracteres de control o invisibles, sin direcciones
---     web ni correos, y sin «HagoTuFila». Restricción CHECK: vale para el
---     UPDATE directo, para las RPC y para la clave de servicio.
+--     saltos de línea ni caracteres de control o invisibles, sin comillas, sin
+--     direcciones web ni correos, y sin «HagoTuFila». Restricción CHECK: vale
+--     para el UPDATE directo, para las RPC y para la clave de servicio.
+--     Las comillas quedan fuera porque son el delimitador de los avisos: con
+--     un nombre como `Soporte». Tu pago fue rechazado, llama al … «X` la cita
+--     se cerraba dentro del nombre y el resto se leía como texto de la
+--     plataforma.
 --   * `last_name_initial`: una sola letra.
 --   * `avatar_url`: guarda la RUTA dentro del bucket `avatars`, y solo la de
 --     la propia carpeta: `<id del perfil>/<nombre>.jpg|png|webp`. La URL
@@ -60,6 +64,10 @@ as $$
       then 'El nombre no puede tener saltos de línea, tabulaciones ni caracteres invisibles.'
     when p_name <> btrim(p_name) or p_name like '%  %'
       then 'El nombre no puede empezar ni terminar con espacios, ni tener espacios dobles.'
+    -- Comillas dobles, angulares y tipográficas: son las que delimitan el
+    -- nombre en los avisos. El apóstrofo sí se admite (O'Higgins).
+    when p_name ~ '["«»‹›“”„‟〝〞＂]'
+      then 'El nombre no puede incluir comillas.'
     when p_name ~* '(://|www\.|@|[a-z0-9-]\.[a-z]{2,})'
       then 'El nombre no puede incluir direcciones web ni correos.'
     when lower(p_name) like '%hagotufila%'
@@ -108,9 +116,10 @@ as $$
   select case when app_private.person_name_problem(limpio) is null then limpio else 'Usuario' end
     from (
       select btrim(left(btrim(regexp_replace(
-               regexp_replace(coalesce(p_name, ''),
+               regexp_replace(regexp_replace(coalesce(p_name, ''),
                  '[\x01-\x1f\x7f-\x9f\u00a0\u00ad\u061c\u180e\u2000-\u200f\u2028-\u202f\u205f-\u206f\u3000\ufeff]',
                  ' ', 'g'),
+                 '["\u00ab\u00bb\u2039\u203a\u201c\u201d\u201e\u201f\u301d\u301e\uff02]', ' ', 'g'),
                ' {2,}', ' ', 'g')), 60)) as limpio
     ) s;
 $$;

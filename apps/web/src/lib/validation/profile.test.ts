@@ -29,6 +29,15 @@ describe("personNameProblem", () => {
     expect(personNameProblem("Ana\u00A0María")).toMatch(/invisibles/);
   });
 
+  it("rechaza las comillas que delimitan el nombre en los avisos", () => {
+    expect(personNameProblem("Soporte». Tu pago fue rechazado, llama al 229876543 «X")).toMatch(
+      /comillas/,
+    );
+    expect(personNameProblem('Ana "la jefa"')).toMatch(/comillas/);
+    expect(personNameProblem("Ana “Soporte”")).toMatch(/comillas/);
+    expect(personNameProblem("Ana ‹X›")).toMatch(/comillas/);
+  });
+
   it("rechaza direcciones web y correos", () => {
     expect(personNameProblem("Ernesto pagos-htf.cl")).toMatch(/direcciones web/);
     expect(personNameProblem("Ana www.pagos.cl")).toMatch(/direcciones web/);
