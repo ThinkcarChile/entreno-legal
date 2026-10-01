@@ -170,7 +170,8 @@ select pg_temp.expect('U05 el trabajador no puede reescribir el total de su ofer
     'update public.job_offers set estimated_total = 1 where job_id = %L and worker_id = %L', :J1, :TRAB)),
   'DENEGADO');
 
--- Ni siquiera la clave de servicio deja un total que no salga de la tarifa.
+-- Ni siquiera una escritura del propio sistema, sin sesión y sin restricciones
+-- de privilegio (aquí, como postgres), deja un total que no salga de la tarifa.
 update job_offers set estimated_total = 5 where job_id = :J1::uuid and worker_id = :TRAB::uuid;
 select pg_temp.expect('U06 una escritura directa del sistema sobre una oferta pendiente se recalcula',
   (select estimated_total::text from job_offers where job_id = :J1::uuid and worker_id = :TRAB::uuid), '18000');

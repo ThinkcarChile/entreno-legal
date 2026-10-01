@@ -9,7 +9,8 @@
 -- duración del trabajo. `accept_job_offer` copia ese número a
 -- `assignments.agreed_total`, y de ahí sale lo que se le cobra al cliente.
 -- Por la API, una oferta de 9.000 por hora para dos horas podía decir que el
--- total era 900.000; el cliente veía la tarifa, aceptaba, y pagaba el total.
+-- total era 900.000: el listado y la comparación de ofertas muestran la tarifa
+-- por hora, y lo que se cobraba no tenía por qué salir de ella.
 --
 -- Ahora el total lo calcula un disparador BEFORE INSERT OR UPDATE con la misma
 -- fórmula que la aplicación (`proratePerHour`, src/lib/utils/money.ts):
@@ -30,7 +31,7 @@
 -- Las ofertas pendientes que ya existan se recalculan aquí mismo. Una oferta
 -- aceptada antes de esta migración conserva su importe: está congelada y su
 -- asignación ya lo copió. Si alguna difiere de la fórmula, lo muestra la
--- consulta del final de docs/BASE-DE-DATOS.md (§ «Total de una oferta»).
+-- consulta de docs/BASE-DE-DATOS.md, § «Total de una oferta».
 -- =============================================================================
 
 create or replace function app_private.offer_total(p_hourly_rate bigint, p_minutes integer)
