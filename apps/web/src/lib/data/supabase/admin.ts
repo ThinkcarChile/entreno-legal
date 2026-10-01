@@ -317,7 +317,9 @@ export class SupabaseAdminRepository implements AdminRepository {
       .order("created_at", { ascending: false })
       .limit(100);
 
-    if (filter === "review") query = query.eq("status", "UNDER_REVIEW");
+    // En revisión entra también el pago cobrado que tiene un intento duplicado
+    // por devolver: el pago está bien, pero hay dinero de más que mirar.
+    if (filter === "review") query = query.or("status.eq.UNDER_REVIEW,attempts_in_review.gt.0");
     if (filter === "pending") query = query.in("status", ["PENDING", "CREATED", "AUTHORIZED"]);
     if (filter === "refunded") query = query.in("status", ["REFUNDED", "PARTIALLY_REFUNDED"]);
 
@@ -358,6 +360,8 @@ export class SupabaseAdminRepository implements AdminRepository {
       refundCount: Number(row.refund_count ?? 0),
       disputeId: (row.dispute_id as string | null) ?? null,
       payoutId: (row.payout_id as string | null) ?? null,
+      attemptsInReview: Number(row.attempts_in_review ?? 0),
+      attemptsReviewDetail: (row.attempts_review_detail as string | null) ?? null,
     }));
   }
 

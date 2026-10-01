@@ -19,7 +19,9 @@ import { isReconcilable, PaymentProviderError, type ProviderSnapshot } from "./p
  *      se pierde por la red y nadie sabría que existe. Con el intento ya
  *      escrito, la conciliación la encuentra por `buy_order`.
  *   4. Se crea la transacción en el proveedor.
- *   5. Se guardan token y URL.
+ *   5. Se guardan token y URL **en su intento** (`record_payment_attempt_token`),
+ *      y en el pago solo si ese intento sigue siendo el vigente. El token de un
+ *      intento anterior no se sobrescribe nunca: queda en `payment_attempts`.
  *   6. Se devuelve la URL para el formulario POST.
  */
 export interface CheckoutStart {
@@ -38,6 +40,8 @@ export interface PaymentRow {
   job_id: string;
   assignment_id: string | null;
   client_id: string;
+  /** `JOB` o `EXTENSION`: decide a qué pantalla vuelve el cliente. */
+  purpose: string;
   amount: number;
   currency: string;
   status: string;
@@ -45,11 +49,13 @@ export interface PaymentRow {
   buy_order: string | null;
   session_id: string | null;
   environment: string | null;
+  /** Cuántos intentos se registraron. El vigente es el de `buy_order`. */
+  attempt: number;
 }
 
 export const PAYMENT_COLUMNS =
-  "id,job_id,assignment_id,client_id,amount,currency,status,provider_token," +
-  "buy_order,session_id,environment";
+  "id,job_id,assignment_id,client_id,purpose,amount,currency,status,provider_token," +
+  "buy_order,session_id,environment,attempt";
 
 /** La URL de retorno. Se deriva del sitio, nunca del navegador. */
 export function returnUrl(): string {
@@ -112,8 +118,8 @@ export async function startCheckout(
     });
   } catch (error) {
     // La transacción pudo quedar creada en el proveedor aunque la respuesta se
-    // perdiera. El intento ya está escrito, así que la conciliación lo verá;
-    // aquí solo se anota el motivo.
+    // perdiera. El intento ya está escrito; aquí solo se anota el motivo, en el
+    // pago y en su intento.
     await admin
       .from("payments")
       .update({
@@ -121,23 +127,32 @@ export async function startCheckout(
         updated_at: new Date().toISOString(),
       })
       .eq("id", payment.id);
+    await admin
+      .from("payment_attempts")
+      .update({ failure_reason: "provider_error" })
+      .eq("buy_order", buyOrder);
     throw error instanceof PaymentProviderError
       ? error
       : new PaymentProviderError(provider.id, "No se pudo crear la transacción.");
   }
 
-  const { error: tokenError } = await admin
-    .from("payments")
-    .update({
-      status: created.status,
-      provider: provider.id,
-      provider_transaction_id: created.providerTransactionId,
-      provider_token: created.token,
-      redirect_url: created.redirectUrl,
-    })
-    .eq("id", payment.id);
+  // El token va a SU intento, identificado por la orden de compra. Si mientras
+  // se creaba la transacción se abrió otro intento —doble clic, dos pestañas—,
+  // este token queda en el historial y no pisa el del vigente.
+  const { data: isCurrent, error: tokenError } = await admin.rpc("record_payment_attempt_token", {
+    p_payment_id: payment.id,
+    p_buy_order: buyOrder,
+    p_token: created.token,
+    p_redirect_url: created.redirectUrl,
+    p_provider_transaction_id: created.providerTransactionId,
+  });
   if (tokenError) {
     throw new Error(`No se pudo guardar el token del pago: ${tokenError.message}`);
+  }
+  if (isCurrent !== true) {
+    throw new Error(
+      "Se abrió otro intento de pago mientras se preparaba este. Vuelve a la pantalla de pago.",
+    );
   }
 
   return {
