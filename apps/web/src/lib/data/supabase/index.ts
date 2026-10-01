@@ -11,6 +11,7 @@ import {
   SupabaseConversationRepository,
   SupabaseNotificationRepository,
 } from "./conversations";
+import { SupabaseDisputeRepository } from "./disputes";
 import { SupabaseJobRepository } from "./jobs";
 import { getClient } from "./shared";
 
@@ -33,6 +34,7 @@ export function createSupabaseDataAccess(): DataAccess {
     profiles: new SupabaseProfileRepository(getClient),
     session: new SupabaseSessionRepository(getClient),
     conversations: new SupabaseConversationRepository(getClient),
+    disputes: new SupabaseDisputeRepository(getClient),
     notifications: new SupabaseNotificationRepository(getClient),
     settings: new SupabaseSettingsRepository(getClient),
     admin: new SupabaseAdminRepository(getClient),

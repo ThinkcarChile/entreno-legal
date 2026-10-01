@@ -137,7 +137,7 @@ function PayoutCard({ row }: { row: AdminPayout }) {
             <span className="text-caption text-ink-500">{row.jobReference}</span>
           </div>
           <Link
-            href={`/mis-trabajos/${row.payout.assignmentId}`}
+            href={`/admin/trabajos/${row.payout.assignmentId}`}
             className="mt-1.5 block font-medium text-ink-950 hover:text-brand-700"
           >
             {row.jobTitle}

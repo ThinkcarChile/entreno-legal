@@ -21,6 +21,7 @@ import type {
   CategoryRepository,
   ConversationRepository,
   DataAccess,
+  DisputeRepository,
   EarningsRepository,
   JobFilters,
   JobRepository,
@@ -43,6 +44,7 @@ import type {
   EarningsSummary,
   ConversationDetail,
   ConversationSummary,
+  DisputeEvidence,
   Job,
   JobCategory,
   JobOffer,
@@ -326,6 +328,13 @@ class DemoAdminRepository implements AdminRepository {
   }
 }
 
+/** Sin sesión no hay disputas propias, ni pruebas que mostrar. */
+class DemoDisputeRepository implements DisputeRepository {
+  async listEvidence(): Promise<readonly DisputeEvidence[]> {
+    return [];
+  }
+}
+
 /** Sin sesión real no hay ganancias que mostrar. */
 class DemoEarningsRepository implements EarningsRepository {
   async listMine(): Promise<readonly Earning[]> {
@@ -347,6 +356,7 @@ export function createDemoDataAccess(): DataAccess {
     profiles: new DemoProfileRepository(),
     session: new DemoSessionRepository(),
     conversations: new DemoConversationRepository(),
+    disputes: new DemoDisputeRepository(),
     notifications: new DemoNotificationRepository(),
     settings: new DemoSettingsRepository(),
     admin: new DemoAdminRepository(),

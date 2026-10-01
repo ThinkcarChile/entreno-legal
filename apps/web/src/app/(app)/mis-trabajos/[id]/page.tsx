@@ -26,6 +26,7 @@ import {
   ClientHandoffPanel,
   WorkerHandoffPanel,
 } from "@/components/jobs/execution/handoff-panel";
+import { DisputeEvidence } from "@/components/disputes/dispute-evidence";
 import { ReviewForm } from "@/components/jobs/execution/review-form";
 import { WorkerSteps } from "@/components/jobs/execution/worker-steps";
 import { WorkTimer } from "@/components/jobs/execution/work-timer";
@@ -383,6 +384,17 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* Pruebas de la disputa: las dos partes las ven y, mientras la base
+              las acepte, aportan más. */}
+          {dispute && (
+            <DisputeEvidence
+              assignmentId={assignment.id}
+              dispute={dispute}
+              canAdd={can.canAddDisputeEvidence}
+              timezone={job.timezone}
+            />
           )}
 
           {can.canReview && (
