@@ -311,7 +311,9 @@ async function main(): Promise<void> {
   check("enums", inv.enums, 24);
   check("políticas RLS en public", inv.politicas, 75);
   check("buckets de Storage", inv.buckets, 5);
-  check("políticas de Storage", inv.politicas_storage, 11);
+  // 11 de …000900 y 20260401000100, más las tres de borrado de 20260601001210
+  // (avatares propios, y evidencia y archivos de disputa propios sin registrar).
+  check("políticas de Storage", inv.politicas_storage, 14);
   check("comunas", inv.comunas, 346);
   check("regiones", inv.regiones, 16);
   check("categorías de trabajo", inv.categorias, 9);
