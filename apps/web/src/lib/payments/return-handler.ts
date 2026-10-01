@@ -331,6 +331,31 @@ async function resolveWithoutCommit(
   }
 
   const snapshot = await provider.inspect(stored);
+
+  // Autorizada: tampoco se asienta desde aquí. Un retorno sin token no viene
+  // de quien pagó —llega sin `token_ws`, y lo puede fabricar la otra parte del
+  // trabajo—, y asentar lo que dice `status` gastaría la clave `commit:<token>`
+  // sin haber confirmado: el retorno normal vería el pago ya resuelto y no
+  // haría el `commit`. Si una autorización sin confirmar se revierte sola
+  // (PAGOS.md §9.4, sin zanjar en la documentación oficial), el trabajo
+  // quedaría pagado sin dinero detrás. La confirma quien sí puede: el retorno
+  // con `token_ws`, que llega en segundos, o la conciliación, que confirma
+  // antes de consultar.
+  if (snapshot.authorized) {
+    if (target.current) await recordSnapshot(admin, target.payment.id, provider.id, snapshot);
+    paymentLog({
+      operation: "return",
+      result: `${reason}:autorizada_sin_confirmar_aqui`,
+      paymentId: target.payment.id,
+      flow: flow.kind,
+    });
+    return {
+      kind: "PENDING",
+      payment: target.payment,
+      reason: "autorizada: la confirma el retorno normal o la conciliación",
+    };
+  }
+
   return resolveFromSnapshot(
     admin,
     provider.id,

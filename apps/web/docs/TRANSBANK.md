@@ -131,9 +131,10 @@ resuelve sin sesión de usuario (la cookie no siempre vuelve de Webpay; ver
 etiqueta `<img>`—. Por eso un retorno que solo trae la sesión o la orden de
 compra **no decide nada por sí mismo**: sirve para encontrar el intento, y lo
 que le pasó lo dice Transbank, consultado con el token que guardamos de ese
-intento (§4). Antes de 20260601001730 bastaba para dejar FAILED el pago que el
-cliente estaba pagando en Webpay, y la otra parte del trabajo recibía ese UUID
-de `assignment_payment_states`; hoy el trabajador lo recibe en nulo.
+intento (§4). Antes bastaba para dejar FAILED el pago que el cliente estaba
+pagando en Webpay (lo cerró `return-handler.ts`), y la otra parte del trabajo
+recibía ese UUID de `assignment_payment_states`; desde 20260601001730 el
+trabajador lo recibe en nulo.
 
 ---
 
@@ -146,7 +147,7 @@ POST. Atender solo uno deja un flujo entero sin recoger.
 | Flujo | Llega | Qué se hace | Estado final |
 |---|---|---|---|
 | **Normal** | `token_ws` | `commit` | `PAID` o `FAILED` |
-| **Tiempo agotado** | `TBK_ID_SESION`, `TBK_ORDEN_COMPRA` | `status` con el token **guardado** del intento, nunca `commit` | `FAILED` (`form_timeout`) solo si el estado es final y sin autorizar; si no, el estado real o nada |
+| **Tiempo agotado** | `TBK_ID_SESION`, `TBK_ORDEN_COMPRA` | `status` con el token **guardado** del intento, nunca `commit` | `FAILED` (`form_timeout`) solo si el estado es final y sin autorizar; si no, nada |
 | **Abortado** | `TBK_TOKEN`, `TBK_ID_SESION`, `TBK_ORDEN_COMPRA` | `status`, nunca `commit` | `FAILED` (`aborted_by_user`) o el estado real |
 | **Error / volver al sitio** | los cuatro | `status`, nunca `commit` | `FAILED` (`return_conflict`) o el estado real |
 
@@ -165,7 +166,13 @@ es de ningún intento nuestro vale lo mismo que ninguno: datos que cualquiera
 puede escribir. Con ellos se identifica el intento y se consulta a Transbank
 con el token que **guardamos** de ese intento (`payment_attempts.provider_token`):
 
-- autorizada → se asienta como cualquier autorización;
+- autorizada → **tampoco se asienta desde aquí**: este retorno no trae
+  `token_ws` y lo puede fabricar la otra parte del trabajo. Asentar lo que
+  dice `status` gastaría la clave `commit:<token>` sin haber hecho `commit`, y
+  el retorno de quien pagó vería el pago resuelto y no confirmaría; si una
+  autorización sin confirmar se revierte sola (§12, «Autorizaciones sin
+  commit»), el trabajo quedaría pagado sin dinero. La confirma el retorno con
+  `token_ws` o la conciliación, que confirma antes de consultar;
 - todavía abierta (`INITIALIZED`: el cliente sigue en el formulario) → no se
   toca nada; el pago sigue en curso y en la cola de conciliación;
 - cerrada sin autorizar → se registra el abandono, con ese token;

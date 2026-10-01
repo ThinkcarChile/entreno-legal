@@ -450,17 +450,46 @@ describe("retorno con solo la sesión: decide Transbank, no la URL", () => {
     expect(call.p_failure_reason).toBe("form_timeout");
   });
 
-  it("autorizada, se asienta como PAID por la vía del commit", async () => {
-    withProvider({ buyOrder: ORDER_1 });
+  it("autorizada, no se asienta desde aquí: el retorno con token_ws sigue confirmando", async () => {
+    // Un retorno sin token lo puede fabricar la otra parte del trabajo justo
+    // entre la autorización en Webpay y el retorno de quien pagó. Si lo que
+    // dice `status` se asentara aquí, gastaría la clave `commit:<token>` sin
+    // `commit`, y el retorno normal vería el pago resuelto y no confirmaría.
+    const inspect = withProvider({ buyOrder: ORDER_1 });
     const db = singleAttempt({ confirm_payment_result: settled("PAID", "PAID") });
+    const commit = vi.spyOn(provider, "confirmPayment");
 
     const outcome = await handleReturn(db.client(), timeout, null);
 
-    expect(outcome.kind).toBe("SETTLED");
+    expect(inspect).toHaveBeenCalledWith("tok-guardado");
+    expect(outcome.kind).toBe("PENDING");
+    expect(commit).not.toHaveBeenCalled();
+    expect(db.callsTo("confirm_payment_result")).toHaveLength(0);
     expect(db.callsTo("record_payment_abandonment")).toHaveLength(0);
+
+    // El retorno de quien pagó, con su token, confirma de verdad.
+    const paid: ConfirmPaymentResult = {
+      providerTransactionId: "tok-guardado",
+      providerEventId: "commit:tok-guardado",
+      status: "PAID" as ConfirmPaymentResult["status"],
+      amount: { amount: AMOUNT, currency: "CLP" },
+      authorizationCode: "1213",
+      cardLastDigits: "6623",
+      paymentTypeCode: "VN",
+      installments: 0,
+      transactionDate: new Date().toISOString(),
+      settleable: true,
+      raw: {},
+      snapshot: snapshotOf("tok-guardado", { buyOrder: ORDER_1 }),
+    };
+    commit.mockResolvedValueOnce(paid);
+
+    const normal = await handleReturn(db.client(), { kind: "NORMAL", token: "tok-guardado" }, null);
+
+    expect(commit).toHaveBeenCalledWith({ token: "tok-guardado" });
+    expect(normal.kind).toBe("SETTLED");
     const [call] = db.callsTo("confirm_payment_result");
     expect(call.p_result).toBe("PAID");
-    expect(call.p_token).toBe("tok-guardado");
     expect(call.p_provider_event_id).toBe("commit:tok-guardado");
   });
 
