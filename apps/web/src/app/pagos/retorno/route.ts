@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { classifyReturn } from "@/lib/payments";
 import { handleReturn } from "@/lib/payments/return-handler";
+import { returnTargetFor } from "@/lib/payments/return-target";
 import { errorCategory, paymentLog } from "@/lib/payments/logging";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -63,7 +64,7 @@ async function handle(request: NextRequest, values: Record<string, string | null
 
   // Sin sesión: a entrar, y de vuelta al resultado de su pago.
   if (!viewer) {
-    const target = owner ? targetFor(outcome) : "/mis-trabajos/publicados";
+    const target = owner ? returnTargetFor(outcome) : "/mis-trabajos/publicados";
     return NextResponse.redirect(`${origin}/entrar?next=${encodeURIComponent(target)}`);
   }
 
@@ -74,45 +75,7 @@ async function handle(request: NextRequest, values: Record<string, string | null
     return NextResponse.redirect(`${origin}/mis-trabajos/publicados?pago=desconocido`);
   }
 
-  return NextResponse.redirect(`${origin}${targetFor(outcome)}`);
-}
-
-/** Ruta interna del resultado, para el dueño del pago. */
-function targetFor(outcome: Awaited<ReturnType<typeof handleReturn>>): string {
-  switch (outcome.kind) {
-    case "SETTLED":
-      return outcome.settlement.paymentStatus === "PAID"
-        ? `/mis-trabajos/${outcome.payment.assignment_id}?pago=ok`
-        : outcome.settlement.jobStatus === "CANCELLED"
-          ? `/mis-trabajos/publicados/${outcome.payment.job_id}?pago=cancelado`
-          : `/pagar/${outcome.payment.assignment_id}?pago=rechazado`;
-
-    case "REVIEW":
-      return `/mis-trabajos/publicados/${outcome.payment.job_id}?pago=revision`;
-
-    case "ABANDONED":
-      return `/pagar/${outcome.payment.assignment_id}?pago=${
-        outcome.reason === "form_timeout"
-          ? "tiempo"
-          : outcome.reason === "aborted_by_user"
-            ? "cancelado"
-            : "incompleto"
-      }`;
-
-    case "PENDING":
-      return `/mis-trabajos/publicados/${outcome.payment.job_id}?pago=verificando`;
-
-    case "ALREADY":
-      return outcome.payment.assignment_id
-        ? `/mis-trabajos/${outcome.payment.assignment_id}?pago=ok`
-        : "/mis-trabajos/publicados?pago=ok";
-
-    case "FORBIDDEN":
-      return "/mis-trabajos/publicados?pago=error";
-
-    default:
-      return "/mis-trabajos/publicados?pago=desconocido";
-  }
+  return NextResponse.redirect(`${origin}${returnTargetFor(outcome)}`);
 }
 
 export async function GET(request: NextRequest) {

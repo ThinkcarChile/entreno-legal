@@ -86,10 +86,37 @@ export default async function ClientJobDetailPage({ params, searchParams }: Page
             )}
           </header>
 
-          {pago === "revision" && (
+          {pago === "revision" && (cancellationPending || job.status === JobStatus.CANCELLED) && (
             <Alert tone="warning" title="Recibimos un pago después de tu cancelación">
               El proveedor confirmó el cobro cuando el trabajo ya estaba cancelándose. No habilita
               el trabajo: queda registrado para devolución y te avisaremos cuando se resuelva.
+            </Alert>
+          )}
+
+          {/*
+            Revisión por otra causa: el cobro llegó pero algo no cuadró (importe,
+            orden de compra, un pago que ya había fallado). No es una cancelación,
+            y decir que lo era confundía.
+          */}
+          {pago === "revision" && !cancellationPending && job.status !== JobStatus.CANCELLED && (
+            <Alert tone="warning" title="Tu pago quedó en revisión">
+              Recibimos el cobro, pero algo no cuadró y no lo dimos por bueno: el trabajo todavía no
+              se habilita. No vuelvas a pagar; lo estamos revisando y te avisaremos.
+            </Alert>
+          )}
+
+          {pago === "verificando" && (
+            <Alert tone="info" title="Estamos verificando tu pago">
+              Todavía no sabemos qué pasó con tu pago. <strong>No vuelvas a pagar mientras
+              verificamos</strong>: si el cobro se hizo, lo verás reflejado en unos minutos.
+            </Alert>
+          )}
+
+          {pago === "duplicado" && (
+            <Alert tone="warning" title="Recibimos un segundo cobro por este trabajo">
+              El trabajo ya estaba pagado y tu banco autorizó otro pago. Ese cobro de más quedó
+              registrado para devolución y lo revisa la administración; no tienes que volver a
+              pagar.
             </Alert>
           )}
 

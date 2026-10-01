@@ -192,6 +192,10 @@ que ve administración. Pruebas: `supabase/tests/11_payment_health.sql`
 | Misma confirmación dos veces, en secuencia | Primera `applied`, segunda `duplicate`. Un evento, un payout |
 | Misma confirmación dos veces, **a la vez** | Igual: la segunda espera el bloqueo del pago y encuentra el evento registrado |
 | Aprobada y cancelación **a la vez** | Gana quien toma el bloqueo del trabajo primero. Si gana el pago: `PAID` + payout y la cancelación se rechaza. Si gana la cancelación: `UNDER_REVIEW` sin payout y trabajo `CANCELLED`. **Nunca las dos**, nunca a medias |
+| Autorizada pero **no cuadra** (orden de compra, sesión, código de autorización) | `UNDER_REVIEW` con el motivo, **sin pasar por `PAID`**: ni trabajo habilitado, ni asignación confirmada, ni payout, ni aviso al trabajador (migración `20260601001010`) |
+| Autorizada en un **intento anterior** cuando el pago ya tenía el dinero de otro | Cobro duplicado: el intento queda `DOUBLE_CHARGE` con motivo, evento, auditoría y aviso a administración. Pago, trabajo y payout no cambian |
+| Autorizada en un intento anterior cuando el pago aún no tenía dinero | Ese intento paga: el pago pasa a apuntar a su token y se asienta como siempre. Si después cobra el otro, ese es el duplicado |
+| Retorno sin cobro (abandono, tiempo agotado) de un **intento anterior** | Solo ese intento queda `FAILED`. El pago sigue con el intento vigente, que puede aprobarse con normalidad (antes caía en `approved_after_failed`) |
 
 Resultados de las carreras, tal como se ejecutaron:
 
@@ -236,7 +240,8 @@ dónde apoyarse (`provider_event_id`, `captured_at`, `review_reason`).
 | `CANCELLATION_PENDING` | «Cancelación en verificación» y **«Estamos verificando el estado del pago antes de completar la cancelación.»** Sin botón de pagar, sin botón de cancelar otra vez | Mismo aviso, con «No inicies el trabajo». Sin acciones de avance |
 | `CANCELLED` + pago `UNDER_REVIEW` | «Trabajo cancelado · devolución pendiente»: el proveedor confirmó el cobro después; el importe está registrado para devolución | «El pago que llegó después no lo habilita y no genera un pago para ti» |
 | `CANCELLED` sin dinero | «Trabajo cancelado» | «El cliente canceló este trabajo» |
-| Vuelta del proveedor | `?pago=ok` (confirmado), `?pago=revision` (llegó tras la cancelación), `?pago=cancelado` (rechazado y cancelación completada), `?pago=rechazado` | — |
+| Vuelta del proveedor (pago del trabajo) | `?pago=ok` (confirmado), `?pago=revision` (llegó tras la cancelación, o el cobro no cuadró: el aviso depende del estado del trabajo), `?pago=cancelado` (rechazado y cancelación completada), `?pago=rechazado`, `?pago=verificando` (sin respuesta en firme: no volver a pagar), `?pago=duplicado` (un segundo cobro quedó registrado para devolución) | — |
+| Vuelta del proveedor (tiempo adicional) | Siempre en la página de la asignación, nunca en la pantalla de pago del trabajo: `?pago=extension-ok`, `extension-rechazado`, `extension-cancelado`, `extension-tiempo`, `extension-incompleto`, `extension-verificando`, `extension-revision`, `extension-duplicado`. Solo `extension-ok` dice que está pagado, y solo cuando lo está | — |
 
 Lo que **no** se muestra nunca: «Cancelado» antes de que sea definitivo, «Pago
 protegido» sobre un pago que se va a devolver, botones de iniciar el trabajo
@@ -262,6 +267,8 @@ es legible para ninguna sesión.
 | `supabase/tests/07_race_payment.sh` | R10 duplicado simultáneo, R11 aprobación contra cancelación, R12 invariantes. `RACE_REPS` repeticiones (5 por defecto), dos sesiones `psql` reales |
 | `scripts/verify-payments.ts` | Lo mismo contra `hagotufila-dev`, con `DelayedMockPaymentProvider` y `applyProviderResult` —las piezas que usa la aplicación— hablando con PostgREST. `RACE_REPS=10 npm run verify:payments` |
 | `supabase/tests/11_payment_health.sql` | L01–L44: la §4 bis. Devolución total, revisión, devolución sin respuesta y cifras que no cuadran frente a aprobar, resolver y transferir; el ambiente de cada cobro (el del trabajo y el del tiempo adicional) y la bandera `allow_non_production_payouts` |
+| `supabase/tests/13_payment_attempts.sql` | N01–N47: historial de intentos, guardas del reintento, cobro duplicado, retornos sin cobro de otro intento, revisión sin pasar por `PAID`, cola y vencimiento de intentos (también el vigente con commit pedido, y su autorización tardía), privilegios |
+| `src/lib/payments/return-handler.test.ts`, `reconcile.test.ts`, `return-target.test.ts` | Qué intento resuelve cada retorno, cuándo se llama al banco, con qué identidad se asienta, el barrido de intentos anteriores y a qué pantalla vuelve cada resultado según lo pagado |
 
 Sin `sleep` en ninguna: en SQL serializan los bloqueos de fila; en Node, la
 barrera del proveedor.
@@ -284,6 +291,13 @@ trabajo vivo y la asignación sin cancelar. Lo único que produce al confirmarse
 es que el payout existente sube —importe menos comisión—; no habilita nada, no
 cambia el estado del trabajo y no crea un payout nuevo. Si la extensión no está
 aceptada, el pago va a `UNDER_REVIEW` con `review_reason = 'extension_not_accepted'`.
+
+Al volver de Webpay, el cobro de la extensión va a la página de la asignación
+con sus propios avisos (`?pago=extension-…`), nunca a `/pagar/{asignación}`:
+esa pantalla es la del pago del trabajo, que ya está pagado, y redirigía a
+«Pago confirmado» aunque el cobro adicional se hubiera rechazado o abandonado.
+Un cobro adicional rechazado se puede reintentar: el intento fallido ya no
+bloquea uno nuevo (`register_payment_attempt`, migración `20260601001000`).
 
 Ver `docs/EJECUCION.md` §7.
 

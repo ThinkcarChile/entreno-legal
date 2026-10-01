@@ -224,11 +224,11 @@ select
 
 | Columna | Valor esperado |
 |---|---|
-| `tablas` | 32 |
-| `vistas` | 5 |
-| `funciones_rpc` | 16 |
-| `enums` | 19 |
-| `politicas_rls` | 73 |
+| `tablas` | 35 |
+| `vistas` | 7 |
+| `funciones_rpc` | 46 |
+| `enums` | 24 |
+| `politicas_rls` | 76 |
 | `comunas` | 346 |
 | `buckets` | 5 |
 | `comision_pb` | 1400 |

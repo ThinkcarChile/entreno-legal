@@ -2,11 +2,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { getPaymentProviderForExistingPayments } from "./index";
 import { errorCategory, paymentLog } from "./logging";
-import { recordSnapshot } from "./checkout";
-import { handleReturn } from "./return-handler";
-import { applyProviderResult } from "./settle";
-import { findMismatches } from "./transbank/mapping";
-import { isReconcilable, type ProviderSnapshot } from "./provider";
+import {
+  findTargetByToken,
+  handleReturn,
+  resolveFromSnapshot,
+  type ReturnOutcome,
+} from "./return-handler";
+import { isReconcilable, type PaymentProvider, type ReconcilableProvider } from "./provider";
 
 /**
  * Conciliación.
@@ -17,11 +19,15 @@ import { isReconcilable, type ProviderSnapshot } from "./provider";
  * y el retorno —se le acaba la batería, cambia de red, cierra la pestaña—
  * nadie le va a contar a la plataforma lo que pasó. Hay que preguntarlo.
  *
- * Esta función pregunta. Toma los pagos sin estado final, consulta su estado
- * real en el proveedor y los asienta por la MISMA vía que el retorno:
+ * Esta función pregunta. Toma los pagos sin estado final y, además, los
+ * intentos anteriores de cada pago que nunca se resolvieron —el token de una
+ * pestaña de Webpay que quedó abierta, o el de un `commit` que se cortó en la
+ * red antes de que el cliente volviera a pagar—. Consulta su estado real en el
+ * proveedor y los asienta por la MISMA vía que el retorno:
  * `confirm_payment_result`, con sus bloqueos y sus invariantes. No hay un
  * camino corto que salte las comprobaciones porque el dinero se haya
- * encontrado por aquí.
+ * encontrado por aquí. Un intento anterior autorizado sobre un pago que ya
+ * tenía su dinero queda registrado como cobro duplicado, para devolverlo.
  *
  * Es idempotente de punta a punta: la clave del evento es la misma que usaría
  * el `commit` del mismo token, así que conciliar un pago ya asentado por el
@@ -29,8 +35,8 @@ import { isReconcilable, type ProviderSnapshot } from "./provider";
  * segunda notificación.
  *
  * Webpay responde por una transacción durante **7 días**. Pasado ese plazo, un
- * pago sin resolver ya no se puede conciliar automáticamente y necesita a una
- * persona; la consulta que alimenta esto lo tiene en cuenta.
+ * pago o un intento sin resolver ya no se puede conciliar automáticamente y
+ * necesita a una persona; `expire_stale_payments` lo lleva hasta ella.
  */
 
 export interface ReconcileOptions {
@@ -43,6 +49,8 @@ export interface ReconcileOptions {
 
 export interface ReconcileResult {
   paymentId: string;
+  /** Número del intento, cuando lo conciliado es un intento anterior del pago. */
+  attempt?: number;
   before: string;
   after: string;
   outcome:
@@ -51,16 +59,22 @@ export interface ReconcileResult {
     | "still_pending"
     | "failed"
     | "under_review"
+    | "double_charge"
     | "unreachable"
     | "skipped";
   reason?: string;
 }
 
 export interface ReconcileSummary {
+  /** Transacciones consultadas: las de los pagos y las de sus intentos anteriores. */
   examined: number;
   changed: number;
   /** Pagos que cruzaron la ventana y se cerraron o pasaron a revisión. */
   expired: number;
+  /** De las examinadas, cuántas eran intentos anteriores (ya no vigentes). */
+  attemptsExamined: number;
+  /** Cobros duplicados descubiertos en esta pasada: hay que devolverlos. */
+  doubleCharges: number;
   results: ReconcileResult[];
 }
 
@@ -81,6 +95,19 @@ interface PendingRow {
   review_reason: string | null;
 }
 
+interface PendingAttemptRow {
+  attempt_id: string;
+  payment_id: string;
+  attempt: number;
+  payment_status: string;
+  provider: string;
+  environment: string | null;
+  buy_order: string;
+  created_at: string;
+}
+
+type Reconcilable = PaymentProvider & ReconcilableProvider;
+
 /**
  * Recorre la cola y resuelve lo que se pueda.
  *
@@ -94,30 +121,34 @@ export async function reconcilePayments(
   const provider = getPaymentProviderForExistingPayments();
 
   if (!isReconcilable(provider)) {
-    return { examined: 0, changed: 0, expired: 0, results: [] };
+    return { examined: 0, changed: 0, expired: 0, attemptsExamined: 0, doubleCharges: 0, results: [] };
   }
 
   const pending = await loadQueue(admin, options);
   const results: ReconcileResult[] = [];
-  let changed = 0;
 
   for (const row of pending) {
     // Un pago creado en integración no se pregunta jamás contra producción, ni
     // al revés: serían dos transacciones distintas con el mismo identificador.
     if (row.environment && row.environment !== provider.environment) {
+      results.push(otherEnvironment(row.payment_id, row.status, row.environment, provider));
+      continue;
+    }
+    results.push(await reconcileOne(admin, provider, row));
+  }
+
+  // Los intentos anteriores que nadie resolvió. Antes no existían para la
+  // conciliación: su token se había sobrescrito.
+  const attempts = await loadAttemptQueue(admin, options);
+  for (const row of attempts) {
+    if (row.environment && row.environment !== provider.environment) {
       results.push({
-        paymentId: row.payment_id,
-        before: row.status,
-        after: row.status,
-        outcome: "skipped",
-        reason: `el pago es del ambiente ${row.environment} y el proveedor activo es ${provider.environment}`,
+        ...otherEnvironment(row.payment_id, row.payment_status, row.environment, provider),
+        attempt: row.attempt,
       });
       continue;
     }
-
-    const result = await reconcileOne(admin, provider, row);
-    results.push(result);
-    if (result.before !== result.after) changed += 1;
+    results.push(await reconcileAttempt(admin, provider, row));
   }
 
   // Los que cruzaron la ventana: fuera de ella el proveedor ya no responde, así
@@ -125,13 +156,41 @@ export async function reconcilePayments(
   // auditoría. Sin esto se quedaban colgados para siempre, invisibles.
   const expired = options.paymentId ? 0 : await expireStale(admin);
 
+  const changed = results.filter((r) => r.before !== r.after).length;
+  const doubleCharges = results.filter((r) => r.outcome === "double_charge").length;
+  const examined = pending.length + attempts.length;
+
   paymentLog({
     operation: "reconcile",
-    result: `examinados:${pending.length} cambiados:${changed} expirados:${expired}`,
+    result:
+      `examinados:${examined} intentos:${attempts.length} cambiados:${changed} ` +
+      `duplicados:${doubleCharges} expirados:${expired}`,
     environment: provider.environment,
   });
 
-  return { examined: pending.length, changed, expired, results };
+  return {
+    examined,
+    changed,
+    expired,
+    attemptsExamined: attempts.length,
+    doubleCharges,
+    results,
+  };
+}
+
+function otherEnvironment(
+  paymentId: string,
+  status: string,
+  environment: string,
+  provider: Reconcilable,
+): ReconcileResult {
+  return {
+    paymentId,
+    before: status,
+    after: status,
+    outcome: "skipped",
+    reason: `el pago es del ambiente ${environment} y el proveedor activo es ${provider.environment}`,
+  };
 }
 
 async function loadQueue(
@@ -178,7 +237,28 @@ async function loadQueue(
 }
 
 /**
- * Antigüedad mínima del último intento para que la conciliación lo CONFIRME.
+ * Los intentos anteriores sin resolver. Si la cola no se puede leer, se dice
+ * en el registro y la pasada sigue: lo ya conciliado de los pagos no se tira
+ * por esto, y la próxima pasada lo vuelve a intentar.
+ */
+async function loadAttemptQueue(
+  admin: SupabaseClient,
+  options: ReconcileOptions,
+): Promise<PendingAttemptRow[]> {
+  const { data, error } = await admin.rpc("payment_attempts_pending_reconciliation", {
+    p_older_than_minutes: options.olderThanMinutes ?? 5,
+    p_limit: options.limit ?? 50,
+    p_payment_id: options.paymentId ?? null,
+  });
+  if (error) {
+    paymentLog({ operation: "reconcile", result: "attempts_queue_failed", reason: error.message });
+    return [];
+  }
+  return (data ?? []) as PendingAttemptRow[];
+}
+
+/**
+ * Antigüedad mínima del intento para que la conciliación lo CONFIRME.
  *
  * Webpay mantiene abierto su formulario hasta 10 minutos (documentación oficial,
  * «Timeout»). Confirmar antes podría cruzarse con alguien que todavía está
@@ -187,12 +267,20 @@ async function loadQueue(
  */
 const COMMIT_AFTER_MS = 15 * 60_000;
 
+/** Un token que hay que resolver: el vigente de un pago o el de un intento anterior. */
+interface TokenToReconcile {
+  paymentId: string;
+  attempt?: number;
+  before: string;
+  token: string;
+  committedAt: string | null;
+  /** Desde cuándo existe el token; de ahí se cuenta el margen para confirmar. */
+  since: string;
+}
+
 async function reconcileOne(
   admin: SupabaseClient,
-  provider: ReturnType<typeof getPaymentProviderForExistingPayments> & {
-    environment: string;
-    inspect: (token: string) => Promise<ProviderSnapshot>;
-  },
+  provider: Reconcilable,
   row: PendingRow,
 ): Promise<ReconcileResult> {
   // El token no sale de la cola: se lee aquí, con la clave de servicio, y no
@@ -203,8 +291,7 @@ async function reconcileOne(
     .eq("id", row.payment_id)
     .maybeSingle<{ provider_token: string | null; committed_at: string | null; updated_at: string }>();
 
-  const token = tokenRow?.provider_token;
-  if (!token) {
+  if (!tokenRow?.provider_token) {
     return {
       paymentId: row.payment_id,
       before: row.status,
@@ -214,6 +301,57 @@ async function reconcileOne(
     };
   }
 
+  return reconcileToken(admin, provider, {
+    paymentId: row.payment_id,
+    before: row.status,
+    token: tokenRow.provider_token,
+    committedAt: tokenRow.committed_at,
+    since: tokenRow.updated_at,
+  });
+}
+
+async function reconcileAttempt(
+  admin: SupabaseClient,
+  provider: Reconcilable,
+  row: PendingAttemptRow,
+): Promise<ReconcileResult> {
+  const { data: tokenRow } = await admin
+    .from("payment_attempts")
+    .select("provider_token,committed_at,token_at,created_at")
+    .eq("id", row.attempt_id)
+    .maybeSingle<{
+      provider_token: string | null;
+      committed_at: string | null;
+      token_at: string | null;
+      created_at: string;
+    }>();
+
+  if (!tokenRow?.provider_token) {
+    return {
+      paymentId: row.payment_id,
+      attempt: row.attempt,
+      before: row.payment_status,
+      after: row.payment_status,
+      outcome: "skipped",
+      reason: "sin token del proveedor",
+    };
+  }
+
+  return reconcileToken(admin, provider, {
+    paymentId: row.payment_id,
+    attempt: row.attempt,
+    before: row.payment_status,
+    token: tokenRow.provider_token,
+    committedAt: tokenRow.committed_at,
+    since: tokenRow.token_at ?? tokenRow.created_at,
+  });
+}
+
+async function reconcileToken(
+  admin: SupabaseClient,
+  provider: Reconcilable,
+  item: TokenToReconcile,
+): Promise<ReconcileResult> {
   // Nunca confirmado: se CONFIRMA antes de solo consultar.
   //
   // La documentación del proyecto (PAGOS.md §9.4) dice que una autorización
@@ -222,188 +360,137 @@ async function reconcileOne(
   // está resuelta y se sigue con la consulta de estado de siempre. Se usa el
   // mismo camino que el retorno (`handleReturn`), con sus bloqueos y su clave
   // de idempotencia `commit:<token>`, así que no hay un segundo modo de asentar.
-  if (
-    tokenRow &&
-    !tokenRow.committed_at &&
-    Date.now() - new Date(tokenRow.updated_at).getTime() > COMMIT_AFTER_MS
-  ) {
+  // Vale igual para el token de un intento anterior: `handleReturn` lo busca
+  // en el historial.
+  if (!item.committedAt && Date.now() - new Date(item.since).getTime() > COMMIT_AFTER_MS) {
     try {
-      const outcome = await handleReturn(admin, { kind: "NORMAL", token }, null);
-      if (outcome.kind === "SETTLED" || outcome.kind === "REVIEW" || outcome.kind === "ALREADY") {
-        const { data: after } = await admin
-          .from("payments")
-          .select("status")
-          .eq("id", row.payment_id)
-          .maybeSingle<{ status: string }>();
-        return {
-          paymentId: row.payment_id,
-          before: row.status,
-          after: after?.status ?? row.status,
-          outcome:
-            outcome.kind === "REVIEW"
-              ? "under_review"
-              : outcome.kind === "ALREADY"
-                ? "already"
-                : after?.status === "FAILED"
-                  ? "failed"
-                  : "settled",
-          reason: "confirmado por la conciliación",
-        };
+      const outcome = await handleReturn(admin, { kind: "NORMAL", token: item.token }, null);
+      if (outcome.kind !== "PENDING" && outcome.kind !== "NOT_FOUND" && outcome.kind !== "FORBIDDEN") {
+        return resultOf(admin, item, outcome, "confirmado por la conciliación");
       }
       // PENDING u otro: sin respuesta en firme, se sigue con la consulta.
     } catch (error) {
       paymentLog({
         operation: "reconcile",
         result: "commit_failed",
-        paymentId: row.payment_id,
-        token,
+        paymentId: item.paymentId,
+        token: item.token,
         errorCategory: errorCategory(error),
       });
     }
   }
 
-  let snapshot: ProviderSnapshot;
+  const target = await findTargetByToken(admin, item.token);
+  if (!target) {
+    return {
+      paymentId: item.paymentId,
+      attempt: item.attempt,
+      before: item.before,
+      after: item.before,
+      outcome: "skipped",
+      reason: "el token ya no corresponde a ningún pago",
+    };
+  }
+
+  let snapshot;
   try {
-    snapshot = await provider.inspect(token);
+    snapshot = await provider.inspect(item.token);
   } catch (error) {
     // Que el proveedor no conteste no cambia nada: el pago sigue en la cola y
     // se vuelve a intentar. Jamás se da por fallido por no poder preguntar.
     paymentLog({
       operation: "reconcile",
       result: "unreachable",
-      paymentId: row.payment_id,
-      token,
+      paymentId: item.paymentId,
+      token: item.token,
       errorCategory: errorCategory(error),
     });
     return {
-      paymentId: row.payment_id,
-      before: row.status,
-      after: row.status,
+      paymentId: item.paymentId,
+      attempt: item.attempt,
+      before: item.before,
+      after: item.before,
       outcome: "unreachable",
       reason: errorCategory(error),
     };
   }
 
-  await recordSnapshot(admin, row.payment_id, provider.id, snapshot);
-
-  // Sigue en vuelo: el proveedor no ha cerrado la transacción. Se deja como
-  // está y se volverá a preguntar.
-  //
-  // La condición mira `terminal`, no solo `INITIALIZED`: un estado ausente o
-  // uno que no conocemos tampoco es una respuesta en firme, y cerrarlo como
-  // fallido sería decidir por el banco antes que el banco.
-  if (!snapshot.authorized && snapshot.terminal === false) {
-    return {
-      paymentId: row.payment_id,
-      before: row.status,
-      after: row.status,
-      outcome: "still_pending",
-    };
-  }
-
-  if (!snapshot.authorized) {
-    const { error } = await admin.rpc("record_payment_abandonment", {
-      p_payment_id: row.payment_id,
-      p_provider: provider.id,
-      p_failure_reason: "reconciled_not_authorized",
-      p_details: {
-        provider_status: snapshot.providerStatus,
-        response_code: snapshot.responseCode,
-      },
-    });
-    if (error) throw new Error(`No se pudo cerrar el pago no autorizado: ${error.message}`);
-
-    paymentLog({
-      operation: "reconcile",
-      result: "not_authorized",
-      paymentId: row.payment_id,
-      token,
-    });
-    return {
-      paymentId: row.payment_id,
-      before: row.status,
-      after: "FAILED",
-      outcome: "failed",
-    };
-  }
-
-  /* ------------------------------------------------------------ autorizado */
-
-  const problems = findMismatches(
-    {
-      vci: snapshot.vci,
-      amount: snapshot.amount,
-      status: snapshot.providerStatus,
-      buyOrder: snapshot.buyOrder,
-      sessionId: snapshot.sessionId,
-      cardLastDigits: snapshot.cardLastDigits,
-      accountingDate: snapshot.accountingDate,
-      transactionDate: snapshot.transactionDate,
-      authorizationCode: snapshot.authorizationCode,
-      paymentTypeCode: snapshot.paymentTypeCode,
-      responseCode: snapshot.responseCode,
-      installmentsAmount: snapshot.installmentsAmount,
-      installmentsNumber: snapshot.installmentsNumber,
-      balance: snapshot.balance,
-    },
-    {
-      amount: row.amount,
-      buyOrder: row.buy_order ?? "",
-      sessionId: row.session_id ?? "",
-    },
+  // Autorizada, en vuelo o cerrada sin autorizar: lo decide el mismo código
+  // que el retorno, sobre el intento al que pertenece el token. Un descuadre
+  // va a revisión sin pasar por PAID; un intento anterior rechazado no cierra
+  // el pago.
+  const outcome = await resolveFromSnapshot(
+    admin,
+    provider.id,
+    target,
+    snapshot,
+    "reconciled_not_authorized",
+    { source: "reconcile" },
   );
-
-  if (problems.length > 0) {
-    await admin
-      .from("payments")
-      .update({ status: "UNDER_REVIEW", review_reason: problems.join(",") })
-      .eq("id", row.payment_id)
-      .in("status", ["PENDING", "CREATED", "AUTHORIZED"]);
-
-    paymentLog({
-      operation: "reconcile",
-      result: "under_review",
-      paymentId: row.payment_id,
-      reason: problems.join(","),
-    });
-    return {
-      paymentId: row.payment_id,
-      before: row.status,
-      after: "UNDER_REVIEW",
-      outcome: "under_review",
-      reason: problems.join(","),
-    };
-  }
-
-  const settlement = await applyProviderResult(admin, row.payment_id, provider.id, {
-    providerTransactionId: snapshot.token,
-    // La MISMA clave que usaría el retorno. Es lo que hace que conciliar un
-    // pago ya asentado no produzca un segundo evento financiero.
-    providerEventId: `commit:${snapshot.token}`,
-    status: "PAID",
-    amount: { amount: snapshot.amount ?? row.amount, currency: "CLP" },
-    authorizationCode: snapshot.authorizationCode,
-    cardLastDigits: snapshot.cardLastDigits,
-    paymentTypeCode: snapshot.paymentTypeCode,
-    installments: snapshot.installmentsNumber,
-    transactionDate: snapshot.transactionDate,
-    raw: snapshot.raw,
-  });
 
   paymentLog({
     operation: "reconcile",
-    result: settlement.paymentStatus,
-    paymentId: row.payment_id,
-    token,
-    duplicate: settlement.outcome === "duplicate",
+    result: outcome.kind.toLowerCase(),
+    paymentId: item.paymentId,
+    token: item.token,
   });
+  return resultOf(admin, item, outcome);
+}
+
+/** El resultado del retorno, en el idioma de la conciliación. */
+async function resultOf(
+  admin: SupabaseClient,
+  item: TokenToReconcile,
+  outcome: ReturnOutcome,
+  note?: string,
+): Promise<ReconcileResult> {
+  const { data: after } = await admin
+    .from("payments")
+    .select("status")
+    .eq("id", item.paymentId)
+    .maybeSingle<{ status: string }>();
+  const afterStatus = after?.status ?? item.before;
+
+  let kind: ReconcileResult["outcome"];
+  let reason = note;
+  switch (outcome.kind) {
+    case "DOUBLE_CHARGE":
+      kind = "double_charge";
+      reason = outcome.reason;
+      break;
+    case "REVIEW":
+      kind = "under_review";
+      reason = outcome.reason;
+      break;
+    case "ALREADY":
+      kind = "already";
+      break;
+    case "PENDING":
+      kind = "still_pending";
+      break;
+    case "ABANDONED":
+      kind = "failed";
+      break;
+    case "SETTLED":
+      kind =
+        outcome.settlement.outcome === "duplicate"
+          ? "already"
+          : outcome.settlement.decision === "ATTEMPT_FAILED" || afterStatus === "FAILED"
+            ? "failed"
+            : "settled";
+      reason = outcome.settlement.reviewReason ?? note;
+      break;
+    default:
+      kind = "skipped";
+  }
 
   return {
-    paymentId: row.payment_id,
-    before: row.status,
-    after: settlement.paymentStatus,
-    outcome: settlement.outcome === "duplicate" ? "already" : "settled",
-    reason: settlement.reviewReason ?? undefined,
+    paymentId: item.paymentId,
+    attempt: item.attempt,
+    before: item.before,
+    after: afterStatus,
+    outcome: kind,
+    reason,
   };
 }
 
@@ -416,7 +503,9 @@ async function reconcileOne(
  * Los que estaban `PENDING` o `CREATED` se cierran como fallidos: el token de
  * Webpay muere a los cinco minutos, así que a los siete días no hubo cobro y el
  * cliente queda libre para volver a pagar. Los que estaban `AUTHORIZED` pasan a
- * revisión, porque ahí sí puede haber dinero y no se cierra solo.
+ * revisión, porque ahí sí puede haber dinero y no se cierra solo. Los intentos
+ * anteriores que salieron de la ventana sin resolverse se cierran igual, cada
+ * uno con su evento: a revisión si se pidió su commit.
  */
 async function expireStale(admin: SupabaseClient): Promise<number> {
   const { data, error } = await admin.rpc("expire_stale_payments", { p_limit: 100 });

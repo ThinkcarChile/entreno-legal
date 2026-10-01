@@ -14,6 +14,30 @@ export interface SettlementOutcome {
   jobStatus: string | null;
   assignmentStatus: string | null;
   payoutId: string | null;
+  /**
+   * Lo que decidió la base sobre ESTE resultado: `PAID`, `UNDER_REVIEW` o
+   * `FAILED` sobre el pago; `DOUBLE_CHARGE` si el intento cobró cuando el pago
+   * ya tenía el dinero de otro; `ATTEMPT_FAILED` si se rechazó un intento que
+   * ya no era el vigente (el pago no cambió). `null` en un duplicado.
+   */
+  decision: string | null;
+  /** Estado del intento después de asentar, si el pago tiene historial. */
+  attemptStatus: string | null;
+}
+
+/** De qué intento es el resultado, y qué comprobó la aplicación antes. */
+export interface SettlementContext {
+  /**
+   * Token de la transacción. Con él, la base identifica el intento y reconoce
+   * un segundo cobro; sin él, asienta sobre el intento vigente, como antes.
+   */
+  token?: string | null;
+  /**
+   * Motivo por el que la aplicación no da por buena una autorización (orden
+   * de compra, sesión, código de autorización). La base decide revisión desde
+   * el principio: nunca pasa por PAID ni habilita el trabajo.
+   */
+  reviewReason?: string | null;
 }
 
 /**
@@ -38,6 +62,7 @@ export async function applyProviderResult(
   paymentId: string,
   providerId: string,
   result: ConfirmPaymentResult,
+  context: SettlementContext = {},
 ): Promise<SettlementOutcome> {
   const claimed = result.status === "PAID" ? "PAID" : "FAILED";
 
@@ -59,8 +84,12 @@ export async function applyProviderResult(
       payment_type_code: result.paymentTypeCode,
       installments: result.installments,
       transaction_date: result.transactionDate,
+      // Para el historial del intento: el estado tal cual lo dio el proveedor.
+      provider_status: result.snapshot?.providerStatus ?? null,
       raw: result.raw,
     },
+    p_token: context.token ?? null,
+    p_review_reason: context.reviewReason ?? null,
   });
 
   if (error) throw new Error(`No se pudo asentar el resultado del pago: ${error.message}`);
@@ -73,5 +102,7 @@ export async function applyProviderResult(
     jobStatus: (row.job_status as string | null) ?? null,
     assignmentStatus: (row.assignment_status as string | null) ?? null,
     payoutId: (row.payout_id as string | null) ?? null,
+    decision: (row.decision as string | null) ?? null,
+    attemptStatus: (row.attempt_status as string | null) ?? null,
   };
 }

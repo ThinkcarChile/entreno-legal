@@ -65,16 +65,22 @@ las dos formas: lo que se verifica tiene que ser lo que se ejecuta.
 cliente pulsa «Pagar»
   → start_protected_payment (base: calcula el importe, bloquea, reutiliza o crea)
   → buildBuyOrder + buildSessionId
-  → register_payment_attempt  ← SE PERSISTE ANTES DE SALIR
+  → register_payment_attempt  ← SE PERSISTE ANTES DE SALIR (pago + payment_attempts)
   → Transaction.create(...)
-  → se guardan token y URL
+  → record_payment_attempt_token ← el token va a SU intento; al pago, si sigue vigente
   → /pagar/{id}/ir            ← página de transición
   → formulario POST con token_ws hacia Webpay
   ...
-  → /pagos/retorno            ← GET o POST, cuatro flujos
-  → Transaction.commit(token) (solo en el flujo normal)
-  → confirm_payment_result    ← ÚNICA vía de asentamiento
+  → /pagos/retorno            ← GET o POST, cuatro flujos; se busca el intento del token
+  → Transaction.commit(token) (solo en el flujo normal; antes se anota commit_requested_at)
+  → confirm_payment_result    ← ÚNICA vía de asentamiento, sobre ese intento
 ```
+
+Cada intento queda en `payment_attempts` con su orden de compra, su sesión, su
+número, su token, sus fechas y su resultado (`CREATED`, `FAILED`, `SETTLED`,
+`DOUBLE_CHARGE`, `UNDER_REVIEW`). El pago guarda el token del intento
+**vigente**; los anteriores no se sobrescriben nunca. Ver §11 «Reintentos y
+cobros posibles».
 
 ### Por qué el intento se persiste antes de llamar
 
@@ -143,6 +149,24 @@ Los tres flujos sin cobro pueden esconder una autorización real. Si hay token,
 se pregunta antes de darlos por perdidos; y si el proveedor dice que sí está
 autorizada, se asienta por la misma vía que el retorno normal.
 
+Un retorno sin cobro cierra **solo el intento que lo trae**. El retorno se
+identifica por su token o por su orden de compra —nunca solo por la sesión, que
+es la misma en todos los intentos del pago— y `record_payment_abandonment`
+vuelve a comprobar bajo cerrojo si es el intento vigente: solo entonces el pago
+pasa a `FAILED`. Antes, anular una pestaña antigua de Webpay marcaba fallido el
+intento que el cliente estaba pagando en otra, y su aprobación caía en revisión
+(`approved_after_failed`). Si un retorno trae solo la sesión y el pago tuvo
+varios intentos, no se toca nada: el intento en curso puede estar cobrándose.
+
+El retorno lleva al cliente a la pantalla que corresponde a **lo que pagó**: el
+cobro del trabajo vuelve a `/pagar/{asignación}` o a la página del trabajo; el
+cobro del tiempo adicional vuelve siempre a `/mis-trabajos/{asignación}` con
+avisos propios (`?pago=extension-ok`, `extension-rechazado`, `extension-cancelado`,
+`extension-tiempo`, `extension-incompleto`, `extension-verificando`,
+`extension-revision`, `extension-duplicado`). Antes, un cobro adicional
+rechazado volvía a la pantalla de pago del trabajo, que lo veía pagado y
+mostraba «Pago confirmado». El mapa está en `src/lib/payments/return-target.ts`.
+
 Plazos: el formulario dura **4 minutos en producción y 10 en integración**; el
 token creado caduca a los **5 minutos** si nadie lo usa.
 
@@ -163,7 +187,15 @@ dinero que no corresponde a este trabajo.
 Si está autorizada pero algo no cuadra → `UNDER_REVIEW` con el motivo concreto
 (`amount_mismatch`, `buy_order_mismatch`, `session_id_mismatch`,
 `missing_authorization_code`), **sin habilitar el trabajo y sin crear pago al
-trabajador**.
+trabajador**. La orden de compra y la sesión se comparan con las del intento al
+que pertenece el token, no con las del vigente.
+
+El motivo viaja a `confirm_payment_result` (`p_review_reason`) y la decisión es
+revisión **desde el principio**, nunca pasa por `PAID`. Hasta la migración
+`20260601001010` solo el importe iba directo a revisión: los demás descuadres se
+asentaban como `PAID` y después se movían a `UNDER_REVIEW`, y en ese paso
+`on_payment_paid` habilitaba el trabajo y le decía al trabajador «Ya puedes
+comenzar», aunque el payout se retuviera después.
 
 `vci` se guarda para auditoría y **no decide nunca**: es el resultado de la
 autenticación 3-D Secure, no la autorización financiera.
@@ -174,7 +206,7 @@ autenticación 3-D Secure, no la autorización financiera.
 
 | Operación | Clave | Cómo se construye |
 |---|---|---|
-| `create` | `payments.buy_order` | índice único; un intento nuevo estrena orden |
+| `create` | `payments.buy_order`, `payment_attempts.buy_order` | índices únicos; un intento nuevo estrena orden |
 | `commit` | `commit:<token>` | `payment_events (provider, provider_event_id)` |
 | `status` | `commit:<token>` | la misma que el commit, a propósito |
 | conciliación | `commit:<token>` | la misma; por eso conciliar no duplica |
@@ -204,6 +236,13 @@ devuelven lo que haya pasado con ella sin tocar el banco.
 **Que el `commit` y la conciliación compartan clave es el punto.** Un pago
 asentado por el retorno y luego conciliado no produce un segundo evento, ni un
 segundo pago al trabajador, ni una segunda notificación.
+
+Con el historial hay una segunda red: si el mismo token llega con otra clave
+(el proveedor simulado usa `evt-<token>` y la consulta de estado `commit:<token>`),
+`confirm_payment_result` ve que su intento ya está resuelto con dinero y
+contesta `duplicate`. Lo que no es un duplicado es un token **distinto** que
+cobra sobre un pago que ya tenía el dinero de otro intento: eso es un cobro
+duplicado de verdad (§7, «Los intentos anteriores»).
 
 ### Un estado provisional no gasta la clave
 
@@ -253,6 +292,30 @@ Transbank y los asienta por la misma vía que el retorno.
 - Que el proveedor no conteste **no cambia nada**: el pago sigue en la cola.
   Jamás se da por fallido por no poder preguntar.
 
+### Los intentos anteriores
+
+Después de la cola de pagos, `reconcilePayments()` recorre
+`payment_attempts_pending_reconciliation()`: los intentos sin resolver, con
+token, cuyo token **ya no es el del pago** —una pestaña de Webpay que quedó
+abierta, o un `commit` que se cortó en la red antes de que el cliente volviera
+a pagar— y dentro de la ventana. Ningún retorno los va a traer, así que se
+tratan exactamente como el token vigente: confirmar siempre si nunca recibió
+`commit` y tiene más de 15 minutos, consultar el estado si no, y asentar con
+`handleReturn` / `confirm_payment_result` sobre **su** intento.
+
+Lo que decide la base, bajo los cerrojos de siempre (jobs → assignments →
+payments → payment_attempts):
+
+| El intento anterior resulta… | y el pago… | Resultado |
+|---|---|---|
+| autorizado | ya tenía el dinero de otro intento (`PAID`, `UNDER_REVIEW`, devuelto) | **cobro duplicado**: el intento pasa a `DOUBLE_CHARGE` con motivo `double_charge`, queda un `payment_event` y una entrada de auditoría, y se avisa a cada administrador. El pago, el trabajo y el payout **no se tocan**: el trabajo se pagó una vez y bien |
+| autorizado | todavía no tenía dinero, en vuelo (`PENDING`, `CREATED`) | lo paga: el pago pasa a apuntar a ese token y esa orden de compra (para que una devolución vaya a la transacción que cobró) y se asienta por el camino de siempre |
+| autorizado | ya estaba `FAILED` | el pago pasa a apuntar a ese cobro y la guarda de liquidación lo deja en `UNDER_REVIEW` (`approved_after_failed`): no habilita nada y queda a la vista para devolverlo |
+| rechazado o abandonado | cualquiera | solo ese intento queda `FAILED`; el pago sigue con su intento vigente |
+
+El resumen de la pasada cuenta estas transacciones en `examined` y además las
+desglosa (`attemptsExamined`, `doubleCharges`).
+
 ### La ventana es configuración, no una constante
 
 `platform_settings.reconciliation_window_days` —7 por omisión, entre 1 y 90 por
@@ -275,6 +338,8 @@ lo saca de la cola **hacia una persona**, no hacia el olvido:
 |---|---|---|
 | `PENDING`, `CREATED` | `FAILED` con motivo `reconciliation_window_expired` | nunca hubo cobro que reclamar |
 | `AUTHORIZED` | `UNDER_REVIEW` | puede haber dinero cobrado: lo mira alguien |
+| intento anterior sin resolver | `FAILED`, o `UNDER_REVIEW` si se pidió su commit o el proveedor lo dio por autorizado | igual que los pagos, por intento; aparece en `/admin/pagos` |
+| intento **vigente** de un pago `PENDING`/`CREATED` que vence | el pago, `FAILED` como siempre; el intento, `UNDER_REVIEW` si se pidió su commit y nunca se resolvió | el cliente queda libre para volver a pagar, y el cobro posible no se pierde de vista |
 
 Cada expiración deja su `payment_event` y su fila en `audit_logs`, y vuelve a
 leer el pago bajo cerrojo antes de escribir, así que dos ejecuciones a la vez
@@ -669,9 +734,23 @@ select buy_order, amount, status, provider_status, response_code,
 
 ### «Me cobraron dos veces»
 
-Casi siempre son dos intentos y solo uno cobrado. En `/admin/pagos`, filtrar
-por el trabajo: debe haber **un solo** pago vivo. Si de verdad hay dos
-`PAID`, devolver uno (§ devoluciones) y abrir el caso.
+Casi siempre son dos intentos y solo uno cobrado. En `/admin/pagos`, filtro «En
+revisión»: un pago con un intento duplicado aparece ahí aunque esté `PAID`, con
+el aviso «Cobro de un intento por devolver», el número de intento y su **orden
+de compra**. La administración también recibe un aviso `PAYMENT_UNDER_REVIEW`
+en cuanto la base lo detecta (retorno o conciliación).
+
+1. «Consultar al proveedor» sobre el pago: también barre sus intentos anteriores.
+2. Buscar la orden de compra del intento duplicado en el portal de Transbank y
+   devolverla **desde allí**. El botón «Devolver» del panel actúa sobre el cobro
+   que pagó el trabajo (el token del pago), no sobre el duplicado: usarlo
+   devolvería el cobro bueno y retendría al trabajador.
+3. Anotar el caso. Hoy el panel no tiene una acción para dar por devuelto un
+   intento duplicado: el aviso sigue a la vista hasta que exista (pendiente,
+   ver §11 «Reintentos y cobros posibles»).
+
+Si de verdad hay dos **pagos** `PAID` del mismo trabajo (no dos intentos),
+devolver uno (§ devoluciones) y abrir el caso.
 
 ### Un pago lleva horas en `CREATED`
 
@@ -731,21 +810,50 @@ de una persona.
 
 ### Reintentos y cobros posibles
 
-Un pago cuyo intento anterior ya pasó por `commit`, o figura `AUTHORIZED`, no
-admite un intento nuevo (`register_payment_attempt`, migración
-`20260601000400`): el cliente ve «Tu pago anterior se está confirmando» y la
-conciliación lo cierra con el token que sigue en la fila. Antes, un asiento
-que fallaba después del commit dejaba el pago en `CREATED`, el reintento
-sobrescribía el token, y ese cobro quedaba sin rastro.
+Cada intento tiene su fila en `payment_attempts` (migración `20260601001000`):
+orden de compra, sesión, número, token, fechas y resultado. El token de un
+intento anterior **no se sobrescribe nunca**, así que un retorno o una
+conciliación que lo traigan lo encuentran (§4 y §7).
 
-**Riesgo abierto, a sabiendas.** Si el cliente deja una pestaña de Webpay
-abierta sin terminar, reintenta en otra, y después completa la primera, el
-retorno de la primera trae un token que ya no está en la fila: el pago se
-registra como desconocido. Cerrarlo de verdad exige guardar el historial de
-tokens por intento (una tabla de intentos), no una columna. Mientras tanto, la
-señal es un reclamo del cliente con un cobro que no aparece en `/admin/pagos`:
-se busca por orden de compra en el portal de Transbank y se devuelve desde
-allí.
+`register_payment_attempt` conserva su guarda, ahora mirada por intento: no se
+abre un intento nuevo mientras haya uno **sin resolver** cuyo `commit` se haya
+pedido o hecho, o que el proveedor haya dado por `AUTHORIZED`. El cliente ve
+«Tu pago anterior se está confirmando» y la conciliación lo cierra. Dos cambios
+respecto de `20260601000400`:
+
+- El retorno anota `commit_requested_at` en el intento **antes** de llamar a
+  `commit`. Si la respuesta se pierde en la red después de que Transbank la
+  procesara —el caso que antes dejaba reintentar y cobrar dos veces—, el
+  intento queda marcado y no se abre otro hasta saber en qué terminó. Si el
+  commit falla y la consulta de estado, hecha después, dice que la
+  transacción sigue sin cerrar (`INITIALIZED`), ese commit no cobró nada y la
+  marca se retira: es lo que pasa cuando la conciliación confirma un token
+  que nadie pagó, y sin retirarla el cliente no podría volver a pagar hasta
+  que el pago saliera de la ventana. Si el banco autorizara después, el token
+  sigue en el historial y la conciliación lo asienta o lo registra como
+  cobro duplicado.
+- Un intento ya resuelto sin dinero (`FAILED`) no bloquea. Antes las marcas de
+  commit del pago bloqueaban para siempre el reintento del **cobro de una
+  extensión rechazado**: `start_extension_payment` lo devuelve a `PENDING` y
+  `committed_at` seguía puesto.
+
+El intento nuevo empieza limpio en la fila del pago (token, URL, `committed_at`,
+estado del proveedor), para que la conciliación del pago confirme el token
+nuevo en vez de darlo por confirmado; lo del intento anterior sigue en el
+historial.
+
+Dos pestañas de Webpay a la vez ya no pierden dinero: si las dos terminan
+autorizadas, la primera que se asienta paga el trabajo y la otra queda como
+**cobro duplicado** (§7), a la vista de administración y con aviso.
+
+**Lo que falta, a sabiendas.** El cobro duplicado se detecta y se muestra, pero
+no se devuelve desde el panel: `request_payment_refund` y `payment_refunds`
+cuentan las devoluciones contra el importe del pago, y devolver ahí un intento
+duplicado descuadraría el pago que sí está bien (y retendría al trabajador).
+Hace falta una devolución por intento, con su propio registro; mientras tanto
+se devuelve desde el portal de Transbank con la orden de compra que muestra el
+panel. Los intentos perdidos **antes** de esta migración no se pueden
+recuperar: su token ya se había sobrescrito.
 
 ---
 
@@ -806,11 +914,17 @@ Se eligió el comportamiento que es correcto **en los dos casos**:
   recibió `commit`, si su último intento tiene más de 15 minutos (el
   formulario de Webpay dura hasta 10). Usa el mismo `handleReturn`, con la
   misma clave de idempotencia `commit:<token>`. Si no hay respuesta en firme,
-  sigue con la consulta de estado de siempre.
+  sigue con la consulta de estado de siempre. Vale igual para el token de un
+  intento anterior (§7, «Los intentos anteriores»).
 
 Si resulta que la confirmación no hacía falta, el segundo `commit` contesta que
 la transacción ya está resuelta y no cambia nada. Si sí hacía falta, es lo
-único que salva el cobro.
+único que salva el cobro. Y si el `commit` del retorno falla —ya estaba
+confirmado, o se cortó la red—, el retorno consulta el estado antes de rendirse
+y asienta con la misma clave; si tampoco contesta, el intento queda marcado
+(`commit_requested_at`) y en la cola. Si el estado dice `INITIALIZED`, el
+commit no llegó a cobrar y la marca se retira (§11, «Reintentos y cobros
+posibles»).
 
 La prueba e2e 8 cambió de expectativa en consecuencia («el retorno sin sesión
 confirma con el token y manda a entrar»). Sigue valiendo la pena medir en

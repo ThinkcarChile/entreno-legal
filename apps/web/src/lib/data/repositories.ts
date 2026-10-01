@@ -237,6 +237,13 @@ export interface AdminPayment {
   refundCount: number;
   disputeId: UUID | null;
   payoutId: UUID | null;
+  /**
+   * Intentos de este pago que esperan a una persona: un cobro duplicado por
+   * devolver, o uno que salió de la ventana con indicios de cobro.
+   */
+  attemptsInReview: number;
+  /** Cuáles: número de intento, orden de compra y motivo. */
+  attemptsReviewDetail: string | null;
   /** La devolución en curso o por confirmar, si la hay. Bloquea pedir otra. */
   openRefund: AdminOpenRefund | null;
 }
