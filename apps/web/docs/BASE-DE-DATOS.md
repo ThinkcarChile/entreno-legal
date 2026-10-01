@@ -290,11 +290,12 @@ publicar otro en 3 h 20 min.»). Cambiar un límite es un `update` sobre
 
 > Las verificaciones contra el proyecto alojado (`verify:execution`,
 > `verify:payments`, `verify:supabase`) publican y ofertan por el camino real,
-> con las mismas cuentas de control de calidad: entre las tres, unos 23
-> trabajos del mismo cliente y otras tantas ofertas del mismo trabajador. Una
-> pasada cabe en los valores por omisión; dos el mismo día, no. Para
-> repetirlas sobre `hagotufila-dev`, sube `rate_limit_jobs_per_day` y
-> `rate_limit_offers_per_hour` en ese proyecto. En producción, no.
+> con las mismas cuentas de control de calidad: con `RACE_REPS` en 5, 18 + 19 +
+> 2 trabajos del mismo cliente y casi otras tantas ofertas del mismo
+> trabajador, y más con `RACE_REPS=10`. Una pasada completa **no** cabe en los
+> valores por omisión: antes de la primera, sube `rate_limit_jobs_per_day` y
+> `rate_limit_offers_per_hour` en `hagotufila-dev` (`DESPLIEGUE-SUPABASE.md`
+> §8.1, con el `update` y las cuentas). En producción, no.
 
 El registro y el ingreso no pasan por aquí: los limita Supabase Auth, que se
 configura en el panel (`DESPLIEGUE-SUPABASE.md` §4.5).

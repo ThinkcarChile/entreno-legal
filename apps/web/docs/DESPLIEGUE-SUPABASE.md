@@ -458,6 +458,36 @@ E2E_ADMIN_PASSWORD=<contraseña>
 El script las crea si no existen, ya confirmadas, y le da el rol de
 administración a la última.
 
+**Antes de la primera pasada, sube los límites por persona en el proyecto de
+pruebas** (nunca en producción). Las verificaciones publican y ofertan por el
+camino real, con la sesión de estas mismas cuentas, y los límites de la
+migración `20260601001200` las cuentan como a cualquiera. Con los valores por
+omisión —30 trabajos en 24 horas y 30 ofertas por hora— una pasada completa no
+cabe:
+
+| Verificación | Trabajos de `qa.cliente` y ofertas de `qa.trabajador` |
+|---|---|
+| `verify:execution` | 8 + 2 × `RACE_REPS`: 18 con el valor por omisión (5), 28 con `RACE_REPS=10` |
+| `verify:payments` | 9 + 2 × `RACE_REPS`: 19 con el valor por omisión, 29 con `RACE_REPS=10` |
+| `verify:supabase` | 2 y 2 (las ofertas que deben fallar no cuentan: se deshacen) |
+| `e2e` (marketplace) | 1 y 1 |
+
+Solo `verify:execution` y `verify:payments` seguidas ya son 37 trabajos el
+mismo día y 37 ofertas en la misma hora. En el editor SQL de `hagotufila-dev`:
+
+```sql
+update public.platform_settings
+   set rate_limit_jobs_per_day = 500, rate_limit_offers_per_hour = 1000
+ where id;
+```
+
+Se queda así en ese proyecto; no hace falta repetirlo. Sin este paso, la
+verificación se corta a la mitad con «Alcanzaste el máximo de 30 trabajos
+publicados en 24 horas…» o con «…30 ofertas en una hora…», y las comprobaciones
+que esperan un `42501` reciben antes el `PT429` del límite (el disparador corre
+antes que la RLS). En producción los límites se dejan en los valores por
+omisión o más bajos (§9).
+
 ### 8.2 Verificación por API
 
 ```bash
@@ -584,7 +614,7 @@ llega es el de la otra persona hasta recargar.
 | El chat no actualiza sin recargar | La tabla `messages` no está en la publicación de Realtime |
 | "Falta la clave privada de Supabase" al pagar | Falta `SUPABASE_SECRET_KEY` |
 | `db push` falla al crear políticas de Storage | El rol no puede escribir en `storage.objects`: crea esas políticas desde **Storage → Policies** con las reglas de las migraciones `…000900`, `20260401000100` y `20260601001210` |
-| Publicar, ofertar o escribir responde «Alcanzaste el máximo…» o «Estás enviando mensajes muy seguido…» | Es el límite por persona (`platform_settings.rate_limit_*`). Si pasa en las verificaciones contra `hagotufila-dev`, súbelo en ese proyecto (`BASE-DE-DATOS.md`, «Límites por usuario») |
+| Publicar, ofertar o escribir responde «Alcanzaste el máximo…» o «Estás enviando mensajes muy seguido…» | Es el límite por persona (`platform_settings.rate_limit_*`). Si pasa en las verificaciones contra `hagotufila-dev`, faltó subirlo en ese proyecto (§8.1) |
 | Un trabajador verificado no puede ofertar | Revisa `worker_profiles.verification_status`; debe ser `VERIFIED` |
 | `db push` se queda colgado sin mensaje | El puerto 5432/6543 está bloqueado en tu red: usa `npm run db:push:hosted` (sección 3.b) |
 | Todas las páginas dan 500 con `PGRST205` | Hay credenciales pero el esquema no está aplicado: la aplicación habla con el proyecto y el proyecto está vacío |
