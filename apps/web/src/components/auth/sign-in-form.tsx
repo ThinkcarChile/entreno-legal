@@ -8,6 +8,7 @@ import { Alert } from "@/components/ui/feedback";
 import { Button, Field, Input } from "@/components/ui";
 import { signInAction } from "@/lib/actions/auth";
 import { signInSchema } from "@/lib/validation/auth";
+import { safeNextPath } from "@/lib/utils/safe-redirect";
 
 export function SignInForm() {
   const router = useRouter();
@@ -16,7 +17,8 @@ export function SignInForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const next = params.get("next") ?? "/trabajos";
+  // Solo rutas internas: un `?next=` externo llevaría fuera del sitio tras entrar.
+  const next = safeNextPath(params.get("next"));
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

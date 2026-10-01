@@ -8,6 +8,7 @@ import { Button, Field, Input, Select } from "@/components/ui";
 import { completeOnboardingAction } from "@/lib/actions/account";
 import { getCommunes, regions } from "@/lib/geo/chile";
 import { cn } from "@/lib/utils/cn";
+import { safeNextPath } from "@/lib/utils/safe-redirect";
 
 const modes = [
   {
@@ -73,8 +74,9 @@ export function OnboardingForm({
         if (result.field) setErrors({ [result.field]: result.error });
         return;
       }
-      const next = params.get("next");
-      router.push(values.wantsWorker ? "/cuenta/trabajador" : (next ?? "/trabajos"));
+      // Solo rutas internas: un `?next=` externo llevaría fuera del sitio.
+      const next = safeNextPath(params.get("next"));
+      router.push(values.wantsWorker ? "/cuenta/trabajador" : next);
       router.refresh();
     });
   }

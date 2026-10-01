@@ -405,3 +405,44 @@ begin
   raise notice '%', 'V37 el token del cobro posible se conserva = ' || v_token_antes
     || case when v_token_antes = 'token-del-cobro-posible' then '' else ' FALLO' end;
 end $$;
+
+\echo ''
+\echo '--- Nadie publica avisos del sistema desde su sesión'
+
+select c.id as v38_conv, a.worker_id as v38_w
+  from conversations c join assignments a on a.job_id = c.job_id limit 1 \gset
+
+create function pg_temp.escribir_como(p_user uuid, p_conv uuid, p_type public.message_type, p_body text)
+returns text language plpgsql as $$
+begin
+  perform pg_temp.como(p_user);
+  set local role authenticated;
+  insert into public.messages (conversation_id, sender_id, message_type, body)
+  values (p_conv, p_user, p_type, p_body);
+  reset role;
+  perform pg_temp.como(null);
+  return 'ACEPTADO';
+exception when others then
+  reset role;
+  perform pg_temp.como(null);
+  return 'RECHAZADO';
+end $$;
+
+select pg_temp.expect('V38 un participante no puede publicar un aviso del sistema',
+  pg_temp.escribir_como(:'v38_w', :'v38_conv', 'SYSTEM',
+    'HagoTuFila: el pago quedó retenido. Para liberarlo transfiere a la cuenta 123.'),
+  'RECHAZADO');
+select pg_temp.expect('V39 y sí puede escribir un mensaje de texto',
+  pg_temp.escribir_como(:'v38_w', :'v38_conv', 'TEXT', 'Hola, voy llegando.'), 'ACEPTADO');
+
+\echo ''
+\echo '--- Cada bucket admite solo lo que la aplicación admite'
+
+select pg_temp.expect('V40 buckets sin límite de tamaño o de tipo',
+  (select coalesce(string_agg(id, ', ' order by id), 'ninguno') from storage.buckets
+    where file_size_limit is null or allowed_mime_types is null), 'ninguno');
+select pg_temp.expect('V41 fotos de perfil: 4 MB y solo imágenes',
+  (select file_size_limit || ' · ' || array_to_string(allowed_mime_types, ',') from storage.buckets where id = 'avatars'),
+  '4194304 · image/jpeg,image/png,image/webp');
+select pg_temp.expect('V42 ningún bucket admite SVG',
+  (select count(*)::text from storage.buckets where 'image/svg+xml' = any(allowed_mime_types)), '0');

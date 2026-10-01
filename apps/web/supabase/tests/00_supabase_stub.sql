@@ -44,7 +44,9 @@ grant usage on schema auth to anon, authenticated, service_role;
 grant execute on function auth.uid() to anon, authenticated, service_role;
 
 create table storage.buckets (
-  id text primary key, name text not null, public boolean default false
+  id text primary key, name text not null, public boolean default false,
+  -- Igual que en Supabase: límite por archivo y tipos admitidos por bucket.
+  file_size_limit bigint, allowed_mime_types text[]
 );
 
 create table storage.objects (

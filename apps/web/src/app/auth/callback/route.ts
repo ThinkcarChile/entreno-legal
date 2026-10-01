@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { hasSupabaseCredentials } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import { safeNextPath } from "@/lib/utils/safe-redirect";
 
 /**
  * Retorno del enlace de confirmación de Supabase Auth.
@@ -10,7 +11,8 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/trabajos";
+  // Solo rutas internas: el parámetro lo controla quien arma el enlace.
+  const next = safeNextPath(searchParams.get("next"));
 
   if (!code || !hasSupabaseCredentials) {
     return NextResponse.redirect(`${origin}/entrar?error=auth`);
