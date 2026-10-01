@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 
 import { AmountRange, Card, CardContent, Section } from "@/components/ui";
-import { platform } from "@/config/platform";
 import { CategoryGroup } from "@/lib/domain/enums";
 import { getData } from "@/lib/data";
+import { formatCommissionPercent } from "@/lib/data/public-terms";
+import { getPublicPlatformTerms } from "@/lib/data/public-terms-reader";
 
 export const metadata: Metadata = {
   title: "Precios sugeridos",
@@ -13,7 +14,11 @@ export const metadata: Metadata = {
 };
 
 export default async function PricingPage() {
-  const categories = await getData().categories.list();
+  // La comisión que se publica es la que cobra la base, no la de `.env`.
+  const [categories, terms] = await Promise.all([
+    getData().categories.list(),
+    getPublicPlatformTerms(),
+  ]);
 
   return (
     <>
@@ -81,7 +86,7 @@ export default async function PricingPage() {
           <Card>
             <CardContent>
               <h3 className="font-semibold text-ink-950">
-                Comisión de {(platform.commissionBps / 100).toLocaleString("es-CL")}%
+                Comisión de {formatCommissionPercent(terms.commissionBps)}%
               </h3>
               <p className="mt-2 text-small text-ink-600">
                 Se aplica sobre el monto del servicio y sostiene la verificación de identidad,

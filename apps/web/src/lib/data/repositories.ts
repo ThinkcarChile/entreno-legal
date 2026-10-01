@@ -191,6 +191,12 @@ export interface AdminDispute {
   workerName: string;
   amountHeld: Money | null;
   payoutStatus: PayoutStatus | null;
+  /**
+   * Lo que falta devolver al cliente de una disputa resuelta a su favor: el
+   * importe de la resolución menos las devoluciones CONFIRMADAS con esa
+   * disputa. `null` si no se le debe nada o si ya se devolvió todo.
+   */
+  refundPending: Money | null;
 }
 
 export interface AdminPayout {
@@ -277,8 +283,21 @@ export interface AdminRepository {
   /** Cuántas cosas esperan una decisión ahora mismo. */
   getQueues(): Promise<AdminQueues>;
   listPendingCheckIns(): Promise<readonly PendingCheckIn[]>;
-  listDisputes(onlyOpen?: boolean): Promise<readonly AdminDispute[]>;
-  listPayouts(status?: PayoutStatus): Promise<readonly AdminPayout[]>;
+  /**
+   * Disputas que piden una acción —abiertas, en revisión, o resueltas con una
+   * devolución pendiente—, de la más antigua a la más reciente y SIN tope: una
+   * antigua no puede desaparecer de la única pantalla donde se atiende.
+   */
+  listActionableDisputes(): Promise<readonly AdminDispute[]>;
+  /** Disputas resueltas o retiradas, de la más reciente a la más antigua, por páginas. */
+  listDisputeHistory(page: { limit: number; offset: number }): Promise<Page<AdminDispute>>;
+  /**
+   * Payouts que piden una acción —todo lo que no está transferido ni
+   * cancelado—, del más antiguo al más reciente y SIN tope.
+   */
+  listActionablePayouts(): Promise<readonly AdminPayout[]>;
+  /** Payouts transferidos o cancelados, del más reciente al más antiguo, por páginas. */
+  listPayoutHistory(page: { limit: number; offset: number }): Promise<Page<AdminPayout>>;
   /** Pagos del cliente hacia la plataforma, para soporte y conciliación. */
   listPayments(filter?: AdminPaymentFilter): Promise<readonly AdminPayment[]>;
 }

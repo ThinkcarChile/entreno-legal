@@ -25,6 +25,7 @@
     "verify:pwa": "node --import ./scripts/loader/alias.mjs scripts/verify-pwa.ts",
     "verify:transbank": "node --import ./scripts/loader/alias.mjs scripts/verify-transbank.ts",
     "brand:logo": "node --import ./scripts/loader/alias.mjs scripts/render-logo.ts",
+    "brand:apple-icon": "node --import ./scripts/loader/alias.mjs scripts/render-apple-icon.ts",
     "evidence:webpay": "node --import ./scripts/loader/alias.mjs scripts/evidence-webpay.ts"
   },
   "dependencies": {

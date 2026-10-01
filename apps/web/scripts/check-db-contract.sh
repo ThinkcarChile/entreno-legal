@@ -66,6 +66,8 @@ check_column() {
 
 echo "→ Columnas críticas"
 for pair in \
+  "platform_settings:dispute_window_hours" "disputes:refund_amount" \
+  "payment_refunds:dispute_id" "payment_refunds:amount" "payment_refunds:status" \
   "jobs:approx_lat" "jobs:approx_lng" "jobs:suggested_hourly_min" "jobs:offer_count" \
   "job_private_location:address_line" "profiles:onboarding_completed_at" \
   "profiles:commune_code" "profiles:roles" "worker_profiles:verification_status" \

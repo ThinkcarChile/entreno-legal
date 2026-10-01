@@ -426,6 +426,10 @@ async function main(): Promise<void> {
   // el fallo aparecía recién al pinchar el enlace de un correo.
   const auth = (await api(`/v1/projects/${REF}/config/auth`)) as {
     uri_allow_list?: string;
+    password_min_length?: number | null;
+    mailer_templates_confirmation_content?: string | null;
+    mailer_templates_recovery_content?: string | null;
+    mailer_templates_email_change_content?: string | null;
   };
   const permitidas = (auth.uri_allow_list ?? "")
     .split(",")
@@ -438,6 +442,34 @@ async function main(): Promise<void> {
     permitidas.includes(callback) ? callback : `falta ${callback} (hay: ${permitidas.join(", ") || "ninguna"})`,
     callback,
   );
+
+  // §4.1.b. Los formularios piden 8 caracteres, pero la API de Auth es pública:
+  // quien la llame directo con la clave publicable pasa con lo que diga el
+  // proyecto, que trae 6. El mínimo real es este número.
+  const minimo = auth.password_min_length;
+  check(
+    "largo mínimo de contraseña que exige Auth",
+    typeof minimo === "number" && minimo >= 8 ? "8 o más" : `${minimo ?? "sin dato"}`,
+    "8 o más",
+  );
+
+  // §4.1.c. Con la plantilla por omisión el enlace va por PKCE a
+  // `/auth/callback` y solo funciona en el navegador donde se pidió el correo.
+  for (const [nombre, contenido, tipo] of [
+    ["Confirm signup", auth.mailer_templates_confirmation_content, "email"],
+    ["Reset password", auth.mailer_templates_recovery_content, "recovery"],
+    ["Change email address", auth.mailer_templates_email_change_content, "email_change"],
+  ] as const) {
+    // Tolera `{{.TokenHash}}` sin espacios y el `&amp;` que deja un editor HTML.
+    const enlace = new RegExp(
+      `/auth/confirm\\?token_hash=\\{\\{\\s*\\.TokenHash\\s*\\}\\}(?:&|&amp;)type=${tipo}(?![a-z_])`,
+    );
+    check(
+      `plantilla «${nombre}» con enlace a /auth/confirm`,
+      enlace.test(contenido ?? "") ? "sí" : "no: sigue con el enlace por omisión",
+      "sí",
+    );
+  }
 
   console.log("\n── Advisors ──\n");
 

@@ -33,7 +33,7 @@ se olvide de actualizar. Variantes:
 | Compacta (solo símbolo) | Espacios estrechos | `<Logo compact />` |
 | Monocroma sobre oscuro | Bloques oscuros | `<Logo tone="invert" />` |
 | Favicon | Pestaña del navegador | `src/app/icon.svg` |
-| Icono de aplicación | PWA, iOS | `public/icons/*`, `src/app/apple-icon.svg` |
+| Icono de aplicación | PWA, iOS | `public/icons/*`; en iOS, `src/app/apple-icon.png` (generado desde `brand/apple-icon.svg`) |
 
 ---
 
@@ -231,7 +231,7 @@ teclado y `tabindex` rotativo, y el `Overlay` con foco atrapado y devuelto.
 
 ## 8. Aplicación instalable
 
-`npm run verify:pwa` — 30 comprobaciones estáticas, sin servidor ni Supabase.
+`npm run verify:pwa` — 31 comprobaciones estáticas, sin servidor ni Supabase.
 Existe porque los fallos de una PWA son silenciosos: un icono que falta, un
 `start_url` fuera de alcance o un service worker que guarda una respuesta
 autenticada no rompen ninguna pantalla; simplemente hacen que la aplicación no
@@ -244,6 +244,19 @@ trabajo se usa de pie, con el teléfono en cualquier posición—, colores desde
 `config/brand`, `lang: "es-CL"`, tres iconos (192, 512 y **maskable** de 512 con
 fondo a sangre y el símbolo al 62 % para sobrevivir al recorte de Android) y
 tres accesos directos.
+
+### Icono de iOS
+
+Para la pantalla de inicio, iOS usa `<link rel="apple-touch-icon">`; los iconos
+del manifiesto son SVG y no le sirven para eso. Next genera esa etiqueta desde
+`src/app/apple-icon.*` **solo si es `.png`, `.jpg` o `.jpeg`**. Había un
+`apple-icon.svg`, que Next ignoraba sin avisar: la página salía sin esa
+etiqueta y el iPhone instalaba la aplicación sin su icono. Ahora es un PNG de 180 × 180 sin transparencia —iOS
+pinta de negro lo transparente— dibujado desde `brand/apple-icon.svg` con
+`npm run brand:apple-icon` (el Chromium de Playwright; `CHROMIUM_PATH` si no
+es el que trae). Si cambia la marca, se cambia el SVG y se vuelve a generar.
+`verify:pwa` comprueba el tamaño, que no tenga canal alfa y que no vuelva a
+aparecer un `apple-icon.svg`.
 
 ### Barra inferior
 

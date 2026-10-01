@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 
 import { env, resolveDataSource } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import { getVerifiedUser } from "@/lib/supabase/verified-user";
 import { actionError, actionOk, type ActionResult } from "@/lib/utils/errors";
-import { signInSchema, signUpSchema } from "@/lib/validation/auth";
+import { passwordSchema, signInSchema, signUpSchema } from "@/lib/validation/auth";
 
 /**
  * Autenticación.
@@ -43,6 +44,9 @@ export async function signUpAction(input: unknown): Promise<ActionResult<{ needs
         last_name: parsed.data.lastName,
         intent: parsed.data.intent,
       },
+      // Solo lo usa la plantilla antigua (`{{ .ConfirmationURL }}`). Con la
+      // plantilla nueva el enlace va a `/auth/confirm` y no depende de esto:
+      // ver `lib/auth/email-link.ts`.
       emailRedirectTo: `${env.NEXT_PUBLIC_SITE_URL}/auth/callback?next=/bienvenida`,
     },
   });
@@ -82,6 +86,8 @@ export async function requestPasswordResetAction(email: string): Promise<ActionR
 
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    // Igual que en el registro: lo usa la plantilla antigua. La nueva lleva a
+    // `/auth/confirm?type=recovery`, que termina siempre en `/nueva-clave`.
     redirectTo: `${env.NEXT_PUBLIC_SITE_URL}/auth/callback?next=/nueva-clave`,
   });
 
@@ -93,15 +99,32 @@ export async function requestPasswordResetAction(email: string): Promise<ActionR
   return actionOk();
 }
 
-export async function updatePasswordAction(password: string): Promise<ActionResult<void>> {
+export async function updatePasswordAction(password: unknown): Promise<ActionResult<void>> {
   if (resolveDataSource() !== "supabase") return demoBlocked();
 
-  if (password.length < 8) {
-    return { ok: false, error: "La contraseña necesita al menos 8 caracteres.", field: "password" };
+  // La misma regla que al registrarse. El formulario ya la aplica, pero una
+  // acción de servidor se puede invocar sin pasar por él.
+  const parsed = passwordSchema.safeParse(password);
+  if (!parsed.success) {
+    // Los mensajes del esquema están en español; el de «no es texto» es de zod.
+    const message =
+      typeof password === "string" ? `${parsed.error.issues[0].message}.` : "Ingresa una contraseña.";
+    return { ok: false, error: message, field: "password" };
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({ password });
+  // Sin sesión no hay a quién cambiarle la contraseña: el enlace no se abrió,
+  // venció o se abrió en otro navegador. Supabase respondería con un error
+  // genérico; esto le dice a la persona qué hacer.
+  if (!(await getVerifiedUser(supabase))) {
+    return {
+      ok: false,
+      error:
+        "El enlace para cambiar la contraseña venció o ya se usó. Pide uno nuevo desde «Olvidé mi contraseña».",
+    };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password: parsed.data });
 
   if (error) return actionError(error, "No pudimos cambiar la contraseña.");
   return actionOk();

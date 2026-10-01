@@ -7,6 +7,7 @@ import { useState, useTransition } from "react";
 import { Alert } from "@/components/ui/feedback";
 import { Button, Field, Input } from "@/components/ui";
 import { signInAction } from "@/lib/actions/auth";
+import { authLinkMessage } from "@/lib/auth/email-link";
 import { signInSchema } from "@/lib/validation/auth";
 import { safeNextPath } from "@/lib/utils/safe-redirect";
 
@@ -19,6 +20,9 @@ export function SignInForm() {
 
   // Solo rutas internas: un `?next=` externo llevaría fuera del sitio tras entrar.
   const next = safeNextPath(params.get("next"));
+  // Un enlace de correo que no abrió sesión vuelve aquí con el motivo. Antes
+  // llegaba `?error=auth` y la pantalla no decía nada.
+  const linkError = authLinkMessage(params.get("error"), "entrar");
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -60,6 +64,11 @@ export function SignInForm() {
         del servidor. Con POST, ese envío no llega a ninguna parte y no deja
         rastro de las credenciales.
       */}
+      {linkError && (
+        <Alert tone="warning" title={linkError.title}>
+          {linkError.body}
+        </Alert>
+      )}
       {params.get("registro") === "ok" && (
         <Alert tone="success" title="Cuenta creada">
           Confirma tu correo si te lo pedimos y entra con tus datos.

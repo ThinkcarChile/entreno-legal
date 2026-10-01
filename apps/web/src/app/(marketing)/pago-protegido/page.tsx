@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 
 import { ProtectedPayment } from "@/components/home/protected-payment";
 import { Card, CardContent, Section } from "@/components/ui";
-import { platform } from "@/config/platform";
 import { site } from "@/config/site";
+import { getPublicPlatformTerms } from "@/lib/data/public-terms-reader";
 
 export const metadata: Metadata = {
   title: site.protectedPaymentLabel,
@@ -12,7 +12,9 @@ export const metadata: Metadata = {
   alternates: { canonical: "/pago-protegido" },
 };
 
-const steps = [
+// El último paso lleva el plazo para reportar un problema, que es el de la base
+// (`platform_settings`), no una constante: por eso se arma por petición.
+const steps = (disputeWindowHours: number) => [
   { title: "Contratas", description: "Aceptas la oferta del trabajador que elegiste." },
   { title: "Pagas en la pasarela", description: "El cobro lo procesa la pasarela de pago. No guardamos los datos de tu tarjeta." },
   { title: "Pago confirmado", description: "El monto queda asociado a ese trabajo específico." },
@@ -20,11 +22,13 @@ const steps = [
   { title: "Sigues el avance", description: "Check-in, fotos, actualizaciones y código de entrega." },
   {
     title: "Se libera el pago",
-    description: `Cuando confirmas la entrega o vencen las ${platform.disputeWindowHours} horas para reportar un problema.`,
+    description: `Cuando confirmas la entrega o vencen las ${disputeWindowHours} horas para reportar un problema.`,
   },
 ];
 
-export default function ProtectedPaymentPage() {
+export default async function ProtectedPaymentPage() {
+  const terms = await getPublicPlatformTerms();
+
   return (
     <>
       <section className="border-b border-line bg-surface py-16 sm:py-20">
@@ -41,7 +45,7 @@ export default function ProtectedPaymentPage() {
 
       <Section title="Paso a paso">
         <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {steps.map((step, index) => (
+          {steps(terms.disputeWindowHours).map((step, index) => (
             <li key={step.title}>
               <Card className="h-full">
                 <CardContent>

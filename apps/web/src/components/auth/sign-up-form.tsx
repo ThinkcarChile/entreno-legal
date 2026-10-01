@@ -10,7 +10,7 @@ import { Alert } from "@/components/ui/feedback";
 import { Button, Field, Input } from "@/components/ui";
 import { signUpAction } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils/cn";
-import { signUpSchema } from "@/lib/validation/auth";
+import { PASSWORD_MIN_LENGTH, signUpSchema } from "@/lib/validation/auth";
 
 const intents = [
   { id: "CLIENT", title: "Necesito ayuda", description: "Quiero delegar filas o trámites." },
@@ -126,7 +126,7 @@ export function SignUpForm({ defaultIntent = "CLIENT" }: { defaultIntent?: "CLIE
       </Field>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Contraseña" htmlFor="password" error={errors.password} hint="Mínimo 8 caracteres." required>
+        <Field label="Contraseña" htmlFor="password" error={errors.password} hint={`Mínimo ${PASSWORD_MIN_LENGTH} caracteres.`} required>
           <Input id="password" name="password" type="password" autoComplete="new-password" aria-invalid={Boolean(errors.password)} />
         </Field>
         <Field label="Repite la contraseña" htmlFor="confirmPassword" error={errors.confirmPassword} required>

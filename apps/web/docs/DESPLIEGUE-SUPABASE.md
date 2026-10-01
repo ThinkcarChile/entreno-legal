@@ -240,6 +240,13 @@ que si difieren es que faltó aplicar alguna migración.
 
 ## 4. Configuración del panel que NO viene en las migraciones
 
+> **Pasos manuales pendientes** (nadie los ha hecho todavía en ningún
+> proyecto): el mínimo de 8 caracteres en Auth (§4.1.b) y las plantillas de
+> correo (§4.1.c), en cada proyecto, también el de producción: son
+> configuración del proyecto y no viajan con las migraciones. Hasta hacerlos,
+> `npm run verify:schema:hosted` falla en esas cuatro comprobaciones, a
+> propósito.
+
 Estas cosas se configuran en el panel. No hay forma de dejarlas en una
 migración, así que quedan documentadas aquí.
 
@@ -259,12 +266,19 @@ desarrollo o de pruebas. Una migración no puede saber en qué base corre.
 Sin esto, los enlaces de confirmación de correo y de recuperación de contraseña
 llevan al lugar equivocado.
 
+Esta lista rige para los correos con la plantilla por omisión, que pasan por
+`/auth/callback`. Los de la plantilla de §4.1.c llevan directo a
+`{{ .SiteURL }}/auth/confirm` y no dependen de ella; aun así, déjala puesta:
+los correos ya enviados con el enlace antiguo siguen llegando ahí.
+
 `npm run verify:schema:hosted` lo comprueba y falla si falta. Antes esta sección
 solo lo pedía y nadie lo verificaba: `hagotufila-dev` llevaba la lista vacía sin
 que nada lo dijera, y eso no se nota hasta que alguien pincha el enlace de un
 correo. Ya está puesta.
 
-### 4.1.b Protección contra contraseñas filtradas (obligatorio)
+### 4.1.b Contraseñas: filtradas y mínimo de 8 caracteres (obligatorio)
+
+#### Contraseñas filtradas
 
 **Authentication → Policies → Password protection**, activar *Prevent use of
 leaked passwords*. Supabase contrasta la contraseña contra HaveIBeenPwned al
@@ -275,13 +289,125 @@ disponible desde el plan Pro**: en un proyecto Free la Management API responde
 `402`. `hagotufila-dev` es Free, así que el aviso figura en la lista
 `AVISOS_ACEPTADOS` de `verify:schema:hosted` con ese motivo escrito.
 
-Mientras tanto quien cubre el mínimo es la aplicación: exige 8 caracteres al
-registrarse y al cambiar la clave, por encima de los 6 que trae Supabase.
-
 > **Al pasar a producción**, que será un proyecto de pago: activa esta casilla y
 > **quita la entrada de `AVISOS_ACEPTADOS`**. No hay que acordarse: en cuanto
 > esté activa, el advisor deja de reportarla y la verificación falla por tener
 > en la lista algo que ya no corresponde.
+
+#### Mínimo de 8 caracteres en Auth (**pendiente**)
+
+Los formularios de la aplicación exigen 8 caracteres al registrarse y al crear
+una contraseña nueva, y las acciones de servidor lo vuelven a comprobar
+(`src/lib/validation/auth.ts`). **Ese no es el mínimo real.** La API de Auth es
+pública: cualquiera con la clave publicable puede llamar a `signUp` o a
+`updateUser` sin pasar por un formulario, y Supabase acepta lo que diga la
+configuración del proyecto, que trae **6**. Esta guía decía antes que la
+aplicación «cubría el mínimo»: no lo cubría.
+
+Paso manual, en cada proyecto (desarrollo y producción):
+
+- **Authentication → Sign In / Providers → Email** (en algunas versiones del
+  panel está en la configuración de contraseñas, junto a *Prevent use of leaked
+  passwords*): *Minimum password length* = **8**.
+- O por la Management API, con el token de §3.c:
+
+  ```bash
+  curl -s -X PATCH "https://api.supabase.com/v1/projects/<ref>/config/auth" \
+    -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"password_min_length": 8}'
+  ```
+
+Las cuentas que ya tengan una contraseña más corta siguen entrando: el mínimo
+se aplica al crear o cambiar una contraseña. `supabase/config.toml` ya pide 8
+para el Supabase local de la CLI.
+
+`npm run verify:schema:hosted` lee `password_min_length` y falla mientras sea
+menor que 8.
+
+### 4.1.c Plantillas de correo con `token_hash` (obligatorio, **pendiente**)
+
+**El defecto.** Con las plantillas por omisión, el enlace de los correos
+(`{{ .ConfirmationURL }}`) usa el flujo PKCE: Supabase verifica el enlace y
+redirige a `/auth/callback?code=…`, que canjea el código con un verificador
+guardado en una cookie **del navegador donde se pidió el correo**. Si la persona
+abre el enlace en otro navegador, en el visor de la app de correo o en el
+teléfono cuando lo pidió desde el computador —lo normal con «Olvidé mi
+contraseña»—, el canje falla. Antes fallaba en silencio; ahora la pantalla
+explica qué pasó, pero el enlace sigue sin servir.
+
+**La corrección** ya está en el código: `/auth/confirm` recibe `token_hash` y
+`type`, verifica con `verifyOtp` en el servidor y deja la sesión en el navegador
+que abre el enlace, sea cual sea. La recuperación termina siempre en
+`/nueva-clave`. Falta que los correos traigan ese enlace, y eso solo se cambia
+en el panel.
+
+Paso manual, en cada proyecto: **Authentication → Emails → Templates**
+(*Email Templates* en algunas versiones del panel). En cada plantilla,
+reemplaza el enlace `{{ .ConfirmationURL }}` por el de esta tabla. El texto
+alrededor es libre; abajo hay una propuesta en español.
+
+| Plantilla | Enlace (`href`) | Adónde lleva |
+|---|---|---|
+| **Confirm signup** | `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email` | `/bienvenida` |
+| **Reset password** | `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery` | `/nueva-clave`, siempre |
+| **Change email address** | `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email_change` | `/cuenta` |
+| **Magic link** | `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email` | `/bienvenida`. La aplicación no envía enlaces mágicos hoy; cámbiala igual para que no quede ninguna con el flujo antiguo |
+
+**Invite user** no se toca: la aplicación no invita a nadie, y `/auth/confirm`
+rechaza `type=invite` a propósito (una invitación deja una sesión sin
+contraseña). **Reauthentication** usa un código, no un enlace.
+
+Propuesta para *Reset password* (asunto: «Crea una contraseña nueva en
+HagoTuFila»):
+
+```html
+<h2>Crea una contraseña nueva</h2>
+<p>Pediste cambiar la contraseña de tu cuenta de HagoTuFila.</p>
+<p>
+  <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery">
+    Crear una contraseña nueva
+  </a>
+</p>
+<p>Puedes abrirlo desde cualquier navegador o dispositivo. Sirve una sola vez y por
+tiempo limitado. Si no lo pediste, ignora este correo: tu contraseña no cambia.</p>
+```
+
+Y para *Confirm signup* (asunto: «Confirma tu correo en HagoTuFila»):
+
+```html
+<h2>Confirma tu correo</h2>
+<p>Para activar tu cuenta de HagoTuFila, abre este enlace:</p>
+<p>
+  <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">
+    Confirmar mi correo
+  </a>
+</p>
+```
+
+Notas:
+
+- `{{ .SiteURL }}` es la *Site URL* de §4.1. En un proyecto de desarrollo
+  apunta a `http://localhost:3000`, así que sus correos abren el servidor local.
+- No agregues `&next={{ .RedirectTo }}`: `RedirectTo` es una URL completa y
+  `/auth/confirm` solo acepta rutas internas, así que la descartaría. Cada tipo
+  tiene su destino fijo (columna de la derecha).
+- Con *Secure email change* activado llegan dos correos, uno a cada dirección;
+  el cambio se aplica cuando se abren los dos.
+- `/auth/confirm` consume el enlace al abrirlo (`GET`); a un `HEAD` responde
+  sin consumirlo. Algunos filtros de correo corporativos abren los enlaces con
+  `GET` antes que la persona; si eso pasara, el enlace llegaría usado y la
+  pantalla diría «venció o ya se usó». No se ha visto en este proyecto; si
+  aparece, la salida es una página intermedia con un botón.
+- `/auth/callback` sigue funcionando para los correos ya enviados con la
+  plantilla antigua.
+
+`npm run verify:schema:hosted` lee las plantillas *Confirm signup*, *Reset
+password* y *Change email address* por la Management API y falla mientras no
+traigan el enlace a `/auth/confirm` con su `type`. Esa comprobación y la del
+mínimo de contraseña se escribieron contra los campos documentados de la API
+(`mailer_templates_*_content`, `password_min_length`) y **todavía no se han
+ejecutado contra un proyecto alojado**.
 
 ### 4.2 Confirmación de correo (decisión tuya)
 
@@ -652,6 +778,8 @@ llega es el de la otra persona hasta recargar.
 | "Supabase no está configurado en este entorno" | Falta `NEXT_PUBLIC_SUPABASE_URL` o la clave pública en `.env.local` |
 | El registro no envía correo | Confirmación desactivada, o límite de envío alcanzado |
 | El enlace del correo lleva a otro sitio | Falta la URL en *Redirect URLs* |
+| Al abrir el enlace de «Olvidé mi contraseña» la pantalla dice que se abrió en otro navegador | La plantilla del correo sigue con `{{ .ConfirmationURL }}` (flujo PKCE): cámbiala según §4.1.c |
+| `/nueva-clave` dice «Este enlace ya no sirve» | El enlace venció, ya se usó o no abrió sesión. Se pide otro desde `/recuperar-clave` |
 | El chat no actualiza sin recargar | La tabla `messages` no está en la publicación de Realtime |
 | "Falta la clave privada de Supabase" al pagar | Falta `SUPABASE_SECRET_KEY` |
 | `db push` falla al crear políticas de Storage | El rol no puede escribir en `storage.objects`: crea esas políticas desde **Storage → Policies** con las reglas de las migraciones `…000900`, `20260401000100` y `20260601001210` |

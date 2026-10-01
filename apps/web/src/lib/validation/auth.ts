@@ -2,10 +2,33 @@ import { z } from "zod";
 
 export const emailSchema = z.string().email("Ingresa un correo válido");
 
+/**
+ * Mínimo de la aplicación para toda contraseña nueva: al registrarse y al
+ * cambiarla.
+ *
+ * Es una barrera de los formularios y de las acciones de servidor, no de
+ * Supabase: la API de Auth es pública y acepta lo que diga su propia
+ * configuración (6 caracteres si nadie la cambió). Para que 8 sea el mínimo de
+ * verdad hay que fijarlo también en el proyecto, ver
+ * `docs/DESPLIEGUE-SUPABASE.md` §4.1.b. El máximo de 72 es el de bcrypt.
+ */
+export const PASSWORD_MIN_LENGTH = 8;
+
 export const passwordSchema = z
   .string()
-  .min(8, "La contraseña necesita al menos 8 caracteres")
+  .min(PASSWORD_MIN_LENGTH, `La contraseña necesita al menos ${PASSWORD_MIN_LENGTH} caracteres`)
   .max(72, "La contraseña es demasiado larga");
+
+/** Contraseña nueva tras un enlace de recuperación: la misma regla que al registrarse. */
+export const newPasswordSchema = z
+  .object({
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((v) => v.password === v.confirmPassword, {
+    message: "Las contraseñas no coinciden",
+    path: ["confirmPassword"],
+  });
 
 export const signInSchema = z.object({
   email: emailSchema,

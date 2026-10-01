@@ -4,7 +4,7 @@ import { FinalCta } from "@/components/home/cta";
 import { HowItWorks } from "@/components/home/how-it-works";
 import { ProtectedPayment } from "@/components/home/protected-payment";
 import { Section } from "@/components/ui";
-import { platform } from "@/config/platform";
+import { getPublicPlatformTerms } from "@/lib/data/public-terms-reader";
 
 export const metadata: Metadata = {
   title: "Cómo funciona",
@@ -31,7 +31,10 @@ const workerFlow = [
   "Al terminar, el cliente confirma y tu pago queda aprobado.",
 ];
 
-export default function HowItWorksPage() {
+export default async function HowItWorksPage() {
+  // El plazo que se promete es el que aplica la base al cerrar la ventana.
+  const terms = await getPublicPlatformTerms();
+
   return (
     <>
       <section className="border-b border-line bg-surface py-16 sm:py-20">
@@ -95,7 +98,7 @@ export default function HowItWorksPage() {
           <article className="rounded-[var(--radius-card)] border border-line bg-surface p-6">
             <h3 className="font-semibold text-ink-950">Si algo sale mal</h3>
             <p className="mt-2 text-[0.9375rem] text-ink-600">
-              Tienes {platform.disputeWindowHours} horas desde el término del trabajo para
+              Tienes {terms.disputeWindowHours} horas desde el término del trabajo para
               reportar un problema. Mientras se revisa, el pago al trabajador queda retenido y
               toda la evidencia del trabajo se conserva íntegra.
             </p>

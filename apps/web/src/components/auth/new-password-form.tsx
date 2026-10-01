@@ -6,32 +6,37 @@ import { useState, useTransition } from "react";
 import { Alert } from "@/components/ui/feedback";
 import { Button, Field, Input } from "@/components/ui";
 import { updatePasswordAction } from "@/lib/actions/auth";
+import { newPasswordSchema, PASSWORD_MIN_LENGTH } from "@/lib/validation/auth";
 
 export function NewPasswordForm() {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setFormError(null);
     const form = new FormData(event.currentTarget);
-    const password = String(form.get("password") ?? "");
-    const confirm = String(form.get("confirmPassword") ?? "");
+    const values = {
+      password: String(form.get("password") ?? ""),
+      confirmPassword: String(form.get("confirmPassword") ?? ""),
+    };
 
-    if (password.length < 8) {
-      setError("La contraseña necesita al menos 8 caracteres.");
+    // La misma regla que el registro y que la acción de servidor.
+    const parsed = newPasswordSchema.safeParse(values);
+    if (!parsed.success) {
+      const next: Record<string, string> = {};
+      for (const issue of parsed.error.issues) next[String(issue.path[0])] ??= issue.message;
+      setErrors(next);
       return;
     }
-    if (password !== confirm) {
-      setError("Las contraseñas no coinciden.");
-      return;
-    }
-    setError(null);
+    setErrors({});
 
     startTransition(async () => {
-      const result = await updatePasswordAction(password);
+      const result = await updatePasswordAction(parsed.data.password);
       if (!result.ok) {
-        setError(result.error);
+        setFormError(result.error);
         return;
       }
       router.push("/cuenta");
@@ -42,19 +47,37 @@ export function NewPasswordForm() {
   return (
     <form onSubmit={onSubmit} method="post" noValidate className="space-y-5">
       {/* POST, no GET: ver el comentario en `sign-in-form.tsx`. */}
-      <Field label="Nueva contraseña" htmlFor="password" hint="Mínimo 8 caracteres." required>
-        <Input id="password" name="password" type="password" autoComplete="new-password" />
+      <Field
+        label="Nueva contraseña"
+        htmlFor="password"
+        error={errors.password}
+        hint={`Mínimo ${PASSWORD_MIN_LENGTH} caracteres.`}
+        required
+      >
+        <Input
+          id="password"
+          name="password"
+          type="password"
+          autoComplete="new-password"
+          aria-invalid={Boolean(errors.password)}
+        />
       </Field>
-      <Field label="Repite la contraseña" htmlFor="confirmPassword" required>
+      <Field
+        label="Repite la contraseña"
+        htmlFor="confirmPassword"
+        error={errors.confirmPassword}
+        required
+      >
         <Input
           id="confirmPassword"
           name="confirmPassword"
           type="password"
           autoComplete="new-password"
+          aria-invalid={Boolean(errors.confirmPassword)}
         />
       </Field>
 
-      {error && <Alert tone="danger">{error}</Alert>}
+      {formError && <Alert tone="danger">{formError}</Alert>}
 
       <Button type="submit" size="lg" fullWidth disabled={pending}>
         {pending ? "Guardando…" : "Guardar contraseña"}

@@ -111,7 +111,7 @@ const REQUIRED_ICONS = [
   "public/icons/icon-512.svg",
   "public/icons/icon-maskable.svg",
   "src/app/icon.svg",
-  "src/app/apple-icon.svg",
+  "src/app/apple-icon.png",
 ] as const;
 
 check("todos los iconos referenciados existen en disco", () => {
@@ -150,6 +150,24 @@ check("el icono maskable respeta la zona segura de Android", () => {
   const scale = Number(maskable.match(/scale\((0?\.\d+)\)/)?.[1] ?? "1");
   expect(scale <= 0.7, `el símbolo ocupa el ${Math.round(scale * 100)} % del lienzo; el recorte se lo come`);
   return `fondo a sangre y símbolo al ${Math.round(scale * 100)} %`;
+});
+
+check("el icono de iOS es un PNG de 180×180 sin transparencia", () => {
+  // La convención `apple-icon` de Next solo acepta .jpg, .jpeg y .png. Un
+  // `apple-icon.svg` se ignora sin aviso: la página sale sin
+  // `<link rel="apple-touch-icon">`, que es lo que pasaba. Y iOS rellena de
+  // negro lo transparente, así que el PNG no lleva canal alfa.
+  expect(!has("src/app/apple-icon.svg"), "Next ignora src/app/apple-icon.svg: el icono de iOS va en PNG");
+
+  const bytes = readFileSync(resolve(root, "src/app/apple-icon.png"));
+  expect(bytes.subarray(0, 8).toString("hex") === "89504e470d0a1a0a", "apple-icon.png no es un PNG");
+  const width = bytes.readUInt32BE(16);
+  const height = bytes.readUInt32BE(20);
+  expect(width === 180 && height === 180, `mide ${width}×${height}; iOS lo pide de 180×180`);
+  // Byte 25 de la cabecera IHDR: tipo de color. 2 es RGB y 0 gris, sin alfa.
+  const colorType = bytes[25];
+  expect(colorType === 2 || colorType === 0, `tipo de color ${colorType}: lleva transparencia`);
+  return "src/app/apple-icon.png 180×180, RGB (npm run brand:apple-icon)";
 });
 
 /* ------------------------------------------------------------ service worker */
