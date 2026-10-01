@@ -48,6 +48,7 @@ describe("TransbankPaymentProvider.refundTransaction ante un fallo del SDK", () 
       },
       {
         environment: "integration",
+        environmentExplicit: true,
         productionEnabled: false,
         siteUrl: "http://localhost:3000",
         nodeEnv: "test",
