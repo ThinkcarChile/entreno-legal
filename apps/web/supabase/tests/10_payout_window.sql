@@ -344,3 +344,35 @@ select pg_temp.expect('V30 el caso sano se aprueba en la misma pasada',
 select pg_temp.expect('V31 el resuelto no se toca: trabajo y asignación como los dejó la resolución',
   (select j.status::text || ' / ' || a.status::text from assignments a join jobs j on j.id = a.job_id
     where a.id = :'v6_assignment_id'), 'CLOSED / HANDOFF_COMPLETED');
+
+\echo ''
+\echo '--- Una disputa ganada por el cliente deja su devolución pendiente'
+
+create function pg_temp.resolver(p_assignment uuid, p_resolution public.dispute_resolution, p_amount bigint)
+returns void language plpgsql as $$
+begin
+  perform pg_temp.como(pg_temp.admin_id());
+  perform public.resolve_dispute(
+    (select id from public.disputes where assignment_id = p_assignment and status in ('OPEN', 'UNDER_REVIEW')),
+    p_resolution, 'Resolución de prueba con motivo suficiente.', p_amount);
+  perform pg_temp.como(null);
+end $$;
+
+-- v8: el trabajador no llegó; el cliente reclama y gana, sin indicar importe
+-- (es lo que envía el panel para CLIENT_WINS).
+select * from pg_temp.montar_trabajo('v8') \gset v8_
+select pg_temp.reclamar(:'v8_assignment_id') is not null as _ \gset
+select pg_temp.resolver(:'v8_assignment_id', 'CLIENT_WINS', null) is null as _ \gset
+
+select pg_temp.expect('V32 a favor del cliente sin importe: se registra todo lo cobrado',
+  (select (d.refund_amount = p.amount)::text from disputes d join payments p on p.assignment_id = d.assignment_id
+    where d.assignment_id = :'v8_assignment_id' and p.purpose = 'JOB'), 'true');
+select pg_temp.expect('V33 y el payout del trabajador queda cancelado',
+  (select status::text from payouts where assignment_id = :'v8_assignment_id'), 'CANCELLED');
+
+-- v9: a favor del cliente con un importe explícito: se respeta.
+select * from pg_temp.montar_trabajo('v9') \gset v9_
+select pg_temp.reclamar(:'v9_assignment_id') is not null as _ \gset
+select pg_temp.resolver(:'v9_assignment_id', 'CLIENT_WINS', 7000) is null as _ \gset
+select pg_temp.expect('V34 un importe explícito se respeta',
+  (select refund_amount::text from disputes where assignment_id = :'v9_assignment_id'), '7000');

@@ -99,7 +99,8 @@ export async function requestRefundAction(input: {
   discriminator?: string;
 }): Promise<ActionResult<{ confirmed: boolean; kind: string; refundedAmount: number }>> {
   try {
-    await requireAdmin();
+    // La sesión de quien administra: con ella se pide la devolución.
+    const { supabase } = await requireAdmin();
 
     if (!Number.isInteger(input.amount) || input.amount <= 0) {
       return { ok: false, error: "El importe debe ser un número entero de pesos.", field: "amount" };
@@ -112,8 +113,10 @@ export async function requestRefundAction(input: {
       };
     }
 
+    // La petición va con la sesión de quien administra (la base comprueba su
+    // rol); la lectura del token y el cierre, con la clave de servicio.
     const admin = createAdminClient();
-    const outcome = await performRefund(admin, {
+    const outcome = await performRefund(supabase, admin, {
       paymentId: input.paymentId,
       amount: input.amount,
       reason: input.reason.trim(),

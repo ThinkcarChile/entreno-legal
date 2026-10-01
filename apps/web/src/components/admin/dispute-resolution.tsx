@@ -26,7 +26,7 @@ const OPTIONS = [
   {
     value: DisputeResolution.CLIENT_WINS,
     label: "A favor del cliente",
-    hint: "Se cancela el pago al trabajador.",
+    hint: "Se cancela el pago al trabajador y queda pendiente devolver al cliente todo lo cobrado, desde Pagos.",
   },
   {
     value: DisputeResolution.PARTIAL,

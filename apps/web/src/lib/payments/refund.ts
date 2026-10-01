@@ -70,12 +70,24 @@ export function refundIdempotencyKey(
  * comprueba `request_payment_refund` dentro de la base, no esta función.
  */
 export async function performRefund(
+  /**
+   * Cliente con la SESIÓN de quien administra. `request_payment_refund` exige
+   * `app_private.is_admin()` sobre `auth.uid()` y solo está concedida a
+   * `authenticated`: con la clave de servicio no hay usuario y la base la
+   * rechaza con «permission denied». Así es como estuvo hasta que la auditoría
+   * lo encontró: el panel no podía devolver nada.
+   */
+  requester: SupabaseClient,
+  /**
+   * Cliente con la clave de servicio: lee el token (ningún usuario puede) y
+   * cierra con `settle_payment_refund`, exclusiva de `service_role`.
+   */
   admin: SupabaseClient,
   request: RefundRequest,
 ): Promise<RefundOutcome> {
   const provider = getPaymentProvider();
 
-  const { data: refundId, error: requestError } = await admin.rpc("request_payment_refund", {
+  const { data: refundId, error: requestError } = await requester.rpc("request_payment_refund", {
     p_payment_id: request.paymentId,
     p_amount: request.amount,
     p_reason: request.reason,
