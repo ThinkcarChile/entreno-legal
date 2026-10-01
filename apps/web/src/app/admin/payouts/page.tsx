@@ -58,7 +58,9 @@ export default async function AdminPayoutsPage({
 
       <Alert tone="info" className="mt-5" title="Transferencia manual">
         La plataforma no envía dinero. «Registrar transferencia» anota un pago hecho por fuera, con
-        su referencia bancaria, para que quede trazable.
+        su referencia bancaria, para que quede trazable. «Ajustar» baja el neto de un pago que
+        todavía no se transfirió —o lo cancela con $0— cuando una devolución al cliente dejó las
+        cifras sin cuadrar; el trabajador recibe el aviso con el motivo.
       </Alert>
 
       <section className="mt-8" aria-labelledby="por-resolver">
@@ -148,7 +150,14 @@ function PayoutCard({ row }: { row: AdminPayout }) {
           </p>
           <p className="mt-1 text-small text-ink-500">
             Bruto <Amount value={row.payout.grossAmount} /> · comisión{" "}
-            <Amount value={row.payout.commissionAmount} /> · neto{" "}
+            <Amount value={row.payout.commissionAmount} />
+            {row.payout.bonusAmount.amount > 0 && (
+              <>
+                {" "}
+                · bono <Amount value={row.payout.bonusAmount} />
+              </>
+            )}{" "}
+            · neto{" "}
             <strong className="text-ink-950">
               <Amount value={row.payout.netAmount} />
             </strong>
@@ -166,7 +175,11 @@ function PayoutCard({ row }: { row: AdminPayout }) {
             <p className="mt-1 text-small text-success-700">Referencia {row.payout.bankReference}</p>
           )}
         </div>
-        <PayoutActions payoutId={row.payout.id} status={row.payout.status} />
+        <PayoutActions
+          payoutId={row.payout.id}
+          status={row.payout.status}
+          netAmount={row.payout.netAmount.amount}
+        />
       </CardContent>
     </Card>
   );

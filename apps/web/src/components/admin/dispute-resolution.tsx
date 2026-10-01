@@ -26,12 +26,14 @@ const OPTIONS = [
   {
     value: DisputeResolution.CLIENT_WINS,
     label: "A favor del cliente",
-    hint: "Se cancela el pago al trabajador y queda pendiente devolver al cliente todo lo cobrado, desde Pagos.",
+    hint:
+      "Se cancela el pago al trabajador y queda pendiente devolver al cliente todo lo cobrado —el trabajo y el tiempo adicional, menos lo ya devuelto o en devolución—, desde Pagos.",
   },
   {
     value: DisputeResolution.PARTIAL,
     label: "Resolución parcial",
-    hint: "Se descuenta del pago al trabajador el monto que corresponde al cliente.",
+    hint:
+      "Se descuenta del pago al trabajador el monto que corresponde al cliente; no puede pasar de lo cobrado (trabajo más tiempo adicional) que todavía no se devolvió.",
   },
 ] as const;
 

@@ -309,7 +309,12 @@ una sola parte.
 
 El bono es una decisión del cliente al aprobar: si el objetivo no se cumplió, el
 bono sale del payout. Aprobar dos veces no cambia nada (`E18`), y con una
-disputa abierta no se puede aprobar (`E22`).
+disputa abierta no se puede aprobar (`E22`). El bono sale aunque el payout no
+esté en `PENDING` —retenido por administración o por un cobro en duda, o
+aprobado antes de tiempo—: solo `PENDING` pasa a `APPROVED`, uno retenido sigue
+retenido, y la aprobación devuelve el estado real del payout. La transferencia
+se niega si el payout todavía lleva un bono que el cliente negó
+(`20260601001610`, `B20`–`B26`).
 
 ### Si el cliente no responde
 
@@ -349,7 +354,7 @@ Resultados y su efecto sobre el pago al trabajador:
 | Resolución | Payout | Devolución al cliente |
 |---|---|---|
 | `WORKER_WINS` | `APPROVED`, neto completo | ninguna |
-| `CLIENT_WINS` | `CANCELLED`, neto 0 | la que se indique |
+| `CLIENT_WINS` | `CANCELLED`, neto 0 | la que se indique; sin importe, todo lo que queda por devolver del trabajo **y del tiempo adicional** |
 | `PARTIAL` | `APPROVED`, neto menos el importe devuelto | la que se indique |
 
 `WORKER_WINS` y `PARTIAL` se rechazan si el cliente ya recibió la devolución
@@ -357,6 +362,11 @@ total, y también si el payout que dejarían aprobado no cuadra con lo devuelto 
 debido al cliente. Si el cobro está en revisión o con una devolución sin
 respuesta del banco, la resolución se registra pero el payout queda `HELD`
 hasta que `approve_payout` lo encuentre sano (`PAGOS.md` §4 bis).
+
+Un importe indicado no puede pasar de lo cobrado en la asignación —trabajo más
+tiempo adicional— ni de lo que todavía se puede devolver. Sin importe, CLIENT_WINS
+anota lo que queda por devolver de todos los cobros de la asignación, sin contar
+otra vez una devolución que ya está en camino (`PAGOS.md` §8 ter bis).
 
 El importe a devolver queda en `disputes.refund_amount`. **El pago del cliente
 sigue en `PAID`**: el dinero se cobró de verdad, y mover ese estado borraría el
@@ -419,16 +429,18 @@ aunque la consulta no filtre.
 | `APPROVED` | Aprobado. Transferible cuando vence la ventana de disputa, o antes si una disputa ya se resolvió |
 | `HELD` | Retenido: hay una disputa, una retención manual, o el cobro del cliente dejó de respaldarlo (devuelto entero, en revisión o fallido, o una devolución confirmada que descuadra las cifras; `PAGOS.md` §4 bis) |
 | `PROCESSING` → `PAID` | Transferido, con su referencia bancaria |
-| `CANCELLED` | Una disputa se resolvió a favor del cliente |
+| `CANCELLED` | Una disputa se resolvió a favor del cliente, o administración lo canceló con «Ajustar» en $0 |
 
 La máquina de estados de los payouts vivía solo en TypeScript. Ahora tiene su
 copia en `app_private.guard_payout_transitions`, por la misma razón que la de la
 asignación: la interfaz no es una frontera de seguridad.
 
-Desde `/admin/payouts` se aprueba, se retiene con motivo y se registra la
-transferencia. Registrarla exige referencia bancaria y es idempotente: hacerlo
-dos veces no duplica nada. **Ninguna de estas acciones mueve dinero**, y la
-pantalla lo dice con esas palabras.
+Desde `/admin/payouts` se aprueba, se retiene con motivo, se ajusta y se
+registra la transferencia. Registrarla exige referencia bancaria y es
+idempotente: hacerlo dos veces no duplica nada. «Ajustar» baja el neto de un
+payout sin transferir, o lo cancela con $0, con un motivo que lee el trabajador
+y una confirmación con las dos cifras (`PAGOS.md` §4 bis). **Ninguna de estas
+acciones mueve dinero**, y la pantalla lo dice con esas palabras.
 
 La pantalla muestra arriba todo lo que no está transferido ni cancelado, sin
 tope y del más antiguo al más reciente, y abajo el historial por páginas. Antes
@@ -447,11 +459,15 @@ revisión y además tenga una devolución abierta, que antes contaba dos veces.
 Sus motivos salen de la vista `admin_payments` (`status`, `open_refund_id`,
 `attempts_in_review`), la misma que pinta cada tarjeta: si la vista cambia qué
 cuenta como pendiente, la lista y la cifra cambian con ella.
-La cola incluye el pago del trabajo de una disputa resuelta a favor del cliente
-cuya devolución todavía no se pidió, y la tarjeta de esa disputa en
-`/admin/disputas` («Devolución pendiente») enlaza directo a ese pago
+La cola incluye cada cobro con su parte de la devolución de una disputa resuelta
+a favor del cliente que todavía no se pidió —primero el del trabajo, después el
+del tiempo adicional, cada uno hasta lo que le queda por devolver
+(`20260601001610`)—, y la tarjeta de esa disputa en `/admin/disputas`
+(«Devolución pendiente») enlaza directo al primero de esos cobros
 (`/admin/pagos?pago=<id>`), que se muestra aunque sea antiguo. Desde ahí se
-pide la devolución.
+pide la devolución: «Devolver» la liga a la disputa solo en la tarjeta del cobro
+que tiene parte, y la base rechaza ligarla en cualquier otra o por más de esa
+parte (`PAGOS.md` §8 ter bis).
 
 ### Los invariantes, también en producción
 
@@ -502,7 +518,10 @@ sin respuesta del banco, con cifras que cuadren, y del ambiente `production`
 —el cobro del trabajo y cada cobro del tiempo adicional que sumó al payout—
 salvo en una base de desarrollo o de pruebas que lo admita
 (`allow_non_production_payouts`). `approve_payout` tampoco saca de la retención
-un payout cuyo cobro esté devuelto entero o en revisión. El detalle está en
+un payout cuyo cobro esté devuelto entero o en revisión, con una devolución sin
+respuesta del banco o con cifras que no cuadran; uno así se ajusta antes con
+«Ajustar» (`adjust_payout`: baja el neto o lo cancela con $0, con motivo, y se
+le avisa al trabajador). El detalle está en
 `PAGOS.md` §4 bis; las pruebas, en `supabase/tests/11_payment_health.sql`
 (`L01`–`L44`).
 
@@ -521,7 +540,9 @@ Siete valores nuevos: `JOB_STARTED`, `JOB_UPDATE`, `NEW_EVIDENCE`,
 `HANDOFF_REQUESTED`, `JOB_APPROVED`, `DISPUTE_RESOLVED`, `PAYOUT_PAID`. Los que
 ya existían se reutilizan tal cual. Más tarde, `INTEGRITY_ALERT`
 (`20260601001500`): solo para administración, cuando las tareas programadas
-encuentran un invariante roto (§12).
+encuentran un invariante roto (§12); y `PAYOUT_ADJUSTED` (`20260601001600`):
+al trabajador, cuando administración baja o cancela su pago, con las cifras y
+el motivo.
 
 Realtime actualiza la interfaz; la base sigue siendo la fuente de verdad.
 
@@ -535,6 +556,7 @@ Realtime actualiza la interfaz; la base sigue siendo la fuente de verdad.
 | `supabase/tests/08_race_execution.sh` | X10 aceptar y rechazar la misma extensión a la vez, X11 dos validaciones del mismo PIN, X12 dos aprobaciones, X13 invariantes. `RACE_REPS` repeticiones, dos sesiones `psql` reales |
 | `supabase/tests/15_abuse_storage.sql` | Q01–Q72: límites por usuario, subida y borrado en Storage con las políticas como `authenticated`, evidencia contrastada con `storage.objects`, el PIN solo en curso y el check-in sin precisión |
 | `supabase/tests/18_admin_ops.sql` | K01–K31: la cola «En revisión» y su cifra (un pago una vez, cobro duplicado, disputa sin devolución pedida, la cola sigue a la vista `admin_payments`), y los invariantes en las tareas programadas: regla rota inyectada, un aviso por día, alerta vista, aislamiento de una función que falla, una función que desaparece y una regla sin nombre |
+| `supabase/tests/19_payout_decisions.sql` | B01–B44: la devolución de una disputa repartida entre el cobro del trabajo y el del tiempo adicional, la devolución ligada a una disputa solo en su parte, una devolución en vuelo al resolver, el bono negado con el payout retenido o aprobado antes de tiempo, y «Ajustar» un payout que no cuadra |
 | `scripts/verify-execution.ts` | W01–W24 contra `hagotufila-dev`, con sesiones reales y RLS del proyecto: separación de roles, privacidad de la ubicación, extensiones, disputas, transferencia, reseñas y dos carreras |
 | `e2e/execution.spec.ts` | Seis pruebas de navegador: el recorrido con el ratón, que cada parte ve solo sus acciones, y que la línea de tiempo no lleva coordenadas |
 

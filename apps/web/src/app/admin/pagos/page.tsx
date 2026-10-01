@@ -15,6 +15,7 @@ import {
   isActionablePaymentFilter,
   parsePaymentFilter,
   parseUuidParam,
+  refundDisputeId,
 } from "@/lib/data/admin-queues";
 import { formatDateTime } from "@/lib/utils/datetime";
 import { HISTORY_PAGE_SIZE, pageWindow, parsePageParam } from "@/lib/utils/pagination";
@@ -225,11 +226,12 @@ export default async function AdminPaymentsPage({
 
                       {row.disputeRefundPending > 0 && (
                         <Alert tone="warning" title="Devolución de una disputa sin pedir">
-                          La disputa se resolvió a favor del cliente y falta pedir{" "}
+                          La disputa se resolvió a favor del cliente y de este cobro falta pedir{" "}
                           <Amount value={{ amount: row.disputeRefundPending, currency: "CLP" }} />.
                           Se pide con «Devolver», abajo, por ese importe —no por el saldo entero
-                          del pago si la resolución fue parcial—, y solo cuenta como hecha cuando
-                          Webpay la confirma.
+                          del pago—: queda ligada a la disputa, y solo cuenta como hecha cuando
+                          Webpay la confirma. Si la disputa también alcanza a otro cobro de este
+                          trabajo (el del tiempo adicional), ese cobro tiene su propio aviso.
                         </Alert>
                       )}
                       {row.reviewReason && (
@@ -292,7 +294,7 @@ export default async function AdminPaymentsPage({
                           amount={row.amount}
                           refunded={row.refundedAmount}
                           refundable={row.refundableAmount}
-                          disputeId={row.disputeId}
+                          disputeId={refundDisputeId(row)}
                           canRefund={refundable}
                           openRefund={row.openRefund}
                         />

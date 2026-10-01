@@ -107,6 +107,11 @@ export const notificationTemplates: Record<NotificationType, Template> = {
     title: "Registramos tu transferencia",
     body: `El pago de "${c.jobTitle ?? "el trabajo"}" quedó registrado como transferido.`,
   }),
+  // Lo escribe la base con las cifras y el motivo; esto es el genérico.
+  PAYOUT_ADJUSTED: (c) => ({
+    title: "Cambió lo que recibirás",
+    body: `Administración ajustó tu pago por "${c.jobTitle ?? "el trabajo"}". Revisa el motivo en el trabajo.`,
+  }),
   JOB_CANCELLED: (c) => ({
     title: "El trabajo se canceló",
     body: `"${c.jobTitle ?? "El trabajo"}" quedó cancelado.`,

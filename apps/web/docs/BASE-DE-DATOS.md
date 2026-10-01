@@ -48,6 +48,8 @@ en orden alfabético.
 | `…20260601001500_integrity_alert_notification.sql` | `notification_type.INTEGRITY_ALERT`: aviso a administración de un invariante roto |
 | `…20260601001510_payment_review_queue.sql` | La cola «En revisión» de `/admin/pagos` se define una vez (`payment_review_queue`); `admin_pending_reviews.refunds` cuenta sus filas, cada pago una vez |
 | `…20260601001520_invariants_in_scheduled_tasks.sql` | `run_scheduled_tasks` corre todos los invariantes, registra las reglas rotas en `app_private.integrity_alerts` y avisa a administración como mucho una vez al día por regla |
+| `…20260601001600_payout_adjusted_notification.sql` | `notification_type.PAYOUT_ADJUSTED`: aviso al trabajador de que su pago se bajó o se canceló |
+| `…20260601001610_payout_decisions.sql` | Lo que debe una disputa se reparte entre los cobros de su asignación (trabajo y tiempo adicional) y una devolución solo se liga a la disputa en su parte; CLIENT_WINS cubre el tiempo adicional y descuenta lo que está en devolución; el bono negado sale del payout en cualquier estado sin transferir; `adjust_payout` baja o cancela un payout que no cuadra; `approve_payout` ya no aprueba sin mirar las cifras |
 | `…000500_evidence_and_chat.sql` | Evidencia, vistas `checkins` y `job_updates`, conversaciones, mensajes |
 | `…000600_reviews_disputes.sql` | Reseñas con validación, disputas, evidencia de disputa |
 | `…000700_loyalty_notifications_audit.sql` | FilaPuntos, notificaciones, `audit_logs` y sus triggers |
@@ -188,7 +190,7 @@ con `security_invoker = true`.
 | `start_protected_payment(assignment)` | El cliente | Crea el pago con los montos calculados en la base |
 | `confirm_payment_result(pago, proveedor, evento, resultado, importe, detalles)` | **Solo la clave de servicio** (`EXECUTE` revocado a todo usuario) | Única entrada de resultados del proveedor: registra el evento una vez por identificador, decide bajo bloqueo `jobs → assignments → payments` y devuelve qué pasó |
 | `assignment_payment_states(asignaciones)` | Cliente y trabajador de cada asignación, y administración | Propósito, estado, importe y fechas de sus pagos. Nada del proveedor ni de la tarjeta: el trabajador no lee filas de `payments` |
-| `request_payment_refund(pago, importe, motivo, clave, disputa)` | **Administración** | Deja pedida una devolución. Idempotente por petición; una sola abierta por pago |
+| `request_payment_refund(pago, importe, motivo, clave, disputa)` | **Administración** | Deja pedida una devolución. Idempotente por petición; una sola abierta por pago. Ligada a una disputa, solo la de la misma asignación, resuelta, y por la parte que la cola le asigna a ESE cobro; sin ligar, sin tocar esa parte (`…001610`) |
 | `resolve_unknown_refund(devolución, hecha, tipo, nota)` | **Administración** | Cierra una devolución por confirmar con lo que muestra el portal de Transbank |
 | `claim_payment_refund`, `settle_payment_refund`, `mark_payment_refund_unknown`, `refunds_pending_reconciliation` | **Solo la clave de servicio** | Reservar el envío al banco, cerrar con su respuesta, dejarla por confirmar y encontrar las que hay que conciliar. Ver `TRANSBANK.md` §7 |
 | `request_attempt_refund(intento, motivo, clave)` | **Administración** | Deja pedida la devolución del cobro entero de un intento `DOUBLE_CHARGE` o `UNDER_REVIEW` que no respalda el pago. Idempotente por petición; una sola comprometida por intento |
@@ -218,13 +220,14 @@ exige sesión y comprueba el papel de quien llama. Ver `docs/EJECUCION.md`.
 | `submit_review(assignment, notas…)` | Las dos partes | Reseña, solo tras la aprobación y una por persona |
 | `open_dispute(assignment, motivo, descripción)` | Las dos partes | Abre la disputa y retiene el pago |
 | `add_dispute_evidence(disputa, texto, ruta, mime, tamaño)` | Partes y administración | Aporta una prueba |
-| `resolve_dispute(disputa, resultado, motivo, importe)` | **Administración** | Decide. No ejecuta ninguna devolución bancaria. No paga al trabajador sobre un cobro devuelto entero ni deja un payout aprobado que no cuadre con lo devuelto |
+| `resolve_dispute(disputa, resultado, motivo, importe)` | **Administración** | Decide. No ejecuta ninguna devolución bancaria. No paga al trabajador sobre un cobro devuelto entero ni deja un payout aprobado que no cuadre con lo devuelto. El importe se mide contra lo cobrado en la asignación (trabajo más tiempo adicional) y lo que todavía se puede devolver; CLIENT_WINS sin importe anota todo lo que queda por devolver (`…001610`) |
 | `review_check_in(check-in, aprobado, motivo)` | **Administración** | Aprueba o rechaza una llegada |
-| `approve_payout(payout, nota)` | **Administración** | Aprueba el pago al trabajador. No sobre un cobro devuelto entero ni en revisión |
+| `approve_payout(payout, nota)` | **Administración** | Aprueba el pago al trabajador. No sobre un cobro devuelto entero ni en revisión, con una devolución sin respuesta o con cifras que no cuadran; descuenta un bono que el cliente negó (`…001610`) |
+| `adjust_payout(payout, neto, motivo)` | **Administración** | Baja el neto de un payout sin transferir (`PENDING`, `APPROVED`, `HELD`), o lo cancela con 0. Nunca lo sube; con una disputa abierta solo baja, no cancela. Auditoría, línea de tiempo y aviso `PAYOUT_ADJUSTED` al trabajador (`…001610`) |
 | `mark_payout_paid(payout, referencia, fecha, nota)` | **Administración** | Registra una transferencia hecha por fuera. Idempotente. Exige el cobro del cliente sano, las cifras cuadradas, la ventana cerrada y un cobro de producción (o `allow_non_production_payouts` en una base de pruebas). Ver `PAGOS.md` §4 bis |
 | `hold_payout(payout, motivo)` | **Administración** | Retiene con motivo escrito |
 | `admin_pending_reviews()` | **Administración** | Recuentos de las colas del panel. `refunds` es el número de filas de `admin_payment_review_queue`: un pago cuenta una vez aunque tenga varios motivos (`…001510`) |
-| `admin_payment_review_queue()` | **Administración** | La cola «En revisión» de `/admin/pagos`: un pago por fila —en revisión, con una devolución sin resultado final, con un intento en revisión o con la devolución de una disputa resuelta sin pedir— y el porqué. Admite `order`, `limit` y filtros de PostgREST |
+| `admin_payment_review_queue()` | **Administración** | La cola «En revisión» de `/admin/pagos`: un pago por fila —en revisión, con una devolución sin resultado final, con un intento en revisión o con su parte de la devolución de una disputa resuelta sin pedir— y el porqué. `dispute_id` es la disputa a la que se liga una devolución de ESE cobro. Admite `order`, `limit` y filtros de PostgREST |
 | `admin_integrity_alerts()` | **Administración** | Las reglas de invariante rotas según la última pasada de las tareas programadas, y si alguien ya las vio (`…001520`) |
 | `acknowledge_integrity_alerts()` | **Administración** | Marca como vistas las reglas rotas sin ver; queda en `audit_logs`. No las resuelve ni detiene el aviso diario |
 
@@ -291,6 +294,8 @@ supuestos, y todos rodean a una de las dieciséis:
 | Leer o escribir el historial de intentos, o el token de uno | ninguna: sin privilegios para `anon`; `authenticated` solo lee columnas sin token y solo administración ve filas | `…20260601001000` |
 | Que un segundo cobro de otro intento se pierda, o que un descuadre habilite el trabajo | `confirm_payment_result` resuelve el intento del token bajo cerrojo: `DOUBLE_CHARGE` a la vista, revisión sin pasar por `PAID` | `…20260601001010` |
 | Devolver, con el trabajador ya pagado, más de lo que queda de la plataforma | `request_payment_refund` (`refund_after_payout_blocker`) | `…20260601001400` |
+| Ligar una devolución a una disputa de otro trabajo, abierta, que ya no debe nada o sobre un cobro que no es el suyo, o devolver sin ligar la parte reservada a una disputa | `request_payment_refund` (`dispute_refund_allocation`) | `…20260601001610` |
+| Transferir un bono que el cliente negó | `approve_completion_core` lo descuenta en cualquier estado sin transferir; `payout_money_blocker` (`payout_bonus_blocker`) | `…20260601001610` |
 | Escribir en `payment_attempt_refunds`, devolver dos veces el cobro de un intento o devolver por ahí el cobro que pagó el trabajo | ninguna para el usuario; `request_attempt_refund`, índice de una comprometida por intento, disparadores `payment_attempt_refunds_guard_*` y `payment_attempts_guard_money` | `…20260601001420` |
 | «Confirmar» el propio pago llamando a la función de confirmación | `confirm_payment_result` es solo del servicio | `…000400` |
 | Marcar «voy en camino» en nombre del trabajador siendo el cliente | `mark_on_the_way` | Bloque 3 `…000100` |
@@ -363,7 +368,9 @@ el importe acordado de la asignación que sale de ella).
 Y las de vigilancia (`20260601001510`–`…001520`): `payment_review_queue` (la
 única definición de la cola «En revisión»: la cuenta `admin_pending_reviews` y
 la listan `admin_payment_review_queue` y `/admin/pagos`; los motivos del pago
-los lee de la vista `admin_payments`, la misma de la pantalla) y `check_invariants`
+los lee de la vista `admin_payments`, la misma de la pantalla, y desde
+`…001610` la parte de cada disputa sobre cada cobro de
+`dispute_refund_allocation`, que también usa `request_payment_refund`) y `check_invariants`
 (corre cada `app_private.*_invariant_violations()` —las que no reciben
 argumentos y devuelven `(rule text, entity_id uuid)`, buscadas en el
 catálogo—, cada una aislada; guarda las reglas rotas en
