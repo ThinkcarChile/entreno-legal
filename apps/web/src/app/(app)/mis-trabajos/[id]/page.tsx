@@ -46,15 +46,18 @@ import {
   PaymentStatus,
   PayoutStatus,
 } from "@/lib/domain/enums";
-import { isCancellationPending } from "@/lib/domain/job-actions";
+import { isCancellationPending, isPayable } from "@/lib/domain/job-actions";
 import { assignmentStatusLabels, payoutStatusLabels } from "@/lib/domain/labels";
 import {
   assignmentAbilities,
   checkInNeedsReview,
   checkInUnlocks,
+  extensionPaymentView,
   isDisputeOpen,
   isExtensionPending,
   nextWorkerStep,
+  paymentBacksWork,
+  paymentIsPayable,
   waitingFor,
   type AssignmentFacts,
 } from "@/lib/domain/permissions";
@@ -110,11 +113,26 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
   if (!isClient && !isWorker) redirect("/mis-trabajos");
 
   const pendingExtension = extensions.find((e) => isExtensionPending(e.status, e.expiresAt));
+  const hasResolvedDispute = dispute?.status === DisputeStatus.RESOLVED;
+  const disputeWindowClosed = hasPassed(assignment.disputeDeadlineAt);
+
+  // El cobro de un tiempo adicional aceptado que no está pagado. Qué se muestra
+  // —el botón, o por qué ya no— lo decide `extensionPaymentView`.
   const acceptedUnpaid = extensions.find(
     (e) =>
       e.status === ExtensionStatus.ACCEPTED &&
       extensionPayments[e.id]?.status !== PaymentStatus.PAID,
   );
+  const acceptedUnpaidView = acceptedUnpaid
+    ? extensionPaymentView(extensionPayments[acceptedUnpaid.id]?.status ?? null, {
+        jobStatus: job.status,
+        assignmentStatus: assignment.status,
+        hasResolvedDispute,
+        disputeWindowClosed,
+        // El cliente no lee `payouts` (RLS): sin él se decide por el plazo.
+        payoutStatus: payout?.status ?? null,
+      })
+    : null;
 
   const facts: AssignmentFacts = {
     party: isClient ? "client" : "worker",
@@ -122,11 +140,12 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
     assignmentStatus: assignment.status,
     paymentStatus: payment?.status ?? null,
     hasOpenDispute: dispute ? isDisputeOpen(dispute.status) : false,
+    hasResolvedDispute,
     pendingExtension: Boolean(pendingExtension),
     hasValidCheckIn: checkIns.some((c) => checkInUnlocks(c.result, c.reviewStatus)),
     hasCheckInUnderReview: checkIns.some((c) => checkInNeedsReview(c.reviewStatus)),
     payoutStatus: payout?.status ?? null,
-    disputeWindowClosed: hasPassed(assignment.disputeDeadlineAt),
+    disputeWindowClosed,
     hasReviewed: reviewAuthors.includes(session.id),
   };
 
@@ -139,8 +158,19 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
     job.status === JobStatus.CANCELLED ||
     assignment.status === AssignmentStatus.CANCELLED_BY_CLIENT ||
     assignment.status === AssignmentStatus.CANCELLED_BY_WORKER;
-  const paid = payment?.status === PaymentStatus.PAID;
-  const paymentUnderReview = payment?.status === PaymentStatus.UNDER_REVIEW;
+  // El estado del pago se lee entero. Antes todo lo que no era PAID se tomaba
+  // por «falta pagar»: un trabajo devuelto tras una disputa le pedía al cliente
+  // «Ir al pago» y al trabajador le decía que el cliente no había pagado.
+  const paymentStatus = payment?.status ?? null;
+  const paid = paymentBacksWork(paymentStatus);
+  const paymentUnderReview = paymentStatus === PaymentStatus.UNDER_REVIEW;
+  const paymentRefunded =
+    paymentStatus === PaymentStatus.REFUNDED || paymentStatus === PaymentStatus.PARTIALLY_REFUNDED;
+  const closedByAdministration = job.status === JobStatus.CLOSED || hasResolvedDispute;
+  const awaitingPayment =
+    assignment.status === AssignmentStatus.AWAITING_PAYMENT &&
+    isPayable(job.status) &&
+    paymentIsPayable(paymentStatus);
 
   const lastCheckIn = checkIns[0] ?? null;
   const checkInReason =
@@ -196,10 +226,13 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
               {dispute.refundAmount && dispute.refundAmount.amount > 0 && (
                 <>
                   {" "}
-                  Se registró una devolución de <Amount value={dispute.refundAmount} /> a favor del
-                  cliente. Queda anotada para procesarse; no es una devolución bancaria hecha.
+                  Se resolvió devolver <Amount value={dispute.refundAmount} /> al cliente.{" "}
+                  {paymentRefunded
+                    ? "La devolución ya se hizo con el medio de pago."
+                    : "Queda pendiente de procesarse con el medio de pago."}
                 </>
-              )}
+              )}{" "}
+              El trabajo quedó cerrado.
             </Alert>
           )}
 
@@ -225,7 +258,30 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
             </Alert>
           )}
 
-          {!paid && !cancellationPending && !cancelled && (
+          {/* Un pago en revisión puede haber entrado: pagar de nuevo sería
+              cobrar dos veces. Vale antes de comenzar y con el trabajo en marcha. */}
+          {paymentUnderReview && !cancelled && !cancellationPending && !closedByAdministration && (
+            <Alert tone="warning" title="Pago en revisión">
+              {isClient
+                ? "Estamos verificando tu pago con el proveedor. No vuelvas a pagar: te avisamos apenas se resuelva."
+                : "Estamos verificando el pago del cliente con el proveedor. Mientras tanto el trabajo no avanza; te avisamos apenas se resuelva."}
+            </Alert>
+          )}
+
+          {/* La devolución de una disputa ya la cuenta su propio aviso, arriba. */}
+          {paymentRefunded && !cancelled && !hasResolvedDispute && (
+            <Alert tone="info" title="Pago devuelto">
+              {paymentStatus === PaymentStatus.REFUNDED
+                ? isClient
+                  ? "Te devolvimos el pago de este trabajo."
+                  : "Se le devolvió al cliente el pago de este trabajo. El estado de tu pago aparece en el resumen."
+                : isClient
+                  ? "Te devolvimos una parte del pago de este trabajo."
+                  : "Se le devolvió al cliente una parte del pago. El estado de tu pago aparece en el resumen."}
+            </Alert>
+          )}
+
+          {awaitingPayment && !cancellationPending && !cancelled && (
             <Alert tone="warning" title="Falta confirmar el pago">
               {isClient ? (
                 <>
@@ -245,11 +301,16 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
 
           {/* --------------------------------------------- tiempo del trabajo */}
 
+          {/* Cerrado por la administración, el tiempo se congela en la
+              resolución: la asignación puede seguir IN_PROGRESS en la base. */}
           {assignment.startedAt && (
             <WorkTimer
               startedAt={assignment.startedAt}
               expectedEndAt={assignment.expectedEndAt}
-              completedAt={assignment.completedAt}
+              completedAt={
+                assignment.completedAt ??
+                (closedByAdministration ? (dispute?.resolvedAt ?? job.updatedAt) : null)
+              }
             />
           )}
 
@@ -499,11 +560,8 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
             </Card>
           )}
 
-          {isClient && acceptedUnpaid && (
-            <ExtensionPaymentPrompt
-              extension={acceptedUnpaid}
-              payment={extensionPayments[acceptedUnpaid.id] ?? null}
-            />
+          {isClient && acceptedUnpaid && acceptedUnpaidView && (
+            <ExtensionPaymentPrompt extension={acceptedUnpaid} view={acceptedUnpaidView} />
           )}
 
           {isWorker && pendingExtension && (

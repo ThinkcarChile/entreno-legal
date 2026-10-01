@@ -40,6 +40,7 @@ import {
   WORKER_COLUMNS,
   type Client,
 } from "./shared";
+import { jobSearchOrFilter } from "./search";
 
 import type { CategoryRepository, JobFilters, JobRepository, Page } from "../repositories";
 import type {
@@ -90,9 +91,10 @@ export class SupabaseJobRepository implements JobRepository {
     if (filters.withBonusOnly) query = query.gt("bonus_amount", 0);
     if (filters.fromDate) query = query.gte("starts_at", `${filters.fromDate}T00:00:00Z`);
     if (filters.toDate) query = query.lte("starts_at", `${filters.toDate}T23:59:59Z`);
-    if (filters.query) {
-      query = query.or(`title.ilike.%${filters.query}%,description.ilike.%${filters.query}%`);
-    }
+    // El texto llega de la URL: va escapado y entre comillas (search.ts). Pegado
+    // tal cual, una coma rompía el filtro y el listado entero fallaba.
+    const search = jobSearchOrFilter(filters.query);
+    if (search) query = query.or(search);
 
     switch (filters.sort ?? "recent") {
       case "starts_soon":

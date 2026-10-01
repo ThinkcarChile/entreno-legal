@@ -483,8 +483,10 @@ select pg_temp.expect('Q25 job-images: trabajo ajeno, trabajo ya pagado, o sin t
     'c5000000-0000-4000-8000-000000000001/foto.jpg', 'image/jpeg', 1000),
   'ERROR 42501 | ERROR 42501 | ERROR 42501');
 
+-- 13 desde 20260601001840: sin las dos lecturas públicas que dejaban listar
+-- avatars y job-images, y con la lectura de la carpeta propia de avatars.
 select pg_temp.expect('Q26 políticas de Storage, las mismas que exige verify:schema:hosted',
-  (select count(*)::text from pg_policies where schemaname = 'storage'), '14');
+  (select count(*)::text from pg_policies where schemaname = 'storage'), '13');
 select pg_temp.expect('Q27 políticas de borrado: avatares, y evidencia y disputas sin registrar',
   (select string_agg(policyname, ', ' order by policyname) from pg_policies
     where schemaname = 'storage' and cmd = 'DELETE'),

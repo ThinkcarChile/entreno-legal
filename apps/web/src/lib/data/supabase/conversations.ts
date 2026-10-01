@@ -31,6 +31,12 @@ const CONVERSATION_COLUMNS =
  * RLS ya impide leer conversaciones ajenas; estos métodos no reciben el
  * identificador del usuario por parámetro, así que tampoco hay forma de pedir
  * "las conversaciones de otro".
+ *
+ * Pero RLS deja ver a la administración TODAS las conversaciones
+ * (`conversations_participants` incluye `is_admin()`), y «mis mensajes» de un
+ * administrador listaba las de toda la plataforma, con él tratado como
+ * trabajador y sin poder escribir en ninguna. Por eso cada consulta filtra
+ * además, explícitamente, por quien mira.
  */
 export class SupabaseConversationRepository implements ConversationRepository {
   constructor(private readonly getClient: () => Promise<Client>) {}
@@ -43,6 +49,7 @@ export class SupabaseConversationRepository implements ConversationRepository {
     const { data, error } = await supabase
       .from("conversations")
       .select(CONVERSATION_COLUMNS)
+      .or(`client_id.eq.${userId},worker_id.eq.${userId}`)
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .returns<ConversationRow[]>();
 
@@ -104,7 +111,9 @@ export class SupabaseConversationRepository implements ConversationRepository {
       .maybeSingle<ConversationRow>();
 
     if (error) throw error;
-    if (!row) return null;
+    // Solo las propias: la de otras dos personas no es «una conversación mía»,
+    // aunque la administración pueda leerla.
+    if (!row || (row.client_id !== userId && row.worker_id !== userId)) return null;
 
     const counterpartId = row.client_id === userId ? row.worker_id : row.client_id;
 
@@ -182,6 +191,12 @@ export class SupabaseConversationRepository implements ConversationRepository {
   }
 }
 
+/**
+ * Avisos de quien mira. El filtro por `user_id` es explícito: RLS
+ * (`notifications_admin`) deja a la administración leerlos todos, y su bandeja
+ * mostraba los de toda la plataforma —con sus propias alertas de integridad
+ * enterradas— y contaba como «sin leer» los de otras personas.
+ */
 export class SupabaseNotificationRepository implements NotificationRepository {
   constructor(private readonly getClient: () => Promise<Client>) {}
 
@@ -193,6 +208,7 @@ export class SupabaseNotificationRepository implements NotificationRepository {
     const { data, error } = await supabase
       .from("notifications")
       .select("*")
+      .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(limit)
       .returns<NotificationRow[]>();
@@ -209,6 +225,7 @@ export class SupabaseNotificationRepository implements NotificationRepository {
     const { count, error } = await supabase
       .from("notifications")
       .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
       .is("read_at", null);
 
     if (error) throw error;

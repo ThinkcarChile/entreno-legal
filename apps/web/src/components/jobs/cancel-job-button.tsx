@@ -6,6 +6,11 @@ import { useState, useTransition } from "react";
 import { Alert } from "@/components/ui/feedback";
 import { Button, Textarea } from "@/components/ui";
 import { cancelJobAction } from "@/lib/actions/jobs";
+import {
+  CANCELLATION_REASON_MAX,
+  cancellationReasonProblem,
+  normalizeFreeText,
+} from "@/lib/validation/free-text";
 
 /** Cancelar pide motivo: queda en la bitácora y explica al trabajador qué pasó. */
 export function CancelJobButton({
@@ -24,8 +29,16 @@ export function CancelJobButton({
 
   function cancel() {
     setError(null);
+    // El motivo llega al trabajador dentro del aviso de cancelación: la misma
+    // regla que la base, con los saltos de línea ya convertidos en espacios.
+    const motivo = normalizeFreeText(reason);
+    const problem = cancellationReasonProblem(motivo);
+    if (problem) {
+      setError(problem);
+      return;
+    }
     startTransition(async () => {
-      const result = await cancelJobAction(jobId, reason || undefined);
+      const result = await cancelJobAction(jobId, motivo || undefined);
       if (!result.ok) {
         setError(result.error);
         return;
@@ -55,7 +68,7 @@ export function CancelJobButton({
       <Textarea
         rows={2}
         value={reason}
-        maxLength={300}
+        maxLength={CANCELLATION_REASON_MAX}
         onChange={(event) => setReason(event.target.value)}
         placeholder="Motivo (opcional)"
       />

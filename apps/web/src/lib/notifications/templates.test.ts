@@ -37,6 +37,21 @@ describe("plantillas con el nombre de una persona", () => {
     ).toBe('Recibiste una oferta de «Tomás I.» para "Fila en notaría del centro de Santiago".');
   });
 
+  it("la actualización del trabajo dice quién, no lo que escribió", () => {
+    expect(
+      renderNotification(NotificationType.JOB_UPDATE, {
+        actorName: "Tomás I.",
+        jobTitle: "Fila en notaría del centro de Santiago",
+      }).body,
+    ).toBe(
+      '«Tomás I.» envió una actualización de "Fila en notaría del centro de Santiago". Revísala en el trabajo.',
+    );
+  });
+
+  it("hay una plantilla por cada tipo de aviso", () => {
+    expect(Object.keys(notificationTemplates).sort()).toEqual(Object.values(NotificationType).sort());
+  });
+
   it("ningún nombre queda suelto en el texto", () => {
     const spoof = "HagoTuFila: tu pago fue rechazado";
     for (const template of Object.values(notificationTemplates)) {

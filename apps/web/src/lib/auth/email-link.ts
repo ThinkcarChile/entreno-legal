@@ -16,6 +16,16 @@ import { safeNextPath } from "@/lib/utils/safe-redirect";
  *    servidor lo verifica con `verifyOtp` y deja la sesión en el navegador que
  *    lo abre, sea cual sea.
  *
+ * Que el enlace no esté atado al navegador tiene un costo: quien tenga un
+ * `token_hash` de SU cuenta —el correo de confirmación o de recuperación que
+ * pidió para sí— puede mandárselo a otra persona y, al abrirlo, dejarla dentro
+ * de la cuenta del atacante (donde podría subir su carnet o pagar). Por eso
+ * abrir el enlace (`GET`) no verifica nada: muestra una página con «Continuar»,
+ * y solo ese botón —un `POST`, la acción de servidor de
+ * src/app/auth/confirm/actions.ts— llama a `verifyOtp`. Un enlace ajeno ya no
+ * abre sesión en silencio, y los filtros de correo que abren los enlaces para
+ * revisarlos tampoco lo gastan.
+ *
  * Cuál de las dos llega en el correo lo deciden las plantillas del panel de
  * Supabase, no este código: ver `docs/DESPLIEGUE-SUPABASE.md` §4.1.c. Las dos
  * rutas conviven para que los correos ya enviados sigan funcionando.
@@ -25,17 +35,19 @@ import { safeNextPath } from "@/lib/utils/safe-redirect";
  */
 
 /**
- * Tipos de enlace que acepta `/auth/confirm`, y adónde lleva cada uno.
+ * Tipos de enlace que acepta `/auth/confirm`, y adónde lleva cada uno: solo los
+ * que la aplicación envía.
  *
- * `email` es el que recomienda hoy Supabase para confirmar la cuenta (y para
- * el enlace mágico); `signup` y `magiclink` son sus nombres anteriores, que
- * `verifyOtp` sigue aceptando. `invite` no está: la aplicación no invita a
- * nadie, y un enlace de invitación deja una sesión sin contraseña.
+ * `email` es el que recomienda hoy Supabase para confirmar la cuenta; `signup`
+ * es su nombre anterior, que `verifyOtp` sigue aceptando. `magiclink` no está:
+ * la aplicación no entra con enlaces mágicos, y aceptarlo solo servía para que
+ * alguien pidiera uno para su propia cuenta y se lo hiciera abrir a otra
+ * persona. `invite` tampoco: la aplicación no invita a nadie, y un enlace de
+ * invitación deja una sesión sin contraseña.
  */
 const DESTINOS = {
   email: "/bienvenida",
   signup: "/bienvenida",
-  magiclink: "/bienvenida",
   recovery: "/nueva-clave",
   email_change: "/cuenta",
 } as const;
@@ -76,6 +88,42 @@ export function parseConfirmLink(params: URLSearchParams): ConfirmLink {
 
   const next = type === "recovery" ? DESTINOS.recovery : safeNextPath(params.get("next"), DESTINOS[type]);
   return { ok: true, tokenHash, type, next };
+}
+
+/**
+ * El texto de la página intermedia de `/auth/confirm`, según el tipo de enlace.
+ * Dice qué va a pasar al continuar, y qué hacer si la persona no pidió el
+ * correo: es justo el caso del enlace que manda otra persona.
+ */
+export interface ConfirmLinkCopy {
+  title: string;
+  body: string;
+  button: string;
+}
+
+export function confirmLinkCopy(type: ConfirmLinkType): ConfirmLinkCopy {
+  const ajeno =
+    "Si no pediste este correo, o alguien te mandó el enlace, no continúes: cierra esta página.";
+  switch (type) {
+    case "recovery":
+      return {
+        title: "Crear una contraseña nueva",
+        body: `Al continuar entras a tu cuenta para elegir una contraseña nueva. ${ajeno}`,
+        button: "Continuar y cambiar la contraseña",
+      };
+    case "email_change":
+      return {
+        title: "Confirmar el cambio de correo",
+        body: `Al continuar confirmas el correo nuevo de tu cuenta. ${ajeno}`,
+        button: "Confirmar el cambio",
+      };
+    default:
+      return {
+        title: "Confirmar tu correo",
+        body: `Al continuar confirmas tu correo y entras a tu cuenta nueva. ${ajeno}`,
+        button: "Continuar",
+      };
+  }
 }
 
 /* ------------------------------------------------------------- errores */

@@ -78,6 +78,27 @@ Un tercero no ve la dirección exacta, ni la evidencia, ni el chat, ni el PIN, n
 la disputa, y no puede ejecutar ninguna acción. Lo impone RLS, y lo comprueban
 `E09` en local y `W10`–`W11` contra el proyecto alojado.
 
+«Pagado» es el pago del trabajo en `PAID` o `PARTIALLY_REFUNDED`: una devolución
+parcial no deja el trabajo sin pagar (`paymentBacksWork`, la regla de la base).
+Y el estado del pago se lee entero: uno en revisión no ofrece «Ir al pago» —el
+dinero pudo haber entrado— y uno devuelto tiene su propio aviso.
+
+**Un trabajo cerrado por la administración es terminal.** `resolve_dispute`
+deja el trabajo en `CLOSED` y la asignación como estaba, normalmente
+`IN_PROGRESS`. La matriz trata `CLOSED`, o una disputa ya resuelta, como el fin:
+nadie paga, ni abre otra disputa (la base tampoco lo admite), ni aporta
+evidencia, ni avanza; el tiempo se congela en la resolución, la frase de
+estado lo dice, y el trabajo pasa a «Terminados». Se reseña solo si la
+asignación había llegado a `COMPLETED`, que es lo que exige `submit_review`.
+Tampoco se abre una disputa con la transferencia al trabajador ya hecha.
+
+El cobro de un tiempo adicional aceptado y sin pagar se ofrece solo mientras se
+puede cobrar y llegaría al trabajador: con el payout `PENDING`, `APPROVED` o
+`HELD` y el trabajo sin cerrar (el cliente no lee `payouts`, así que se decide
+por el plazo para reportar problemas, antes del cual el payout no se
+transfiere). En revisión, devuelto o ya cerrado, la pantalla lo dice sin botón
+(`extensionPaymentView`).
+
 ---
 
 ## 3. Check-in: privacidad de la ubicación
@@ -187,7 +208,8 @@ por la aplicación. Por eso cada control dice dónde vive:
 | Tipo real | Solo la aplicación | Firmas de los primeros bytes (`validateEvidence`). La base no lee bytes: quien sube directo con su sesión se salta esta comprobación, no las demás |
 | Tamaño | Storage y base | 8 MB por archivo: `file_size_limit` del bucket, y `add_job_evidence` / `add_dispute_evidence` toman el tamaño **que midió Storage** (`storage.objects.metadata`), lo contrastan con `evidence_max_bytes` y exigen que coincida con el declarado |
 | Existencia | Base | El archivo tiene que estar en `storage.objects`, en esa ruta, al registrarlo. Antes se podía registrar un archivo que no existía |
-| Cantidad | Base | Máximo por persona y asignación, y por persona y disputa, en `evidence_max_per_assignment`. La administración no tiene tope en las disputas |
+| Cantidad | Storage y base | Máximo por persona y asignación, y por persona y disputa, en `evidence_max_per_assignment`: lo cuenta la RPC sobre lo registrado y, desde `20260601001840`, la política de subida sobre los archivos de esa persona en ese ámbito, registrados o no. La administración no tiene tope en las disputas |
+| Estado | Storage y base | Evidencia solo con el trabajo en marcha y pagado: asignación ni en `AWAITING_PAYMENT`, ni `COMPLETED`, ni cancelada; trabajo ni cerrado, ni cancelado, ni vencido; pago del trabajo en `PAID` o `PARTIALLY_REFUNDED` (`app_private.job_evidence_open`, `20260601001820`). La misma pregunta la hacen `add_job_evidence` y la política de subida de `evidence`; antes la base aceptaba una nota con la asignación esperando el pago, justo cuando el cliente está por pagar |
 | Ruta | Storage y base | `<usuario>/<asignación o disputa>/<uuid>.<ext>`, generada por la aplicación; la extensión sale del tipo, nunca del nombre original. La política de subida exige que la primera carpeta sea la propia y la segunda una asignación o disputa en la que se participa; la RPC exige que sea justo la que se registra |
 | Path traversal | Storage y base | Se rechaza cualquier ruta con `..` |
 | Sobrescritura | Storage | `upsert: false`, y no hay política de `UPDATE` en `evidence` ni en `dispute-files` |
@@ -209,18 +231,27 @@ la fila de `job_evidence` que referencia esa ruta. Lo mismo para
 
 Los otros buckets:
 
-| Bucket | Subir | Borrar |
-|---|---|---|
-| `avatars` (público) | Carpeta propia | Carpeta propia: la aplicación retira la foto anterior al reemplazarla, y la nueva si el perfil no la toma |
-| `job-images` (público) | Carpeta propia y un trabajo propio en `DRAFT` o `PUBLISHED` (`<usuario>/<trabajo>/<archivo>`). La aplicación todavía no sube fotos de trabajos | Nadie con sesión |
-| `verification` (privado) | Carpeta propia | Nadie con sesión |
+| Bucket | Subir | Leer con la API | Borrar |
+|---|---|---|---|
+| `avatars` (público) | Carpeta propia, con el nombre que admite `profiles.avatar_url` (`<usuario>/<nombre>.jpg\|png\|webp`) y hasta 5 archivos | Solo la carpeta propia, con sesión: es lo que necesita `remove()` | Carpeta propia: la aplicación retira la foto anterior al reemplazarla, y la nueva si el perfil no la toma |
+| `job-images` (público) | Carpeta propia y un trabajo propio en `DRAFT` o `PUBLISHED` (`<usuario>/<trabajo>/<archivo>`), hasta 6 por trabajo. La aplicación todavía no sube fotos de trabajos | Nadie | Nadie con sesión |
+| `verification` (privado) | Carpeta propia | Carpeta propia y administración | Nadie con sesión |
+
+Los dos buckets públicos se sirven por su URL pública (`/object/public/…`), que
+Storage entrega sin mirar políticas. Hasta `20260601001840` tenían además una
+política de lectura para cualquier rol, que solo servía para **listarlos**: con
+la clave pública, sin sesión, se obtenía la carpeta —el identificador— de cada
+persona con foto de perfil, clientes incluidos, y las fotos de trabajos en
+borrador. Ya no hay listado.
 
 No se guardan URLs públicas de archivos privados: una dirección permanente a un
 archivo privado deja de ser privada en cuanto alguien la copia.
 
-Todo esto se comprueba en `supabase/tests/15_abuse_storage.sql` (`Q20`–`Q56`),
-con las políticas evaluadas como `authenticated`. Contra el proyecto alojado
-no se ha comprobado todavía.
+Todo esto se comprueba en `supabase/tests/15_abuse_storage.sql` (`Q20`–`Q56`)
+y `supabase/tests/21_app_security.sql` (`G40`–`G49`), con las políticas
+evaluadas como `authenticated` y `anon`. Contra el proyecto alojado no se ha
+comprobado todavía. Los archivos subidos que nunca se registraron no se limpian
+solos: cuentan contra el tope de su ámbito, que es lo que limita el abuso.
 
 ---
 
@@ -271,6 +302,7 @@ tiempo. Por eso el cliente lo ve y el trabajador lo escribe, nunca al revés.
 | Un solo uso | Un código validado no vuelve a servir |
 | Regenerable | Un código vencido se puede volver a generar. Antes era imposible: `on conflict do update set code = code` conservaba el código y no tocaba la expiración, así que la entrega quedaba bloqueada para siempre |
 | No viaja | No aparece en el chat, ni en las notificaciones, ni en la bitácora de auditoría |
+| Pedirlo avisa una vez | `request_handoff_code` avisa al cliente como mucho una vez por asignación cada 5 minutos (`20260601001830`); antes, cada llamada dejaba un aviso, y 200 llamadas en un bucle, 200. Una llamada antes de tiempo se rechaza con SQLSTATE `PT429` y dice cuándo se puede volver a avisar. `G30`–`G33` |
 
 Validarlo deja la asignación en `HANDOFF_COMPLETED` y escribe el hito
 `handoff_verified`. Dos validaciones simultáneas del mismo código dejan una sola
@@ -523,6 +555,32 @@ ya existían se reutilizan tal cual. Más tarde, `INTEGRITY_ALERT`
 (`20260601001500`): solo para administración, cuando las tareas programadas
 encuentran un invariante roto (§12).
 
+Los valores del enum `notification_type` y `NotificationType`
+(`src/lib/domain/enums.ts`) son los mismos, y cada uno tiene su plantilla en
+`src/lib/notifications/templates.ts`: lo comprueba `npm run db:contract`, en los
+dos sentidos. Antes faltaban seis en TypeScript (`OFFER_WITHDRAWN`,
+`JOB_UPDATED`, `JOB_ASSIGNED`, `JOB_STARTING_SOON`, `PAYMENT_UNDER_REVIEW`,
+`REFUND_CONFIRMED`) y nada lo detectaba.
+
+**Lo que escribe la otra parte no es el cuerpo de un aviso.** Un aviso se lee
+como un mensaje de la plataforma, y un texto como «HagoTuFila: tu pago fue
+rechazado, paga en …» dentro de él es suplantación. Por eso:
+
+- los nombres van entre comillas angulares —«Camila F.»— y no admiten
+  comillas, direcciones ni «HagoTuFila» (`20260601001120`);
+- la evidencia avisa quién y dónde —«Camila F.» envió una actualización de
+  "<título>"—, nunca lo que escribió, que se lee en la línea de tiempo, firmado
+  (`20260601001820`);
+- el título del trabajo y el motivo de cancelación, que sí entran en avisos
+  —el título entre comillas dobles—, siguen la misma regla que los nombres
+  (sin comillas, saltos de línea, direcciones, correos ni «HagoTuFila»; 120 y
+  300 caracteres) en restricciones CHECK de la base (`20260601001810`). La
+  aplicación valida lo mismo antes de enviar (`src/lib/validation/free-text.ts`).
+  Los títulos y motivos que ya existían y no cumplían se limpiaron al aplicar la
+  migración; el valor anterior queda en `audit_logs`.
+
+`G10`–`G27` en `supabase/tests/21_app_security.sql`.
+
 Realtime actualiza la interfaz; la base sigue siendo la fuente de verdad.
 
 ---
@@ -535,6 +593,7 @@ Realtime actualiza la interfaz; la base sigue siendo la fuente de verdad.
 | `supabase/tests/08_race_execution.sh` | X10 aceptar y rechazar la misma extensión a la vez, X11 dos validaciones del mismo PIN, X12 dos aprobaciones, X13 invariantes. `RACE_REPS` repeticiones, dos sesiones `psql` reales |
 | `supabase/tests/15_abuse_storage.sql` | Q01–Q72: límites por usuario, subida y borrado en Storage con las políticas como `authenticated`, evidencia contrastada con `storage.objects`, el PIN solo en curso y el check-in sin precisión |
 | `supabase/tests/18_admin_ops.sql` | K01–K31: la cola «En revisión» y su cifra (un pago una vez, cobro duplicado, disputa sin devolución pedida, la cola sigue a la vista `admin_payments`), y los invariantes en las tareas programadas: regla rota inyectada, un aviso por día, alerta vista, aislamiento de una función que falla, una función que desaparece y una regla sin nombre |
+| `supabase/tests/21_app_security.sql` | G01–G49: la línea de tiempo de la página pública sin sesión (vacía, sin error, sin coordenadas), título y motivo de cancelación que no cierran la cita, la evidencia que avisa quién y solo con el trabajo en marcha, el aviso de «pedir el código» una vez cada 5 minutos, y Storage sin listado público y con topes por ámbito |
 | `scripts/verify-execution.ts` | W01–W24 contra `hagotufila-dev`, con sesiones reales y RLS del proyecto: separación de roles, privacidad de la ubicación, extensiones, disputas, transferencia, reseñas y dos carreras |
 | `e2e/execution.spec.ts` | Seis pruebas de navegador: el recorrido con el ratón, que cada parte ve solo sus acciones, y que la línea de tiempo no lleva coordenadas |
 

@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui/feedback";
 import { Button, Field, Input, Textarea } from "@/components/ui";
 import { updateJobAction } from "@/lib/actions/jobs";
 import { utcToZonedParts } from "@/lib/utils/datetime";
+import { jobTitleProblem } from "@/lib/validation/free-text";
 
 import type { Job } from "@/lib/domain/types";
 
@@ -47,8 +48,11 @@ export function EditJobForm({ job }: { job: Job }) {
       bonusConditions: String(form.get("bonusConditions") ?? "").trim() || null,
     };
 
-    if (values.title.length < 10) {
-      setError("El título necesita al menos 10 caracteres.");
+    // La misma regla que la base: el título va entre comillas en el aviso que
+    // reciben quienes ofertaron.
+    const titleProblem = jobTitleProblem(values.title);
+    if (titleProblem) {
+      setError(titleProblem);
       return;
     }
     if (values.description.length < 30) {
