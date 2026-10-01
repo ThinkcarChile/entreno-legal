@@ -72,6 +72,13 @@ const serverSchema = z.object({
   TRANSBANK_PRODUCTION_COMMERCE_CODE: z.string().optional(),
   TRANSBANK_PRODUCTION_API_KEY_SECRET: z.string().optional(),
 
+  /**
+   * Secreto de las tareas programadas. Quien llama a `/api/cron/*` lo envía como
+   * `Authorization: Bearer <secreto>` (el formato de Vercel Cron). Sin él, esas
+   * rutas responden 503 en vez de quedar abiertas. Mínimo 32 caracteres.
+   */
+  CRON_SECRET: z.string().min(32).optional(),
+
   PLATFORM_COMMISSION_BPS: z.coerce.number().int().min(0).max(5000).default(1400),
   DISPUTE_WINDOW_HOURS: z.coerce.number().int().min(1).max(720).default(12),
 });
@@ -113,6 +120,7 @@ function read(): ServerEnv {
     TRANSBANK_PRODUCTION_API_KEY_SECRET: orUndefined(
       process.env.TRANSBANK_PRODUCTION_API_KEY_SECRET,
     ),
+    CRON_SECRET: orUndefined(process.env.CRON_SECRET),
     PLATFORM_COMMISSION_BPS: orUndefined(process.env.PLATFORM_COMMISSION_BPS),
     DISPUTE_WINDOW_HOURS: orUndefined(process.env.DISPUTE_WINDOW_HOURS),
   });

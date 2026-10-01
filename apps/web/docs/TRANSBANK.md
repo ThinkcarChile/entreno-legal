@@ -272,8 +272,30 @@ es una opción silenciosa.
 Hoy, desde `/admin/pagos`: «Conciliar pendientes» para la cola, o «Consultar al
 proveedor» sobre un pago concreto cuando alguien escribe preguntando.
 
-**No hay programador de tareas en el hosting y no se finge uno.** Cuando lo
-haya, la frecuencia recomendada es:
+Y programada: `GET` o `POST /api/cron/conciliar-pagos`, con
+`Authorization: Bearer $CRON_SECRET`. Ejecuta **el mismo servicio** que el
+botón, con el mismo margen de 5 minutos para no pisar un retorno en curso. Sin
+`CRON_SECRET` responde 503; con un secreto equivocado, 401; ante un error, 500
+sin detalle (el detalle queda en el registro con su categoría). Comprobado con
+la aplicación compilada.
+
+Quién la llama depende del hosting, que todavía no está elegido:
+
+| Opción | Cómo | Ojo |
+|---|---|---|
+| Vercel Cron | `vercel.json` → `crons: [{ path: "/api/cron/conciliar-pagos", schedule: "*/10 * * * *" }]` y `CRON_SECRET` en las variables del proyecto | El plan Hobby solo admite crons diarios y rechaza el despliegue con una frecuencia mayor: hace falta Pro |
+| GitHub Actions | un flujo con `schedule: - cron: "*/10 * * * *"` que haga `curl -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"` | Puede retrasarse varios minutos en horas de carga; sirve igual porque el servicio es idempotente |
+| Cualquier cron del servidor | la misma llamada con `curl` | — |
+
+No se versiona un `vercel.json` a propósito: con una frecuencia de 10 minutos
+haría fallar el despliegue en un plan Hobby, y el hosting es una decisión
+pendiente.
+
+Las tareas que no necesitan hablar con Transbank —aprobación automática,
+caducidad de trabajos, pagos fuera de ventana— ya corren solas dentro de la
+base con pg_cron (`docs/DESPLIEGUE-SUPABASE.md` §4.4).
+
+La frecuencia recomendada para la conciliación es:
 
 | Cuándo | Cada |
 |---|---|
