@@ -140,9 +140,9 @@ export default async function AdminDashboardPage() {
               Pagos de clientes
             </Link>{" "}
             y las ejecuta el proveedor del pago (Webpay, en producción). Solo cuentan como hechas
-            cuando el banco las confirma; una que queda «por confirmar» se concilia sola o se
-            cierra a mano con lo que muestre el portal de Transbank. Toda acción administrativa
-            queda registrada en{" "}
+            cuando el banco las confirma; una que queda «por confirmar» se resuelve con «Conciliar»
+            —o sola, si el hosting llama a la conciliación programada— o se cierra a mano con lo
+            que muestre el portal de Transbank. Toda acción administrativa queda registrada en{" "}
             <code className="rounded bg-ink-100 px-1.5 py-0.5 text-caption">audit_logs</code>.
           </p>
         </CardContent>

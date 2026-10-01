@@ -338,7 +338,8 @@ el importe acordado de la asignación que sale de ella).
 
 Y las de vigilancia (`20260601001510`–`…001520`): `payment_review_queue` (la
 única definición de la cola «En revisión»: la cuenta `admin_pending_reviews` y
-la listan `admin_payment_review_queue` y `/admin/pagos`) y `check_invariants`
+la listan `admin_payment_review_queue` y `/admin/pagos`; los motivos del pago
+los lee de la vista `admin_payments`, la misma de la pantalla) y `check_invariants`
 (corre cada `app_private.*_invariant_violations()` —las que no reciben
 argumentos y devuelven `(rule text, entity_id uuid)`, buscadas en el
 catálogo—, cada una aislada; guarda las reglas rotas en
@@ -347,8 +348,8 @@ hasta cinco ejemplos y desde cuándo; y avisa a cada administrador con
 `INTEGRITY_ALERT` como mucho una vez cada 24 horas por regla mientras siga
 rota). La llama `run_scheduled_tasks`, que devuelve lo encontrado en la clave
 `invariantes`. Una regla que deja de aparecer se da por resuelta, salvo que la
-función que la delata haya fallado en esa pasada; si vuelve, es un caso nuevo,
-sin ver. Nadie con sesión lee ni escribe `integrity_alerts`: el panel pasa por
+función que la delata haya fallado en esa pasada; la de una función que ya no
+existe, también; si vuelve, es un caso nuevo, sin ver. Nadie con sesión lee ni escribe `integrity_alerts`: el panel pasa por
 `admin_integrity_alerts` y `acknowledge_integrity_alerts`.
 
 Y las de abuso y archivos (`20260601001200`–`…001210`): `enforce_rate_limit`

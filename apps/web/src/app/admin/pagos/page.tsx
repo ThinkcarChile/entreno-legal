@@ -226,8 +226,9 @@ export default async function AdminPaymentsPage({
                         <Alert tone="warning" title="Devolución de una disputa sin pedir">
                           La disputa se resolvió a favor del cliente y falta pedir{" "}
                           <Amount value={{ amount: row.disputeRefundPending, currency: "CLP" }} />.
-                          Se pide con «Devolver», abajo, y solo cuenta como hecha cuando Webpay la
-                          confirma.
+                          Se pide con «Devolver», abajo, por ese importe —no por el saldo entero
+                          del pago si la resolución fue parcial—, y solo cuenta como hecha cuando
+                          Webpay la confirma.
                         </Alert>
                       )}
                       {row.reviewReason && (

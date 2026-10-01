@@ -20,7 +20,9 @@
 --   catálogo, así que una función de invariantes nueva entra sola.
 -- · Lo que encuentra queda en `app_private.integrity_alerts`, una fila por
 --   regla rota (cuántos casos, hasta cinco ejemplos, desde cuándo). Una regla
---   que deja de aparecer se da por resuelta; si vuelve, es un caso nuevo.
+--   que deja de aparecer se da por resuelta —también la de una función que ya
+--   no existe—; si vuelve, es un caso nuevo. Una fila con la regla nula se
+--   registra como «(regla sin nombre)» y no impide registrar las demás.
 -- · A cada administrador le llega un aviso `INTEGRITY_ALERT`
 --   (20260601001500) por regla rota, como mucho uno cada 24 horas por regla
 --   mientras siga rota: la fila guarda cuándo se avisó.
@@ -83,21 +85,24 @@ declare
   v_found jsonb;
   v_detail jsonb := '[]'::jsonb;
   v_ran text[] := '{}';
+  v_known text[];
   v_errors jsonb := '[]'::jsonb;
   v_row jsonb;
   v_alert app_private.integrity_alerts;
   v_notified integer := 0;
 begin
+  -- Las funciones de invariantes que hay ahora en el esquema.
+  select coalesce(array_agg(p.proname::text order by p.proname), '{}')
+    into v_known
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'app_private'
+     and p.proname like '%\_invariant\_violations'
+     and p.pronargs = 0
+     and pg_get_function_result(p.oid) = 'TABLE(rule text, entity_id uuid)';
+
   -- Cada función, aislada: una que falla no se lleva a las demás.
-  for v_fn in
-    select p.proname::text
-      from pg_proc p
-      join pg_namespace n on n.oid = p.pronamespace
-     where n.nspname = 'app_private'
-       and p.proname like '%\_invariant\_violations'
-       and p.pronargs = 0
-       and pg_get_function_result(p.oid) = 'TABLE(rule text, entity_id uuid)'
-     order by p.proname
+  foreach v_fn in array v_known
   loop
     begin
       execute format(
@@ -107,7 +112,8 @@ begin
            from (select x.rule,
                         count(*)::integer as casos,
                         to_jsonb((array_agg(x.entity_id order by x.entity_id))[1:5]) as ejemplos
-                   from app_private.%I() x
+                   from (select coalesce(y.rule, ''(regla sin nombre)'') as rule, y.entity_id
+                           from app_private.%I() y) x
                   group by x.rule) v',
         v_fn, v_fn)
         into v_found;
@@ -142,11 +148,13 @@ begin
     end loop;
 
     -- Lo que una función que SÍ corrió ya no devuelve, quedó resuelto. Lo de
-    -- una función que falló no se toca: no se sabe.
+    -- una función que falló no se toca: no se sabe. Lo de una función que ya
+    -- no existe (o cambió de forma) también se cierra: si no, seguiría roja y
+    -- avisando cada día por una regla que nadie puede volver a comprobar.
     update app_private.integrity_alerts a
        set resolved_at = now()
      where a.resolved_at is null
-       and a.source = any (v_ran)
+       and (a.source = any (v_ran) or not (a.source = any (v_known)))
        and not exists (
          select 1 from jsonb_array_elements(v_detail) d
           where d ->> 'funcion' = a.source and d ->> 'regla' = a.kind
@@ -180,6 +188,8 @@ begin
       v_notified := v_notified + 1;
     end loop;
   exception when others then
+    -- El bloque se deshizo entero: ningún aviso de esta pasada quedó escrito.
+    v_notified := 0;
     v_errors := v_errors || jsonb_build_object('tarea', 'invariantes:avisos', 'error', sqlerrm);
   end;
 

@@ -256,15 +256,15 @@ const AVISOS_ACEPTADOS: Record<string, Record<string, string>> = {
       "SOLO la administración: primera línea es app_private.is_admin(). Devuelve la cola «En " +
       "revisión» de /admin/pagos —un pago por fila y su motivo—, que es la misma que cuenta " +
       "admin_pending_reviews (…001510). Necesita leer payment_refunds y payment_attempts, que " +
-      "solo administración lee. Solo lee (K01–K13).",
+      "solo administración lee. Solo lee (K01–K10, K29).",
     "public.admin_integrity_alerts":
       "SOLO la administración: primera línea es app_private.is_admin(). Lee " +
       "app_private.integrity_alerts, que nadie con sesión puede leer, para la alerta roja de " +
-      "/admin (…001520). Solo lee (K22–K23).",
+      "/admin (…001520). Solo lee (K18–K21, K26, K28).",
     "public.acknowledge_integrity_alerts":
       "SOLO la administración: primera línea es app_private.is_admin(). Marca como vistas las " +
       "reglas de invariante rotas en app_private.integrity_alerts —tabla sin ningún privilegio " +
-      "para nadie con sesión— y deja una fila en audit_logs. No toca datos de negocio (K23–K24).",
+      "para nadie con sesión— y deja una fila en audit_logs. No toca datos de negocio (K19–K20, K28).",
     "public.get_job_instructions":
       "La llama cualquiera con sesión, y solo devuelve algo al cliente del trabajo, al " +
       "trabajador asignado con la asignación viva o a la administración; a cualquier otro, " +

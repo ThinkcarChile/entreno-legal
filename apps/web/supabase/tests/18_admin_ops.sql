@@ -524,3 +524,70 @@ select pg_temp.expect('K28 anon no lee ni marca las alertas',
   has_function_privilege('anon', 'public.admin_integrity_alerts()', 'execute') || ' · ' ||
   has_function_privilege('anon', 'public.acknowledge_integrity_alerts()', 'execute'),
   'false · false');
+
+\echo ''
+\echo '--- La cola sigue a la vista que muestra la pantalla'
+
+-- La cola lee sus motivos de `admin_payments`, la misma vista de las tarjetas
+-- de /admin/pagos. Si la vista deja de contar un intento como pendiente (como
+-- un cobro duplicado ya devuelto), el pago sale de la lista y de la cifra a la
+-- vez. Se simula, dentro de una transacción que se deshace, una vista que ya
+-- no cuenta los intentos DOUBLE_CHARGE: el pago de k2 solo estaba por eso.
+select pg_temp.cifra() as k29_antes \gset
+begin;
+do $$
+begin
+  execute 'create or replace view public.admin_payments with (security_invoker = true) as '
+       || replace(pg_get_viewdef('public.admin_payments'::regclass),
+                  '''DOUBLE_CHARGE''::text', '''K_NINGUNO''::text');
+end $$;
+select pg_temp.expect('K29 si la vista ya no lo da por pendiente, sale de la lista y de la cifra',
+  pg_temp.fila(:'k2_payment_id') || ' · ' || (pg_temp.cifra() < :k29_antes)::text || ' · ' ||
+  (pg_temp.cifra() || ' filas · ' || pg_temp.cifra() || ' pagos' = pg_temp.lista())::text,
+  'FUERA · true · true');
+rollback;
+
+\echo ''
+\echo '--- Una función de invariantes que desaparece o devuelve una regla sin nombre'
+
+-- Una regla de una función que ya no existe no puede volver a comprobarse: si
+-- quedara abierta, seguiría roja y avisando cada día para siempre.
+begin;
+create function app_private.zz_prueba_k_invariant_violations()
+returns table (rule text, entity_id uuid)
+language sql
+as $$
+  select 'k_regla_fantasma'::text, 'b18a0000-0000-4000-8000-000000000003'::uuid
+$$;
+select app_private.run_scheduled_tasks() is not null as _ \gset
+select pg_temp.alerta('k_regla_fantasma') as k30_antes \gset
+drop function app_private.zz_prueba_k_invariant_violations();
+select app_private.run_scheduled_tasks() is not null as _ \gset
+select pg_temp.expect('K30 la regla de una función que ya no existe se da por resuelta',
+  :'k30_antes' || ' · ' || pg_temp.alerta('k_regla_fantasma') || ' · ' ||
+  (select (resolved_at is not null)::text from app_private.integrity_alerts where kind = 'k_regla_fantasma'),
+  'k_regla_fantasma · sin ver · NINGUNA · true');
+rollback;
+
+-- Una fila con la regla nula no puede impedir que se registren y avisen las
+-- demás reglas rotas de la misma pasada.
+begin;
+create function app_private.zz_prueba_k_invariant_violations()
+returns table (rule text, entity_id uuid)
+language sql
+as $$
+  select null::text, 'b18a0000-0000-4000-8000-000000000004'::uuid
+$$;
+set session_replication_role = replica;
+update payments set refunded_amount = 1000 where id = :'k4_payment_id';
+set session_replication_role = origin;
+delete from app_private.integrity_alerts;
+select app_private.run_scheduled_tasks() as k_r9 \gset
+select pg_temp.expect('K31 una regla sin nombre no tumba el registro ni el aviso de las demás',
+  (:'k_r9'::jsonb -> 'errores')::text || ' · ' ||
+  pg_temp.alerta('refunded_amount_mismatch') || ' · ' ||
+  (select count(*) from app_private.integrity_alerts
+    where source = 'zz_prueba_k_invariant_violations' and resolved_at is null)::text || ' · ' ||
+  ((:'k_r9'::jsonb -> 'invariantes' ->> 'avisos')::integer >= 2)::text,
+  '[] · refunded_amount_mismatch · sin ver · 1 · true');
+rollback;

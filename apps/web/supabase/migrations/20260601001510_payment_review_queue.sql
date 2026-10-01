@@ -24,6 +24,13 @@
 --   persona, con el porqué —en revisión, devolución abierta, intentos en
 --   revisión, disputa resuelta con devolución sin pedir—. Es la única
 --   definición de la cola: la cifra y la lista salen de aquí.
+--   Los tres primeros motivos se leen de la vista `admin_payments`
+--   (`status`, `open_refund_id`, `attempts_in_review`), que es justo lo que
+--   filtraba antes `/admin/pagos?filtro=review` y lo que muestra cada
+--   tarjeta. No se vuelven a derivar de las tablas: si la vista cambia qué
+--   cuenta como intento en revisión (p. ej. deja fuera un cobro duplicado ya
+--   devuelto), la cola y la cifra cambian con ella y no se quedan con un pago
+--   que la pantalla ya no muestra como pendiente.
 -- · `public.admin_payment_review_queue()`: la misma cola para el panel. Solo
 --   administración; sin el rol, lanza excepción. `/admin/pagos?filtro=review`
 --   la recorre entera, por tramos, del pago más antiguo al más reciente.
@@ -89,35 +96,28 @@ as $$
        and x.payment_id is not null
      group by x.payment_id
   )
-  select p.id,
-         p.created_at,
-         p.status = 'UNDER_REVIEW',
-         exists (
-           select 1 from public.payment_refunds r
-            where r.payment_id = p.id and r.status in ('REQUESTED', 'UNKNOWN')
-         ),
-         (select count(*)::integer from public.payment_attempts a
-           where a.payment_id = p.id and a.status in ('DOUBLE_CHARGE', 'UNDER_REVIEW')),
+  -- Los motivos del pago, de la vista del panel: los mismos campos que
+  -- muestra cada tarjeta de /admin/pagos (ver la cabecera). La vista es
+  -- `security_invoker`; aquí la lee el dueño de la función.
+  select v.payment_id,
+         v.created_at,
+         v.status = 'UNDER_REVIEW',
+         v.open_refund_id is not null,
+         coalesce(v.attempts_in_review, 0)::integer,
          dp.dispute_id,
          coalesce(dp.pending, 0)
-    from public.payments p
-    left join disputa_por_pago dp on dp.payment_id = p.id
-   where p.status = 'UNDER_REVIEW'
-      or exists (
-           select 1 from public.payment_refunds r
-            where r.payment_id = p.id and r.status in ('REQUESTED', 'UNKNOWN')
-         )
-      or exists (
-           select 1 from public.payment_attempts a
-            where a.payment_id = p.id and a.status in ('DOUBLE_CHARGE', 'UNDER_REVIEW')
-         )
+    from public.admin_payments v
+    left join disputa_por_pago dp on dp.payment_id = v.payment_id
+   where v.status = 'UNDER_REVIEW'
+      or v.open_refund_id is not null
+      or v.attempts_in_review > 0
       or dp.payment_id is not null;
 $$;
 
 revoke all on function app_private.payment_review_queue() from public, anon, authenticated;
 
 comment on function app_private.payment_review_queue is
-  'Pagos que esperan a una persona, uno por fila: en revisión, con devolución abierta, con intentos en revisión o con la devolución de una disputa sin pedir. La usan admin_pending_reviews y admin_payment_review_queue.';
+  'Pagos que esperan a una persona, uno por fila: en revisión, con devolución abierta, con intentos en revisión o con la devolución de una disputa sin pedir. Los motivos del pago salen de la vista admin_payments, la misma de /admin/pagos. La usan admin_pending_reviews y admin_payment_review_queue.';
 
 
 -- -----------------------------------------------------------------------------

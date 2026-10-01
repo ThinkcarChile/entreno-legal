@@ -441,6 +441,9 @@ páginas (`?pagina=`, que conserva el filtro). «En revisión» es
 `admin_payment_review_queue`, la misma cola que cuenta la tarjeta
 «Devoluciones por procesar» del resumen: un pago por fila, aunque esté en
 revisión y además tenga una devolución abierta, que antes contaba dos veces.
+Sus motivos salen de la vista `admin_payments` (`status`, `open_refund_id`,
+`attempts_in_review`), la misma que pinta cada tarjeta: si la vista cambia qué
+cuenta como pendiente, la lista y la cifra cambian con ella.
 La cola incluye el pago del trabajo de una disputa resuelta a favor del cliente
 cuya devolución todavía no se pidió, y la tarjeta de esa disputa en
 `/admin/disputas` («Devolución pendiente») enlaza directo a ese pago
@@ -460,7 +463,9 @@ cada 24 horas mientras siga rota, y el resumen de `/admin` muestra una alerta
 roja con las reglas que nadie marcó como vistas («Marcar como vistas» queda en
 `audit_logs`; no arregla el dato ni detiene el aviso diario). Si aparecen más
 casos de una regla ya vista, o se resuelve y vuelve, la alerta vuelve a ser
-roja. Pruebas: `supabase/tests/18_admin_ops.sql` (`K01`–`K28`).
+roja. Una regla cuya función ya no existe se da por resuelta, y una fila con la
+regla nula no impide registrar ni avisar las demás. Pruebas:
+`supabase/tests/18_admin_ops.sql` (`K01`–`K31`).
 
 ### La ventana retiene de verdad
 
@@ -526,7 +531,7 @@ Realtime actualiza la interfaz; la base sigue siendo la fuente de verdad.
 | `supabase/tests/08_job_execution.sql` | E01–E28: recorrido completo, check-in y sus cuatro resultados, papeles, escrituras directas, extensiones, PIN, finalización, disputas, payouts, reseñas, idempotencia de hitos e invariantes |
 | `supabase/tests/08_race_execution.sh` | X10 aceptar y rechazar la misma extensión a la vez, X11 dos validaciones del mismo PIN, X12 dos aprobaciones, X13 invariantes. `RACE_REPS` repeticiones, dos sesiones `psql` reales |
 | `supabase/tests/15_abuse_storage.sql` | Q01–Q72: límites por usuario, subida y borrado en Storage con las políticas como `authenticated`, evidencia contrastada con `storage.objects`, el PIN solo en curso y el check-in sin precisión |
-| `supabase/tests/18_admin_ops.sql` | K01–K28: la cola «En revisión» y su cifra (un pago una vez, cobro duplicado, disputa sin devolución pedida), y los invariantes en las tareas programadas: regla rota inyectada, un aviso por día, alerta vista y aislamiento de una función que falla |
+| `supabase/tests/18_admin_ops.sql` | K01–K31: la cola «En revisión» y su cifra (un pago una vez, cobro duplicado, disputa sin devolución pedida, la cola sigue a la vista `admin_payments`), y los invariantes en las tareas programadas: regla rota inyectada, un aviso por día, alerta vista, aislamiento de una función que falla, una función que desaparece y una regla sin nombre |
 | `scripts/verify-execution.ts` | W01–W24 contra `hagotufila-dev`, con sesiones reales y RLS del proyecto: separación de roles, privacidad de la ubicación, extensiones, disputas, transferencia, reseñas y dos carreras |
 | `e2e/execution.spec.ts` | Seis pruebas de navegador: el recorrido con el ratón, que cada parte ve solo sus acciones, y que la línea de tiempo no lleva coordenadas |
 
