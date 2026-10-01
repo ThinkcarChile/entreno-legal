@@ -577,6 +577,26 @@ de una persona.
 
 ---
 
+### Reintentos y cobros posibles
+
+Un pago cuyo intento anterior ya pasó por `commit`, o figura `AUTHORIZED`, no
+admite un intento nuevo (`register_payment_attempt`, migración
+`20260601000400`): el cliente ve «Tu pago anterior se está confirmando» y la
+conciliación lo cierra con el token que sigue en la fila. Antes, un asiento
+que fallaba después del commit dejaba el pago en `CREATED`, el reintento
+sobrescribía el token, y ese cobro quedaba sin rastro.
+
+**Riesgo abierto, a sabiendas.** Si el cliente deja una pestaña de Webpay
+abierta sin terminar, reintenta en otra, y después completa la primera, el
+retorno de la primera trae un token que ya no está en la fila: el pago se
+registra como desconocido. Cerrarlo de verdad exige guardar el historial de
+tokens por intento (una tabla de intentos), no una columna. Mientras tanto, la
+señal es un reclamo del cliente con un cobro que no aparece en `/admin/pagos`:
+se busca por orden de compra en el portal de Transbank y se devuelve desde
+allí.
+
+---
+
 ## 12. Lo que NO se pudo probar aquí, y por qué
 
 El cortafuegos de Transbank (Imperva) responde **HTTP 403 a las peticiones

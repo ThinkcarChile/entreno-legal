@@ -376,3 +376,32 @@ select pg_temp.reclamar(:'v9_assignment_id') is not null as _ \gset
 select pg_temp.resolver(:'v9_assignment_id', 'CLIENT_WINS', 7000) is null as _ \gset
 select pg_temp.expect('V34 un importe explícito se respeta',
   (select refund_amount::text from disputes where assignment_id = :'v9_assignment_id'), '7000');
+
+\echo ''
+\echo '--- Un reintento no borra el rastro de un cobro posible'
+
+-- v10: pago creado en el proveedor, sin commit todavía: reintentar se permite.
+select * from pg_temp.montar_trabajo('v10', false) \gset v10_
+select public.register_payment_attempt(:'v10_payment_id', 'mock', 'mock', 'HV10A' || substr(md5(random()::text), 1, 8),
+  'sesion-v10', 'http://localhost:3000/pagos/retorno') is null as _ \gset
+select pg_temp.expect('V35 sin commit previo, un reintento se acepta',
+  (select (status = 'CREATED' and attempt >= 1)::text from payments where id = :'v10_payment_id'), 'true');
+
+-- El commit contestó AUTHORIZED y el asiento falló después: el pago sigue CREATED.
+update payments set committed_at = now(), provider_status = 'AUTHORIZED' where id = :'v10_payment_id';
+do $$
+declare v_payment uuid := (select id from public.payments where buy_order like 'HV10A%' limit 1);
+        v_token_antes text;
+begin
+  update public.payments set provider_token = 'token-del-cobro-posible' where id = v_payment;
+  begin
+    perform public.register_payment_attempt(v_payment, 'mock', 'mock', 'HV10B' || substr(md5(random()::text), 1, 8),
+      'sesion-v10', 'http://localhost:3000/pagos/retorno');
+    raise notice 'V36 FALLO: se abrió un intento nuevo encima de un cobro posible';
+  exception when check_violation then
+    raise notice 'V36 OK: con un commit previo no se abre otro intento';
+  end;
+  select provider_token into v_token_antes from public.payments where id = v_payment;
+  raise notice '%', 'V37 el token del cobro posible se conserva = ' || v_token_antes
+    || case when v_token_antes = 'token-del-cobro-posible' then '' else ' FALLO' end;
+end $$;
