@@ -5,11 +5,23 @@ import { mapDispute, mapPayout, type DisputeRow, type PayoutRow } from "./mapper
 import { DISPUTE_COLUMNS, PAYOUT_COLUMNS, type Client } from "./shared";
 import { loadProfiles } from "./jobs";
 
+import { chunk, fetchAllPages } from "@/lib/utils/pagination";
+
+import {
+  CLOSED_DISPUTE_STATUSES,
+  CLOSED_PAYOUT_STATUSES,
+  confirmedRefundsByDispute,
+  pendingDisputeRefund,
+  postgrestList,
+  type RefundRow,
+} from "../admin-queues";
+
 import type {
   AdminDispute,
   AdminPayout,
   AdminQueues,
   AdminRepository,
+  Page,
   PendingCheckIn,
   PlatformKpis,
   AdminPayment,
@@ -134,39 +146,51 @@ export class SupabaseAdminRepository implements AdminRepository {
 
   async listPendingCheckIns(): Promise<readonly PendingCheckIn[]> {
     const supabase = await this.getClient();
-    const { data, error } = await supabase
-      .from("assignment_check_ins")
-      .select("id,assignment_id,job_id,worker_id,result,distance_m,review_reason,occurred_at")
-      .eq("review_status", "PENDING")
-      .order("occurred_at", { ascending: true })
-      .limit(100)
-      .returns<
-        {
-          id: string;
-          assignment_id: string;
-          job_id: string;
-          worker_id: string;
-          result: string;
-          distance_m: number | null;
-          review_reason: string | null;
-          occurred_at: string;
-        }[]
-      >();
-
-    if (error) throw error;
-    const rows = data ?? [];
+    // Sin tope, como las demás colas: un trabajo no puede comenzar mientras su
+    // llegada espera aquí, así que la que no se ve bloquea a alguien.
+    const rows = await fetchAllPages(async (from, to) => {
+      const { data, error } = await supabase
+        .from("assignment_check_ins")
+        .select("id,assignment_id,job_id,worker_id,result,distance_m,review_reason,occurred_at")
+        .eq("review_status", "PENDING")
+        .order("occurred_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to)
+        .returns<
+          {
+            id: string;
+            assignment_id: string;
+            job_id: string;
+            worker_id: string;
+            result: string;
+            distance_m: number | null;
+            review_reason: string | null;
+            occurred_at: string;
+          }[]
+        >();
+      if (error) throw error;
+      return data ?? [];
+    });
     if (rows.length === 0) return [];
 
     const [jobs, profiles] = await Promise.all([
-      supabase
-        .from("jobs")
-        .select("id,title,reference")
-        .in("id", [...new Set(rows.map((r) => r.job_id))])
-        .returns<{ id: string; title: string; reference: string }[]>(),
-      loadProfiles(supabase, [...new Set(rows.map((r) => r.worker_id))]),
+      selectByIds(
+        rows.map((r) => r.job_id),
+        (part) =>
+          supabase
+            .from("jobs")
+            .select("id,title,reference")
+            .in("id", part)
+            .returns<{ id: string; title: string; reference: string }[]>(),
+        "trabajos",
+      ),
+      loadProfilesInChunks(
+        supabase,
+        rows.map((r) => r.worker_id),
+      ),
     ]);
 
-    const jobById = new Map((jobs.data ?? []).map((j) => [j.id, j]));
+    const jobById = new Map(jobs.map((j) => [j.id, j]));
 
     return rows.map((row) => ({
       id: row.id,
@@ -182,52 +206,159 @@ export class SupabaseAdminRepository implements AdminRepository {
     }));
   }
 
-  async listDisputes(onlyOpen = false): Promise<readonly AdminDispute[]> {
+  /* ------------------------------------------------ disputas y payouts */
+
+  /*
+   * Antes había un `listDisputes` y un `listPayouts` con `.limit(100)`
+   * sobre todos los estados, los más recientes primero. Pasados cien registros,
+   * un payout aprobado y sin transferir de hace un mes desaparecía de
+   * `/admin/payouts`, que es la única pantalla donde se transfiere. Ahora cada
+   * pantalla tiene dos listas: lo que pide una acción, entero y del más antiguo
+   * al más reciente, y el historial, por páginas. Ver `admin-queues.ts`.
+   */
+
+  async listActionableDisputes(): Promise<readonly AdminDispute[]> {
     const supabase = await this.getClient();
-    let query = supabase
-      .from("disputes")
-      .select(DISPUTE_COLUMNS)
-      .order("created_at", { ascending: false })
-      .limit(100);
-    if (onlyOpen) query = query.in("status", ["OPEN", "UNDER_REVIEW"]);
 
-    const { data, error } = await query.returns<DisputeRow[]>();
-    if (error) throw error;
-    const rows = data ?? [];
-    if (rows.length === 0) return [];
-
-    const assignmentIds = [...new Set(rows.map((r) => r.assignment_id))];
-    const { data: assignments } = await supabase
-      .from("assignments")
-      .select("id,job_id,client_id,worker_id")
-      .in("id", assignmentIds)
-      .returns<{ id: string; job_id: string; client_id: string; worker_id: string }[]>();
-
-    const assignmentById = new Map((assignments ?? []).map((a) => [a.id, a]));
-
-    const [jobs, profiles, payouts] = await Promise.all([
-      supabase
-        .from("jobs")
-        .select("id,title,reference")
-        .in("id", [...new Set((assignments ?? []).map((a) => a.job_id))])
-        .returns<{ id: string; title: string; reference: string }[]>(),
-      loadProfiles(supabase, [
-        ...new Set((assignments ?? []).flatMap((a) => [a.client_id, a.worker_id])),
-      ]),
-      supabase
-        .from("payouts")
-        .select("assignment_id,status,net_amount")
-        .in("assignment_id", assignmentIds)
-        .returns<{ assignment_id: string; status: string; net_amount: number }[]>(),
+    const [open, resolvedWithRefund] = await Promise.all([
+      fetchAllPages(async (from, to) => {
+        const { data, error } = await supabase
+          .from("disputes")
+          .select(DISPUTE_COLUMNS)
+          .not("status", "in", postgrestList(CLOSED_DISPUTE_STATUSES))
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, to)
+          .returns<DisputeRow[]>();
+        if (error) throw error;
+        return data ?? [];
+      }),
+      // Resueltas con importe a favor del cliente. De estas solo pide una
+      // acción la que todavía no se devolvió entera.
+      fetchAllPages(async (from, to) => {
+        const { data, error } = await supabase
+          .from("disputes")
+          .select(DISPUTE_COLUMNS)
+          .eq("status", "RESOLVED")
+          .gt("refund_amount", 0)
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, to)
+          .returns<DisputeRow[]>();
+        if (error) throw error;
+        return data ?? [];
+      }),
     ]);
 
-    const jobById = new Map((jobs.data ?? []).map((j) => [j.id, j]));
-    const payoutByAssignment = new Map((payouts.data ?? []).map((p) => [p.assignment_id, p]));
+    const confirmed = await loadConfirmedRefunds(
+      supabase,
+      resolvedWithRefund.map((r) => r.id),
+    );
+    const pendingRefund = resolvedWithRefund.filter(
+      (r) => pendingDisputeRefund(r.refund_amount, confirmed.get(r.id) ?? 0) > 0,
+    );
+
+    const rows = [...open, ...pendingRefund].sort(
+      (a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id),
+    );
+    return this.enrichDisputes(supabase, rows, confirmed);
+  }
+
+  async listDisputeHistory({
+    limit,
+    offset,
+  }: {
+    limit: number;
+    offset: number;
+  }): Promise<Page<AdminDispute>> {
+    const supabase = await this.getClient();
+    const { data, error, count } = await supabase
+      .from("disputes")
+      .select(DISPUTE_COLUMNS, { count: "exact" })
+      .in("status", [...CLOSED_DISPUTE_STATUSES])
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(offset, offset + limit - 1)
+      .returns<DisputeRow[]>();
+
+    if (error) {
+      // Una página más allá del final (`?pagina=99`): lista vacía, con el total
+      // para poder volver.
+      if (isRangeNotSatisfiable(error)) {
+        const total = await countWithStatus(supabase, "disputes", CLOSED_DISPUTE_STATUSES);
+        return { items: [], total, limit, offset };
+      }
+      throw error;
+    }
+
+    const rows = data ?? [];
+    const confirmed = await loadConfirmedRefunds(
+      supabase,
+      rows.filter((r) => (r.refund_amount ?? 0) > 0).map((r) => r.id),
+    );
+    return {
+      items: await this.enrichDisputes(supabase, rows, confirmed),
+      total: count ?? rows.length,
+      limit,
+      offset,
+    };
+  }
+
+  private async enrichDisputes(
+    supabase: Client,
+    rows: readonly DisputeRow[],
+    confirmed: ReadonlyMap<string, number>,
+  ): Promise<AdminDispute[]> {
+    if (rows.length === 0) return [];
+
+    const assignmentIds = rows.map((r) => r.assignment_id);
+    const assignments = await selectByIds(
+      assignmentIds,
+      (part) =>
+        supabase
+          .from("assignments")
+          .select("id,job_id,client_id,worker_id")
+          .in("id", part)
+          .returns<{ id: string; job_id: string; client_id: string; worker_id: string }[]>(),
+      "asignaciones",
+    );
+    const assignmentById = new Map(assignments.map((a) => [a.id, a]));
+
+    const [jobs, profiles, payouts] = await Promise.all([
+      selectByIds(
+        assignments.map((a) => a.job_id),
+        (part) =>
+          supabase
+            .from("jobs")
+            .select("id,title,reference")
+            .in("id", part)
+            .returns<{ id: string; title: string; reference: string }[]>(),
+        "trabajos",
+      ),
+      loadProfilesInChunks(
+        supabase,
+        assignments.flatMap((a) => [a.client_id, a.worker_id]),
+      ),
+      selectByIds(
+        assignmentIds,
+        (part) =>
+          supabase
+            .from("payouts")
+            .select("assignment_id,status,net_amount")
+            .in("assignment_id", part)
+            .returns<{ assignment_id: string; status: string; net_amount: number }[]>(),
+        "payouts",
+      ),
+    ]);
+
+    const jobById = new Map(jobs.map((j) => [j.id, j]));
+    const payoutByAssignment = new Map(payouts.map((p) => [p.assignment_id, p]));
 
     return rows.map((row) => {
       const assignment = assignmentById.get(row.assignment_id);
       const job = assignment ? jobById.get(assignment.job_id) : undefined;
       const payout = payoutByAssignment.get(row.assignment_id);
+      const pending = pendingDisputeRefund(row.refund_amount, confirmed.get(row.id) ?? 0);
       return {
         dispute: mapDispute(row),
         jobId: assignment?.job_id ?? "",
@@ -239,49 +370,102 @@ export class SupabaseAdminRepository implements AdminRepository {
           : "",
         amountHeld: payout ? money(payout.net_amount) : null,
         payoutStatus: (payout?.status as PayoutStatus | undefined) ?? null,
+        refundPending: pending > 0 ? money(pending) : null,
       };
     });
   }
 
-  async listPayouts(status?: PayoutStatus): Promise<readonly AdminPayout[]> {
+  async listActionablePayouts(): Promise<readonly AdminPayout[]> {
     const supabase = await this.getClient();
-    let query = supabase
-      .from("payouts")
-      .select(PAYOUT_COLUMNS)
-      .order("created_at", { ascending: false })
-      .limit(100);
-    if (status) query = query.eq("status", status);
+    const rows = await fetchAllPages(async (from, to) => {
+      const { data, error } = await supabase
+        .from("payouts")
+        .select(PAYOUT_COLUMNS)
+        .not("status", "in", postgrestList(CLOSED_PAYOUT_STATUSES))
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to)
+        .returns<PayoutRow[]>();
+      if (error) throw error;
+      return data ?? [];
+    });
+    return this.enrichPayouts(supabase, rows);
+  }
 
-    const { data, error } = await query.returns<PayoutRow[]>();
-    if (error) throw error;
+  async listPayoutHistory({
+    limit,
+    offset,
+  }: {
+    limit: number;
+    offset: number;
+  }): Promise<Page<AdminPayout>> {
+    const supabase = await this.getClient();
+    const { data, error, count } = await supabase
+      .from("payouts")
+      .select(PAYOUT_COLUMNS, { count: "exact" })
+      .in("status", [...CLOSED_PAYOUT_STATUSES])
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(offset, offset + limit - 1)
+      .returns<PayoutRow[]>();
+
+    if (error) {
+      if (isRangeNotSatisfiable(error)) {
+        const total = await countWithStatus(supabase, "payouts", CLOSED_PAYOUT_STATUSES);
+        return { items: [], total, limit, offset };
+      }
+      throw error;
+    }
+
     const rows = data ?? [];
+    return {
+      items: await this.enrichPayouts(supabase, rows),
+      total: count ?? rows.length,
+      limit,
+      offset,
+    };
+  }
+
+  private async enrichPayouts(supabase: Client, rows: readonly PayoutRow[]): Promise<AdminPayout[]> {
     if (rows.length === 0) return [];
 
-    const { data: assignments } = await supabase
-      .from("assignments")
-      .select("id,job_id,completed_at,dispute_deadline_at")
-      .in("id", [...new Set(rows.map((r) => r.assignment_id))])
-      .returns<
-        {
-          id: string;
-          job_id: string;
-          completed_at: string | null;
-          dispute_deadline_at: string | null;
-        }[]
-      >();
-
-    const assignmentById = new Map((assignments ?? []).map((a) => [a.id, a]));
+    const assignments = await selectByIds(
+      rows.map((r) => r.assignment_id),
+      (part) =>
+        supabase
+          .from("assignments")
+          .select("id,job_id,completed_at,dispute_deadline_at")
+          .in("id", part)
+          .returns<
+            {
+              id: string;
+              job_id: string;
+              completed_at: string | null;
+              dispute_deadline_at: string | null;
+            }[]
+          >(),
+      "asignaciones",
+    );
+    const assignmentById = new Map(assignments.map((a) => [a.id, a]));
 
     const [jobs, profiles] = await Promise.all([
-      supabase
-        .from("jobs")
-        .select("id,title,reference")
-        .in("id", [...new Set((assignments ?? []).map((a) => a.job_id))])
-        .returns<{ id: string; title: string; reference: string }[]>(),
-      loadProfiles(supabase, [...new Set(rows.map((r) => r.worker_id))]),
+      selectByIds(
+        assignments.map((a) => a.job_id),
+        (part) =>
+          supabase
+            .from("jobs")
+            .select("id,title,reference")
+            .in("id", part)
+            .returns<{ id: string; title: string; reference: string }[]>(),
+        "trabajos",
+      ),
+      loadProfilesInChunks(
+        supabase,
+        rows.map((r) => r.worker_id),
+      ),
     ]);
 
-    const jobById = new Map((jobs.data ?? []).map((j) => [j.id, j]));
+    const jobById = new Map(jobs.map((j) => [j.id, j]));
     const readAt = Date.now();
 
     return rows.map((row) => {
@@ -361,4 +545,110 @@ export class SupabaseAdminRepository implements AdminRepository {
     }));
   }
 
+}
+
+/* ---------------------------------------------------------------- piezas */
+
+/** Identificadores por consulta `.in()`: cien uuid ya son 3,7 KB de URL. */
+const IN_CHUNK = 100;
+
+interface ChunkResult<T> {
+  data: T[] | null;
+  error: { message: string; code?: string } | null;
+}
+
+/**
+ * Una consulta `.in("id", …)` partida en trozos.
+ *
+ * Las listas sin tope pueden traer cientos de filas, y un `in.(…)` con todos
+ * sus identificadores no cabe en la URL de una petición a PostgREST. Un trozo
+ * que falla se registra y se omite: la fila principal se sigue mostrando, con
+ * «Trabajo» o «Trabajador» en vez del nombre, como antes.
+ */
+async function selectByIds<T>(
+  ids: readonly string[],
+  query: (part: string[]) => PromiseLike<ChunkResult<T>>,
+  what: string,
+): Promise<T[]> {
+  const unique = [...new Set(ids)].filter(Boolean);
+  if (unique.length === 0) return [];
+  const results = await Promise.all(chunk(unique, IN_CHUNK).map((part) => query(part)));
+  const rows: T[] = [];
+  for (const { data, error } of results) {
+    if (error) {
+      console.error(`[admin] no se pudieron leer ${what}`, { code: error.code ?? null });
+      continue;
+    }
+    rows.push(...(data ?? []));
+  }
+  return rows;
+}
+
+/** `loadProfiles` por trozos, por la misma razón. */
+async function loadProfilesInChunks(supabase: Client, ids: readonly string[]) {
+  const unique = [...new Set(ids)].filter(Boolean);
+  const maps = await Promise.all(chunk(unique, IN_CHUNK).map((part) => loadProfiles(supabase, part)));
+  return new Map(maps.flatMap((m) => [...m]));
+}
+
+/**
+ * Lo devuelto de verdad por cada disputa, desde `payment_refunds` (solo la lee
+ * administración).
+ *
+ * Si la lectura falla, se asume que no se devolvió nada: la disputa sigue en
+ * la lista de pendientes. Equivocarse hacia «pendiente» deja una tarjeta de
+ * más; equivocarse hacia «devuelto» escondería una devolución que se debe.
+ */
+async function loadConfirmedRefunds(
+  supabase: Client,
+  disputeIds: readonly string[],
+): Promise<Map<string, number>> {
+  const unique = [...new Set(disputeIds)].filter(Boolean);
+  if (unique.length === 0) return new Map();
+  try {
+    const rows = await selectStrict<RefundRow>(unique, (part) =>
+      supabase
+        .from("payment_refunds")
+        .select("dispute_id,amount,status")
+        .in("dispute_id", part)
+        .eq("status", "CONFIRMED")
+        .returns<RefundRow[]>(),
+    );
+    return confirmedRefundsByDispute(rows);
+  } catch (error) {
+    console.error("[admin] no se pudieron leer las devoluciones; se muestran como pendientes", {
+      code: typeof error === "object" && error !== null && "code" in error ? error.code : null,
+    });
+    return new Map();
+  }
+}
+
+/** Como `selectByIds`, pero un trozo que falla hace fallar todo. */
+async function selectStrict<T>(
+  ids: readonly string[],
+  query: (part: string[]) => PromiseLike<ChunkResult<T>>,
+): Promise<T[]> {
+  const results = await Promise.all(chunk([...ids], IN_CHUNK).map((part) => query(part)));
+  return results.flatMap(({ data, error }) => {
+    if (error) throw error;
+    return data ?? [];
+  });
+}
+
+/** PostgREST responde 416 (PGRST103) a una página que empieza después de la última fila. */
+function isRangeNotSatisfiable(error: { code?: string }): boolean {
+  return error.code === "PGRST103";
+}
+
+async function countWithStatus(
+  supabase: Client,
+  table: "disputes" | "payouts",
+  statuses: readonly string[],
+): Promise<number> {
+  const { count, error } = await supabase
+    .from(table)
+    .select("id", { count: "exact", head: true })
+    .in("status", [...statuses]);
+  if (error) throw error;
+  return count ?? 0;
 }

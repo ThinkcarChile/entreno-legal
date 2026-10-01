@@ -287,12 +287,20 @@ class DemoAdminRepository implements AdminRepository {
     return [];
   }
 
-  async listDisputes(): Promise<readonly AdminDispute[]> {
+  async listActionableDisputes(): Promise<readonly AdminDispute[]> {
     return [];
   }
 
-  async listPayouts(): Promise<readonly AdminPayout[]> {
+  async listDisputeHistory(page: { limit: number; offset: number }): Promise<Page<AdminDispute>> {
+    return { items: [], total: 0, ...page };
+  }
+
+  async listActionablePayouts(): Promise<readonly AdminPayout[]> {
     return [];
+  }
+
+  async listPayoutHistory(page: { limit: number; offset: number }): Promise<Page<AdminPayout>> {
+    return { items: [], total: 0, ...page };
   }
 }
 
