@@ -710,7 +710,7 @@ Ese contraste encontró el defecto descrito en §6.5.
 
 | Comando | Contra qué | Qué cubre |
 |---|---|---|
-| `npm run db:test` | PostgreSQL local | Esquema, RLS, flujo, concurrencia, semillas, inventario, endurecimiento de las RPC, política de cancelación y pago, ejecución completa del trabajo e integración con Webpay, y qué leen y escriben un visitante y los demás usuarios. Todo con carreras reales. 339 comprobaciones |
+| `npm run db:test` | PostgreSQL local | Esquema, RLS, flujo, concurrencia, semillas, inventario, endurecimiento de las RPC, política de cancelación y pago, ejecución completa del trabajo e integración con Webpay, y qué leen y escriben un visitante y los demás usuarios. Todo con carreras reales. 340 comprobaciones |
 | `npm run db:push:hosted -- --plan` | Supabase real | Qué migraciones faltan por aplicar, sin escribir nada |
 | `npm run verify:schema:hosted` | Supabase real | Inventario, RLS, `security_invoker`, grants, Realtime y advisors. 18 comprobaciones |
 | `npm run verify:supabase` | Supabase real | El mismo recorrido por API, más Realtime, Storage y Auth, y las escrituras directas que deben fallar. 63 comprobaciones |

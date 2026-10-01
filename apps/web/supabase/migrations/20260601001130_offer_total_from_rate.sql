@@ -23,7 +23,9 @@
 --
 -- Mientras la oferta está pendiente, el total sigue a la duración: si el
 -- cliente edita el trabajo (`update_open_job`) y cambia las horas, las ofertas
--- pendientes se recalculan con la tarifa que cada trabajador propuso. Cuando la
+-- pendientes se recalculan con la tarifa que cada trabajador propuso. El
+-- disparador lee la duración con la fila del trabajo bloqueada: una oferta
+-- que llega mientras el cliente la cambia espera y usa la nueva. Cuando la
 -- oferta deja de estar pendiente su precio queda congelado
 -- (`freeze_offer_terms`, …000200 de la Etapa 2), y este disparador no lo toca:
 -- cualquier intento de cambiarlo sigue chocando con esa guarda.
@@ -72,9 +74,17 @@ begin
     return new;
   end if;
 
+  -- Con la fila del trabajo bloqueada: si el cliente está cambiando la
+  -- duración (`update_open_job` tiene el bloqueo), la oferta espera y se
+  -- calcula con la duración nueva. Sin el bloqueo se calculaba con la vieja y
+  -- quedaba así, porque `sync_pending_offer_totals` todavía no la veía. No
+  -- agrega un bloqueo nuevo, lo adelanta: `job_offers_count` toma esta misma
+  -- fila al final de cada escritura en `job_offers`. NO KEY UPDATE, como ese
+  -- UPDATE, para no chocar con el FOR KEY SHARE de las claves foráneas.
   select j.estimated_duration_minutes into v_minutes
     from public.jobs j
-   where j.id = new.job_id;
+   where j.id = new.job_id
+     for no key update;
 
   if v_minutes is null then
     raise exception 'El trabajo no existe' using errcode = 'foreign_key_violation';

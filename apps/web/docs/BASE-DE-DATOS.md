@@ -91,6 +91,8 @@ Restricciones que codifican reglas de producto:
 - `worker_profiles_verified_to_accept`: sin verificación no se aceptan trabajos.
 - `job_offers_compute_total` (disparador): el total de una oferta pendiente es
   `round(tarifa × duración / 60)`; lo que envíe quien oferta se ignora (`…001130`).
+  Lee la duración con la fila del trabajo bloqueada, así que una oferta que
+  llega mientras el cliente cambia la duración se calcula con la nueva.
 - `assignments_agreed_total` (disparador): al crearse una asignación,
   `agreed_total` —lo que se cobra— es `round(tarifa × duración / 60)` de la
   tarifa y la duración que ella misma registra, aunque `accept_job_offer` haya
@@ -328,7 +330,7 @@ usuario: las políticas de Storage lo exigen.
 PGHOST=/tmp PGPORT=55432 PGUSER=postgres npm run db:test
 ```
 
-Aplica el stub de Supabase, las 46 migraciones, la semilla geográfica y 339
+Aplica el stub de Supabase, las 46 migraciones, la semilla geográfica y 340
 comprobaciones de inventario, RLS, flujo completo, concurrencia, semilla de
 demostración, endurecimiento de las RPC, política de cancelación y pago,
 ejecución completa del trabajo, integración con Webpay y lo que leen y escriben
