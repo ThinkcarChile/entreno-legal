@@ -41,8 +41,14 @@
 --                       `profiles.avatar_url` (`is_own_avatar_path`); la
 --                       aplicación retira la anterior al reemplazarla
 --
---     El recuento se hace bajo un candado consultivo por ámbito: dos subidas
---     simultáneas de la misma persona no pasan juntas el último cupo.
+--     El recuento se hace bajo un candado consultivo por ámbito: dos
+--     inserciones simultáneas en `storage.objects` con la sesión de la misma
+--     persona no pasan juntas el último cupo. Ojo con lo que eso NO cubre: el
+--     servicio de Storage puede comprobar la política en una transacción de
+--     prueba y guardar la fila final después, con su propio rol; entonces una
+--     ráfaga de subidas simultáneas puede pasar el tope por unas pocas. El
+--     tope sigue acotando el abuso —ya lleno, no entra nada más—, pero no es
+--     exacto bajo concurrencia.
 --
 -- Lo que esto NO hace: limpiar los objetos subidos que nunca se registraron.
 -- La aplicación los retira al fallar el registro; los que queden por un corte

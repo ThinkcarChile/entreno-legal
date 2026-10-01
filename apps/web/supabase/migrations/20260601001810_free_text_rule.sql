@@ -121,25 +121,34 @@ alter table public.assignments
 -- -----------------------------------------------------------------------------
 -- El título no puede quedar vacío ni por debajo de 10 caracteres: si limpiarlo
 -- no basta, se usa la referencia del trabajo, que la genera la base.
+--
+-- Título y motivo del trabajo en UNA sola actualización: las dos restricciones
+-- ya valen para toda fila que se escribe, aunque estén sin validar. Limpiar
+-- primero el título de un trabajo cuyo motivo también está sucio escribía una
+-- fila que violaba la restricción del motivo, y la migración entera fallaba.
+-- Cada columna se reescribe solo si no cumple; si cumple, queda igual.
 update public.jobs j
    set title = case
-         when char_length(coalesce(c.limpio, '')) >= 10
-              and app_private.free_text_problem(c.limpio, 'El título', 120) is null
-           then c.limpio
+         when app_private.free_text_problem(j.title, 'El título', 120) is null
+           then j.title
+         when char_length(coalesce(c.titulo, '')) >= 10
+              and app_private.free_text_problem(c.titulo, 'El título', 120) is null
+           then c.titulo
          else 'Trabajo ' || j.reference
+       end,
+       cancellation_reason = case
+         when app_private.free_text_problem(j.cancellation_reason, 'El motivo', 300) is null
+           then j.cancellation_reason
+         when app_private.free_text_problem(c.motivo, 'El motivo', 300) is null
+           then c.motivo
        end
-  from (select id, app_private.clean_free_text(title, 120) as limpio from public.jobs) c
+  from (select id,
+               app_private.clean_free_text(title, 120) as titulo,
+               app_private.clean_free_text(cancellation_reason, 300) as motivo
+          from public.jobs) c
  where c.id = j.id
-   and app_private.free_text_problem(j.title, 'El título', 120) is not null;
-
-update public.jobs j
-   set cancellation_reason = case
-         when app_private.free_text_problem(c.limpio, 'El motivo', 300) is null then c.limpio
-       end
-  from (select id, app_private.clean_free_text(cancellation_reason, 300) as limpio
-          from public.jobs where cancellation_reason is not null) c
- where c.id = j.id
-   and app_private.free_text_problem(j.cancellation_reason, 'El motivo', 300) is not null;
+   and (app_private.free_text_problem(j.title, 'El título', 120) is not null
+        or app_private.free_text_problem(j.cancellation_reason, 'El motivo', 300) is not null);
 
 update public.assignments a
    set cancellation_reason = case

@@ -42,8 +42,12 @@ import { safeNextPath } from "@/lib/utils/safe-redirect";
  * es su nombre anterior, que `verifyOtp` sigue aceptando. `magiclink` no está:
  * la aplicación no entra con enlaces mágicos, y aceptarlo solo servía para que
  * alguien pidiera uno para su propia cuenta y se lo hiciera abrir a otra
- * persona. `invite` tampoco: la aplicación no invita a nadie, y un enlace de
- * invitación deja una sesión sin contraseña.
+ * persona. Quitarlo no cierra esa puerta por sí solo: Supabase Auth también
+ * acepta el `token_hash` de un enlace mágico con `type=email` (y uno de
+ * recuperación con `type=recovery`). Lo que la cierra es la página intermedia:
+ * nada se verifica sin el clic en «Continuar». `invite` tampoco está: la
+ * aplicación no invita a nadie, y un enlace de invitación deja una sesión sin
+ * contraseña.
  */
 const DESTINOS = {
   email: "/bienvenida",
