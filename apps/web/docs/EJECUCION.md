@@ -307,6 +307,12 @@ Resultados y su efecto sobre el pago al trabajador:
 | `CLIENT_WINS` | `CANCELLED`, neto 0 | la que se indique |
 | `PARTIAL` | `APPROVED`, neto menos el importe devuelto | la que se indique |
 
+`WORKER_WINS` y `PARTIAL` se rechazan si el cliente ya recibió la devolución
+total, y también si el payout que dejarían aprobado no cuadra con lo devuelto o
+debido al cliente. Si el cobro está en revisión o con una devolución sin
+respuesta del banco, la resolución se registra pero el payout queda `HELD`
+hasta que `approve_payout` lo encuentre sano (`PAGOS.md` §4 bis).
+
 El importe a devolver queda en `disputes.refund_amount`. **El pago del cliente
 sigue en `PAID`**: el dinero se cobró de verdad, y mover ese estado borraría el
 hecho y rompería el invariante «un payout se apoya en un pago confirmado», que
@@ -396,6 +402,22 @@ payout ya transferido, no se abre otra disputa
 
 Pruebas: `supabase/tests/10_payout_window.sql` (`V01`–`V28`) y `E23`, que antes
 transfería en el acto y ahora exige el rechazo con la ventana abierta.
+
+### Y el dinero del cliente sigue ahí
+
+La ventana no es lo único. Antes de mirarla —y antes de la excepción de la
+disputa resuelta— `payout_transfer_blocker` exige que el cobro del cliente
+respalde la transferencia: pago `PAID` o `PARTIALLY_REFUNDED`, sin devoluciones
+sin respuesta del banco, con cifras que cuadren, y del ambiente `production`
+salvo en una base de desarrollo o de pruebas que lo admita
+(`allow_non_production_payouts`). `approve_payout` tampoco saca de la retención
+un payout cuyo cobro esté devuelto entero o en revisión. El detalle está en
+`PAGOS.md` §4 bis; las pruebas, en `supabase/tests/11_payment_health.sql`
+(`L01`–`L39`).
+
+Las baterías `08_job_execution.sql` y `10_payout_window.sql` transfieren sobre
+cobros del proveedor simulado: encienden `allow_non_production_payouts` al
+empezar, a la vista, y la apagan al terminar.
 
 ---
 

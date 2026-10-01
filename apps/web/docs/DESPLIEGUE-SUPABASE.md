@@ -243,6 +243,9 @@ que si difieren es que faltó aplicar alguna migración.
 Estas tres cosas se configuran en el panel. No hay forma de dejarlas en una
 migración, así que quedan documentadas aquí.
 
+La §4.5 es distinta: un ajuste que va en el editor SQL y solo en bases de
+desarrollo o de pruebas. Una migración no puede saber en qué base corre.
+
 ### 4.1 URLs de redirección (obligatorio)
 
 **Authentication → URL Configuration**
@@ -345,6 +348,32 @@ mano con `select app_private.run_scheduled_tasks();`.
 
 La **conciliación con Transbank no está aquí**: necesita hablar con el
 proveedor y corre en la aplicación (`/admin/pagos`). Ver `docs/TRANSBANK.md` §7.
+
+### 4.5 Transferencias sobre cobros de prueba (desarrollo y pruebas: sí; producción: nunca)
+
+Desde la migración `20260601000810`, `mark_payout_paid` no registra la
+transferencia de un pago al trabajador si el cobro del cliente no es del
+ambiente `production`: un pago del proveedor simulado o del ambiente de
+integración de Webpay no movió dinero real, y no se paga dinero real por él.
+Lo decide la columna `platform_settings.allow_non_production_payouts`, que nace
+en `false`.
+
+En una base de **desarrollo o de pruebas (staging)** —donde todos los cobros
+son simulados o de integración— hay que encenderla, o ninguna transferencia de
+prueba pasará (`npm run verify:execution` se niega a correr sin ella). Desde el
+editor SQL del panel:
+
+```sql
+update public.platform_settings set allow_non_production_payouts = true where id;
+```
+
+No se puede cambiar desde la aplicación: una sesión de usuario, tampoco la de
+administración, recibe «allow_non_production_payouts no se cambia desde la
+aplicación». Va por el editor SQL o con la clave de servicio, a propósito.
+
+> **En producción, nunca.** Déjala en `false`. Con ella encendida, un cobro
+> hecho con una tarjeta de prueba —por ejemplo, si el despliegue arrancara en
+> integración por error— terminaría en una transferencia real al trabajador.
 
 ---
 
@@ -454,6 +483,11 @@ pago sin liberar nada; que una disputa retenga el pago; y que registrar una
 transferencia exija referencia y no se duplique. Termina con dos carreras
 repetidas y los invariantes. Ver `docs/EJECUCION.md`.
 
+Registra transferencias sobre cobros simulados, así que antes de empezar
+comprueba que la base sea de desarrollo: se niega si `TRANSBANK_ENVIRONMENT`
+es `production`, si la base tiene cobros del ambiente productivo, o si
+`allow_non_production_payouts` está apagada (§4.5).
+
 ### 8.3 Recorrido por el navegador
 
 ```bash
@@ -519,10 +553,15 @@ llega es el de la otra persona hasta recargar.
 2. `NEXT_PUBLIC_SITE_URL` con el dominio real y HTTPS.
 3. `PAYMENT_PROVIDER` **no** puede quedar en `mock` ni en `mock-delayed`: la aplicación se niega a
    iniciar un pago con `NODE_ENV=production` y proveedor simulado.
-4. No apliques las semillas de demostración.
-5. Revisa que la clave secreta esté solo en las variables del servidor de tu
+4. `TRANSBANK_ENVIRONMENT` **escrita**. Con `NODE_ENV=production` y
+   `PAYMENT_PROVIDER=transbank`, si falta, Webpay no opera en ningún ambiente
+   (`docs/TRANSBANK.md` §9).
+5. `platform_settings.allow_non_production_payouts` en `false`, que es como
+   nace (§4.5). No la enciendas.
+6. No apliques las semillas de demostración.
+7. Revisa que la clave secreta esté solo en las variables del servidor de tu
    plataforma de despliegue, nunca en el repositorio.
-6. En **Authentication → Rate Limits**, ajusta los límites de envío de correo.
+8. En **Authentication → Rate Limits**, ajusta los límites de envío de correo.
 
 ---
 

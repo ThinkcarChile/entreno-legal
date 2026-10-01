@@ -370,6 +370,12 @@ Desde una red que alcance a Transbank (ver §12):
 9. **Retorno repetido**: recargar la página de retorno. No se cobra dos veces.
 10. En `/admin/pagos`, «Consultar al proveedor» sobre cada uno.
 
+Registrar la transferencia al trabajador de un trabajo pagado en integración
+exige que la base admita cobros de prueba (`allow_non_production_payouts`,
+`docs/DESPLIEGUE-SUPABASE.md` §4.5). Sin eso, `/admin/payouts` responde que el
+cobro es del ambiente «integration» y no se transfiere: es lo correcto en
+producción y lo esperado en una base de pruebas que no la encendió.
+
 Después de cada prueba, la evidencia:
 
 ```bash
@@ -393,7 +399,7 @@ datos personales.
 | Variable | Valor | Notas |
 |---|---|---|
 | `PAYMENT_PROVIDER` | `transbank` | |
-| `TRANSBANK_ENVIRONMENT` | `production` | |
+| `TRANSBANK_ENVIRONMENT` | `production` | **obligatoria**: sin ella no opera |
 | `TRANSBANK_PRODUCTION_ENABLED` | `true` | **el interruptor** |
 | `TRANSBANK_PRODUCTION_COMMERCE_CODE` | el del comercio | solo servidor |
 | `TRANSBANK_PRODUCTION_API_KEY_SECRET` | la llave | solo servidor |
@@ -404,12 +410,40 @@ Las credenciales productivas **nunca** llevan prefijo `NEXT_PUBLIC_`, nunca se
 serializan, nunca se imprimen, nunca aparecen en una página de error, en un
 registro, en una prueba ni en Git.
 
+### El ambiente se escribe, no se supone
+
+Fuera de producción, sin `TRANSBANK_ENVIRONMENT` el ambiente es integración, y
+está bien. Con `NODE_ENV=production` y `PAYMENT_PROVIDER=transbank`, **no**:
+si falta, el proveedor no se construye en ningún ambiente —ni para cobrar ni
+para cerrar pagos existentes— y el error dice «falta TRANSBANK_ENVIRONMENT».
+Lo deciden `environmentBlockers` en `config.ts` y
+`GuardContext.environmentExplicit`, que `src/lib/env.ts` marca según la
+variable viniera escrita o no.
+
+Antes faltaba y se tomaba integración en silencio. Webpay contestaba de verdad
+—a tarjetas de prueba—, el trabajo se habilitaba, nacía el payout y, vencida la
+ventana, se registraba la transferencia al trabajador: dinero real por un cobro
+que no existió.
+
+`TRANSBANK_ENVIRONMENT=integration` **escrita** con `NODE_ENV=production` sí
+vale: es un despliegue de pruebas (staging). Opera, pero no en silencio: la
+guarda lo marca (`environmentNotices`) y el servidor lo deja en su registro
+(«Webpay opera en INTEGRACIÓN con NODE_ENV=production…»).
+
+La base es la segunda línea: `mark_payout_paid` no transfiere sobre un cobro
+cuyo `environment` no sea `production` salvo que la base lo admita con
+`platform_settings.allow_non_production_payouts`, que nace en `false` y solo se
+enciende, en SQL, en bases de desarrollo o de pruebas
+(`docs/DESPLIEGUE-SUPABASE.md` §4.5). Un staging con Webpay de integración la
+necesita encendida; producción, nunca.
+
 ### Las guardas
 
 El proveedor productivo **se niega a construirse** si falta cualquiera de
 estas, y dice todos los motivos a la vez:
 
-- `TRANSBANK_ENVIRONMENT` no es exactamente `production`
+- `TRANSBANK_ENVIRONMENT` no es exactamente `production`, o no está escrita
+  (esta última vale para cualquier ambiente, ver arriba)
 - falta `TRANSBANK_PRODUCTION_ENABLED=true`
 - `NODE_ENV` no es `production`
 - falta el código de comercio o la llave
@@ -427,6 +461,9 @@ explícito y auditable.
 Antes:
 
 - [ ] Transbank aprobó la validación (§10)
+- [ ] `TRANSBANK_ENVIRONMENT=production` escrita en el hosting
+- [ ] `platform_settings.allow_non_production_payouts` en `false` en la base de
+      producción (es como nace; nadie debe haberla encendido)
 - [ ] Dominio productivo con HTTPS y certificado válido
 - [ ] URL de retorno accesible desde fuera
 - [ ] Registros llegando a algún sitio que se pueda consultar

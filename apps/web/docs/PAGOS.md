@@ -140,12 +140,41 @@ Lo que impide que un error de código —o un `UPDATE` a mano— rompa la garant
 | Disparador `jobs_guard_terminal` | Revivir un trabajo `CANCELLED` o `EXPIRED` (solo pueden ir a `CLOSED`); `CANCELLATION_PENDING` solo va a `CANCELLED` |
 | Disparador `payments_a_guard_settlement` | `REFUNDED` → en vuelo; `PAID` / `UNDER_REVIEW` → `FAILED`; y toda decisión de `PAID` fuera de los bloqueos |
 | Disparador `payouts_guard_transitions` (Bloque 3) | Saltarse la máquina de estados del pago al trabajador: `PAID` y `CANCELLED` son terminales para todos |
+| `app_private.payout_transfer_blocker` → `payout_money_blocker` | Transferir sobre un cobro devuelto, en revisión, con una devolución sin respuesta, con cifras que no cuadran o de un ambiente que no es producción (§4 bis) |
+| Disparador `platform_settings_guard_payout_flag` | Cambiar `allow_non_production_payouts` desde una sesión de la aplicación, también la de administración |
 | `REVOKE UPDATE, DELETE, TRUNCATE` a `authenticated` en `payments`, `payment_events`, `payouts` | Que un usuario con sesión toque dinero, incluso si una política de RLS se equivocara |
 | `EXECUTE` de `confirm_payment_result` solo para el servicio | Que un usuario «confirme» su propio pago |
 
 `app_private.payment_invariant_violations()` recorre la base y devuelve
 cualquier fila que rompa las reglas de la sección 1. Las pruebas la ejecutan al
 final; debe devolver cero filas.
+
+---
+
+## 4 bis. Antes de pagarle al trabajador, el cobro del cliente
+
+Los disparadores retienen el payout (`HELD`) cuando el pago del trabajo se
+devuelve entero, falla o pasa a revisión. Retener no bastaba: `approve_payout`
+y `resolve_dispute` lo sacaban de ahí, y `mark_payout_paid` lo transfería sin
+mirar el cobro. El cliente podía terminar con su dinero devuelto y el
+trabajador pagado por el mismo trabajo. Desde la migración `20260601000800`:
+
+| Quién | Qué exige del pago del trabajo |
+|---|---|
+| `mark_payout_paid` (la transferencia, barrera definitiva) | `PAID` o `PARTIALLY_REFUNDED`; ninguna devolución sin respuesta del banco (cualquier estado de `payment_refunds` que no sea `CONFIRMED`, `FAILED` ni `CANCELLED`); y cifras que cuadren: lo devuelto al cliente, lo pedido y sin respuesta, lo que se le debe por una disputa resuelta y el neto del payout no pueden sumar más de lo que el cliente pagó por la asignación (trabajo más tiempo adicional). Se comprueba antes de la excepción de la disputa resuelta: una resolución exime de esperar la ventana, no de que el cobro siga en pie |
+| `approve_payout` | No aprueba sobre un pago devuelto entero, en revisión ni en ningún estado que no sea un cobro confirmado |
+| `resolve_dispute` | A favor del trabajador o repartida, no sobre un pago devuelto entero. Si deja el payout aprobado, las cifras tienen que cuadrar o no se resuelve nada. Si el pago está en revisión o con una devolución sin respuesta, la decisión se registra pero el payout queda `HELD` hasta que `approve_payout` lo encuentre sano |
+
+Además, desde `20260601000810`, `mark_payout_paid` no transfiere sobre un cobro
+cuyo `environment` no sea `production` —simulado o de integración: no hubo
+dinero— salvo que `platform_settings.allow_non_production_payouts` esté
+encendida, cosa que solo se hace en SQL y solo en bases de desarrollo o de
+pruebas (`DESPLIEGUE-SUPABASE.md` §4.5). Un cobro de producción se transfiere
+igual que siempre, sujeto a lo de la tabla y a la ventana de disputa.
+
+Todas las negativas dicen el motivo con las cifras y qué hacer, en las palabras
+que ve administración. Pruebas: `supabase/tests/11_payment_health.sql`
+(`L01`–`L39`).
 
 ---
 
@@ -221,6 +250,7 @@ en `src/lib/domain/job-actions.ts` son la única fuente de esas decisiones.
 | `supabase/tests/07_payment_cancellation.sql` | P01–P17: los escenarios de las secciones 2 y 5, lo que nadie puede hacer a mano, invariantes y `payment_events` append-only |
 | `supabase/tests/07_race_payment.sh` | R10 duplicado simultáneo, R11 aprobación contra cancelación, R12 invariantes. `RACE_REPS` repeticiones (5 por defecto), dos sesiones `psql` reales |
 | `scripts/verify-payments.ts` | Lo mismo contra `hagotufila-dev`, con `DelayedMockPaymentProvider` y `applyProviderResult` —las piezas que usa la aplicación— hablando con PostgREST. `RACE_REPS=10 npm run verify:payments` |
+| `supabase/tests/11_payment_health.sql` | L01–L39: la §4 bis. Devolución total, revisión, devolución sin respuesta y cifras que no cuadran frente a aprobar, resolver y transferir; el ambiente del cobro y la bandera `allow_non_production_payouts` |
 
 Sin `sleep` en ninguna: en SQL serializan los bloqueos de fila; en Node, la
 barrera del proveedor.

@@ -156,10 +156,10 @@ exige sesión y comprueba el papel de quien llama. Ver `docs/EJECUCION.md`.
 | `submit_review(assignment, notas…)` | Las dos partes | Reseña, solo tras la aprobación y una por persona |
 | `open_dispute(assignment, motivo, descripción)` | Las dos partes | Abre la disputa y retiene el pago |
 | `add_dispute_evidence(disputa, texto, ruta, mime, tamaño)` | Partes y administración | Aporta una prueba |
-| `resolve_dispute(disputa, resultado, motivo, importe)` | **Administración** | Decide. No ejecuta ninguna devolución bancaria |
+| `resolve_dispute(disputa, resultado, motivo, importe)` | **Administración** | Decide. No ejecuta ninguna devolución bancaria. No paga al trabajador sobre un cobro devuelto entero ni deja un payout aprobado que no cuadre con lo devuelto |
 | `review_check_in(check-in, aprobado, motivo)` | **Administración** | Aprueba o rechaza una llegada |
-| `approve_payout(payout, nota)` | **Administración** | Aprueba el pago al trabajador |
-| `mark_payout_paid(payout, referencia, fecha, nota)` | **Administración** | Registra una transferencia hecha por fuera. Idempotente |
+| `approve_payout(payout, nota)` | **Administración** | Aprueba el pago al trabajador. No sobre un cobro devuelto entero ni en revisión |
+| `mark_payout_paid(payout, referencia, fecha, nota)` | **Administración** | Registra una transferencia hecha por fuera. Idempotente. Exige el cobro del cliente sano, las cifras cuadradas, la ventana cerrada y un cobro de producción (o `allow_non_production_payouts` en una base de pruebas). Ver `PAGOS.md` §4 bis |
 | `hold_payout(payout, motivo)` | **Administración** | Retiene con motivo escrito |
 | `admin_pending_reviews()` | **Administración** | Recuentos de las colas del panel |
 
