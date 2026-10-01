@@ -364,7 +364,10 @@ hecho y rompería el invariante «un payout se apoya en un pago confirmado», qu
 es justo el que protege al trabajador en una resolución parcial. La cola de
 devoluciones son las disputas resueltas con importe pendiente —una deja de
 contar cuando su devolución está confirmada o en camino— más las devoluciones
-abiertas o por confirmar (`PAGOS.md` §8 ter).
+abiertas o por confirmar (`PAGOS.md` §8 ter). Si el payout ya se transfirió, la
+devolución —de una disputa o cualquier otra— no pasa de lo que queda de la
+plataforma: lo que la disputa debe ya cuenta, y más allá la base se niega con
+las cifras (`PAGOS.md` §4 bis).
 
 Defectos reales que se cerraron: `dispute_evidence` tenía política de `INSERT` y
 ningún privilegio, así que nadie podía aportar una prueba; y
@@ -414,7 +417,7 @@ aunque la consulta no filtre.
 |---|---|
 | `PENDING` | El cliente todavía no aprueba |
 | `APPROVED` | Aprobado. Transferible cuando vence la ventana de disputa, o antes si una disputa ya se resolvió |
-| `HELD` | Retenido: hay una disputa o una retención manual |
+| `HELD` | Retenido: hay una disputa, una retención manual, o el cobro del cliente dejó de respaldarlo (devuelto entero, en revisión o fallido, o una devolución confirmada que descuadra las cifras; `PAGOS.md` §4 bis) |
 | `PROCESSING` → `PAID` | Transferido, con su referencia bancaria |
 | `CANCELLED` | Una disputa se resolvió a favor del cliente |
 

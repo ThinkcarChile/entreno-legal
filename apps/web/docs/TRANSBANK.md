@@ -291,6 +291,14 @@ Transbank y los asienta por la misma vía que el retorno.
 - Un pago de **integración nunca se pregunta contra producción**, ni al revés.
 - Que el proveedor no conteste **no cambia nada**: el pago sigue en la cola.
   Jamás se da por fallido por no poder preguntar.
+- Un token que nunca recibió `commit` se **confirma** (no solo se consulta)
+  cuando tiene más de 15 minutos (§12, «Autorizaciones sin commit»). Esos 15
+  minutos se cuentan desde el **intento vigente** —cuando Webpay entregó su
+  token (`payment_attempts.token_at`) o, sin esa marca, cuando se registró—,
+  igual que para un intento anterior. Antes se contaban desde
+  `payments.updated_at`, que `record_provider_snapshot` renueva en cada pasada:
+  con el cron cada 15 minutos o menos, el plazo no se cumplía nunca y un pago
+  que nadie confirmó en el retorno se consultaba siempre sin confirmarse.
 
 ### Los intentos anteriores
 
@@ -327,6 +335,17 @@ El 7 no es arbitrario: es lo que Webpay responde a `status(token)`. Bajarlo
 tiene sentido si se quiere que una persona mire antes; subirlo solo sirve si
 Transbank amplía el plazo. Pasado ese plazo la consulta ya no sirve y hace
 falta el portal.
+
+**La ventana corre desde el intento vigente**, no desde la creación del pago
+(migración `20260601001410`, `app_private.payment_window_start`): desde que se
+registró el intento que lleva la orden de compra del pago; solo un pago que
+nunca tuvo intento se mide desde su creación. Un pago se crea una vez y se
+intenta muchas: un cobro del tiempo adicional rechazado que se reintenta días
+después, o un cliente que vuelve tarde. Antes, con el pago creado hace siete
+días, el intento recién abierto se cerraba como `FAILED` mientras el cliente
+seguía en el formulario de Webpay, y la cola de conciliación no lo preguntaba.
+La cola, el barrido de rezagados y el invariante `stale_payment_out_of_window`
+miden con la misma fecha (J13–J15).
 
 ### Los rezagados no desaparecen
 
@@ -462,6 +481,15 @@ que lleva la tarjeta «Devoluciones por procesar» del panel) con su motivo y lo
 que concluyó la última consulta. Se contrasta en el portal de Transbank y se
 cierra ahí mismo como hecha (anulación o, si era por el total, reversa) o no
 hecha, con una nota que queda en `audit_logs` (`resolve_unknown_refund`).
+
+Las devoluciones de **cobros duplicados** (`payment_attempt_refunds`, §11 «Me
+cobraron dos veces») pasan por lo mismo, en la misma ruta programada y en el
+mismo botón, con `reconcileAttemptRefunds`: la cola es
+`attempt_refunds_pending_reconciliation`, la consulta es `status()` con el token
+**del intento** —no el del pago, que es el del cobro bueno— y la decisión es la
+misma tabla de arriba, con el cobro del intento como «lo cobrado» y nada
+devuelto antes. Lo que no se decide se cierra a mano con
+`resolve_unknown_attempt_refund`, con nota obligatoria.
 
 ---
 
@@ -736,18 +764,42 @@ select buy_order, amount, status, provider_status, response_code,
 
 Casi siempre son dos intentos y solo uno cobrado. En `/admin/pagos`, filtro «En
 revisión»: un pago con un intento duplicado aparece ahí aunque esté `PAID`, con
-el aviso «Cobro de un intento por devolver», el número de intento y su **orden
-de compra**. La administración también recibe un aviso `PAYMENT_UNDER_REVIEW`
-en cuanto la base lo detecta (retorno o conciliación).
+el aviso «Cobro duplicado del intento N por devolver», el número de intento, su **orden
+de compra** y su cobro. La administración también recibe un aviso
+`PAYMENT_UNDER_REVIEW` en cuanto la base lo detecta (retorno o conciliación).
+Lo mismo un intento que salió de la ventana con indicios de cobro
+(`UNDER_REVIEW`), salvo que sea el que respalda el pago (el vigente de un pago
+que quedó en revisión): ese se devuelve con «Devolver», sobre el pago, y el
+panel lo dice.
 
-1. «Consultar al proveedor» sobre el pago: también barre sus intentos anteriores.
-2. Buscar la orden de compra del intento duplicado en el portal de Transbank y
-   devolverla **desde allí**. El botón «Devolver» del panel actúa sobre el cobro
-   que pagó el trabajo (el token del pago), no sobre el duplicado: usarlo
-   devolvería el cobro bueno y retendría al trabajador.
-3. Anotar el caso. Hoy el panel no tiene una acción para dar por devuelto un
-   intento duplicado: el aviso sigue a la vista hasta que exista (pendiente,
-   ver §11 «Reintentos y cobros posibles»).
+1. «Consultar al proveedor» sobre el pago: también barre sus intentos anteriores
+   y las devoluciones de cobros duplicados que sigan abiertas.
+2. En el aviso del intento, **«Devolver este cobro»**, con el motivo. Va contra
+   la transacción de ese intento (su token) y por su cobro **entero**, que fija
+   la base (`provider_amount`, o el importe del pago si la confirmación no lo
+   trajo). El botón «Devolver» del pago no sirve para esto: actúa sobre el
+   cobro que pagó el trabajo y devolvería el dinero bueno.
+3. La pantalla dice en qué quedó, igual que una devolución de pago
+   (§ «Devolver»): **confirmada** —el aviso pasa a «Cobro del intento N
+   devuelto» y el pago sale del filtro «En revisión» si no queda nada más—,
+   **rechazada** —no salió dinero; se puede volver a pedir—, **por confirmar**
+   —no se pide otra; la conciliación la contrasta con `status()` y, si no puede
+   decidir, se cierra a mano con lo que muestre el portal para esa orden de
+   compra («se devolvió desde el portal» como anulación o reversa, o «no se
+   devolvió»), con una nota que queda en `audit_logs`— o **en curso**.
+
+Lo que la base no deja hacer (migración `20260601001420`): devolver por aquí el
+intento que respalda el pago (`SETTLED`, o el vigente de un pago con dinero:
+ese se devuelve con «Devolver»), pedir una segunda devolución mientras hay una
+abierta o después de una hecha, y que un intento devuelto —o con su devolución
+en curso— pase después a ser el dinero del pago si llegara su autorización
+tardía. Las pruebas son J16–J40 (`supabase/tests/17_payments_followup.sql`) y
+`src/lib/payments/attempt-refund.test.ts`.
+
+Si el cobro ya se devolvió desde el portal de Transbank antes de esta función,
+se pide la devolución en el panel igualmente: el banco la rechazará (4xx →
+rechazada) o no contestará en firme; en el segundo caso se cierra a mano como
+hecha con la nota del portal.
 
 Si de verdad hay dos **pagos** `PAID` del mismo trabajo (no dos intentos),
 devolver uno (§ devoluciones) y abrir el caso.
@@ -794,7 +846,16 @@ formulario no duplica nada: lleva el mismo identificador de petición.
 
 Una devolución **total** retiene automáticamente el pago al trabajador. Retener
 y no cancelar: puede que el trabajador sí hiciera el trabajo, y esa decisión es
-de una persona.
+de una persona. Desde `20260601001400`, también una **parcial** que, confirmada,
+deja las cifras sin cuadrar (lo devuelto más lo que iría al trabajador supera lo
+cobrado): el payout pasa a `HELD` con el motivo y los números.
+
+Con el pago al trabajador **ya transferido**, el formulario solo acepta lo que
+queda de la plataforma: lo cobrado menos lo devuelto, lo pedido y sin
+respuesta, lo que se debe por una disputa y lo que se le pagó al trabajador.
+Más allá, la base se niega y dice cuánto se puede devolver todavía
+(`PAGOS.md` §4 bis). Devolver más sería pagar dos veces el mismo trabajo; si de
+verdad corresponde, es un caso para soporte.
 
 ### Una devolución quedó «por confirmar»
 
@@ -846,14 +907,17 @@ Dos pestañas de Webpay a la vez ya no pierden dinero: si las dos terminan
 autorizadas, la primera que se asienta paga el trabajo y la otra queda como
 **cobro duplicado** (§7), a la vista de administración y con aviso.
 
-**Lo que falta, a sabiendas.** El cobro duplicado se detecta y se muestra, pero
-no se devuelve desde el panel: `request_payment_refund` y `payment_refunds`
-cuentan las devoluciones contra el importe del pago, y devolver ahí un intento
-duplicado descuadraría el pago que sí está bien (y retendría al trabajador).
-Hace falta una devolución por intento, con su propio registro; mientras tanto
-se devuelve desde el portal de Transbank con la orden de compra que muestra el
-panel. Los intentos perdidos **antes** de esta migración no se pueden
+El cobro duplicado se devuelve desde el panel con su propia devolución por
+intento (`payment_attempt_refunds`, migración `20260601001420`): no toca
+`payment_refunds` ni el saldo del pago, que sí está bien (§11 «Me cobraron dos
+veces»). Los intentos perdidos **antes** de `20260601001000` no se pueden
 recuperar: su token ya se había sobrescrito.
+
+`register_payment_attempt` bloquea trabajo → asignación → pago antes de tocar
+nada (migración `20260601001410`), como `confirm_payment_result`. Antes
+bloqueaba el pago y, a través de la guarda de liquidación, el trabajo después:
+un reintento mientras la conciliación confirmaba el intento anterior podía
+acabar en interbloqueo. Lo prueba `17_race_attempt_lock.sh` (J41).
 
 ---
 
@@ -912,7 +976,8 @@ Se eligió el comportamiento que es correcto **en los dos casos**:
   sesión puede vencer durante el pago: antes, en esos casos, no se confirmaba.
 - **La conciliación confirma antes de consultar** un pago con token que nunca
   recibió `commit`, si su último intento tiene más de 15 minutos (el
-  formulario de Webpay dura hasta 10). Usa el mismo `handleReturn`, con la
+  formulario de Webpay dura hasta 10), contados desde el token de ese intento
+  (`token_at`, o su registro), no desde la última escritura del pago. Usa el mismo `handleReturn`, con la
   misma clave de idempotencia `commit:<token>`. Si no hay respuesta en firme,
   sigue con la consulta de estado de siempre. Vale igual para el token de un
   intento anterior (§7, «Los intentos anteriores»).

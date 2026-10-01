@@ -142,6 +142,9 @@ Lo que impide que un error de código —o un `UPDATE` a mano— rompa la garant
 | Disparador `payments_a_guard_settlement` | `REFUNDED` → en vuelo; `PAID` / `UNDER_REVIEW` → `FAILED`; y toda decisión de `PAID` fuera de los bloqueos |
 | Disparador `payouts_guard_transitions` (Bloque 3) | Saltarse la máquina de estados del pago al trabajador: `PAID` y `CANCELLED` son terminales para todos |
 | `app_private.payout_transfer_blocker` → `payout_money_blocker` | Transferir sobre un cobro devuelto, en revisión, con una devolución sin respuesta, con cifras que no cuadran o de un ambiente que no es producción (§4 bis) |
+| `app_private.refund_after_payout_blocker` (en `request_payment_refund`) | Devolver, con el trabajador ya pagado, más de lo que queda de la plataforma (§4 bis) |
+| Disparador `payments_hold_payout_on_review` (ampliado en `20260601001400`) | Que una devolución confirmada que deja las cifras sin cuadrar deje el payout pagable: pasa a `HELD` con el motivo |
+| Índice único `payment_attempt_refunds_one_committed_idx` y disparador `payment_attempts_guard_money` | Devolver dos veces el cobro de un intento, o que un intento devuelto pase después a ser el dinero del pago (§8 quater) |
 | Disparador `platform_settings_guard_payout_flag` | Cambiar `allow_non_production_payouts` desde una sesión de la aplicación, también la de administración |
 | `REVOKE UPDATE, DELETE, TRUNCATE` a `authenticated` en `payments`, `payment_events`, `payouts` | Que un usuario con sesión toque dinero, incluso si una política de RLS se equivocara |
 | `EXECUTE` de `confirm_payment_result` solo para el servicio | Que un usuario «confirme» su propio pago |
@@ -179,6 +182,21 @@ Todas las negativas dicen el motivo con las cifras y qué hacer, en las palabras
 que ve administración. Pruebas: `supabase/tests/11_payment_health.sql`
 (`L01`–`L44`).
 
+**Y del lado de la devolución** (migración `20260601001400`). La transferencia
+medía el invariante; pedir una devolución no, así que con el payout ya `PAID`
+se podía devolver el cobro entero: cliente y trabajador pagados por el mismo
+trabajo. Ahora:
+
+| Payout | Una devolución nueva |
+|---|---|
+| `PAID` (o `PROCESSING`, mientras se registra la transferencia) | Solo hasta lo que queda de la plataforma: lo cobrado en la asignación (trabajo y tiempo adicional, también un cobro en revisión) menos lo devuelto, lo pedido y sin respuesta, lo que se debe por disputas resueltas y lo transferido al trabajador (neto más retención). Una devolución ligada a una disputa salda primero lo que esa disputa debe. Más allá, `request_payment_refund` se niega con las cifras y con cuánto se puede devolver todavía |
+| `PENDING`, `APPROVED`, `HELD` | Se acepta: el dinero del trabajador no salió y la transferencia la mide después. Pero si, **confirmada**, deja las cifras sin cuadrar, el payout pagable pasa a `HELD` con un motivo como «Se devolvieron $5.000 al cliente y las cifras de este trabajo ya no cuadran: …», en el mismo disparador que ya lo retenía por devolución total o revisión. Pedida y sin respuesta no retiene: puede fallar, y mientras tanto la transferencia ya se niega por ella (también si quedó `UNKNOWN`) |
+
+`request_payment_refund` bloquea ahora trabajo → asignación → todos los pagos de
+la asignación, el orden de `mark_payout_paid`: una transferencia que se registra
+a la vez espera a la devolución o la ve. Pruebas: J01–J12
+(`supabase/tests/17_payments_followup.sql`).
+
 ---
 
 ## 5. Comportamiento ante confirmaciones tardías y duplicadas
@@ -193,7 +211,7 @@ que ve administración. Pruebas: `supabase/tests/11_payment_health.sql`
 | Misma confirmación dos veces, **a la vez** | Igual: la segunda espera el bloqueo del pago y encuentra el evento registrado |
 | Aprobada y cancelación **a la vez** | Gana quien toma el bloqueo del trabajo primero. Si gana el pago: `PAID` + payout y la cancelación se rechaza. Si gana la cancelación: `UNDER_REVIEW` sin payout y trabajo `CANCELLED`. **Nunca las dos**, nunca a medias |
 | Autorizada pero **no cuadra** (orden de compra, sesión, código de autorización) | `UNDER_REVIEW` con el motivo, **sin pasar por `PAID`**: ni trabajo habilitado, ni asignación confirmada, ni payout, ni aviso al trabajador (migración `20260601001010`) |
-| Autorizada en un **intento anterior** cuando el pago ya tenía el dinero de otro | Cobro duplicado: el intento queda `DOUBLE_CHARGE` con motivo, evento, auditoría y aviso a administración. Pago, trabajo y payout no cambian |
+| Autorizada en un **intento anterior** cuando el pago ya tenía el dinero de otro | Cobro duplicado: el intento queda `DOUBLE_CHARGE` con motivo, su cobro (`provider_amount`), evento, auditoría y aviso a administración. Pago, trabajo y payout no cambian. Se devuelve desde `/admin/pagos` (§8 quater) |
 | Autorizada en un intento anterior cuando el pago aún no tenía dinero | Ese intento paga: el pago pasa a apuntar a su token y se asienta como siempre. Si después cobra el otro, ese es el duplicado |
 | Retorno sin cobro (abandono, tiempo agotado) de un **intento anterior** | Solo ese intento queda `FAILED`. El pago sigue con el intento vigente, que puede aprobarse con normalidad (antes caía en `approved_after_failed`) |
 
@@ -341,6 +359,32 @@ Riesgo que queda, a sabiendas: mientras una devolución **total** está por
 confirmar, el pago al trabajador no se retiene solo (se retiene al confirmarse,
 como cualquier devolución total). Si administración transfiere en ese intervalo
 y la devolución resulta hecha, queda para resolución manual.
+
+---
+
+## 8 quater. Devolver un cobro duplicado
+
+Un cobro duplicado (`payment_attempts.status = 'DOUBLE_CHARGE'`) o un intento
+que salió de la ventana con indicios de cobro (`UNDER_REVIEW`) no es dinero del
+pago: su transacción es otra, con otro token. Devolverlo con `payment_refunds`
+habría ido al token del pago —el del cobro bueno— y descuadrado su saldo. Tiene
+su propia devolución (migración `20260601001420`):
+
+| Pieza | Qué hace |
+|---|---|
+| `payment_attempt_refunds` | Una fila por petición. Los estados y el disparador de transiciones son los de `payment_refunds` (§8 ter). Una sola comprometida (abierta o hecha) por intento |
+| `request_attempt_refund` | Solo administración. Intento `DOUBLE_CHARGE` o `UNDER_REVIEW`, con token, que no respalde el pago. El importe lo fija la base: el cobro entero del intento (`provider_amount`, que se registra al pasar a `DOUBLE_CHARGE` aunque la confirmación no lo trajera; si no, el importe del pago con que se creó la transacción) |
+| `claim_attempt_refund` → `refundTransaction(token del intento)` → `settle_attempt_refund` / `mark_attempt_refund_unknown` | Una sola llamada al banco, y la respuesta se lee igual que la de un pago (`dispatchRefund` en `refund.ts`, `classifyRefundError` / `classifyRefundResult`). No toca el pago ni el payout |
+| `attempt_refunds_pending_reconciliation` + `reconcileAttemptRefunds` | La conciliación cierra una `UNKNOWN` con `status()` del intento, con las reglas de `decideUnknownRefund` |
+| `resolve_unknown_attempt_refund` | Cierre a mano con lo que muestra el portal de Transbank, nota obligatoria y `audit_logs` |
+| `admin_payments.attempts_review` | Cada intento en revisión con su cobro y su última devolución. `attempts_in_review` deja de contar el que ya se devolvió |
+
+Y un disparador sobre `payment_attempts`: un intento con su devolución pedida,
+por confirmar o hecha no pasa a `SETTLED` —la autorización tardía de un intento
+en revisión sería, si no, un cobro ya devuelto asentado como pago del trabajo—.
+El invariante `attempt_refund_on_payment_money` delata una devolución de intento
+sobre el dinero del pago, y `attempt_refund_over_charge` una que supere el cobro
+del intento. Runbook: `TRANSBANK.md` §11 «Me cobraron dos veces».
 
 ---
 
