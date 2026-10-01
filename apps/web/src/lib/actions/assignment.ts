@@ -182,7 +182,10 @@ export async function addJobEvidenceAction(
 
     if (error) {
       // Si la fila no se pudo registrar, el archivo subido queda huérfano: se
-      // retira para no dejar basura en un bucket privado.
+      // retira para no dejar basura en un bucket privado. Va con la sesión de
+      // quien lo subió: `evidence_own_delete_unregistered` deja borrar lo propio
+      // solo mientras no esté registrado. Antes no había política de borrado y
+      // esta limpieza fallaba en silencio.
       if (storagePath) await supabase.storage.from(EVIDENCE_BUCKET).remove([storagePath]);
       return actionError(error, "No pudimos publicar la actualización.");
     }

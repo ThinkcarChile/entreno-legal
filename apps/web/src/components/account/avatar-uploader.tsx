@@ -20,7 +20,8 @@ import { createClient } from "@/lib/supabase/client";
  *
  * El archivo sube directo del navegador a Storage con la sesión del usuario: no
  * pasa por el servidor de la aplicación, así que una foto grande no ocupa una
- * función de servidor. Las políticas del bucket son las que autorizan.
+ * función de servidor. Las políticas del bucket son las que autorizan. La foto
+ * anterior la retira `setAvatarAction` una vez guardada la nueva.
  */
 export function AvatarUploader({
   userId,
@@ -67,6 +68,10 @@ export function AvatarUploader({
 
         const result = await setAvatarAction(path);
         if (!result.ok) {
+          // La foto subió pero el perfil no la tomó: se retira para que no
+          // quede pública sin que nadie la use. Lo permite `avatars_own_delete`
+          // (solo la carpeta propia).
+          await supabase.storage.from(AVATAR_BUCKET).remove([path]);
           setError(result.error);
           return;
         }

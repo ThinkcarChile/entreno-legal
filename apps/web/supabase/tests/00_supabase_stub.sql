@@ -53,11 +53,36 @@ create table storage.objects (
   id uuid primary key default gen_random_uuid(),
   bucket_id text references storage.buckets(id),
   name text not null,
-  owner uuid
+  owner uuid,
+  -- Igual que en Supabase: al terminar una subida, Storage anota aquí el tamaño
+  -- que midió y el tipo con que se subió (`{"size": 1234, "mimetype": "image/jpeg",
+  -- …}`). Las RPC de evidencia lo contrastan con lo que declara quien llama.
+  metadata jsonb,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  -- Supabase tiene este mismo índice único (`bucketid_objname`).
+  unique (bucket_id, name)
 );
+alter table storage.buckets enable row level security;
 alter table storage.objects enable row level security;
 
+-- Supabase concede todo sobre las tablas de Storage a estos roles y deja que
+-- decidan las políticas. Sin estas concesiones, las políticas de Storage no se
+-- podían probar como `authenticated`: fallaba el privilegio antes que la regla.
+grant usage on schema storage to anon, authenticated, service_role;
+grant all on storage.buckets, storage.objects to anon, authenticated, service_role;
+
+-- La de Supabase devuelve las CARPETAS: sin el último tramo, que es el archivo.
+-- La versión anterior del stub lo incluía, y `foldername('a/b.jpg')` daba
+-- `{a, b.jpg}` en local y `{a}` en un proyecto real.
 create or replace function storage.foldername(name text) returns text[]
-language sql immutable as $$ select string_to_array(name, '/') $$;
+language plpgsql immutable as $$
+declare
+  _parts text[];
+begin
+  select string_to_array(name, '/') into _parts;
+  return _parts[1:array_length(_parts, 1) - 1];
+end
+$$;
 
 create publication supabase_realtime;

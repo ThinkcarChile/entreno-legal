@@ -456,6 +456,10 @@ servidor solo guarda la **ruta** (no la URL), y antes comprueba que sea suya; la
 base lo vuelve a exigir con `profiles_avatar_own_path` (migración `…001120`).
 La URL pública la arma la aplicación al mostrarla (`avatarPublicUrl`), con la
 dirección de su propio proyecto: un perfil no puede apuntar a otro dominio.
+Una vez guardada la nueva, retira la anterior; y si el perfil no toma la nueva,
+el navegador la retira. Las dos cosas las permite `avatars_own_delete` (solo la
+carpeta propia), que no existía: hasta la migración `20260601001210` cada
+cambio de foto dejaba la vieja pública para siempre.
 
 ### 7.5 Indicador de origen de datos, solo en desarrollo
 

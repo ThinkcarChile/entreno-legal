@@ -118,6 +118,8 @@ export async function addDisputeEvidenceAction(
     });
 
     if (error) {
+      // Mismo criterio que la evidencia del trabajo: se retira con la sesión de
+      // quien lo subió, y la política solo lo permite mientras no esté registrado.
       if (storagePath) await supabase.storage.from(DISPUTE_BUCKET).remove([storagePath]);
       return actionError(error, "No pudimos adjuntar la prueba.");
     }

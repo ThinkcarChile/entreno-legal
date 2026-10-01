@@ -240,7 +240,7 @@ que si difieren es que faltó aplicar alguna migración.
 
 ## 4. Configuración del panel que NO viene en las migraciones
 
-Estas tres cosas se configuran en el panel. No hay forma de dejarlas en una
+Estas cosas se configuran en el panel. No hay forma de dejarlas en una
 migración, así que quedan documentadas aquí.
 
 La §4.5 es distinta: un ajuste que va en el editor SQL y solo en bases de
@@ -376,6 +376,52 @@ aplicación». Va por el editor SQL o con la clave de servicio, a propósito.
 > hecho con una tarjeta de prueba —por ejemplo, si el despliegue arrancara en
 > integración por error— terminaría en una transferencia real al trabajador.
 
+### 4.6 Límites de Auth y CAPTCHA (a mano; obligatorio antes de producción)
+
+Publicar, ofertar y escribir en el chat tienen límites por persona dentro de la
+base (migración `20260601001200`, ver `BASE-DE-DATOS.md`, «Límites por
+usuario»). El **registro, el ingreso y la recuperación de contraseña no pasan
+por ahí**: los atiende Supabase Auth, y su protección se configura en el panel
+de cada proyecto. Ninguna migración lo hace, y **no está hecho** en ningún
+proyecto: es un paso manual pendiente.
+
+El nombre de las secciones del panel cambia entre versiones; las de abajo son
+las de referencia.
+
+**1. Límites de Auth** — *Authentication → Rate Limits*.
+
+- Revisa cada valor: correos por hora (registro, confirmación, recuperación),
+  solicitudes de registro e ingreso por IP, verificaciones de código por IP y
+  renovaciones de sesión por IP.
+- Con el SMTP integrado de Supabase el límite de correos es bajo y no se puede
+  subir. Con SMTP propio (*Authentication → Emails → SMTP Settings*) sí.
+- **Ojo con la IP.** El registro, el ingreso y la recuperación se llaman desde
+  el servidor de la aplicación (`src/lib/actions/auth.ts`, acciones de
+  servidor), así que Supabase ve la IP del servidor y no la del navegador: un
+  límite «por IP» lo comparten todos los usuarios, y un ataque gasta el cupo de
+  todos. Antes de bajar esos límites, comprueba en la documentación vigente de
+  Supabase cómo hacerle llegar la IP real del cliente.
+
+**2. CAPTCHA** — *Authentication → Attack Protection* (en versiones anteriores,
+*Bot and Abuse Protection*): *Enable CAPTCHA protection*, proveedor hCaptcha o
+Cloudflare Turnstile, y la clave secreta del proveedor.
+
+- **No lo actives todavía.** Con el CAPTCHA activo, Supabase rechaza todo
+  registro, ingreso o recuperación que no traiga un `captchaToken`, y los
+  formularios de la aplicación aún no lo envían: nadie podría registrarse ni
+  entrar.
+- Lo que falta en la aplicación: el widget del proveedor en los formularios de
+  registro, ingreso y recuperación, y pasar su token en `options.captchaToken`
+  de `signUp`, `signInWithPassword` y `resetPasswordForEmail`. La clave pública
+  del proveedor iría en una variable `NEXT_PUBLIC_…`; la secreta, solo en el
+  panel de Supabase.
+- El orden importa: primero la aplicación enviando el token, después la
+  casilla.
+
+**3. Contraseñas filtradas**: §4.1.b.
+
+`npm run verify:schema:hosted` no comprueba ninguno de estos ajustes.
+
 ---
 
 ## 5. Datos de demostración (solo entornos de prueba)
@@ -441,6 +487,36 @@ E2E_ADMIN_PASSWORD=<contraseña>
 
 El script las crea si no existen, ya confirmadas, y le da el rol de
 administración a la última.
+
+**Antes de la primera pasada, sube los límites por persona en el proyecto de
+pruebas** (nunca en producción). Las verificaciones publican y ofertan por el
+camino real, con la sesión de estas mismas cuentas, y los límites de la
+migración `20260601001200` las cuentan como a cualquiera. Con los valores por
+omisión —30 trabajos en 24 horas y 30 ofertas por hora— una pasada completa no
+cabe:
+
+| Verificación | Trabajos de `qa.cliente` y ofertas de `qa.trabajador` |
+|---|---|
+| `verify:execution` | 8 + 2 × `RACE_REPS`: 18 con el valor por omisión (5), 28 con `RACE_REPS=10` |
+| `verify:payments` | 9 + 2 × `RACE_REPS`: 19 con el valor por omisión, 29 con `RACE_REPS=10` |
+| `verify:supabase` | 2 y 2 (las ofertas que deben fallar no cuentan: se deshacen) |
+| `e2e` (marketplace) | 1 y 1 |
+
+Solo `verify:execution` y `verify:payments` seguidas ya son 37 trabajos el
+mismo día y 37 ofertas en la misma hora. En el editor SQL de `hagotufila-dev`:
+
+```sql
+update public.platform_settings
+   set rate_limit_jobs_per_day = 500, rate_limit_offers_per_hour = 1000
+ where id;
+```
+
+Se queda así en ese proyecto; no hace falta repetirlo. Sin este paso, la
+verificación se corta a la mitad con «Alcanzaste el máximo de 30 trabajos
+publicados en 24 horas…» o con «…30 ofertas en una hora…», y las comprobaciones
+que esperan un `42501` reciben antes el `PT429` del límite (el disparador corre
+antes que la RLS). En producción los límites se dejan en los valores por
+omisión o más bajos (§9).
 
 ### 8.2 Verificación por API
 
@@ -562,7 +638,10 @@ llega es el de la otra persona hasta recargar.
 6. No apliques las semillas de demostración.
 7. Revisa que la clave secreta esté solo en las variables del servidor de tu
    plataforma de despliegue, nunca en el repositorio.
-8. En **Authentication → Rate Limits**, ajusta los límites de envío de correo.
+8. Límites de Auth —también los de envío de correo— y CAPTCHA: §4.6. Y revisa
+   los límites por persona de `platform_settings` (`rate_limit_*`): en
+   producción, con los valores por omisión o más bajos, nunca los que se hayan
+   subido para probar.
 
 ---
 
@@ -575,7 +654,8 @@ llega es el de la otra persona hasta recargar.
 | El enlace del correo lleva a otro sitio | Falta la URL en *Redirect URLs* |
 | El chat no actualiza sin recargar | La tabla `messages` no está en la publicación de Realtime |
 | "Falta la clave privada de Supabase" al pagar | Falta `SUPABASE_SECRET_KEY` |
-| `db push` falla al crear políticas de Storage | El rol no puede escribir en `storage.objects`: crea esas políticas desde **Storage → Policies** con las reglas de la migración `…000900` |
+| `db push` falla al crear políticas de Storage | El rol no puede escribir en `storage.objects`: crea esas políticas desde **Storage → Policies** con las reglas de las migraciones `…000900`, `20260401000100` y `20260601001210` |
+| Publicar, ofertar o escribir responde «Alcanzaste el máximo…» o «Estás enviando mensajes muy seguido…» | Es el límite por persona (`platform_settings.rate_limit_*`). Si pasa en las verificaciones contra `hagotufila-dev`, faltó subirlo en ese proyecto (§8.1) |
 | Un trabajador verificado no puede ofertar | Revisa `worker_profiles.verification_status`; debe ser `VERIFIED` |
 | `db push` se queda colgado sin mensaje | El puerto 5432/6543 está bloqueado en tu red: usa `npm run db:push:hosted` (sección 3.b) |
 | Todas las páginas dan 500 con `PGRST205` | Hay credenciales pero el esquema no está aplicado: la aplicación habla con el proyecto y el proyecto está vacío |
