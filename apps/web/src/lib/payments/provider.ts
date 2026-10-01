@@ -203,9 +203,28 @@ export class PaymentProviderNotConfiguredError extends Error {
   }
 }
 
+/**
+ * Lo que se sabe de una llamada al proveedor que terminó en error.
+ *
+ * Para una devolución no da lo mismo cómo falló: si la petición no salió, o el
+ * banco contestó que no, no se devolvió nada; si se agotó el tiempo o el banco
+ * contestó con un error suyo, puede que sí.
+ */
+export interface PaymentProviderErrorDetails {
+  /** `false` si la petición no llegó a salir hacia el proveedor. `null`: no se sabe. */
+  requestSent?: boolean | null;
+  /** Código HTTP con que contestó el proveedor, si contestó. */
+  httpStatus?: number | null;
+}
+
 export class PaymentProviderError extends Error {
-  constructor(providerId: string, message: string) {
+  readonly requestSent: boolean | null;
+  readonly httpStatus: number | null;
+
+  constructor(providerId: string, message: string, details: PaymentProviderErrorDetails = {}) {
     super(`[${providerId}] ${message}`);
     this.name = "PaymentProviderError";
+    this.requestSent = details.requestSent ?? null;
+    this.httpStatus = details.httpStatus ?? null;
   }
 }

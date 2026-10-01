@@ -9,8 +9,8 @@ import {
   mapJob,
   mapJobSummary,
   mapOffer,
-  mapPayment,
   mapPaymentBreakdown,
+  mapPaymentState,
   mapPayout,
   mapProfile,
   mapWorkerProfile,
@@ -21,7 +21,7 @@ import {
   type JobPrivateLocationRow,
   type JobRow,
   type OfferRow,
-  type PaymentRow,
+  type PaymentStateRow,
   type PaymentSummaryRow,
   type PayoutRow,
   type ProfileRow,
@@ -35,7 +35,6 @@ import {
   EVIDENCE_COLUMNS,
   EXTENSION_COLUMNS,
   JOB_COLUMNS,
-  PAYMENT_COLUMNS,
   PAYOUT_COLUMNS,
   PROFILE_COLUMNS,
   WORKER_COLUMNS,
@@ -379,27 +378,21 @@ export class SupabaseJobRepository implements JobRepository {
     const [
       workers,
       profiles,
-      paymentResult,
+      paymentsResult,
       summaryResult,
       conversationResult,
       timeline,
       checkInResult,
       extensionResult,
-      extensionPaymentResult,
       disputeResult,
       payoutResult,
       reviewResult,
     ] = await Promise.all([
         loadWorkers(supabase, [row.worker_id]),
         loadProfiles(supabase, [row.client_id]),
-        supabase
-          .from("payments")
-          .select(PAYMENT_COLUMNS)
-          .eq("assignment_id", row.id)
-          .eq("purpose", "JOB")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .returns<PaymentRow[]>(),
+        // El estado de los pagos del trabajo, para las dos partes, sin nada del
+        // proveedor: el trabajador ya no lee filas de `payments`.
+        supabase.rpc("assignment_payment_states", { p_assignment_ids: [row.id] }),
         supabase
           .from("assignment_payment_summary")
           .select("*")
@@ -427,12 +420,6 @@ export class SupabaseJobRepository implements JobRepository {
           .order("created_at", { ascending: false })
           .returns<ExtensionRow[]>(),
         supabase
-          .from("payments")
-          .select(PAYMENT_COLUMNS)
-          .eq("assignment_id", row.id)
-          .eq("purpose", "EXTENSION")
-          .returns<PaymentRow[]>(),
-        supabase
           .from("disputes")
           .select(DISPUTE_COLUMNS)
           .eq("assignment_id", row.id)
@@ -455,12 +442,18 @@ export class SupabaseJobRepository implements JobRepository {
     const client = profiles.get(row.client_id);
     if (!worker || !client) return null;
 
-    const payment = paymentResult.data?.[0] ? mapPayment(paymentResult.data[0]) : null;
+    if (paymentsResult.error) throw paymentsResult.error;
+    // Vienen del más reciente al más antiguo: el primero de cada propósito manda.
+    const payments = (paymentsResult.data ?? []) as PaymentStateRow[];
+    const jobPayment = payments.find((p) => p.purpose === "JOB");
+    const payment = jobPayment ? mapPaymentState(jobPayment) : null;
     const summary = summaryResult.data;
 
-    const extensionPayments: Record<string, ReturnType<typeof mapPayment>> = {};
-    for (const p of extensionPaymentResult.data ?? []) {
-      if (p.extension_id) extensionPayments[p.extension_id] = mapPayment(p);
+    const extensionPayments: Record<string, ReturnType<typeof mapPaymentState>> = {};
+    for (const p of payments) {
+      if (p.purpose === "EXTENSION" && p.extension_id && !extensionPayments[p.extension_id]) {
+        extensionPayments[p.extension_id] = mapPaymentState(p);
+      }
     }
 
     return {
@@ -603,22 +596,21 @@ async function loadAssignmentsByJob(
 async function loadLatestPayments(
   supabase: Client,
   assignmentIds: readonly string[],
-): Promise<Map<string, PaymentRow>> {
+): Promise<Map<string, PaymentStateRow>> {
   const unique = [...new Set(assignmentIds)].filter(Boolean);
   if (unique.length === 0) return new Map();
 
-  const { data, error } = await supabase
-    .from("payments")
-    .select(PAYMENT_COLUMNS)
-    .in("assignment_id", unique)
-    .eq("purpose", "JOB")
-    .order("created_at", { ascending: false })
-    .returns<PaymentRow[]>();
+  // Por la función y no por la tabla: el trabajador no lee filas de `payments`
+  // (son del cliente), y lo único que necesita es el estado.
+  const { data, error } = await supabase.rpc("assignment_payment_states", {
+    p_assignment_ids: unique,
+  });
 
   if (error) throw error;
 
-  const map = new Map<string, PaymentRow>();
-  for (const row of data ?? []) {
+  const map = new Map<string, PaymentStateRow>();
+  for (const row of (data ?? []) as PaymentStateRow[]) {
+    if (row.purpose !== "JOB") continue;
     if (row.assignment_id && !map.has(row.assignment_id)) map.set(row.assignment_id, row);
   }
   return map;

@@ -263,6 +263,18 @@ const AVISOS_ACEPTADOS: Record<string, Record<string, string>> = {
       "el usuario, comprueba el saldo devolvible y exige que la disputa esté resuelta. NO " +
       "devuelve dinero: solo deja la petición. La llamada al proveedor y el cierre son de " +
       "settle_payment_refund, que es exclusiva de service_role.",
+    "public.resolve_unknown_refund":
+      "SOLO la administración: primera línea del cuerpo es app_private.is_admin(). Cierra una " +
+      "devolución con resultado desconocido (UNKNOWN) con lo que muestra el portal de " +
+      "Transbank, por la misma vía que el banco (settle_payment_refund), y exige una nota que " +
+      "queda en audit_logs. Rechaza las que siguen en curso y una reversa que no sea por el " +
+      "total. payment_refunds no tiene ninguna vía de escritura para el usuario (D40–D49).",
+    "public.assignment_payment_states":
+      "La llaman el cliente y el trabajador de la asignación, y la administración. Existe " +
+      "porque el trabajador ya no lee filas de payments (la política payments_read es del " +
+      "cliente y de administración): devuelve solo propósito, estado, importe y fechas de los " +
+      "pagos de SUS asignaciones, sin dígitos de tarjeta, autorización, orden de compra ni " +
+      "token. Solo lee (D52–D61).",
   },
 };
 
@@ -307,7 +319,7 @@ async function main(): Promise<void> {
 
   check("tablas en public", inv.tablas, 34);
   check("vistas en public", inv.vistas, 7);
-  check("funciones en public", inv.funciones, 44);
+  check("funciones en public", inv.funciones, 49);
   check("enums", inv.enums, 24);
   check("políticas RLS en public", inv.politicas, 75);
   check("buckets de Storage", inv.buckets, 5);

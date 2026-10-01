@@ -72,7 +72,9 @@ for pair in \
   "worker_profiles:is_accepting_jobs" "job_offers:estimated_arrival_at" \
   "conversations:is_primary" "conversations:offer_id" "payments:provider_token" \
   "assignments:agreed_total" "notifications:read_at" "platform_settings:commission_bps" \
-  "assignment_payment_summary:worker_receives" "assignment_payment_summary:commission_bps"
+  "assignment_payment_summary:worker_receives" "assignment_payment_summary:commission_bps" \
+  "admin_payments:open_refund_status" "admin_payments:open_refund_unknown_reason" \
+  "payment_refunds:dispatched_at" "payment_refunds:unknown_reason"
 do
   check_column "${pair%%:*}" "${pair##*:}"
 done

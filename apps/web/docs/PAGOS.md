@@ -11,7 +11,8 @@ cómo se comporta ante una cancelación con un pago en vuelo. Complementa
 > **Las devoluciones ya existen** (`payment_refunds`, y el proveedor las
 > ejecuta), pero ninguna se ha hecho en producción. Un pago `UNDER_REVIEW` con
 > `captured_at` sigue siendo la cola de entrada: dinero recibido que hay que
-> devolver, y que ahora sí tiene botón.
+> devolver, y que ahora sí tiene botón. Cómo se evita devolver dos veces está
+> en §8 ter.
 
 ---
 
@@ -243,6 +244,14 @@ sobre una asignación cancelada o en verificación, ni un payout disponible por 
 trabajo cancelado. `isPayable(job.status)` y `isCancellationPending(job.status)`
 en `src/lib/domain/job-actions.ts` son la única fuente de esas decisiones.
 
+El trabajador sabe **si** el trabajo está pagado, nunca **cómo**: la fila de
+`payments` es del cliente que pagó y de administración (política
+`payments_read`, migración `20260601000920`). Las pantallas del trabajo leen el
+estado con `assignment_payment_states`, que devuelve propósito, estado, importe y
+fechas, sin dígitos de tarjeta, código de autorización, orden de compra ni nada
+de lo que contestó Webpay. `provider_transaction_id` —con Webpay, el token— no
+es legible para ninguna sesión.
+
 ---
 
 ## 8. Pruebas permanentes
@@ -280,6 +289,47 @@ Ver `docs/EJECUCION.md` §7.
 
 ---
 
+## 8 ter. Devoluciones: una sola vez, y nunca «fallida» sin saberlo
+
+Una devolución (`payment_refunds`) pasa por estos estados, y un disparador
+impide cualquier otro paso, también con la clave de servicio:
+
+| Estado | Qué significa | Compromete saldo | Sale a |
+|---|---|---|---|
+| `REQUESTED` | pedida; se envía al banco | sí | `UNKNOWN`, `CONFIRMED`, `FAILED`, `CANCELLED` |
+| `UNKNOWN` | enviada, y el banco no dio respuesta en firme | sí | `CONFIRMED`, `FAILED` |
+| `CONFIRMED` | el banco la hizo; baja `payments.refunded_amount` | — | final |
+| `FAILED` | el banco dijo que no, o no llegó a salir | no | final |
+| `CANCELLED` | descartada antes de salir (una enviada no se puede descartar) | no | final |
+
+Tres reglas, todas en la base (migración `20260601000910`):
+
+1. **Una petición, una devolución.** La clave de idempotencia es de la petición
+   de administración —un identificador que nace con el formulario—, no del
+   importe. Repetir la petición devuelve la misma fila; dos devoluciones
+   parciales iguales son dos peticiones. Y `claim_payment_refund` deja que solo
+   una llamada la envíe al banco.
+2. **Una abierta por pago.** Con una `REQUESTED` o `UNKNOWN`, no se pide otra
+   (índice único `payment_refunds_one_open_idx`). Si la primera salió de
+   verdad, la segunda sería dinero devuelto dos veces.
+3. **Lo devuelto no supera lo cobrado**: ni lo confirmado (restricción de
+   `payments` y comprobación en `settle_payment_refund`), ni lo confirmado más lo
+   abierto (`request_payment_refund` y el invariante
+   `refund_committed_over_amount`).
+
+Una `UNKNOWN` la cierra la conciliación cuando la consulta de estado de Webpay
+la explica, o una persona con lo que muestra el portal de Transbank
+(`resolve_unknown_refund`). El detalle está en `TRANSBANK.md` §7 y §11. Lo
+prueban D01–D51 y D68–D70 (`supabase/tests/12_refunds_privacy.sql`) y
+`src/lib/payments/refund.test.ts` y `refund-reconcile.test.ts`.
+
+Riesgo que queda, a sabiendas: mientras una devolución **total** está por
+confirmar, el pago al trabajador no se retiene solo (se retiene al confirmarse,
+como cualquier devolución total). Si administración transfiere en ese intervalo
+y la devolución resulta hecha, queda para resolución manual.
+
+---
+
 ## 9. Riesgos que quedan para Webpay real
 
 Lo que esta etapa **no** resuelve y hay que tener delante al integrar Transbank:
@@ -310,9 +360,10 @@ Lo que esta etapa **no** resuelve y hay que tener delante al integrar Transbank:
    explícito al mapear la respuesta.
 7. **Devoluciones de disputa.** Una resolución parcial o a favor del cliente
    anota el importe en `disputes.refund_amount` y deja el pago en `PAID`,
-   porque el dinero se cobró de verdad. Ejecutar esa devolución es de la
-   Etapa 4; hasta entonces la cola son las disputas resueltas con importe
-   pendiente. Ver `docs/EJECUCION.md` §10.
+   porque el dinero se cobró de verdad. La devolución se ejecuta desde
+   `/admin/pagos`; la disputa sale de la cola «Devoluciones por procesar»
+   cuando su importe está devuelto o en camino (migración `20260601000910`).
+   Ver `docs/EJECUCION.md` §10.
 8. **Reembolso parcial y bonos.** El importe cobrado incluye el bono
    comprometido. Devolver solo el bono, o solo el servicio, necesita
    `PARTIALLY_REFUNDED` y reglas que hoy no están escritas.

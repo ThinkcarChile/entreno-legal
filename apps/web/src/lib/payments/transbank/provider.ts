@@ -151,7 +151,11 @@ export class TransbankPaymentProvider implements PaymentProvider, ReconcilablePr
       const firstLine = raw.split("\n")[0]?.slice(0, 300) ?? "error desconocido";
       const safe = scrub(firstLine, [this.settings.apiKey, this.settings.commerceCode]);
       // `cause` se omite deliberadamente: es el objeto que lleva la credencial.
-      throw new PaymentProviderError(this.id, `${operation}: ${safe}`);
+      throw new PaymentProviderError(
+        this.id,
+        `${operation}: ${safe}`,
+        sdkFailureDetails(error, firstLine),
+      );
     }
   }
 
@@ -255,7 +259,9 @@ export class TransbankPaymentProvider implements PaymentProvider, ReconcilablePr
    */
   async refundTransaction(input: RefundPaymentInput): Promise<ProviderRefundResult> {
     if (!Number.isInteger(input.amount.amount) || input.amount.amount <= 0) {
-      throw new PaymentProviderError(this.id, "El importe a devolver debe ser un entero positivo.");
+      throw new PaymentProviderError(this.id, "El importe a devolver debe ser un entero positivo.", {
+        requestSent: false,
+      });
     }
 
     const refund: TransbankRefund = toRefund(
@@ -325,6 +331,28 @@ export class TransbankPaymentProvider implements PaymentProvider, ReconcilablePr
       raw: sanitizeProviderPayload(tx as unknown),
     };
   }
+}
+
+/**
+ * Qué se sabe de una llamada que falló: si salió hacia Transbank y con qué
+ * código HTTP contestó.
+ *
+ * El SDK envuelve TODO fallo de red o de HTTP en un `TransbankError` cuyo
+ * mensaje empieza por el error de axios convertido a texto («AxiosError:
+ * Request failed with status code 422», «AxiosError: timeout of … exceeded»).
+ * Lo demás —credenciales que faltan, guardas de producción, la validación del
+ * token que el SDK hace antes de llamar— se lanza antes de que la petición
+ * salga. El código se lee del texto porque el `TransbankError` no conserva la
+ * respuesta; si no aparece, queda en `null` y quien decida debe suponer lo peor.
+ */
+export function sdkFailureDetails(
+  error: unknown,
+  firstLine: string,
+): { requestSent: boolean; httpStatus: number | null } {
+  const sent = error instanceof Error && error.name === "TransbankError";
+  if (!sent) return { requestSent: false, httpStatus: null };
+  const match = /status code (\d{3})\b/.exec(firstLine);
+  return { requestSent: true, httpStatus: match ? Number(match[1]) : null };
 }
 
 /** Los identificadores los construye quien crea el pago, no el proveedor. */

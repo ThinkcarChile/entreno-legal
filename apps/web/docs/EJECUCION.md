@@ -317,7 +317,9 @@ El importe a devolver queda en `disputes.refund_amount`. **El pago del cliente
 sigue en `PAID`**: el dinero se cobró de verdad, y mover ese estado borraría el
 hecho y rompería el invariante «un payout se apoya en un pago confirmado», que
 es justo el que protege al trabajador en una resolución parcial. La cola de
-devoluciones son las disputas resueltas con importe pendiente.
+devoluciones son las disputas resueltas con importe pendiente —una deja de
+contar cuando su devolución está confirmada o en camino— más las devoluciones
+abiertas o por confirmar (`PAGOS.md` §8 ter).
 
 Defectos reales que se cerraron: `dispute_evidence` tenía política de `INSERT` y
 ningún privilegio, así que nadie podía aportar una prueba; y

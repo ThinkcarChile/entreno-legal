@@ -60,9 +60,10 @@ export const PAYOUT_COLUMNS =
   "bonus_amount,tax_withheld_amount,net_amount,bank_reference,notes,approved_at,paid_at," +
   "held_reason,created_at";
 
-export const PAYMENT_COLUMNS =
-  "id,job_id,assignment_id,extension_id,client_id,purpose,status,amount,provider," +
-  "provider_transaction_id,authorized_at,paid_at,created_at";
+// Sin lista de columnas de `payments`: las pantallas del trabajo no leen esa
+// tabla con la sesión. El trabajador no tiene filas ahí, y
+// `provider_transaction_id` (con Webpay, el token) no es legible para nadie con
+// sesión. Leen `assignment_payment_states`.
 
 /** Identificador del usuario de la sesión, tomado de un token con firma verificada. */
 export async function currentUserId(supabase: Client): Promise<string | null> {

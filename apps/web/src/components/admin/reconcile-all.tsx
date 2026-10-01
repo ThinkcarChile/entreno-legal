@@ -28,7 +28,10 @@ export function ReconcileAll() {
             setSummary(
               result.ok
                 ? `${result.data.examined} revisados · ${result.data.changed} actualizados` +
-                  (result.data.expired > 0 ? ` · ${result.data.expired} fuera de ventana` : "")
+                  (result.data.expired > 0 ? ` · ${result.data.expired} fuera de ventana` : "") +
+                  (result.data.refundsResolved > 0
+                    ? ` · ${result.data.refundsResolved} devoluciones resueltas`
+                    : "")
                 : result.error,
             );
           })

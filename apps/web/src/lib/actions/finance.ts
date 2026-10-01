@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 
 import { paymentLog } from "@/lib/payments/logging";
 import { reconcilePayments } from "@/lib/payments/reconcile";
-import { performRefund, refundIdempotencyKey } from "@/lib/payments/refund";
+import { performRefund, refundIdempotencyKey, type RefundState } from "@/lib/payments/refund";
+import { reconcileRefunds } from "@/lib/payments/refund-reconcile";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { actionError, actionOk, type ActionResult } from "@/lib/utils/errors";
 
@@ -40,15 +41,18 @@ async function requireAdmin() {
   return session;
 }
 
+/** Un UUID: lo que genera `crypto.randomUUID()` en el formulario. */
+const REQUEST_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Conciliación manual.
  *
  * Sin `paymentId` recorre la cola entera; con él, resuelve un caso concreto,
  * que es lo que hace falta cuando alguien escribe preguntando por su pago.
  */
-export async function reconcilePaymentsAction(
-  paymentId?: string,
-): Promise<ActionResult<{ examined: number; changed: number; expired: number }>> {
+export async function reconcilePaymentsAction(paymentId?: string): Promise<
+  ActionResult<{ examined: number; changed: number; expired: number; refundsResolved: number }>
+> {
   try {
     const { userId } = await requireAdmin();
 
@@ -60,9 +64,19 @@ export async function reconcilePaymentsAction(
       olderThanMinutes: paymentId ? 0 : 5,
     });
 
+    // Y sus devoluciones por confirmar. Sobre un pago concreto se pregunta
+    // aunque se haya preguntado hace poco; el margen para dar una devolución
+    // por NO hecha lo aplica igual `decideUnknownRefund`.
+    const refunds = await reconcileRefunds(admin, {
+      paymentId,
+      minAgeMinutes: paymentId ? 0 : 10,
+    });
+
     paymentLog({
       operation: "admin",
-      result: `reconcile:${summary.changed}/${summary.examined} expirados:${summary.expired}`,
+      result:
+        `reconcile:${summary.changed}/${summary.examined} expirados:${summary.expired}` +
+        ` devoluciones:${refunds.resolved}/${refunds.examined}`,
       paymentId,
       correlationId: userId.slice(0, 8),
     });
@@ -73,6 +87,7 @@ export async function reconcilePaymentsAction(
       examined: summary.examined,
       changed: summary.changed,
       expired: summary.expired,
+      refundsResolved: refunds.resolved,
     });
   } catch (error) {
     return actionError(error, "No pudimos conciliar los pagos.");
@@ -86,22 +101,36 @@ export async function reconcilePaymentsAction(
  * lo rechaza. El motivo es obligatorio y queda en la auditoría junto a quién
  * lo pidió.
  *
- * La clave de idempotencia se deriva del pago, el importe y la disputa (o de
- * un discriminante explícito). Repetir el mismo formulario no pide dos
- * devoluciones al banco.
+ * `requestId` lo genera el formulario al abrirse y cambia después de cada
+ * respuesta: identifica UNA petición. Repetirla —un doble clic, un reenvío
+ * tras perder la respuesta— no pide dos veces al banco; una segunda
+ * devolución, aunque sea del mismo importe, es otra petición y sí ocurre.
+ *
+ * Contesta en qué quedó: confirmada, rechazada (no salió dinero; se puede
+ * volver a pedir), por confirmar (el banco no dio respuesta en firme: no se
+ * puede pedir otra hasta resolverla) o en curso (la misma petición ya la está
+ * procesando otra llamada).
  */
 export async function requestRefundAction(input: {
   paymentId: string;
   amount: number;
   reason: string;
   disputeId?: string;
-  /** Distingue dos devoluciones legítimas del mismo importe sobre el mismo pago. */
-  discriminator?: string;
-}): Promise<ActionResult<{ confirmed: boolean; kind: string; refundedAmount: number }>> {
+  /** Identificador de la petición, generado por el formulario. */
+  requestId: string;
+}): Promise<
+  ActionResult<{ state: RefundState; kind: string; refundedAmount: number; reason: string | null }>
+> {
   try {
     // La sesión de quien administra: con ella se pide la devolución.
     const { supabase } = await requireAdmin();
 
+    if (!REQUEST_ID.test(input.requestId ?? "")) {
+      return {
+        ok: false,
+        error: "No pudimos identificar la petición. Cierra el formulario y vuelve a abrirlo.",
+      };
+    }
     if (!Number.isInteger(input.amount) || input.amount <= 0) {
       return { ok: false, error: "El importe debe ser un número entero de pesos.", field: "amount" };
     }
@@ -114,39 +143,77 @@ export async function requestRefundAction(input: {
     }
 
     // La petición va con la sesión de quien administra (la base comprueba su
-    // rol); la lectura del token y el cierre, con la clave de servicio.
+    // rol); la reserva del envío, la lectura del token y el cierre, con la
+    // clave de servicio.
     const admin = createAdminClient();
     const outcome = await performRefund(supabase, admin, {
       paymentId: input.paymentId,
       amount: input.amount,
       reason: input.reason.trim(),
       disputeId: input.disputeId ?? null,
-      idempotencyKey: refundIdempotencyKey(
-        input.paymentId,
-        input.amount,
-        input.discriminator ?? input.disputeId ?? "admin",
-      ),
+      idempotencyKey: refundIdempotencyKey(input.paymentId, input.requestId),
     });
 
     revalidatePath("/admin/pagos");
     revalidatePath("/admin/disputas");
     revalidatePath("/admin");
 
-    if (!outcome.confirmed) {
-      return {
-        ok: false,
-        error:
-          "El proveedor no confirmó la devolución. No se devolvió nada y queda registrada como fallida.",
-      };
-    }
-
     return actionOk({
-      confirmed: outcome.confirmed,
+      state: outcome.state,
       kind: outcome.kind,
       refundedAmount: outcome.refundedAmount,
+      reason: outcome.reason ?? null,
     });
   } catch (error) {
     return actionError(error, "No pudimos ejecutar la devolución.");
+  }
+}
+
+/**
+ * Cierra a mano una devolución por confirmar, con lo que muestra el portal de
+ * Transbank.
+ *
+ * Es para cuando la conciliación no puede decidir: fuera de los 7 días en que
+ * Webpay contesta, o con un estado que no cuadra con lo registrado. La base
+ * comprueba el rol, que la devolución esté por confirmar y que una reversa sea
+ * por el total; la nota queda en la auditoría.
+ */
+export async function resolveUnknownRefundAction(input: {
+  refundId: string;
+  succeeded: boolean;
+  kind?: "REVERSED" | "NULLIFIED";
+  note: string;
+}): Promise<ActionResult<{ refundStatus: string }>> {
+  try {
+    const { supabase } = await requireAdmin();
+
+    if (input.note.trim().length < 10) {
+      return {
+        ok: false,
+        error: "Escribe lo que muestra el portal de Transbank (al menos 10 caracteres).",
+        field: "note",
+      };
+    }
+
+    const { data, error } = await supabase.rpc("resolve_unknown_refund", {
+      p_refund_id: input.refundId,
+      p_succeeded: input.succeeded,
+      p_kind: input.succeeded ? (input.kind ?? null) : null,
+      p_note: input.note.trim(),
+    });
+    if (error) return actionError(error, "No pudimos cerrar la devolución.");
+
+    paymentLog({
+      operation: "admin",
+      result: `refund_resolved_manually:${input.succeeded ? "done" : "not_done"}`,
+    });
+
+    revalidatePath("/admin/pagos");
+    revalidatePath("/admin");
+    const row = (data ?? {}) as Record<string, unknown>;
+    return actionOk({ refundStatus: String(row.refund_status ?? "") });
+  } catch (error) {
+    return actionError(error, "No pudimos cerrar la devolución.");
   }
 }
 

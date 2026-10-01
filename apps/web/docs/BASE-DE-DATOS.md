@@ -36,6 +36,9 @@ en orden alfabético.
 | `…20260501000300_payment_no_rollback.sql` | Un pago cobrado no vuelve a estar «en vuelo» |
 | `…20260501000400_hold_payout_on_review.sql` | Un pago en revisión, fallido o devuelto congela el payout |
 | `…20260501000500_reconciliation_window.sql` | La ventana de conciliación pasa a ser configuración; los rezagados van a revisión |
+| `…20260601000900_refund_unknown_enum.sql` | `refund_status.UNKNOWN`: devolución enviada sin respuesta en firme |
+| `…20260601000910_refund_outcome_unknown.sql` | Clave de devolución por petición, una abierta por pago, máquina de estados, devoluciones por confirmar y su resolución |
+| `…20260601000920_payments_worker_privacy.sql` | La fila del pago es del cliente y de administración; `assignment_payment_states` para las dos partes |
 | `…000500_evidence_and_chat.sql` | Evidencia, vistas `checkins` y `job_updates`, conversaciones, mensajes |
 | `…000600_reviews_disputes.sql` | Reseñas con validación, disputas, evidencia de disputa |
 | `…000700_loyalty_notifications_audit.sql` | FilaPuntos, notificaciones, `audit_logs` y sus triggers |
@@ -132,6 +135,10 @@ con `security_invoker = true`.
 | `mark_notifications_read(ids)` | Cualquier usuario conectado | Marca leídas sus notificaciones (`SECURITY INVOKER`) |
 | `start_protected_payment(assignment)` | El cliente | Crea el pago con los montos calculados en la base |
 | `confirm_payment_result(pago, proveedor, evento, resultado, importe, detalles)` | **Solo la clave de servicio** (`EXECUTE` revocado a todo usuario) | Única entrada de resultados del proveedor: registra el evento una vez por identificador, decide bajo bloqueo `jobs → assignments → payments` y devuelve qué pasó |
+| `assignment_payment_states(asignaciones)` | Cliente y trabajador de cada asignación, y administración | Propósito, estado, importe y fechas de sus pagos. Nada del proveedor ni de la tarjeta: el trabajador no lee filas de `payments` |
+| `request_payment_refund(pago, importe, motivo, clave, disputa)` | **Administración** | Deja pedida una devolución. Idempotente por petición; una sola abierta por pago |
+| `resolve_unknown_refund(devolución, hecha, tipo, nota)` | **Administración** | Cierra una devolución por confirmar con lo que muestra el portal de Transbank |
+| `claim_payment_refund`, `settle_payment_refund`, `mark_payment_refund_unknown`, `refunds_pending_reconciliation` | **Solo la clave de servicio** | Reservar el envío al banco, cerrar con su respuesta, dejarla por confirmar y encontrar las que hay que conciliar. Ver `TRANSBANK.md` §7 |
 
 ### Ejecución del trabajo (Bloque 3)
 
@@ -216,6 +223,10 @@ supuestos, y todos rodean a una de las dieciséis:
 | Escribir en `payment_refunds` | ninguna: sin `INSERT`, `UPDATE`, `DELETE` ni `TRUNCATE` para `authenticated`; solo lectura y solo administración | `…20260501000100` |
 | Devolver más de lo cobrado | la suma de lo pedido y lo confirmado no puede superar el importe | `…20260501000100` |
 | Marcar devuelto sin respuesta del proveedor | `CONFIRMED` exige decir si fue reversa o anulación, y solo lo escribe `service_role` | `…20260501000200` |
+| Devolver dos veces: una segunda devolución mientras la primera está en curso o sin respuesta en firme del banco | índice único de una devolución abierta por pago, y `request_payment_refund` | `…20260601000910` |
+| Saltarse los pasos de una devolución (reabrir una fallida, deshacer una confirmada) | disparador `payment_refunds_guard_transitions`, sin exención para `service_role` | `…20260601000910` |
+| Leer, como trabajador, los dígitos de la tarjeta y la autorización del pago del cliente | `payments_read` es del cliente y de administración; el trabajador usa `assignment_payment_states` | `…20260601000920` |
+| Leer el token de Webpay por `provider_transaction_id` | sin `SELECT` de esa columna para `authenticated` | `…20260601000920` |
 | Hacer retroceder un pago cobrado a «en vuelo» | disparador `a_payments_no_rollback`, sin exención para `service_role` | `…20260501000300` |
 | Pagar al trabajador con el pago del cliente en revisión, fallido o devuelto | el payout se retiene solo | `…20260501000400` |
 | Que un pago sin resolver se pierda al salir de la ventana de conciliación | `expire_stale_payments()` lo lleva a `FAILED` o a `UNDER_REVIEW`, y el invariante `stale_payment_out_of_window` lo delata si nadie lo hizo | `…20260501000500` |

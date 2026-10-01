@@ -4,6 +4,7 @@ import { env, resolveDataSource } from "@/lib/env";
 import { isAuthorizedCronRequest } from "@/lib/payments/cron-auth";
 import { errorCategory, paymentLog } from "@/lib/payments/logging";
 import { reconcilePayments } from "@/lib/payments/reconcile";
+import { reconcileRefunds } from "@/lib/payments/refund-reconcile";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -14,6 +15,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * ejecuta exactamente el mismo servicio que el botón «Conciliar» de
  * `/admin/pagos`, con el mismo margen de 5 minutos para no pisar un retorno en
  * curso. Es idempotente: llamarla de más no cambia nada.
+ *
+ * Después, las devoluciones que quedaron sin resultado en firme
+ * (`refund-reconcile.ts`): las que siguen «en curso» pasado el margen pasan a
+ * «por confirmar», y las por confirmar se contrastan con `status(token)`. Va
+ * aparte de los pagos a propósito: que una de las dos falle no impide la otra.
  *
  * Protegida por `CRON_SECRET` (`Authorization: Bearer …`). Sin secreto
  * configurado responde 503. Recomendado: cada 10 minutos.
@@ -31,23 +37,44 @@ async function run(request: NextRequest) {
     return NextResponse.json({ error: "sin base de datos" }, { status: 503 });
   }
 
+  let admin: ReturnType<typeof createAdminClient>;
   try {
-    const summary = await reconcilePayments(createAdminClient(), { olderThanMinutes: 5 });
+    admin = createAdminClient();
+  } catch (error) {
+    paymentLog({ operation: "admin", result: "cron:reconcile:error", errorCategory: errorCategory(error) });
+    return NextResponse.json({ ok: false }, { status: 500 });
+  }
+
+  let payments: { examined: number; changed: number; expired: number } | null = null;
+  let refunds: { examined: number; resolved: number; undecided: number } | null = null;
+
+  try {
+    const summary = await reconcilePayments(admin, { olderThanMinutes: 5 });
+    payments = { examined: summary.examined, changed: summary.changed, expired: summary.expired };
     paymentLog({
       operation: "admin",
       result: `cron:reconcile:${summary.changed}/${summary.examined} expirados:${summary.expired}`,
     });
-    return NextResponse.json({
-      ok: true,
-      examined: summary.examined,
-      changed: summary.changed,
-      expired: summary.expired,
-    });
   } catch (error) {
     // El detalle no sale en la respuesta: puede venir del proveedor.
     paymentLog({ operation: "admin", result: "cron:reconcile:error", errorCategory: errorCategory(error) });
-    return NextResponse.json({ ok: false }, { status: 500 });
   }
+
+  try {
+    const summary = await reconcileRefunds(admin, { minAgeMinutes: 10 });
+    refunds = { examined: summary.examined, resolved: summary.resolved, undecided: summary.undecided };
+    paymentLog({
+      operation: "admin",
+      result: `cron:refunds:${summary.resolved}/${summary.examined} por_confirmar:${summary.undecided}`,
+    });
+  } catch (error) {
+    paymentLog({ operation: "admin", result: "cron:refunds:error", errorCategory: errorCategory(error) });
+  }
+
+  if (!payments || !refunds) {
+    return NextResponse.json({ ok: false, payments, refunds }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true, ...payments, refunds });
 }
 
 export const GET = run;
