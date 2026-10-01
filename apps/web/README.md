@@ -199,7 +199,7 @@ las 62 comprobaciones de `npm run verify:supabase`, las 23 de
 de `npm run e2e` —siete del marketplace y seis de la ejecución— y el recorrido a mano de
 `docs/DESPLIEGUE-SUPABASE.md` §8.4.
 
-Desde esa validación el repositorio sumó migraciones correctivas (hoy son 46
+Desde esa validación el repositorio sumó migraciones correctivas (hoy son 79
 archivos en `supabase/migrations/`) que **no** están aplicadas en el proyecto
 alojado ni probadas contra él. Antes de usarlo: `npm run db:push:hosted -- --plan`
 muestra cuáles faltan y `npm run db:push:hosted` las aplica. Después, con

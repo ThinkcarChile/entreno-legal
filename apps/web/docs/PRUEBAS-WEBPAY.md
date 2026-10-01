@@ -356,16 +356,16 @@ el pago. Además, contra `hagotufila-dev`:
   (`DESPLIEGUE-SUPABASE.md` §8.1); con los de omisión se corta a la mitad.
 
 ```bash
-npm run check                 # lint, tipos, 76 pruebas unitarias, build
-npm run db:test               # 225 comprobaciones contra PostgreSQL local
+npm run check                 # lint, tipos, 438 pruebas unitarias, build
+npm run db:test               # 802 comprobaciones contra PostgreSQL local
 npm run db:contract           # contraste entre el código y el esquema
 npm run db:push:hosted -- --plan
 npm run verify:schema:hosted
-npm run verify:supabase       # 62
+npm run verify:supabase       # 63
 npm run verify:payments       # 23
 npm run verify:execution      # 24
-npm run verify:pwa            # 30
-npm run verify:transbank      # 31 de 31, SIN ALLOW_OFFLINE
+npm run verify:pwa            # 31
+npm run verify:transbank      # 32 de 32, SIN ALLOW_OFFLINE
 npm run e2e                   # 51
 ```
 

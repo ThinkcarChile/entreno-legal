@@ -79,6 +79,20 @@ const FAILURE_LABELS: Record<string, string> = {
   provider_error: "el proveedor no respondió al crear la transacción",
 };
 
+/**
+ * Lo que significa una revisión según su motivo. La frase por omisión vale para
+ * un cobro que llegó cuando no debía: el trabajo no se habilitó con él. Dos
+ * motivos no encajan ahí y la decían en falso.
+ */
+const REVIEW_EXPLANATIONS: Record<string, string> = {
+  payout_already_settled:
+    "Es el cobro del tiempo adicional y llegó con el pago al trabajador ya transferido o cancelado (o el trabajo ya cerrado): no se sumó a nada. El trabajo sí se hizo; decide si se le devuelve al cliente o si se le paga al trabajador aparte.",
+  manual_review:
+    "Lo puso en revisión la administración. El pago al trabajador queda retenido hasta que se quite la revisión («Quitar de revisión») o se devuelva.",
+};
+
+const REVIEW_DEFAULT_EXPLANATION = "El trabajo no se habilitó y no hay pago al trabajador.";
+
 export default async function AdminPaymentsPage({
   searchParams,
 }: {
@@ -243,8 +257,8 @@ export default async function AdminPaymentsPage({
                       )}
                       {row.reviewReason && (
                         <Alert tone="warning" title="En revisión">
-                          Motivo registrado: <code>{row.reviewReason}</code>. El trabajo no se
-                          habilitó y no hay pago al trabajador.
+                          Motivo registrado: <code>{row.reviewReason}</code>.{" "}
+                          {REVIEW_EXPLANATIONS[row.reviewReason] ?? REVIEW_DEFAULT_EXPLANATION}
                         </Alert>
                       )}
                       {row.reviewAttempts.length > 0 && (

@@ -34,7 +34,7 @@ Y, además:
   clave de servicio;
 - `payment_events` es solo de escritura para la aplicación.
 
-Lo comprueban 225 comprobaciones locales (`npm run db:test`, con las carreras
+Lo comprueban 802 comprobaciones locales (`npm run db:test`, con las carreras
 de `07_race_payment.sh` y `08_race_execution.sh`) y 23 contra `hagotufila-dev`
 (`npm run verify:payments`).
 
@@ -587,3 +587,19 @@ porque otros documentos los citan; el 4 sigue abierto (`TRANSBANK.md` §12).
 8. **Reembolso parcial y bonos.** El importe cobrado incluye el bono
    comprometido. Devolver solo el bono, o solo el servicio, necesita
    `PARTIALLY_REFUNDED` y reglas que hoy no están escritas.
+9. **El motivo de una retención, por la tabla.** `worker_earnings` le da al
+   trabajador una frase genérica en vez de `held_reason`, que la base escribe
+   para la administración y puede traer las cifras del cliente
+   (`20260601002000`). Pero la tabla `payouts` sigue legible por su trabajador
+   con esa columna, porque la administración la lee con su sesión desde la
+   misma tabla. Cerrarlo del todo exige separar el texto del trabajador del de
+   la administración en dos columnas.
+10. **Transferir con un cobro del tiempo adicional en vuelo.** `mark_payout_paid`
+   espera mientras un cobro del tiempo adicional de la asignación está
+   autorizado sin asentar o se creó hace menos de 30 minutos
+   (`20260601002000`). Si la transferencia se registra igual —por ejemplo, el
+   cliente abre Webpay después—, ese cobro llega a revisión con
+   `payout_already_settled` (`20260601001700`) y no se suma al payout ya
+   transferido: hay que decidir a mano si se devuelve al cliente o se le paga
+   al trabajador aparte. No existe todavía un pago suplementario al
+   trabajador.

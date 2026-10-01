@@ -130,6 +130,7 @@ En el orden en que se aplican. Las de 2026-01 llevan el prefijo `20260101`.
 | `20260601001840_storage_listing_and_caps.sql` | Sin lectura pública de `avatars` ni `job-images` (no se listan); `avatars` solo la carpeta propia; subir exige ámbito vivo y tiene tope por persona y ámbito |
 | `20260601001900_geo_reference_data.sql` | Las 16 regiones y 346 comunas viajan con las migraciones, en todos los entornos (generada desde `src/lib/geo/chile.ts`, las mismas filas que `seed/001_geo.sql`) |
 | `20260601001910_job_is_approvable_search_path.sql` | `job_is_approvable` con `search_path` fijo |
+| `20260601002000_integration_followups.sql` | `mark_payout_paid` espera a un cobro del tiempo adicional en vuelo (`extension_charge_in_flight_blocker`); `worker_earnings` da al trabajador una frase genérica en vez del motivo interno de la retención |
 
 ---
 
@@ -520,7 +521,7 @@ nadie con sesión. Tamaño y tipos por bucket: migración `20260601000600`.
 PGHOST=/tmp PGPORT=55432 PGUSER=postgres npm run db:test
 ```
 
-Aplica el stub de Supabase, las 46 migraciones, la semilla geográfica y 340
+Aplica el stub de Supabase, las 79 migraciones, la semilla geográfica y 802
 comprobaciones de inventario, RLS, flujo completo, concurrencia, semilla de
 demostración, endurecimiento de las RPC, política de cancelación y pago,
 ejecución completa del trabajo, integración con Webpay y lo que leen y escriben
@@ -534,6 +535,9 @@ toca al despliegue: los datos de referencia que traen las migraciones, el
 `search_path` de `job_is_approvable` (I14 mira además todas las funciones de
 `public` y `app_private`, no solo las SECURITY DEFINER), la limpieza de las
 pruebas e2e y la reparación de sus restos (`supabase/ops/`).
+Y `23_integration.sql` (prefijo Y), lo que quedó entre dos grupos al integrar:
+la transferencia que espera a un cobro del tiempo adicional en vuelo y el
+motivo de una retención que el trabajador ya no lee.
 
 Contra el proyecto alojado, los mismos escenarios corren con
 `npm run verify:payments` (ver `PAGOS.md` §8) y `npm run verify:execution`
