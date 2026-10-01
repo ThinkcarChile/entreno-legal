@@ -59,7 +59,10 @@ import type {
  *
  * Todas las lecturas pasan por la clave anónima y quedan sujetas a RLS. La
  * dirección exacta se pide aparte, a `job_private_location`: si la política no
- * la deja pasar, simplemente no llega y el trabajo se arma sin ella.
+ * la deja pasar, simplemente no llega y el trabajo se arma sin ella. Lo mismo
+ * con quien publicó: si quien mira no puede ver su perfil, el trabajo llega con
+ * `client: null`. Las instrucciones no vienen en ninguna lectura general: se
+ * piden con `getInstructions`, solo desde páginas privadas.
  */
 export class SupabaseJobRepository implements JobRepository {
   constructor(
@@ -141,6 +144,11 @@ export class SupabaseJobRepository implements JobRepository {
 
     const [job] = await this.hydrate(supabase, [data], true);
     return job ?? null;
+  }
+
+  async getInstructions(jobId: string): Promise<string | null> {
+    const supabase = await this.getClient();
+    return loadInstructions(supabase, jobId);
   }
 
   async getByReference(reference: string): Promise<Job | null> {
@@ -379,6 +387,7 @@ export class SupabaseJobRepository implements JobRepository {
     const [
       workers,
       profiles,
+      instructions,
       paymentResult,
       summaryResult,
       conversationResult,
@@ -392,6 +401,9 @@ export class SupabaseJobRepository implements JobRepository {
     ] = await Promise.all([
         loadWorkers(supabase, [row.worker_id]),
         loadProfiles(supabase, [row.client_id]),
+        // Quien llega aquí es parte de la asignación: la base le entrega las
+        // instrucciones mientras la asignación siga viva.
+        loadInstructions(supabase, row.job_id),
         supabase
           .from("payments")
           .select(PAYMENT_COLUMNS)
@@ -465,7 +477,7 @@ export class SupabaseJobRepository implements JobRepository {
 
     return {
       assignment: mapAssignment(row),
-      job,
+      job: { ...job, instructions },
       client,
       worker,
       payment,
@@ -516,8 +528,9 @@ export class SupabaseJobRepository implements JobRepository {
     return rows
       .map((row) => {
         const category = categoryById.get(row.category_id);
-        const client = profiles.get(row.client_id);
-        if (!category || !client) return null;
+        if (!category) return null;
+        // Sin perfil visible el trabajo se muestra igual, sin nombrar a nadie.
+        const client = profiles.get(row.client_id) ?? null;
         return mapJob(row, category, client, [], locations.get(row.id) ?? null);
       })
       .filter((j): j is Job => j !== null);
@@ -525,6 +538,17 @@ export class SupabaseJobRepository implements JobRepository {
 }
 
 /* ------------------------------------------------------------- utilidades */
+
+/**
+ * Instrucciones de un trabajo. `jobs.instructions` no es legible con la clave
+ * pública (migración …001100); `get_job_instructions` las devuelve al cliente,
+ * al trabajador asignado y a la administración, y `null` a cualquier otro.
+ */
+async function loadInstructions(supabase: Client, jobId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc("get_job_instructions", { p_job_id: jobId });
+  if (error) throw error;
+  return typeof data === "string" && data.trim().length > 0 ? data : null;
+}
 
 export async function loadProfiles(supabase: Client, userIds: readonly string[]) {
   const unique = [...new Set(userIds)].filter(Boolean);

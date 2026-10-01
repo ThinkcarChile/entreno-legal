@@ -2,7 +2,7 @@ import { UserRole } from "@/lib/domain/enums";
 
 import { mapProfile, type ProfileRow } from "./mappers";
 import { loadProfiles, loadWorkers } from "./jobs";
-import { currentUserId, PROFILE_COLUMNS, type Client } from "./shared";
+import { currentUserId, type Client } from "./shared";
 import { getVerifiedUser } from "@/lib/supabase/verified-user";
 
 import type {
@@ -27,8 +27,11 @@ import { mapCategory, mapReview } from "./mappers";
  * Sesión, perfiles, trabajadores y configuración.
  */
 
+/** Lo que devuelve `get_my_account`: el perfil propio, con rol y modos. */
 interface SessionProfileRow extends ProfileRow {
   role: string;
+  roles: string[] | null;
+  is_suspended: boolean;
   onboarding_completed_at: string | null;
   commune_code: string | null;
 }
@@ -41,10 +44,11 @@ export class SupabaseSessionRepository implements SessionRepository {
     const user = await getVerifiedUser(supabase);
     if (!user) return null;
 
+    // El rol y los modos no se leen de `profiles`: desde la migración …001110
+    // esas columnas no son legibles para nadie con la clave pública, tampoco
+    // en la fila propia. `get_my_account` las devuelve solo para `auth.uid()`.
     const { data: profile } = await supabase
-      .from("profiles")
-      .select(`${PROFILE_COLUMNS},role,onboarding_completed_at,commune_code`)
-      .eq("id", user.id)
+      .rpc("get_my_account")
       .maybeSingle<SessionProfileRow>();
 
     if (!profile) return null;

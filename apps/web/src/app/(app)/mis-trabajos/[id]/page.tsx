@@ -323,6 +323,8 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
                 </div>
               )}
 
+              {/* Las entrega la base solo a las dos partes, mientras la asignación
+                  siga viva; en la página pública del trabajo no están. */}
               {job.instructions && (
                 <div>
                   <p className="text-caption font-medium tracking-wide text-ink-500 uppercase">
@@ -330,6 +332,10 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
                   </p>
                   <p className="mt-1.5 text-[0.9375rem] whitespace-pre-line text-ink-700">
                     {job.instructions}
+                  </p>
+                  <p className="mt-1.5 text-caption text-ink-500">
+                    Solo las ven el cliente, la persona asignada y el equipo de soporte si
+                    revisa un caso.
                   </p>
                 </div>
               )}

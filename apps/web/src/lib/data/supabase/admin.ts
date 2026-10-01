@@ -1,3 +1,4 @@
+import { avatarPublicUrl } from "@/lib/storage/avatars";
 import { money } from "@/lib/utils/money";
 import { publicDisplayName } from "@/lib/utils/format";
 
@@ -100,7 +101,7 @@ export class SupabaseAdminRepository implements AdminRepository {
         displayName: profile
           ? publicDisplayName(profile.first_name, profile.last_name_initial)
           : "Usuario",
-        avatarUrl: profile?.avatar_url ?? null,
+        avatarUrl: avatarPublicUrl(profile?.avatar_url),
         documentType: row.document_type,
         documentPath: row.document_path,
         selfiePath: row.selfie_path,

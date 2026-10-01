@@ -39,12 +39,11 @@ export async function sendOfferAction(input: unknown): Promise<ActionResult<{ of
 
     const { data: job } = await supabase
       .from("jobs")
-      .select("id,status,estimated_duration_minutes,starts_at,client_id")
+      .select("id,status,starts_at,client_id")
       .eq("id", parsed.data.jobId)
       .maybeSingle<{
         id: string;
         status: string;
-        estimated_duration_minutes: number;
         starts_at: string;
         client_id: string;
       }>();
@@ -57,10 +56,10 @@ export async function sendOfferAction(input: unknown): Promise<ActionResult<{ of
       return { ok: false, error: "No puedes ofertar en tu propio trabajo." };
     }
 
-    // El total se calcula aquí, desde la duración real del trabajo.
-    const estimatedTotal = Math.round(
-      (parsed.data.hourlyRate * job.estimated_duration_minutes) / 60,
-    );
+    // El total no se envía: lo calcula la base desde la tarifa y la duración
+    // del trabajo (migración …001130), con la misma fórmula que
+    // `proratePerHour`. Un total enviado desde aquí, o desde cualquier cliente
+    // de la API, se ignoraría igual: es lo que termina cobrándose.
     const arrival = new Date(
       Date.parse(job.starts_at) - parsed.data.arrivalMinutesBefore * 60_000,
     ).toISOString();
@@ -71,7 +70,6 @@ export async function sendOfferAction(input: unknown): Promise<ActionResult<{ of
         job_id: parsed.data.jobId,
         worker_id: userId,
         hourly_rate: parsed.data.hourlyRate,
-        estimated_total: estimatedTotal,
         message: parsed.data.message || null,
         estimated_arrival_at: arrival,
       })

@@ -23,7 +23,8 @@ export default async function EditJobPage({ params }: PageProps) {
   const { id } = await params;
   const session = await requireOnboardedUser(`/mis-trabajos/publicados/${id}/editar`);
 
-  const job = await getData().jobs.getById(id);
+  const data = getData();
+  const job = await data.jobs.getById(id);
   if (!job) notFound();
   if (job.clientId !== session.id) redirect(`/trabajos/${id}`);
 
@@ -31,6 +32,10 @@ export default async function EditJobPage({ params }: PageProps) {
   if (!jobPermissions(job.status, "client").canEdit) {
     redirect(`/mis-trabajos/publicados/${id}`);
   }
+
+  // Las instrucciones no vienen con el trabajo: se piden aparte, y solo las
+  // recibe el dueño. Sin esto el formulario las mostraría vacías.
+  const instructions = await data.jobs.getInstructions(id);
 
   return (
     <div className="container-page max-w-2xl py-6 sm:py-10">
@@ -51,7 +56,7 @@ export default async function EditJobPage({ params }: PageProps) {
 
       <Card className="mt-6">
         <CardContent className="sm:p-8">
-          <EditJobForm job={job} />
+          <EditJobForm job={{ ...job, instructions }} />
         </CardContent>
       </Card>
     </div>

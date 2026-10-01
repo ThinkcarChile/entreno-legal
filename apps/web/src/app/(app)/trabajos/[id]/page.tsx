@@ -125,12 +125,22 @@ export default async function JobDetailPage({ params }: PageProps) {
               {job.title}
             </h1>
 
+            {/* El perfil de quien publica solo lo ven sus contrapartes: un visitante,
+                o alguien que todavía no oferta, ve el trabajo sin nombre. */}
             <div className="mt-4 flex items-center gap-3">
-              <Avatar src={job.client.avatarUrl} name={job.client.displayName} size="sm" />
-              <p className="text-small text-ink-600">
-                Publicado por{" "}
-                <span className="font-medium text-ink-950">{job.client.displayName}</span>
-              </p>
+              {job.client ? (
+                <>
+                  <Avatar src={job.client.avatarUrl} name={job.client.displayName} size="sm" />
+                  <p className="text-small text-ink-600">
+                    Publicado por{" "}
+                    <span className="font-medium text-ink-950">{job.client.displayName}</span>
+                  </p>
+                </>
+              ) : (
+                <p className="text-small text-ink-600">
+                  Publicado por un cliente de {site.shortName}
+                </p>
+              )}
             </div>
           </header>
 
@@ -187,13 +197,15 @@ export default async function JobDetailPage({ params }: PageProps) {
                 {job.description}
               </p>
 
-              {job.instructions && (
-                <>
-                  <h3 className="mt-6 text-small font-semibold text-ink-950">Instrucciones</h3>
-                  <p className="mt-2 text-[0.9375rem] leading-relaxed whitespace-pre-line text-ink-700">
-                    {job.instructions}
-                  </p>
-                </>
+              {/* Esta página es pública y está en el sitemap: las instrucciones no
+                  se piden ni se pintan aquí, ni siquiera para el dueño. */}
+              {isOwner && (
+                <p className="mt-5 flex gap-2 text-caption text-ink-500">
+                  <Info size={14} className="mt-px shrink-0" aria-hidden="true" />
+                  Así ve tu trabajo cualquier persona, también desde buscadores. La dirección
+                  exacta y tus instrucciones no aparecen aquí: las verá la persona que elijas,
+                  desde que aceptes su oferta.
+                </p>
               )}
             </CardContent>
           </Card>
@@ -217,7 +229,8 @@ export default async function JobDetailPage({ params }: PageProps) {
               </h2>
               {offers.length === 0 ? (
                 <p className="mt-3 text-small text-ink-500">
-                  Todavía no hay ofertas. Los trabajadores verificados de la zona ya pueden verlo.
+                  Todavía no hay ofertas. El trabajo ya está publicado y cualquier trabajador
+                  verificado puede enviarte una.
                 </p>
               ) : (
                 <ul className="mt-4 space-y-4">

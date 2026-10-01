@@ -285,7 +285,7 @@ function SubmittedPanel({ jobId, demoMode }: { jobId: string | null; demoMode: b
         <p className="mx-auto mt-3 max-w-md text-ink-600">
           {demoMode
             ? "En modo demostración no se guarda nada. Configura Supabase para publicar de verdad."
-            : "Ya es visible para los trabajadores verificados de la zona. Te avisamos cuando llegue la primera oferta."}
+            : "Ya está publicado: cualquiera puede verlo, también desde buscadores, sin tu dirección exacta ni tus instrucciones. Solo los trabajadores verificados pueden ofertar. Te avisamos cuando llegue la primera oferta."}
         </p>
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
           {jobId ? (

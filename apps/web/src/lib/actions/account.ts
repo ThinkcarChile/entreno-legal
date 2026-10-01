@@ -6,6 +6,7 @@ import { z } from "zod";
 import { requireSession } from "./guards";
 import { AVATAR_BUCKET, isOwnAvatarPath } from "@/lib/storage/avatars";
 import { actionError, actionOk, type ActionResult } from "@/lib/utils/errors";
+import { lastNameSchema, personNameSchema } from "@/lib/validation/profile";
 
 /**
  * Cuenta: onboarding, modos, perfil de trabajador y verificación.
@@ -16,8 +17,9 @@ import { actionError, actionOk, type ActionResult } from "@/lib/utils/errors";
  */
 
 const onboardingSchema = z.object({
-  firstName: z.string().min(2, "Ingresa tu nombre").max(60),
-  lastName: z.string().min(2, "Ingresa tu apellido").max(60),
+  // La misma regla que la base aplica al nombre público (validation/profile.ts).
+  firstName: personNameSchema.refine((v) => v.length >= 2, "Ingresa tu nombre"),
+  lastName: lastNameSchema,
   phone: z
     .string()
     .min(8, "Ingresa un teléfono de contacto")
@@ -25,7 +27,10 @@ const onboardingSchema = z.object({
     .regex(/^[+0-9\s-]+$/, "El teléfono solo puede tener números"),
   regionCode: z.string().min(1, "Selecciona tu región"),
   communeCode: z.string().min(1, "Selecciona tu comuna"),
-  avatarUrl: z.string().url().nullable().optional(),
+  // Pese al nombre, es la RUTA de la foto dentro del bucket `avatars`, no una
+  // URL: es lo que guarda la base desde la migración …001120. Se comprueba
+  // más abajo, con la sesión, que sea de la propia carpeta.
+  avatarUrl: z.string().max(200).nullable().optional(),
   wantsClient: z.boolean(),
   wantsWorker: z.boolean(),
 });
@@ -41,7 +46,11 @@ export async function completeOnboardingAction(input: unknown): Promise<ActionRe
   }
 
   try {
-    const { supabase } = await requireSession();
+    const { supabase, userId } = await requireSession();
+    if (parsed.data.avatarUrl && !isOwnAvatarPath(parsed.data.avatarUrl, userId)) {
+      return { ok: false, error: "Esa ruta de archivo no es válida.", field: "avatarUrl" };
+    }
+
     const { error } = await supabase.rpc("complete_onboarding", {
       p_first_name: parsed.data.firstName,
       p_last_name: parsed.data.lastName,
@@ -174,9 +183,10 @@ export async function requestVerificationAction(
  * Registra la foto de perfil recién subida.
  *
  * La subida la hace el navegador contra Storage, con la sesión del propio
- * usuario y sujeta a las políticas del bucket. Aquí solo se guarda la URL, y
- * antes se comprueba que la ruta sea suya: si no, alguien podría apuntar su
- * perfil al archivo de otra persona.
+ * usuario y sujeta a las políticas del bucket. Aquí solo se guarda la RUTA, y
+ * antes se comprueba que sea suya: si no, alguien podría apuntar su perfil al
+ * archivo de otra persona. La base lo vuelve a exigir (`profiles_avatar_own_path`),
+ * y la URL pública la arma la aplicación al mostrarla (`avatarPublicUrl`).
  */
 export async function setAvatarAction(storagePath: string): Promise<ActionResult<{ url: string }>> {
   try {
@@ -191,7 +201,7 @@ export async function setAvatarAction(storagePath: string): Promise<ActionResult
 
     const { error } = await supabase
       .from("profiles")
-      .update({ avatar_url: publicUrl })
+      .update({ avatar_url: storagePath })
       .eq("id", userId);
 
     if (error) return actionError(error, "No pudimos guardar tu fotografía.");

@@ -90,6 +90,12 @@ export interface JobRepository {
    * consulta tiene derecho a verla; si no, llega en `null`.
    */
   getById(id: UUID): Promise<Job | null>;
+  /**
+   * Instrucciones del trabajo. Solo las reciben el cliente, el trabajador
+   * asignado y la administración; a cualquier otro le llega `null`, igual que
+   * si no hubiera. Solo para páginas privadas: la pública nunca las pide.
+   */
+  getInstructions(jobId: UUID): Promise<string | null>;
   listOffers(jobId: UUID): Promise<readonly JobOffer[]>;
   getTimeline(jobId: UUID): Promise<readonly JobTimelineEntry[]>;
   countByCategory(): Promise<Readonly<Record<string, number>>>;
