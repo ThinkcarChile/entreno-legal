@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { chunk, fetchAllPages, pageCount, pageWindow, parsePageParam } from "./pagination";
+import {
+  chunk,
+  fetchAllPages,
+  historyPageHref,
+  pageCount,
+  pageWindow,
+  parsePageParam,
+} from "./pagination";
 
 describe("parsePageParam", () => {
   it("lee un entero positivo", () => {
@@ -114,5 +121,36 @@ describe("fetchAllPages", () => {
       throw new Error("sin conexión");
     };
     await expect(fetchAllPages(rota)).rejects.toThrow("sin conexión");
+  });
+});
+
+describe("historyPageHref", () => {
+  it("la primera página es la dirección de siempre, con el ancla", () => {
+    expect(historyPageHref("/admin/payouts", 1)).toBe("/admin/payouts#historial");
+    expect(historyPageHref("/admin/payouts", 0)).toBe("/admin/payouts#historial");
+  });
+
+  it("las siguientes llevan `pagina`", () => {
+    expect(historyPageHref("/admin/disputas", 3)).toBe("/admin/disputas?pagina=3#historial");
+  });
+
+  it("conserva el filtro al avanzar y al volver a la primera", () => {
+    expect(historyPageHref("/admin/pagos", 2, { filtro: "refunded" })).toBe(
+      "/admin/pagos?filtro=refunded&pagina=2#historial",
+    );
+    expect(historyPageHref("/admin/pagos", 1, { filtro: "refunded" })).toBe(
+      "/admin/pagos?filtro=refunded#historial",
+    );
+  });
+
+  it("un parámetro vacío no se escribe", () => {
+    expect(historyPageHref("/admin/pagos", 2, { filtro: null })).toBe("/admin/pagos?pagina=2#historial");
+    expect(historyPageHref("/admin/pagos", 2, { filtro: "" })).toBe("/admin/pagos?pagina=2#historial");
+  });
+
+  it("escapa lo que no viene limpio", () => {
+    expect(historyPageHref("/admin/pagos", 1, { filtro: "a&pagina=9" })).toBe(
+      "/admin/pagos?filtro=a%26pagina%3D9#historial",
+    );
   });
 });

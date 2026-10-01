@@ -205,6 +205,8 @@ export const NotificationType = {
   VERIFICATION_UPDATED: "VERIFICATION_UPDATED",
   JOB_CANCELLED: "JOB_CANCELLED",
   JOB_EXPIRED: "JOB_EXPIRED",
+  /** Solo administración: una regla de invariante rota (migración 20260601001520). */
+  INTEGRITY_ALERT: "INTEGRITY_ALERT",
 } as const;
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType];
 

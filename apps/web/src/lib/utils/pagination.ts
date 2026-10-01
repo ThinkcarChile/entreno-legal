@@ -45,6 +45,27 @@ export function pageCount(total: number, pageSize = HISTORY_PAGE_SIZE): number {
   return Math.ceil(total / pageSize);
 }
 
+/**
+ * Enlace a una página del historial del panel, con el ancla `#historial`.
+ *
+ * `query` son los demás parámetros de la pantalla —el filtro de
+ * `/admin/pagos`—, que se conservan al avanzar; uno vacío no se escribe. La
+ * primera página no lleva `pagina`: es la dirección de siempre.
+ */
+export function historyPageHref(
+  basePath: string,
+  page: number,
+  query: Readonly<Record<string, string | null | undefined>> = {},
+): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value) params.set(key, value);
+  }
+  if (Number.isInteger(page) && page > 1) params.set("pagina", String(page));
+  const search = params.toString();
+  return `${basePath}${search ? `?${search}` : ""}#historial`;
+}
+
 /** Parte una lista en trozos, para no armar un `.in()` de mil identificadores en la URL. */
 export function chunk<T>(items: readonly T[], size: number): T[][] {
   if (!Number.isInteger(size) || size < 1) throw new Error("El tamaño del trozo debe ser un entero positivo.");

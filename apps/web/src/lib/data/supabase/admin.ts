@@ -12,8 +12,15 @@ import {
   CLOSED_DISPUTE_STATUSES,
   CLOSED_PAYOUT_STATUSES,
   confirmedRefundsByDispute,
+  disputePaymentId,
+  orderByIds,
   pendingDisputeRefund,
   postgrestList,
+  REFUNDED_PAYMENT_STATUSES,
+  UNRESOLVED_PAYMENT_STATUSES,
+  type ActionablePaymentFilter,
+  type JobPaymentRow,
+  type PaymentHistoryFilter,
   type RefundRow,
 } from "../admin-queues";
 
@@ -26,7 +33,7 @@ import type {
   PendingCheckIn,
   PlatformKpis,
   AdminPayment,
-  AdminPaymentFilter,
+  IntegrityAlert,
 } from "../repositories";
 import type { CheckInResult, PayoutStatus, VerificationStatus } from "@/lib/domain/enums";
 import type { VerificationRequest } from "@/lib/domain/types";
@@ -330,7 +337,7 @@ export class SupabaseAdminRepository implements AdminRepository {
     );
     const assignmentById = new Map(assignments.map((a) => [a.id, a]));
 
-    const [jobs, profiles, payouts] = await Promise.all([
+    const [jobs, profiles, payouts, jobPayments] = await Promise.all([
       selectByIds(
         assignments.map((a) => a.job_id),
         (part) =>
@@ -355,10 +362,29 @@ export class SupabaseAdminRepository implements AdminRepository {
             .returns<{ assignment_id: string; status: string; net_amount: number }[]>(),
         "payouts",
       ),
+      // El pago del trabajo de cada asignación: a él lleva «Devolución
+      // pendiente». Si la lectura falla, el enlace cae en la cola «En revisión».
+      selectByIds(
+        assignmentIds,
+        (part) =>
+          supabase
+            .from("payments")
+            .select("id,assignment_id,status,created_at")
+            .in("assignment_id", part)
+            .eq("purpose", "JOB")
+            .returns<(JobPaymentRow & { assignment_id: string })[]>(),
+        "pagos",
+      ),
     ]);
 
     const jobById = new Map(jobs.map((j) => [j.id, j]));
     const payoutByAssignment = new Map(payouts.map((p) => [p.assignment_id, p]));
+    const paymentsByAssignment = new Map<string, JobPaymentRow[]>();
+    for (const payment of jobPayments) {
+      const list = paymentsByAssignment.get(payment.assignment_id) ?? [];
+      list.push(payment);
+      paymentsByAssignment.set(payment.assignment_id, list);
+    }
 
     return rows.map((row) => {
       const assignment = assignmentById.get(row.assignment_id);
@@ -377,6 +403,7 @@ export class SupabaseAdminRepository implements AdminRepository {
         amountHeld: payout ? money(payout.net_amount) : null,
         payoutStatus: (payout?.status as PayoutStatus | undefined) ?? null,
         refundPending: pending > 0 ? money(pending) : null,
+        paymentId: disputePaymentId(paymentsByAssignment.get(row.assignment_id) ?? []),
       };
     });
   }
@@ -491,85 +518,251 @@ export class SupabaseAdminRepository implements AdminRepository {
     });
   }
 
-  /**
+  /*
    * Pagos del cliente hacia la plataforma.
    *
-   * Sale de la vista `admin_payments`, que NO expone `provider_token`: el token
+   * Salen de la vista `admin_payments`, que NO expone `provider_token`: el token
    * autoriza confirmar y devolver, así que no viaja a ninguna pantalla. Las
    * operaciones que lo necesitan lo leen en el servidor, con la clave de
    * servicio.
+   *
+   * Antes era un solo `listPayments` con `.limit(100)` y los más recientes
+   * primero, también para «En revisión»: pasados cien pagos, uno en revisión
+   * o con una devolución por confirmar de hace meses no salía en ningún
+   * filtro, y la tarjeta del panel lo seguía contando. Ahora es la misma regla
+   * que payouts y disputas: lo que pide una acción, entero y del más antiguo
+   * al más reciente; el resto, por páginas. Ver `admin-queues.ts`.
    */
-  async listPayments(filter: AdminPaymentFilter = "all"): Promise<readonly AdminPayment[]> {
+
+  async listActionablePayments(filter: ActionablePaymentFilter): Promise<readonly AdminPayment[]> {
+    const supabase = await this.getClient();
+
+    if (filter === "review") {
+      // La cola la define la base, una sola vez (`admin_payment_review_queue`,
+      // migración 20260601001510), y es la misma que cuenta
+      // `admin_pending_reviews`: la cifra de «Devoluciones por procesar» es el
+      // largo de esta lista. Un pago por fila: en revisión, con una devolución
+      // sin resultado final, con un intento duplicado por devolver o con la
+      // devolución de una disputa resuelta todavía sin pedir.
+      const queue = await fetchAllPages(async (from, to) => {
+        const { data, error } = await supabase
+          .rpc("admin_payment_review_queue")
+          .order("created_at", { ascending: true })
+          .order("payment_id", { ascending: true })
+          .range(from, to);
+        if (error) throw error;
+        return asRows<ReviewQueueRow>(data);
+      });
+      const ids = queue.map((q) => q.payment_id);
+      const rows = await selectStrict<PaymentRow>(ids, (part) =>
+        supabase
+          .from("admin_payments")
+          .select("*")
+          .in("payment_id", part)
+          .returns<PaymentRow[]>(),
+      );
+      const pendingById = new Map(queue.map((q) => [q.payment_id, Number(q.dispute_refund_pending ?? 0)]));
+      return orderByIds(rows, ids, (row) => String(row.payment_id)).map((row) =>
+        mapAdminPayment(row, pendingById.get(String(row.payment_id)) ?? 0),
+      );
+    }
+
+    const rows = await fetchAllPages(async (from, to) => {
+      const { data, error } = await supabase
+        .from("admin_payments")
+        .select("*")
+        .in("status", [...UNRESOLVED_PAYMENT_STATUSES])
+        .order("created_at", { ascending: true })
+        .order("payment_id", { ascending: true })
+        .range(from, to)
+        .returns<PaymentRow[]>();
+      if (error) throw error;
+      return data ?? [];
+    });
+    return this.withDisputeRefunds(supabase, rows);
+  }
+
+  async listPaymentHistory(
+    filter: PaymentHistoryFilter,
+    { limit, offset }: { limit: number; offset: number },
+  ): Promise<Page<AdminPayment>> {
     const supabase = await this.getClient();
     let query = supabase
       .from("admin_payments")
-      .select("*")
+      .select("*", { count: "exact" })
       .order("created_at", { ascending: false })
-      .limit(100);
+      .order("payment_id", { ascending: false })
+      .range(offset, offset + limit - 1);
+    if (filter === "refunded") query = query.in("status", [...REFUNDED_PAYMENT_STATUSES]);
 
-    // «En revisión» incluye los pagos con una devolución sin resultado final
-    // —es la cola a la que lleva «Devoluciones por procesar»— y el pago cobrado
-    // que tiene un intento duplicado por devolver: el pago está bien, pero hay
-    // dinero de más que mirar.
-    if (filter === "review") {
-      query = query.or("status.eq.UNDER_REVIEW,open_refund_status.not.is.null,attempts_in_review.gt.0");
+    const { data, error, count } = await query.returns<PaymentRow[]>();
+    if (error) {
+      if (isRangeNotSatisfiable(error)) {
+        const total = await countPayments(supabase, filter);
+        return { items: [], total, limit, offset };
+      }
+      throw error;
     }
-    if (filter === "pending") query = query.in("status", ["PENDING", "CREATED", "AUTHORIZED"]);
-    if (filter === "refunded") query = query.in("status", ["REFUNDED", "PARTIALLY_REFUNDED"]);
 
-    const { data, error } = await query.returns<Record<string, unknown>[]>();
-    if (error) throw error;
-
-    return (data ?? []).map((row) => ({
-      paymentId: String(row.payment_id),
-      jobId: String(row.job_id),
-      assignmentId: (row.assignment_id as string | null) ?? null,
-      jobReference: String(row.job_reference ?? ""),
-      jobTitle: String(row.job_title ?? ""),
-      clientId: String(row.client_id),
-      purpose: String(row.purpose),
-      status: String(row.status),
-      provider: String(row.provider),
-      environment: (row.environment as string | null) ?? null,
-      buyOrder: (row.buy_order as string | null) ?? null,
-      amount: Number(row.amount ?? 0),
-      refundedAmount: Number(row.refunded_amount ?? 0),
-      refundableAmount: Number(row.refundable_amount ?? 0),
-      providerStatus: (row.provider_status as string | null) ?? null,
-      responseCode: row.response_code == null ? null : Number(row.response_code),
-      authorizationCode: (row.authorization_code as string | null) ?? null,
-      cardLastDigits: (row.card_last_digits as string | null) ?? null,
-      paymentTypeCode: (row.payment_type_code as string | null) ?? null,
-      installments: row.installments == null ? null : Number(row.installments),
-      vci: (row.vci as string | null) ?? null,
-      attempt: Number(row.attempt ?? 0),
-      failureReason: (row.failure_reason as string | null) ?? null,
-      reviewReason: (row.review_reason as string | null) ?? null,
-      createdAt: String(row.created_at),
-      paidAt: (row.paid_at as string | null) ?? null,
-      capturedAt: (row.captured_at as string | null) ?? null,
-      committedAt: (row.committed_at as string | null) ?? null,
-      reconciledAt: (row.reconciled_at as string | null) ?? null,
-      eventCount: Number(row.event_count ?? 0),
-      refundCount: Number(row.refund_count ?? 0),
-      disputeId: (row.dispute_id as string | null) ?? null,
-      payoutId: (row.payout_id as string | null) ?? null,
-      attemptsInReview: Number(row.attempts_in_review ?? 0),
-      attemptsReviewDetail: (row.attempts_review_detail as string | null) ?? null,
-      openRefund: row.open_refund_id
-        ? {
-            refundId: String(row.open_refund_id),
-            status: row.open_refund_status === "UNKNOWN" ? "UNKNOWN" : "REQUESTED",
-            amount: Number(row.open_refund_amount ?? 0),
-            requestedAt: String(row.open_refund_requested_at),
-            unknownReason: (row.open_refund_unknown_reason as string | null) ?? null,
-            lastCheckedAt: (row.open_refund_last_checked_at as string | null) ?? null,
-            lastCheckResult: (row.open_refund_last_check_result as string | null) ?? null,
-          }
-        : null,
-    }));
+    const rows = data ?? [];
+    return {
+      items: await this.withDisputeRefunds(supabase, rows),
+      total: count ?? rows.length,
+      limit,
+      offset,
+    };
   }
 
+  /** Un pago por su id: a él lleva «Devolución pendiente» en `/admin/disputas`. */
+  async getPayment(paymentId: string): Promise<AdminPayment | null> {
+    const supabase = await this.getClient();
+    const { data, error } = await supabase
+      .from("admin_payments")
+      .select("*")
+      .eq("payment_id", paymentId)
+      .maybeSingle<PaymentRow>();
+    if (error) throw error;
+    if (!data) return null;
+    const [payment] = await this.withDisputeRefunds(supabase, [data]);
+    return payment ?? null;
+  }
+
+  /**
+   * Lo que falta pedir por una disputa, para los pagos de una lista que no
+   * salió de la cola. Si la lectura falla, el pago se muestra igual, sin ese
+   * aviso: la cola «En revisión» lo sigue teniendo.
+   */
+  private async withDisputeRefunds(
+    supabase: Client,
+    rows: readonly PaymentRow[],
+  ): Promise<AdminPayment[]> {
+    if (rows.length === 0) return [];
+    const queue = await selectByIds(
+      rows.map((row) => String(row.payment_id)),
+      async (part) => {
+        const { data, error } = await supabase
+          .rpc("admin_payment_review_queue")
+          .select("payment_id,dispute_refund_pending")
+          .in("payment_id", part)
+          .gt("dispute_refund_pending", 0);
+        return { data: asRows<Pick<ReviewQueueRow, "payment_id" | "dispute_refund_pending">>(data), error };
+      },
+      "devoluciones de disputas",
+    );
+    const pendingById = new Map(queue.map((q) => [q.payment_id, Number(q.dispute_refund_pending ?? 0)]));
+    return rows.map((row) => mapAdminPayment(row, pendingById.get(String(row.payment_id)) ?? 0));
+  }
+
+  /**
+   * Reglas de invariante rotas según la última pasada de las tareas
+   * programadas. `admin_integrity_alerts` comprueba el rol: sin él, error.
+   */
+  async listIntegrityAlerts(): Promise<readonly IntegrityAlert[]> {
+    const supabase = await this.getClient();
+    const { data, error } = await supabase.rpc("admin_integrity_alerts");
+    if (error) throw error;
+    return asRows<IntegrityAlertRow>(data).map((row) => ({
+      alertId: row.alert_id,
+      source: row.source,
+      kind: row.kind,
+      violationCount: Number(row.violation_count ?? 0),
+      sampleIds: row.sample_ids ?? [],
+      firstSeenAt: row.first_seen_at,
+      lastSeenAt: row.last_seen_at,
+      lastNotifiedAt: row.last_notified_at,
+      acknowledgedAt: row.acknowledged_at,
+      unacknowledged: Boolean(row.unacknowledged),
+    }));
+  }
+}
+
+/* ------------------------------------------------------------ pagos */
+
+type PaymentRow = Record<string, unknown>;
+
+/** Una fila de `admin_payment_review_queue`. */
+interface ReviewQueueRow {
+  payment_id: string;
+  created_at: string;
+  under_review: boolean;
+  open_refund: boolean;
+  attempts_in_review: number;
+  dispute_id: string | null;
+  dispute_refund_pending: number;
+}
+
+interface IntegrityAlertRow {
+  alert_id: string;
+  source: string;
+  kind: string;
+  violation_count: number;
+  sample_ids: string[] | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  last_notified_at: string | null;
+  acknowledged_at: string | null;
+  unacknowledged: boolean;
+}
+
+/**
+ * Las filas de una función que devuelve una tabla. El cliente no tiene los
+ * tipos generados de la base, así que la forma la fija quien llama, como
+ * `.returns<T>()` en las consultas a tablas y vistas.
+ */
+function asRows<T>(data: unknown): T[] {
+  return Array.isArray(data) ? (data as T[]) : [];
+}
+
+function mapAdminPayment(row: PaymentRow, disputeRefundPending: number): AdminPayment {
+  return {
+    paymentId: String(row.payment_id),
+    jobId: String(row.job_id),
+    assignmentId: (row.assignment_id as string | null) ?? null,
+    jobReference: String(row.job_reference ?? ""),
+    jobTitle: String(row.job_title ?? ""),
+    clientId: String(row.client_id),
+    purpose: String(row.purpose),
+    status: String(row.status),
+    provider: String(row.provider),
+    environment: (row.environment as string | null) ?? null,
+    buyOrder: (row.buy_order as string | null) ?? null,
+    amount: Number(row.amount ?? 0),
+    refundedAmount: Number(row.refunded_amount ?? 0),
+    refundableAmount: Number(row.refundable_amount ?? 0),
+    providerStatus: (row.provider_status as string | null) ?? null,
+    responseCode: row.response_code == null ? null : Number(row.response_code),
+    authorizationCode: (row.authorization_code as string | null) ?? null,
+    cardLastDigits: (row.card_last_digits as string | null) ?? null,
+    paymentTypeCode: (row.payment_type_code as string | null) ?? null,
+    installments: row.installments == null ? null : Number(row.installments),
+    vci: (row.vci as string | null) ?? null,
+    attempt: Number(row.attempt ?? 0),
+    failureReason: (row.failure_reason as string | null) ?? null,
+    reviewReason: (row.review_reason as string | null) ?? null,
+    createdAt: String(row.created_at),
+    paidAt: (row.paid_at as string | null) ?? null,
+    capturedAt: (row.captured_at as string | null) ?? null,
+    committedAt: (row.committed_at as string | null) ?? null,
+    reconciledAt: (row.reconciled_at as string | null) ?? null,
+    eventCount: Number(row.event_count ?? 0),
+    refundCount: Number(row.refund_count ?? 0),
+    disputeId: (row.dispute_id as string | null) ?? null,
+    payoutId: (row.payout_id as string | null) ?? null,
+    attemptsInReview: Number(row.attempts_in_review ?? 0),
+    attemptsReviewDetail: (row.attempts_review_detail as string | null) ?? null,
+    openRefund: row.open_refund_id
+      ? {
+          refundId: String(row.open_refund_id),
+          status: row.open_refund_status === "UNKNOWN" ? "UNKNOWN" : "REQUESTED",
+          amount: Number(row.open_refund_amount ?? 0),
+          requestedAt: String(row.open_refund_requested_at),
+          unknownReason: (row.open_refund_unknown_reason as string | null) ?? null,
+          lastCheckedAt: (row.open_refund_last_checked_at as string | null) ?? null,
+          lastCheckResult: (row.open_refund_last_check_result as string | null) ?? null,
+        }
+      : null,
+    disputeRefundPending,
+  };
 }
 
 /* ---------------------------------------------------------------- piezas */
@@ -674,6 +867,15 @@ async function countWithStatus(
     .from(table)
     .select("id", { count: "exact", head: true })
     .in("status", [...statuses]);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/** Cuántos pagos hay en un filtro del historial («Todos» o «Devueltos»). */
+async function countPayments(supabase: Client, filter: PaymentHistoryFilter): Promise<number> {
+  let query = supabase.from("admin_payments").select("payment_id", { count: "exact", head: true });
+  if (filter === "refunded") query = query.in("status", [...REFUNDED_PAYMENT_STATUSES]);
+  const { count, error } = await query;
   if (error) throw error;
   return count ?? 0;
 }

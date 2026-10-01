@@ -3,13 +3,20 @@ import Link from "next/link";
 
 import { CreditCard } from "lucide-react";
 
+import { HistoryPager } from "@/components/admin/history-pager";
 import { PaymentActions } from "@/components/admin/payment-actions";
 import { ReconcileAll } from "@/components/admin/reconcile-all";
 import { Amount, Card, CardContent, EmptyState, StatusChip } from "@/components/ui";
 import { Alert } from "@/components/ui/feedback";
 import { requireAdmin } from "@/lib/auth/session";
-import { getData, type AdminPaymentFilter } from "@/lib/data";
+import { getData, type AdminPayment, type AdminPaymentFilter, type Page } from "@/lib/data";
+import {
+  isActionablePaymentFilter,
+  parsePaymentFilter,
+  parseUuidParam,
+} from "@/lib/data/admin-queues";
 import { formatDateTime } from "@/lib/utils/datetime";
+import { HISTORY_PAGE_SIZE, pageWindow, parsePageParam } from "@/lib/utils/pagination";
 
 export const metadata: Metadata = {
   title: "Pagos",
@@ -24,6 +31,11 @@ export const metadata: Metadata = {
  * Transbank —orden de compra, estado del proveedor, código de respuesta,
  * autorización, últimos cuatro dígitos, cuotas— y el botón para preguntarle al
  * proveedor en ese momento.
+ *
+ * «En revisión» y «Sin resolver» traen enteros, del más antiguo al más
+ * reciente, los pagos que piden una acción; «Todos» y «Devueltos» van por
+ * páginas. `?pago=` muestra uno solo, por antiguo que sea: a él llevan los
+ * enlaces de `/admin/disputas`.
  *
  * Lo que no está, y no va a estar: el token y las credenciales.
  */
@@ -68,12 +80,30 @@ const FAILURE_LABELS: Record<string, string> = {
 export default async function AdminPaymentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filtro?: string }>;
+  searchParams: Promise<{
+    filtro?: string | string[];
+    pagina?: string | string[];
+    pago?: string | string[];
+  }>;
 }) {
   await requireAdmin("/admin/pagos");
-  const { filtro } = await searchParams;
-  const filter = (FILTERS.find((f) => f.id === filtro)?.id ?? "all") as AdminPaymentFilter;
-  const rows = await getData().admin.listPayments(filter);
+  const { filtro, pagina, pago } = await searchParams;
+  const paymentId = parseUuidParam(pago);
+  const filter = parsePaymentFilter(filtro);
+  const page = parsePageParam(pagina);
+
+  const admin = getData().admin;
+  let rows: readonly AdminPayment[];
+  let history: Page<AdminPayment> | null = null;
+  if (paymentId) {
+    const one = await admin.getPayment(paymentId);
+    rows = one ? [one] : [];
+  } else if (isActionablePaymentFilter(filter)) {
+    rows = await admin.listActionablePayments(filter);
+  } else {
+    history = await admin.listPaymentHistory(filter, pageWindow(page, HISTORY_PAGE_SIZE));
+    rows = history.items;
+  }
 
   return (
     <div className="container-page py-8 sm:py-10">
@@ -98,9 +128,9 @@ export default async function AdminPaymentsPage({
           <Link
             key={option.id}
             href={option.id === "all" ? "/admin/pagos" : `/admin/pagos?filtro=${option.id}`}
-            aria-current={option.id === filter ? "page" : undefined}
+            aria-current={!paymentId && option.id === filter ? "page" : undefined}
             className={
-              option.id === filter
+              !paymentId && option.id === filter
                 ? "rounded-[var(--radius-pill)] border border-brand-600 bg-brand-600 px-3.5 py-1.5 text-small font-medium text-white"
                 : "rounded-[var(--radius-pill)] border border-line bg-surface px-3.5 py-1.5 text-small font-medium text-ink-700 hover:border-brand-300"
             }
@@ -110,12 +140,34 @@ export default async function AdminPaymentsPage({
         ))}
       </nav>
 
-      <div className="mt-6">
+      <p className="mt-4 text-small text-ink-600">
+        {paymentId
+          ? "Un solo pago, el del enlace que seguiste."
+          : filter === "review"
+            ? `${rows.length} ${rows.length === 1 ? "pago espera" : "pagos esperan"} a una persona: en revisión, con una devolución sin resultado final, con un intento cobrado de más o en revisión, o con la devolución de una disputa sin pedir. Todos, sin importar su antigüedad; los más antiguos primero. Es la cifra de «Devoluciones por procesar» del resumen.`
+            : filter === "pending"
+              ? `${rows.length} sin resultado todavía. Todos, sin importar su antigüedad; los más antiguos primero. La conciliación los cierra.`
+              : `${history?.total ?? rows.length} en total, los más recientes primero.`}
+      </p>
+
+      <div id="historial" className="mt-4 scroll-mt-6">
         {rows.length === 0 ? (
           <EmptyState
             icon={<CreditCard size={22} aria-hidden="true" />}
-            title="Sin pagos que mostrar"
-            description="Cuando un cliente pague un trabajo, aparecerá aquí con su detalle."
+            title={
+              paymentId
+                ? "No encontramos ese pago"
+                : history && history.total > 0
+                  ? "No hay más páginas"
+                  : "Sin pagos que mostrar"
+            }
+            description={
+              paymentId
+                ? "El enlace no corresponde a ningún pago. Búscalo en «Todos»."
+                : history && history.total > 0
+                  ? "Esta página está más allá del final de la lista."
+                  : "Cuando un cliente pague un trabajo, aparecerá aquí con su detalle."
+            }
           />
         ) : (
           <ul className="space-y-3">
@@ -170,6 +222,14 @@ export default async function AdminPaymentsPage({
                         </div>
                       </div>
 
+                      {row.disputeRefundPending > 0 && (
+                        <Alert tone="warning" title="Devolución de una disputa sin pedir">
+                          La disputa se resolvió a favor del cliente y falta pedir{" "}
+                          <Amount value={{ amount: row.disputeRefundPending, currency: "CLP" }} />.
+                          Se pide con «Devolver», abajo, y solo cuenta como hecha cuando Webpay la
+                          confirma.
+                        </Alert>
+                      )}
                       {row.reviewReason && (
                         <Alert tone="warning" title="En revisión">
                           Motivo registrado: <code>{row.reviewReason}</code>. El trabajo no se
@@ -247,6 +307,15 @@ export default async function AdminPaymentsPage({
               );
             })}
           </ul>
+        )}
+        {history && (
+          <HistoryPager
+            basePath="/admin/pagos"
+            page={page}
+            total={history.total}
+            pageSize={HISTORY_PAGE_SIZE}
+            query={{ filtro: filter === "all" ? null : filter }}
+          />
         )}
       </div>
     </div>

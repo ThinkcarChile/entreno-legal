@@ -375,8 +375,12 @@ Lo que esta etapa **no** resuelve y hay que tener delante al integrar Transbank:
 7. **Devoluciones de disputa.** Una resolución parcial o a favor del cliente
    anota el importe en `disputes.refund_amount` y deja el pago en `PAID`,
    porque el dinero se cobró de verdad. La devolución se ejecuta desde
-   `/admin/pagos`; la disputa sale de la cola «Devoluciones por procesar»
-   cuando su importe está devuelto o en camino (migración `20260601000910`).
+   `/admin/pagos`: mientras no se pida, el pago del trabajo de esa disputa está
+   en la cola «Devoluciones por procesar» (filtro «En revisión», con el aviso
+   «Devolución de una disputa sin pedir»), y el enlace «Devolución pendiente»
+   de `/admin/disputas` lleva directo a él. Pedida, sigue en la cola como
+   devolución abierta, una sola vez; sale cuando el banco confirma todo lo
+   resuelto (migraciones `20260601000910` y `20260601001510`).
    Ver `docs/EJECUCION.md` §10.
 8. **Reembolso parcial y bonos.** El importe cobrado incluye el bono
    comprometido. Devolver solo el bono, o solo el servicio, necesita

@@ -33,6 +33,7 @@ import type {
   SettingsRepository,
   WorkerRepository,
   AdminPayment,
+  IntegrityAlert,
 } from "../repositories";
 import type {
   AppNotification,
@@ -278,7 +279,23 @@ class DemoAdminRepository implements AdminRepository {
     return [];
   }
   /** El modo demostración no tiene pagos reales que conciliar. */
-  async listPayments(): Promise<readonly AdminPayment[]> {
+  async listActionablePayments(): Promise<readonly AdminPayment[]> {
+    return [];
+  }
+
+  async listPaymentHistory(
+    _filter: string,
+    page: { limit: number; offset: number },
+  ): Promise<Page<AdminPayment>> {
+    return { items: [], total: 0, ...page };
+  }
+
+  async getPayment(): Promise<AdminPayment | null> {
+    return null;
+  }
+
+  /** Ni base ni tareas programadas: nada que vigilar. */
+  async listIntegrityAlerts(): Promise<readonly IntegrityAlert[]> {
     return [];
   }
 

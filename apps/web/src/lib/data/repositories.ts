@@ -32,6 +32,8 @@ import type {
 } from "@/lib/domain/types";
 import type { Money } from "@/lib/utils/money";
 
+import type { ActionablePaymentFilter, PaymentFilter, PaymentHistoryFilter } from "./admin-queues";
+
 /**
  * Contratos de acceso a datos.
  *
@@ -197,6 +199,11 @@ export interface AdminDispute {
    * disputa. `null` si no se le debe nada o si ya se devolvió todo.
    */
   refundPending: Money | null;
+  /**
+   * El pago del trabajo sobre el que se pide esa devolución: a él lleva el
+   * enlace «Devolución pendiente», aunque sea antiguo. `null` si no hay.
+   */
+  paymentId: UUID | null;
 }
 
 export interface AdminPayout {
@@ -258,6 +265,12 @@ export interface AdminPayment {
   attemptsReviewDetail: string | null;
   /** La devolución en curso o por confirmar, si la hay. Bloquea pedir otra. */
   openRefund: AdminOpenRefund | null;
+  /**
+   * Lo que falta PEDIR de una disputa resuelta a favor del cliente cuyo pago
+   * es este (lo resuelto menos lo ya pedido o devuelto con esa disputa). Cero
+   * si no hay nada. Es uno de los motivos de la cola «En revisión».
+   */
+  disputeRefundPending: number;
 }
 
 /** Una devolución sin resultado final, con lo que explica por qué. */
@@ -275,7 +288,28 @@ export interface AdminOpenRefund {
 }
 
 /** Filtro de la pantalla de pagos. */
-export type AdminPaymentFilter = "all" | "review" | "pending" | "refunded";
+export type AdminPaymentFilter = PaymentFilter;
+
+/**
+ * Una regla de invariante rota según la última pasada de las tareas
+ * programadas (`app_private.check_invariants`, migración 20260601001520).
+ */
+export interface IntegrityAlert {
+  alertId: UUID;
+  /** La función que la delata, p. ej. `refund_invariant_violations`. */
+  source: string;
+  /** La regla, p. ej. `refunded_amount_mismatch`. */
+  kind: string;
+  violationCount: number;
+  /** Hasta cinco identificadores de filas que la rompen. */
+  sampleIds: readonly UUID[];
+  firstSeenAt: ISODateTime;
+  lastSeenAt: ISODateTime;
+  lastNotifiedAt: ISODateTime | null;
+  acknowledgedAt: ISODateTime | null;
+  /** Nadie la marcó como vista, o tiene más casos que cuando se marcó. */
+  unacknowledged: boolean;
+}
 
 export interface AdminRepository {
   getKpis(): Promise<PlatformKpis>;
@@ -298,8 +332,21 @@ export interface AdminRepository {
   listActionablePayouts(): Promise<readonly AdminPayout[]>;
   /** Payouts transferidos o cancelados, del más reciente al más antiguo, por páginas. */
   listPayoutHistory(page: { limit: number; offset: number }): Promise<Page<AdminPayout>>;
-  /** Pagos del cliente hacia la plataforma, para soporte y conciliación. */
-  listPayments(filter?: AdminPaymentFilter): Promise<readonly AdminPayment[]>;
+  /**
+   * Pagos del cliente que piden una acción —«En revisión» (la misma cola que
+   * cuenta `getQueues().refunds`) o «Sin resolver»—, del más antiguo al más
+   * reciente y SIN tope.
+   */
+  listActionablePayments(filter: ActionablePaymentFilter): Promise<readonly AdminPayment[]>;
+  /** «Todos» o «Devueltos», del más reciente al más antiguo, por páginas. */
+  listPaymentHistory(
+    filter: PaymentHistoryFilter,
+    page: { limit: number; offset: number },
+  ): Promise<Page<AdminPayment>>;
+  /** Un pago, por antiguo que sea: a él llevan los enlaces de otras pantallas. */
+  getPayment(paymentId: UUID): Promise<AdminPayment | null>;
+  /** Reglas de invariante rotas ahora mismo. Vacía si no hay ninguna. */
+  listIntegrityAlerts(): Promise<readonly IntegrityAlert[]>;
 }
 
 /** Las ganancias de un trabajador. */

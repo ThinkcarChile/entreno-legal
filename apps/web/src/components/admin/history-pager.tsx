@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { ButtonLink } from "@/components/ui";
-import { pageCount } from "@/lib/utils/pagination";
+import { historyPageHref, pageCount } from "@/lib/utils/pagination";
 
 /**
  * Anterior y siguiente del historial del panel.
@@ -9,23 +9,26 @@ import { pageCount } from "@/lib/utils/pagination";
  * No numera cada página como `/trabajos`: el historial solo crece, y una fila
  * de cuarenta botones no ayuda a nadie. El ancla `#historial` evita volver al
  * principio de la pantalla, donde están los pendientes, cada vez que se avanza.
+ * `query` conserva los demás parámetros de la pantalla, como el filtro de
+ * `/admin/pagos`.
  */
 export function HistoryPager({
   basePath,
   page,
   total,
   pageSize,
+  query,
 }: {
   basePath: string;
   page: number;
   total: number;
   pageSize: number;
+  query?: Readonly<Record<string, string | null | undefined>>;
 }) {
   const pages = pageCount(total, pageSize);
   if (pages <= 1 && page <= 1) return null;
 
-  const href = (target: number) =>
-    target <= 1 ? `${basePath}#historial` : `${basePath}?pagina=${target}#historial`;
+  const href = (target: number) => historyPageHref(basePath, target, query);
 
   return (
     <nav className="mt-6 flex items-center justify-center gap-3" aria-label="Páginas del historial">

@@ -181,8 +181,17 @@ function DisputeCard({ row }: { row: AdminDispute }) {
                 {row.refundPending ? (
                   <>
                     falta confirmar <Amount value={row.refundPending} />. Se pide desde{" "}
-                    <Link href="/admin/pagos" className="font-medium underline underline-offset-2">
-                      los pagos de los clientes
+                    {/* Directo al pago, aunque sea antiguo: la lista de pagos no
+                        tiene por qué tenerlo en su primera página. */}
+                    <Link
+                      href={
+                        row.paymentId
+                          ? `/admin/pagos?pago=${row.paymentId}`
+                          : "/admin/pagos?filtro=review"
+                      }
+                      className="font-medium underline underline-offset-2"
+                    >
+                      {row.paymentId ? "el pago de este trabajo" : "los pagos en revisión"}
                     </Link>
                     .
                   </>

@@ -226,7 +226,7 @@ select
 |---|---|
 | `tablas` | 35 |
 | `vistas` | 7 |
-| `funciones_rpc` | 53 |
+| `funciones_rpc` | 56 |
 | `enums` | 24 |
 | `politicas_rls` | 76 |
 | `comunas` | 346 |
@@ -457,8 +457,9 @@ marcadas. Si no, el chat no recibe mensajes sin recargar.
 La migración `20260601000100` habilita **pg_cron** y programa
 `app_private.run_scheduled_tasks()` cada 10 minutos: aprobación automática de
 trabajos sin respuesta del cliente, caducidad de trabajos publicados sin
-trabajador y cierre de pagos que salieron de la ventana de conciliación. No hay
-que configurar nada en el panel; solo comprobar que quedó:
+trabajador, cierre de pagos que salieron de la ventana de conciliación y, desde
+`20260601001520`, los invariantes del dinero. No hay que configurar nada en el
+panel; solo comprobar que quedó:
 
 ```sql
 select jobname, schedule, active from cron.job;
@@ -474,6 +475,24 @@ mano con `select app_private.run_scheduled_tasks();`.
 
 La **conciliación con Transbank no está aquí**: necesita hablar con el
 proveedor y corre en la aplicación (`/admin/pagos`). Ver `docs/TRANSBANK.md` §7.
+
+**Invariantes rotos.** Cada pasada corre todas las funciones
+`app_private.*_invariant_violations()`; si una regla está rota, cada
+administrador recibe un aviso `INTEGRITY_ALERT` **dentro de la aplicación**
+(campana y `/notificaciones`), como mucho uno al día por regla, y el resumen de
+`/admin` muestra una alerta roja hasta que alguien la marque como vista. Para
+ver qué encontró la última pasada sin esperar el aviso:
+
+```sql
+select source, kind, violation_count, sample_ids, first_seen_at, last_notified_at
+  from app_private.integrity_alerts where resolved_at is null;
+```
+
+**Avisar fuera de la aplicación —correo, Slack, un servicio de errores— no está
+hecho y es decisión del dueño del proyecto**: qué canal, a quién y con qué
+credenciales. La base ya deja de dónde engancharlo: la tabla de arriba, los
+avisos `INTEGRITY_ALERT` de `notifications` y el `WARNING` que la pasada
+escribe en el registro de PostgreSQL cuando encuentra una regla rota.
 
 ### 4.5 Transferencias sobre cobros de prueba (desarrollo y pruebas: sí; producción: nunca)
 

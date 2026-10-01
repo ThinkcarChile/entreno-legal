@@ -9,7 +9,8 @@ const sections = [
   { href: "/admin/verificaciones", label: "Verificaciones" },
   { href: "/admin/check-ins", label: "Llegadas" },
   { href: "/admin/disputas", label: "Disputas" },
-  { href: "/admin/payouts", label: "Pagos" },
+  { href: "/admin/pagos", label: "Pagos de clientes" },
+  { href: "/admin/payouts", label: "Pagos a trabajadores" },
 ];
 
 /**

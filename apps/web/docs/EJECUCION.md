@@ -435,6 +435,33 @@ se transfiere. `/admin/disputas` sigue la misma regla con las disputas abiertas
 y las resueltas cuya devolución no está confirmada (el importe de la resolución
 menos las devoluciones `CONFIRMED` de esa disputa).
 
+`/admin/pagos` también (`20260601001510`): «En revisión» y «Sin resolver»
+vienen enteros, del más antiguo al más reciente; «Todos» y «Devueltos», por
+páginas (`?pagina=`, que conserva el filtro). «En revisión» es
+`admin_payment_review_queue`, la misma cola que cuenta la tarjeta
+«Devoluciones por procesar» del resumen: un pago por fila, aunque esté en
+revisión y además tenga una devolución abierta, que antes contaba dos veces.
+La cola incluye el pago del trabajo de una disputa resuelta a favor del cliente
+cuya devolución todavía no se pidió, y la tarjeta de esa disputa en
+`/admin/disputas` («Devolución pendiente») enlaza directo a ese pago
+(`/admin/pagos?pago=<id>`), que se muestra aunque sea antiguo. Desde ahí se
+pide la devolución.
+
+### Los invariantes, también en producción
+
+`app_private.run_scheduled_tasks()` corre al final, después de cerrar los pagos
+fuera de la ventana, todas las funciones `app_private.*_invariant_violations()`
+(`20260601001520`), cada una aislada: si una falla, su error va a `errores` y las
+demás corren igual. Lo encontrado vuelve en la clave `invariantes` —total de
+casos, reglas, detalle con hasta cinco ejemplos, funciones que corrieron y
+avisos enviados— y queda en `app_private.integrity_alerts`. A cada
+administrador le llega un aviso `INTEGRITY_ALERT` por regla rota, como mucho uno
+cada 24 horas mientras siga rota, y el resumen de `/admin` muestra una alerta
+roja con las reglas que nadie marcó como vistas («Marcar como vistas» queda en
+`audit_logs`; no arregla el dato ni detiene el aviso diario). Si aparecen más
+casos de una regla ya vista, o se resuelve y vuelve, la alerta vuelve a ser
+roja. Pruebas: `supabase/tests/18_admin_ops.sql` (`K01`–`K28`).
+
 ### La ventana retiene de verdad
 
 `mark_payout_paid` se niega a registrar una transferencia mientras haya una
@@ -484,7 +511,9 @@ Las emite la base, desde las mismas funciones que cambian el estado, con
 
 Siete valores nuevos: `JOB_STARTED`, `JOB_UPDATE`, `NEW_EVIDENCE`,
 `HANDOFF_REQUESTED`, `JOB_APPROVED`, `DISPUTE_RESOLVED`, `PAYOUT_PAID`. Los que
-ya existían se reutilizan tal cual.
+ya existían se reutilizan tal cual. Más tarde, `INTEGRITY_ALERT`
+(`20260601001500`): solo para administración, cuando las tareas programadas
+encuentran un invariante roto (§12).
 
 Realtime actualiza la interfaz; la base sigue siendo la fuente de verdad.
 
@@ -497,6 +526,7 @@ Realtime actualiza la interfaz; la base sigue siendo la fuente de verdad.
 | `supabase/tests/08_job_execution.sql` | E01–E28: recorrido completo, check-in y sus cuatro resultados, papeles, escrituras directas, extensiones, PIN, finalización, disputas, payouts, reseñas, idempotencia de hitos e invariantes |
 | `supabase/tests/08_race_execution.sh` | X10 aceptar y rechazar la misma extensión a la vez, X11 dos validaciones del mismo PIN, X12 dos aprobaciones, X13 invariantes. `RACE_REPS` repeticiones, dos sesiones `psql` reales |
 | `supabase/tests/15_abuse_storage.sql` | Q01–Q72: límites por usuario, subida y borrado en Storage con las políticas como `authenticated`, evidencia contrastada con `storage.objects`, el PIN solo en curso y el check-in sin precisión |
+| `supabase/tests/18_admin_ops.sql` | K01–K28: la cola «En revisión» y su cifra (un pago una vez, cobro duplicado, disputa sin devolución pedida), y los invariantes en las tareas programadas: regla rota inyectada, un aviso por día, alerta vista y aislamiento de una función que falla |
 | `scripts/verify-execution.ts` | W01–W24 contra `hagotufila-dev`, con sesiones reales y RLS del proyecto: separación de roles, privacidad de la ubicación, extensiones, disputas, transferencia, reseñas y dos carreras |
 | `e2e/execution.spec.ts` | Seis pruebas de navegador: el recorrido con el ratón, que cada parte ve solo sus acciones, y que la línea de tiempo no lleva coordenadas |
 
@@ -507,14 +537,18 @@ la espera es por elemento visible.
 
 ## 15. Lo que queda fuera
 
-1. **Transferencias y reembolsos reales.** Etapa 4.
+1. **Transferencias reales.** Siguen siendo a mano y se registran con su
+   referencia. Las devoluciones al cliente, en cambio, ya salen: se piden desde
+   `/admin/pagos` y las ejecuta Webpay (`PAGOS.md` §8 ter, `TRANSBANK.md` §11).
 2. ~~Liberación automática del payout~~ y ~~caducidad de trabajos~~: resueltas
    con `app_private.run_scheduled_tasks()` (aprobación automática, trabajos
-   `EXPIRED`, pagos fuera de la ventana de conciliación), que la migración
-   `20260601000100` programa con **pg_cron** cada 10 minutos donde la
-   extensión existe —Supabase alojado la trae—. Lo que no puede ir ahí es la
-   conciliación con Transbank, porque necesita la red: sigue en `/admin/pagos`
-   hasta que el hosting tenga un programador.
+   `EXPIRED`, pagos fuera de la ventana de conciliación y, desde
+   `20260601001520`, los invariantes), que la migración `20260601000100`
+   programa con **pg_cron** cada 10 minutos donde la extensión existe
+   —Supabase alojado la trae—. Lo que no puede ir ahí es la conciliación con
+   Transbank, porque necesita la red: corre en la aplicación, con «Conciliar»
+   en `/admin/pagos` o con `/api/cron/conciliar-pagos` si el hosting la llama
+   (`TRANSBANK.md` §7).
 3. **FilaPuntos**: `apply_loyalty_transaction` existe y nadie la llama.
 5. **Retirar una disputa** (`WITHDRAWN`) desde la interfaz.
 6. **Chat con imágenes**: el bucket y el tipo de mensaje existen; la subida no

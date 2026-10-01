@@ -252,6 +252,19 @@ const AVISOS_ACEPTADOS: Record<string, Record<string, string>> = {
     "public.admin_pending_reviews":
       "SOLO la administración: primera línea es app_private.is_admin(). Devuelve recuentos de " +
       "las colas del panel; sin el rol, lanza excepción en vez de contestar cero.",
+    "public.admin_payment_review_queue":
+      "SOLO la administración: primera línea es app_private.is_admin(). Devuelve la cola «En " +
+      "revisión» de /admin/pagos —un pago por fila y su motivo—, que es la misma que cuenta " +
+      "admin_pending_reviews (…001510). Necesita leer payment_refunds y payment_attempts, que " +
+      "solo administración lee. Solo lee (K01–K13).",
+    "public.admin_integrity_alerts":
+      "SOLO la administración: primera línea es app_private.is_admin(). Lee " +
+      "app_private.integrity_alerts, que nadie con sesión puede leer, para la alerta roja de " +
+      "/admin (…001520). Solo lee (K22–K23).",
+    "public.acknowledge_integrity_alerts":
+      "SOLO la administración: primera línea es app_private.is_admin(). Marca como vistas las " +
+      "reglas de invariante rotas en app_private.integrity_alerts —tabla sin ningún privilegio " +
+      "para nadie con sesión— y deja una fila en audit_logs. No toca datos de negocio (K23–K24).",
     "public.get_job_instructions":
       "La llama cualquiera con sesión, y solo devuelve algo al cliente del trabajo, al " +
       "trabajador asignado con la asignación viva o a la administración; a cualquier otro, " +
@@ -329,7 +342,7 @@ async function main(): Promise<void> {
 
   check("tablas en public", inv.tablas, 35);
   check("vistas en public", inv.vistas, 7);
-  check("funciones en public", inv.funciones, 53);
+  check("funciones en public", inv.funciones, 56);
   check("enums", inv.enums, 24);
   check("políticas RLS en public", inv.politicas, 76);
   check("buckets de Storage", inv.buckets, 5);
