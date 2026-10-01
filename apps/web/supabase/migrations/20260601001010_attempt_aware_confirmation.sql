@@ -159,7 +159,13 @@ begin
   -- intento ya está resuelto con su dinero. Y un intento anterior ya resuelto
   -- no se vuelve a cerrar. Un FAILED sobre el intento vigente ya cobrado sí
   -- sigue adelante: la guarda lo rechaza en voz alta, como siempre.
-  if (p_result = 'PAID' and v_attempt.status in ('SETTLED', 'DOUBLE_CHARGE', 'UNDER_REVIEW'))
+  --
+  -- Un intento en UNDER_REVIEW NO es «ya resuelto con su dinero»: es uno que
+  -- venció con un commit pedido y sin respuesta, es decir, la duda. Si después
+  -- llega su autorización, es justo la respuesta que faltaba y se registra
+  -- (como cobro duplicado o sobre el pago, que la guarda manda a revisión).
+  -- Tratarla como duplicada la descartaría sin evento.
+  if (p_result = 'PAID' and v_attempt.status in ('SETTLED', 'DOUBLE_CHARGE'))
      or (p_result = 'FAILED' and not v_current and v_attempt.status <> 'CREATED') then
     select status into v_job_status from public.jobs where id = v_job_id;
     select status into v_assignment_status from public.assignments where id = v_assignment_id;

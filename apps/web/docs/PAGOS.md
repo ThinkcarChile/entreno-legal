@@ -226,7 +226,7 @@ en `src/lib/domain/job-actions.ts` son la única fuente de esas decisiones.
 | `supabase/tests/07_payment_cancellation.sql` | P01–P17: los escenarios de las secciones 2 y 5, lo que nadie puede hacer a mano, invariantes y `payment_events` append-only |
 | `supabase/tests/07_race_payment.sh` | R10 duplicado simultáneo, R11 aprobación contra cancelación, R12 invariantes. `RACE_REPS` repeticiones (5 por defecto), dos sesiones `psql` reales |
 | `scripts/verify-payments.ts` | Lo mismo contra `hagotufila-dev`, con `DelayedMockPaymentProvider` y `applyProviderResult` —las piezas que usa la aplicación— hablando con PostgREST. `RACE_REPS=10 npm run verify:payments` |
-| `supabase/tests/13_payment_attempts.sql` | N01–N44: historial de intentos, guardas del reintento, cobro duplicado, retornos sin cobro de otro intento, revisión sin pasar por `PAID`, cola y vencimiento de intentos, privilegios |
+| `supabase/tests/13_payment_attempts.sql` | N01–N47: historial de intentos, guardas del reintento, cobro duplicado, retornos sin cobro de otro intento, revisión sin pasar por `PAID`, cola y vencimiento de intentos (también el vigente con commit pedido, y su autorización tardía), privilegios |
 | `src/lib/payments/return-handler.test.ts`, `reconcile.test.ts`, `return-target.test.ts` | Qué intento resuelve cada retorno, cuándo se llama al banco, con qué identidad se asienta, el barrido de intentos anteriores y a qué pantalla vuelve cada resultado según lo pagado |
 
 Sin `sleep` en ninguna: en SQL serializan los bloqueos de fila; en Node, la

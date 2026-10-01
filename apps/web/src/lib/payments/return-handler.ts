@@ -440,7 +440,27 @@ async function commitAndSettle(
       paymentId: payment.id,
       errorCategory: errorCategory(error),
     });
-    if (snapshot.authorized || snapshot.terminal === false) {
+    if (snapshot.authorized) {
+      return resolveFromSnapshot(admin, provider.id, target, snapshot, "rejected_by_issuer", {
+        flow: "NORMAL",
+      });
+    }
+    if (snapshot.terminal === false) {
+      // El commit falló y el banco, preguntado DESPUÉS, sigue sin cerrar la
+      // transacción (INITIALIZED): ese commit no llegó a cobrar nada. Es lo
+      // que contesta Webpay por un token que nadie pagó —una pestaña cerrada—,
+      // y es justo lo que confirma la conciliación pasados 15 minutos. Si la
+      // marca se quedara, `register_payment_attempt` negaría todo reintento
+      // hasta que el pago saliera de la ventana: días sin poder pagar. Se
+      // retira; si el banco autorizara después, el token sigue en el historial
+      // y la conciliación lo asienta (o lo registra como cobro duplicado).
+      if (attempt) {
+        await admin
+          .from("payment_attempts")
+          .update({ commit_requested_at: null })
+          .eq("id", attempt.id)
+          .is("committed_at", null);
+      }
       return resolveFromSnapshot(admin, provider.id, target, snapshot, "rejected_by_issuer", {
         flow: "NORMAL",
       });

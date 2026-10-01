@@ -445,6 +445,42 @@ select pg_temp.expect('N33 cada uno con su evento y su auditoría',
 select pg_temp.expect('N34 y el que puede tener dinero aparece en la vista de administración',
   pg_temp.vista_admin(:'n31_payment_id', :'n31_orden'), '1 · true');
 
+-- El intento VIGENTE de un pago que vence: el pago se cierra como siempre (el
+-- cliente queda libre para volver a pagar), pero si su commit se pidió y nunca
+-- se resolvió, el intento no se da por fallido: va a revisión.
+select * from pg_temp.montar('n45') \gset n45_
+update payments set created_at = now() - interval '30 days' where id = :'n45_payment_id';
+update payment_attempts
+   set created_at = now() - interval '30 days', commit_requested_at = now() - interval '30 days'
+ where provider_token = :'n45_token';
+select * from pg_temp.montar('n46') \gset n46_
+update payments set created_at = now() - interval '30 days' where id = :'n46_payment_id';
+update payment_attempts set created_at = now() - interval '30 days' where provider_token = :'n46_token';
+
+select count(*) >= 0 as _ from public.expire_stale_payments(500) \gset
+
+select pg_temp.expect('N45 el intento vigente con commit pedido que vence va a revisión; el pago se cierra',
+  (select status from payments where id = :'n45_payment_id') || ' · ' ||
+  pg_temp.estado_intento(:'n45_payment_id', 1) || ' · ' ||
+  pg_temp.vista_admin(:'n45_payment_id', :'n45_orden'),
+  'FAILED · UNDER_REVIEW · reconciliation_window_expired · 1 · true');
+select pg_temp.expect('N46 sin indicio de cobro, el intento vigente sigue la suerte del pago',
+  (select status from payments where id = :'n46_payment_id') || ' · ' ||
+  pg_temp.estado_intento(:'n46_payment_id', 1),
+  'FAILED · FAILED · reconciliation_window_expired');
+
+-- Si la autorización de ese intento en revisión aparece después, es la
+-- respuesta que faltaba: se registra, no se descarta como duplicada.
+select pg_temp.confirmar(:'n45_payment_id', :'n45_token', 'PAID') ->> 'outcome' as n47_tardio \gset
+
+select pg_temp.expect('N47 la autorización tardía de un intento en revisión se registra y no habilita nada',
+  :'n47_tardio' || ' · ' ||
+  (select status || ' · ' || review_reason from payments where id = :'n45_payment_id') || ' · ' ||
+  (select status from payment_attempts where provider_token = :'n45_token') || ' · ' ||
+  (select status from jobs where id = :'n45_job_id') || ' · ' ||
+  (select count(*) from payouts where assignment_id = :'n45_assignment_id'),
+  'applied · UNDER_REVIEW · approved_after_failed · SETTLED · PAYMENT_PENDING · 0');
+
 \echo ''
 \echo '--- Privilegios'
 

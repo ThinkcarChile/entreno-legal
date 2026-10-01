@@ -279,11 +279,31 @@ begin
        where id = v_row.id;
     end if;
 
-    -- El intento vigente sigue la suerte del pago.
+    -- El intento vigente sigue la suerte del pago, salvo que tenga indicios de
+    -- cobro propios: un commit pedido o hecho que nunca se resolvió. Entonces
+    -- el pago se cierra igual —el cliente queda libre para volver a pagar—,
+    -- pero el intento va a revisión, a la vista de administración, con el mismo
+    -- criterio que los intentos anteriores de más abajo. Cerrarlo como FAILED
+    -- sería perder de vista un cobro posible.
     update public.payment_attempts a
-       set status         = case when v_next = 'UNDER_REVIEW' then 'UNDER_REVIEW' else 'FAILED' end,
-           review_reason  = case when v_next = 'UNDER_REVIEW' then 'reconciliation_window_expired' end,
-           failure_reason = case when v_next = 'FAILED' then 'reconciliation_window_expired' end,
+       set status         = case
+                              when v_next = 'UNDER_REVIEW'
+                                or a.commit_requested_at is not null
+                                or a.committed_at is not null
+                                or upper(coalesce(a.provider_status, '')) in ('AUTHORIZED', 'CAPTURED')
+                              then 'UNDER_REVIEW' else 'FAILED' end,
+           review_reason  = case
+                              when v_next = 'UNDER_REVIEW'
+                                or a.commit_requested_at is not null
+                                or a.committed_at is not null
+                                or upper(coalesce(a.provider_status, '')) in ('AUTHORIZED', 'CAPTURED')
+                              then 'reconciliation_window_expired' end,
+           failure_reason = case
+                              when v_next = 'UNDER_REVIEW'
+                                or a.commit_requested_at is not null
+                                or a.committed_at is not null
+                                or upper(coalesce(a.provider_status, '')) in ('AUTHORIZED', 'CAPTURED')
+                              then null else 'reconciliation_window_expired' end,
            resolved_at    = now()
      where a.payment_id = v_row.id
        and a.buy_order = v_row.buy_order

@@ -124,6 +124,13 @@ create trigger payment_attempts_touch
 -- la sobrescritura, que es justo el defecto. El vigente entra con el resultado
 -- que ya tiene el pago, para que la detección de cobros duplicados sepa qué
 -- intento puso el dinero.
+--
+-- Un pago en PENDING con orden de compra solo existe de una forma: el cobro de
+-- una extensión rechazado que `start_extension_payment` devolvió a PENDING para
+-- reintentar. Su último intento terminó sin dinero: entra como FAILED. Si
+-- entrara como CREATED, con el `committed_at` que dejó su commit, la guarda de
+-- `register_payment_attempt` seguiría negando el reintento, que es justo el
+-- bloqueo que esta migración quita.
 insert into public.payment_attempts (
   payment_id, attempt, provider, environment, buy_order, session_id, return_url,
   provider_token, redirect_url, status, failure_reason, review_reason,
@@ -141,10 +148,11 @@ select p.id,
        p.redirect_url,
        case
          when p.status in ('PAID', 'UNDER_REVIEW', 'REFUNDED', 'PARTIALLY_REFUNDED') then 'SETTLED'
-         when p.status = 'FAILED' then 'FAILED'
+         when p.status in ('FAILED', 'PENDING') then 'FAILED'
          else 'CREATED'
        end,
-       case when p.status = 'FAILED' then p.failure_reason end,
+       case when p.status in ('FAILED', 'PENDING')
+            then coalesce(p.failure_reason, 'rejected_by_issuer') end,
        case when p.status = 'UNDER_REVIEW' then p.review_reason end,
        p.provider_status,
        p.response_code,
@@ -152,7 +160,7 @@ select p.id,
        p.updated_at,
        case when p.provider_token is not null then p.updated_at end,
        p.committed_at,
-       case when p.status in ('PENDING', 'CREATED', 'AUTHORIZED') then null else p.updated_at end
+       case when p.status in ('CREATED', 'AUTHORIZED') then null else p.updated_at end
   from public.payments p
  where p.buy_order is not null
 on conflict do nothing;

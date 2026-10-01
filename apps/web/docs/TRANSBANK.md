@@ -291,7 +291,8 @@ payments → payment_attempts):
 | El intento anterior resulta… | y el pago… | Resultado |
 |---|---|---|
 | autorizado | ya tenía el dinero de otro intento (`PAID`, `UNDER_REVIEW`, devuelto) | **cobro duplicado**: el intento pasa a `DOUBLE_CHARGE` con motivo `double_charge`, queda un `payment_event` y una entrada de auditoría, y se avisa a cada administrador. El pago, el trabajo y el payout **no se tocan**: el trabajo se pagó una vez y bien |
-| autorizado | todavía no tenía dinero (en vuelo o `FAILED`) | lo paga: el pago pasa a apuntar a ese token y esa orden de compra (para que una devolución vaya a la transacción que cobró) y se asienta por el camino de siempre |
+| autorizado | todavía no tenía dinero, en vuelo (`PENDING`, `CREATED`) | lo paga: el pago pasa a apuntar a ese token y esa orden de compra (para que una devolución vaya a la transacción que cobró) y se asienta por el camino de siempre |
+| autorizado | ya estaba `FAILED` | el pago pasa a apuntar a ese cobro y la guarda de liquidación lo deja en `UNDER_REVIEW` (`approved_after_failed`): no habilita nada y queda a la vista para devolverlo |
 | rechazado o abandonado | cualquiera | solo ese intento queda `FAILED`; el pago sigue con su intento vigente |
 
 El resumen de la pasada cuenta estas transacciones en `examined` y además las
@@ -320,6 +321,7 @@ lo saca de la cola **hacia una persona**, no hacia el olvido:
 | `PENDING`, `CREATED` | `FAILED` con motivo `reconciliation_window_expired` | nunca hubo cobro que reclamar |
 | `AUTHORIZED` | `UNDER_REVIEW` | puede haber dinero cobrado: lo mira alguien |
 | intento anterior sin resolver | `FAILED`, o `UNDER_REVIEW` si se pidió su commit o el proveedor lo dio por autorizado | igual que los pagos, por intento; aparece en `/admin/pagos` |
+| intento **vigente** de un pago `PENDING`/`CREATED` que vence | el pago, `FAILED` como siempre; el intento, `UNDER_REVIEW` si se pidió su commit y nunca se resolvió | el cliente queda libre para volver a pagar, y el cobro posible no se pierde de vista |
 
 Cada expiración deja su `payment_event` y su fila en `audit_logs`, y vuelve a
 leer el pago bajo cerrojo antes de escribir, así que dos ejecuciones a la vez
@@ -680,7 +682,14 @@ respecto de `20260601000400`:
 - El retorno anota `commit_requested_at` en el intento **antes** de llamar a
   `commit`. Si la respuesta se pierde en la red después de que Transbank la
   procesara —el caso que antes dejaba reintentar y cobrar dos veces—, el
-  intento queda marcado y no se abre otro hasta saber en qué terminó.
+  intento queda marcado y no se abre otro hasta saber en qué terminó. Si el
+  commit falla y la consulta de estado, hecha después, dice que la
+  transacción sigue sin cerrar (`INITIALIZED`), ese commit no cobró nada y la
+  marca se retira: es lo que pasa cuando la conciliación confirma un token
+  que nadie pagó, y sin retirarla el cliente no podría volver a pagar hasta
+  que el pago saliera de la ventana. Si el banco autorizara después, el token
+  sigue en el historial y la conciliación lo asienta o lo registra como
+  cobro duplicado.
 - Un intento ya resuelto sin dinero (`FAILED`) no bloquea. Antes las marcas de
   commit del pago bloqueaban para siempre el reintento del **cobro de una
   extensión rechazado**: `start_extension_payment` lo devuelve a `PENDING` y
@@ -767,7 +776,9 @@ la transacción ya está resuelta y no cambia nada. Si sí hacía falta, es lo
 único que salva el cobro. Y si el `commit` del retorno falla —ya estaba
 confirmado, o se cortó la red—, el retorno consulta el estado antes de rendirse
 y asienta con la misma clave; si tampoco contesta, el intento queda marcado
-(`commit_requested_at`) y en la cola.
+(`commit_requested_at`) y en la cola. Si el estado dice `INITIALIZED`, el
+commit no llegó a cobrar y la marca se retira (§11, «Reintentos y cobros
+posibles»).
 
 La prueba e2e 8 cambió de expectativa en consecuencia («el retorno sin sesión
 confirma con el token y manda a entrar»). Sigue valiendo la pena medir en

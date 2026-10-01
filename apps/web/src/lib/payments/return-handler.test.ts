@@ -401,6 +401,41 @@ describe("confirmar siempre", () => {
     expect(call.p_review_reason).toBeNull();
   });
 
+  it("si el commit falla y el banco sigue sin cerrar la transacción, la marca se retira: se puede reintentar", async () => {
+    // Es lo que hace la conciliación con un token que nadie pagó (la pestaña
+    // de Webpay se cerró): pasados 15 minutos lo confirma, el commit falla y
+    // la consulta contesta INITIALIZED. Si la marca «commit pedido» quedara,
+    // `register_payment_attempt` negaría el reintento hasta que el pago
+    // saliera de la ventana de conciliación.
+    const flaky = new CommitFailsProvider();
+    flaky.inspectResult = snapshotOf("x", {
+      providerStatus: "INITIALIZED",
+      terminal: false,
+      authorized: false,
+      responseCode: null,
+      authorizationCode: null,
+    });
+    provider = flaky;
+    setPaymentProvider(flaky);
+
+    const db = new FakeAdmin(
+      {
+        payments: [paymentRow({ buy_order: ORDER_1, attempt: 1, provider_token: "tok-1" })],
+        payment_attempts: [attemptRow(1, { provider_token: "tok-1" })],
+      },
+      { record_provider_snapshot: () => ({ data: null }) },
+    );
+
+    const outcome = await handleReturn(db.client(), { kind: "NORMAL", token: "tok-1" }, null);
+
+    expect(outcome.kind).toBe("PENDING");
+    expect(db.callsTo("confirm_payment_result")).toHaveLength(0);
+    expect(db.callsTo("record_payment_abandonment")).toHaveLength(0);
+    const intento = db.tables.payment_attempts[0];
+    expect(intento.commit_requested_at).toBeNull();
+    expect(intento.committed_at).toBeNull();
+  });
+
   it("si no contesta nadie, el error sube y el intento queda marcado como «commit pedido»", async () => {
     const flaky = new CommitFailsProvider();
     provider = flaky;

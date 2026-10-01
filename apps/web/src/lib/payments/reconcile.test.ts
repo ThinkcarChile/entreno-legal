@@ -162,6 +162,32 @@ describe("reconcilePayments: intentos anteriores", () => {
     expect(summary.changed).toBe(0);
   });
 
+  it("un token que nadie pagó: el commit falla, el banco dice INITIALIZED y el intento no queda marcado", async () => {
+    // Sin esto, cada pasada dejaba `commit_requested_at` puesto en un intento
+    // sin dinero: el reintento quedaba bloqueado y, al vencer la ventana, el
+    // intento iba a revisión como si hubiera un cobro posible.
+    class UnpaidProvider extends MockPaymentProvider {
+      async confirmPayment(): Promise<never> {
+        throw new Error("commit: Invalid status '0' for transaction while authorizing");
+      }
+      async inspect(token: string) {
+        const base = await super.inspect(token);
+        return { ...base, providerStatus: "INITIALIZED", terminal: false, authorized: false };
+      }
+    }
+    provider = new UnpaidProvider();
+    setPaymentProvider(provider);
+    const t1 = await createToken(ORDER_1);
+    const db = scenario({ provider_token: t1 });
+
+    const summary = await reconcilePayments(db.client(), { olderThanMinutes: 5 });
+
+    expect(summary.results[0]).toMatchObject({ attempt: 1, outcome: "still_pending" });
+    expect(db.callsTo("confirm_payment_result")).toHaveLength(0);
+    expect(db.callsTo("record_payment_abandonment")).toHaveLength(0);
+    expect(db.tables.payment_attempts[0].commit_requested_at).toBeNull();
+  });
+
   it("un intento de otro ambiente no se pregunta", async () => {
     const db = scenario({ provider_token: "tok-produccion", environment: "production" });
     const status = vi.spyOn(provider, "inspect");
