@@ -451,14 +451,27 @@ async function main(): Promise<void> {
     return "perfil y zona de trabajo guardados";
   });
 
-  await check("el teléfono queda fuera del perfil público", async () => {
+  // Antes esta comprobación exigía que un tercero VIERA el perfil del cliente:
+  // era el defecto. Desde la migración …001110 el perfil de un cliente lo ven
+  // él, la administración y sus contrapartes reales; el teléfono, además, nunca
+  // estuvo en `profiles`.
+  await check("un tercero sin relación no lee el perfil de un cliente", async () => {
     const profile = orThrow(
-      await outsider.client.from("profiles").select("*").eq("id", client.userId).maybeSingle(),
-    ) as Record<string, unknown> | null;
-    expect(Boolean(profile), "el perfil público debería ser visible");
-    expect(!("phone" in (profile ?? {})), "el perfil público expone un teléfono");
-    return "solo nombre, inicial y comuna";
+      await outsider.client
+        .from("profiles")
+        .select("id,first_name")
+        .eq("id", client.userId)
+        .maybeSingle(),
+    );
+    expect(profile === null, "un tercero sin relación ve el perfil del cliente");
+    return "sin fila";
   });
+
+  await mustFailWith(
+    "ni con sesión se lee el rol de un perfil",
+    ["42501"],
+    () => outsider.client.from("profiles").select("role").eq("id", outsider.userId),
+  );
 
   section("Verificación obligatoria");
 

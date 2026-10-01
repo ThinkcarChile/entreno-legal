@@ -68,14 +68,22 @@ Por eso el modelo separa:
 
 | Tabla | Contenido | Acceso |
 |---|---|---|
-| `profiles` | nombre, inicial del apellido, foto, bio | lectura pública |
+| `profiles` | nombre, inicial del apellido, foto, bio | titular, admin y contrapartes; pública solo si es trabajador verificado |
 | `user_private_data` | RUT, teléfono, email de contacto, dirección | solo titular + admin |
-| `worker_profiles` | tarifa, disponibilidad, reputación calculada | lectura pública |
+| `worker_profiles` | tarifa, disponibilidad, reputación calculada | pública si está verificado; si no, titular, admin y contrapartes |
 | `worker_verifications` | documento, selfie, resultado del proveedor | solo titular + admin |
 | `worker_payout_accounts` | cuenta bancaria | solo titular + admin |
 
 Cambiar un ID en la API nunca devuelve datos privados porque esos datos no están en la
 fila pública.
+
+Dos columnas no se pudieron separar así y se cierran por privilegio de columna
+(migraciones `…001100` y `…001110`): `jobs.instructions`, que se lee con
+`get_job_instructions`, y `profiles.role`/`roles`/`is_suspended`, que solo lee
+su dueño con `get_my_account`. Contraparte es quien tiene una relación real:
+oferta, conversación o asignación entre las dos personas. Un visitante sin
+sesión ve trabajadores verificados y trabajos publicados; nunca el perfil de un
+cliente ni quién administra.
 
 ### 3.4 Roles y RLS: función `SECURITY DEFINER`, no políticas recursivas
 
@@ -318,6 +326,12 @@ importe de una oferta quedó fuera de las columnas escribibles incluso para su
 propio autor: para cambiar de precio se retira la oferta y se envía otra, que es
 además lo transparente de cara al cliente.
 
+El total tampoco lo decide quien oferta. Desde la migración `…001130` lo
+calcula un disparador como `round(tarifa × duración / 60)` —la misma cuenta que
+`proratePerHour`—, ignorando lo que venga en `estimated_total`. Es lo que
+`accept_job_offer` copia a `agreed_total` y lo que se cobra. Mientras la oferta
+está pendiente, sigue a la duración si el cliente la edita.
+
 ### 6.6 La comisión vive en la base, no en el código
 
 `platform_settings.commission_bps` es la fuente de verdad. La usan tanto la
@@ -434,7 +448,10 @@ La foto de perfil se guarda en `avatars/<userId>/<uuid>.<ext>`:
   la rechaza.
 
 La subida va directo del navegador a Storage con la sesión del usuario. El
-servidor solo guarda la URL, y antes comprueba que la ruta sea suya.
+servidor solo guarda la **ruta** (no la URL), y antes comprueba que sea suya; la
+base lo vuelve a exigir con `profiles_avatar_own_path` (migración `…001120`).
+La URL pública la arma la aplicación al mostrarla (`avatarPublicUrl`), con la
+dirección de su propio proyecto: un perfil no puede apuntar a otro dominio.
 
 ### 7.5 Indicador de origen de datos, solo en desarrollo
 
@@ -689,10 +706,10 @@ Ese contraste encontró el defecto descrito en §6.5.
 
 | Comando | Contra qué | Qué cubre |
 |---|---|---|
-| `npm run db:test` | PostgreSQL local | Esquema, RLS, flujo, concurrencia, semillas, inventario, endurecimiento de las RPC, política de cancelación y pago, ejecución completa del trabajo e integración con Webpay. Todo con carreras reales. 225 comprobaciones |
+| `npm run db:test` | PostgreSQL local | Esquema, RLS, flujo, concurrencia, semillas, inventario, endurecimiento de las RPC, política de cancelación y pago, ejecución completa del trabajo e integración con Webpay, y qué leen y escriben un visitante y los demás usuarios. Todo con carreras reales. 334 comprobaciones |
 | `npm run db:push:hosted -- --plan` | Supabase real | Qué migraciones faltan por aplicar, sin escribir nada |
 | `npm run verify:schema:hosted` | Supabase real | Inventario, RLS, `security_invoker`, grants, Realtime y advisors. 18 comprobaciones |
-| `npm run verify:supabase` | Supabase real | El mismo recorrido por API, más Realtime, Storage y Auth, y las escrituras directas que deben fallar. 62 comprobaciones |
+| `npm run verify:supabase` | Supabase real | El mismo recorrido por API, más Realtime, Storage y Auth, y las escrituras directas que deben fallar. 63 comprobaciones |
 | `npm run verify:payments` | Supabase real | Cancelación contra confirmación tardía, duplicada y simultánea, con el proveedor retardado y las piezas de la aplicación. 23 comprobaciones |
 | `npm run verify:execution` | Supabase real | Ejecución del trabajo con sesiones reales: papeles, privacidad de la ubicación, extensiones, PIN, disputas, transferencia y carreras. 24 comprobaciones |
 | `npm run verify:pwa` | Estático | Manifiesto, iconos, service worker, metadatos y tokens de diseño. 30 comprobaciones |
