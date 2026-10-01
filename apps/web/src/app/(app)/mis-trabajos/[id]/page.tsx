@@ -31,6 +31,7 @@ import { WorkerSteps } from "@/components/jobs/execution/worker-steps";
 import { WorkTimer } from "@/components/jobs/execution/work-timer";
 import { JobLocationBlock } from "@/components/jobs/job-location";
 import { JobTimeline } from "@/components/jobs/job-timeline";
+import { ExtensionReturnNotice } from "@/components/payments/extension-return-notice";
 import { Amount, Avatar, Badge, ButtonLink, Card, CardContent } from "@/components/ui";
 import { Alert } from "@/components/ui/feedback";
 import { site } from "@/config/site";
@@ -162,6 +163,9 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
           El dinero quedó asociado a este trabajo. El trabajador ya puede comenzar.
         </Alert>
       )}
+
+      {/* El cobro del tiempo adicional vuelve aquí, con su propio aviso. */}
+      {isClient && <ExtensionReturnNotice pago={pago} className="mt-6" />}
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[1.6fr_1fr] lg:gap-10">
         <div className="space-y-6">
