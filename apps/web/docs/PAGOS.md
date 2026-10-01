@@ -194,8 +194,14 @@ trabajo. Ahora:
 
 `request_payment_refund` bloquea ahora trabajo → asignación → todos los pagos de
 la asignación, el orden de `mark_payout_paid`: una transferencia que se registra
-a la vez espera a la devolución o la ve. Pruebas: J01–J12
-(`supabase/tests/17_payments_followup.sql`).
+a la vez espera a la devolución o la ve. `settle_payment_refund` y
+`resolve_unknown_refund` cierran la devolución en el mismo orden (trabajo →
+asignación → pagos → la devolución): antes tomaban la devolución y el pago
+primero, y la guarda de liquidación el trabajo después, así que cerrar una
+devolución que el banco ya había hecho podía abortar por interbloqueo frente a
+una petición o una transferencia sobre el mismo trabajo. Pruebas: J01–J12
+(`supabase/tests/17_payments_followup.sql`) y J42
+(`supabase/tests/17_race_refund_settle.sh`).
 
 ---
 

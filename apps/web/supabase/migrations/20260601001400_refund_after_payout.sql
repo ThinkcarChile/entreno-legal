@@ -38,6 +38,12 @@
 --     cifras sin cuadrar, el payout pasa a HELD con un motivo que lo explica,
 --     en el mismo disparador que ya lo retenía cuando el pago se devolvía
 --     entero o pasaba a revisión (20260501000400).
+--   · `settle_payment_refund` y `resolve_unknown_refund` cierran la devolución
+--     en el mismo orden canónico. Antes bloqueaban la devolución y el pago, y
+--     la guarda de liquidación el trabajo después: con el orden nuevo de
+--     `request_payment_refund` (y el de siempre de `mark_payout_paid`) eso era
+--     un interbloqueo que abortaba el cierre de una devolución ya hecha por el
+--     banco (sección 4).
 -- =============================================================================
 
 
@@ -411,3 +417,294 @@ comment on function app_private.hold_payout_on_unhealthy_payment is
   'Retiene el pago al trabajador cuando el pago del cliente pasa a revisión, falla o se devuelve entero, y cuando una devolución confirmada deja las cifras de la asignación sin cuadrar. No lo cancela.';
 
 revoke all on function app_private.hold_payout_on_unhealthy_payment() from public, anon, authenticated;
+
+
+-- -----------------------------------------------------------------------------
+-- 4. Cerrar una devolución en el mismo orden
+-- -----------------------------------------------------------------------------
+-- `settle_payment_refund` (20260601000910) bloqueaba la devolución y después
+-- el pago; al escribir el pago, la guarda de liquidación (que corre en todo
+-- cambio de estado) bloqueaba el trabajo y la asignación. Es decir: pago →
+-- trabajo, el orden inverso al de `request_payment_refund` de arriba, al de
+-- `mark_payout_paid`, `approve_payout` y `resolve_dispute`. Comprobado sobre la
+-- base con dos sesiones: una que toma el trabajo y después los pagos (lo que
+-- hace pedir una devolución sobre el otro cobro de la asignación, o registrar
+-- la transferencia) y una que cierra la devolución confirmada por el banco
+-- terminan en «deadlock detected», y PostgreSQL aborta la que cerraba: el banco
+-- devolvió y la base no lo registró (queda REQUESTED hasta que la conciliación
+-- la pase a UNKNOWN). Con la retención de arriba, cerrar una devolución además
+-- escribe el payout: más razón para que vaya en el orden de todos.
+--
+-- Ahora las dos funciones que cierran una devolución de un pago bloquean
+-- trabajo → asignación → pagos de la asignación → la devolución, antes de
+-- tocar nada. `claim_payment_refund` y `mark_payment_refund_unknown` solo
+-- tocan la fila de la devolución y no piden nada más: no cierran ningún ciclo.
+-- Idénticas a 20260601000910 salvo los cerrojos, marcados [Nuevo]. Lo prueba
+-- `17_race_refund_settle.sh` (J42).
+create or replace function public.settle_payment_refund(
+  p_refund_id uuid,
+  p_confirmed boolean,
+  p_kind      text default null,
+  p_refunded  bigint default null,
+  p_details   jsonb default '{}'::jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_refund public.payment_refunds;
+  v_payment public.payments;
+  v_confirmed bigint;
+  v_amount bigint;
+  v_next public.payment_status;
+  v_payment_id uuid;
+  v_job_id uuid;
+  v_assignment_id uuid;
+begin
+  -- [Nuevo] Sin bloqueo: solo para saber qué bloquear, y en qué orden.
+  select payment_id into v_payment_id from public.payment_refunds where id = p_refund_id;
+  if v_payment_id is null then
+    raise exception 'La devolución no existe' using errcode = 'no_data_found';
+  end if;
+  select job_id, assignment_id into v_job_id, v_assignment_id
+    from public.payments where id = v_payment_id;
+
+  -- [Nuevo] Orden canónico: trabajo → asignación → pagos de la asignación →
+  -- la devolución. Es el de `request_payment_refund` y `mark_payout_paid`.
+  perform 1 from public.jobs where id = v_job_id for update;
+  if v_assignment_id is not null then
+    perform 1 from public.assignments where id = v_assignment_id for update;
+    perform 1 from public.payments where assignment_id = v_assignment_id order by id for update;
+  end if;
+  select * into v_payment from public.payments where id = v_payment_id for update;
+
+  select * into v_refund from public.payment_refunds where id = p_refund_id for update;
+
+  -- Idempotente: cerrar dos veces la misma devolución no suma dos veces.
+  if v_refund.status not in ('REQUESTED', 'UNKNOWN') then
+    return jsonb_build_object(
+      'outcome', 'duplicate',
+      'refund_status', v_refund.status,
+      'payment_status', (select status from public.payments where id = v_refund.payment_id)
+    );
+  end if;
+
+  if not p_confirmed then
+    update public.payment_refunds
+       set status         = 'FAILED',
+           settled_at     = now(),
+           failure_reason = coalesce(p_details ->> 'failure_reason', 'provider_rejected'),
+           response_code  = (p_details ->> 'response_code')::integer,
+           payload        = coalesce(p_details, '{}'::jsonb)
+     where id = p_refund_id;
+
+    insert into public.audit_logs (actor_id, action, entity_type, entity_id, after)
+    values (v_refund.requested_by, 'payment_refund_failed', 'payments', v_refund.payment_id,
+            jsonb_build_object('refund_id', p_refund_id, 'from', v_refund.status,
+                               'failure_reason', coalesce(p_details ->> 'failure_reason', 'provider_rejected')));
+
+    return jsonb_build_object(
+      'outcome', 'applied',
+      'refund_status', 'FAILED',
+      'payment_status', v_payment.status
+    );
+  end if;
+
+  if p_kind is null or p_kind not in ('REVERSED', 'NULLIFIED') then
+    raise exception 'Una devolución confirmada tiene que decir si fue reversa o anulación'
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  v_amount := coalesce(p_refunded, v_refund.amount);
+
+  -- Lo devuelto nunca supera lo cobrado. La restricción de `payments` ya lo
+  -- impide; esto lo dice antes, sin tocar nada, y con un mensaje legible.
+  select coalesce(sum(amount), 0) into v_confirmed
+    from public.payment_refunds
+   where payment_id = v_refund.payment_id and status = 'CONFIRMED';
+
+  if v_confirmed + v_amount > v_payment.amount then
+    raise exception 'Confirmar esta devolución dejaría lo devuelto (%) por encima de lo cobrado (%)',
+      v_confirmed + v_amount, v_payment.amount
+      using errcode = 'check_violation';
+  end if;
+
+  update public.payment_refunds
+     set status             = 'CONFIRMED',
+         kind               = p_kind::public.refund_kind,
+         settled_at         = now(),
+         authorization_code = p_details ->> 'authorization_code',
+         authorization_date = (p_details ->> 'authorization_date')::timestamptz,
+         nullified_amount   = (p_details ->> 'nullified_amount')::bigint,
+         balance            = (p_details ->> 'balance')::bigint,
+         response_code      = (p_details ->> 'response_code')::integer,
+         amount             = v_amount,
+         payload            = coalesce(p_details, '{}'::jsonb)
+   where id = p_refund_id;
+
+  -- Lo devuelto en el pago es la suma de lo CONFIRMADO. Nunca lo solicitado.
+  v_confirmed := v_confirmed + v_amount;
+
+  v_next := case
+    when v_confirmed >= v_payment.amount then 'REFUNDED'::public.payment_status
+    else 'PARTIALLY_REFUNDED'::public.payment_status
+  end;
+
+  update public.payments
+     set refunded_amount = v_confirmed,
+         status          = v_next,
+         updated_at      = now()
+   where id = v_refund.payment_id;
+
+  -- Devolución total: el pago al trabajador no puede seguir en la cola.
+  if v_next = 'REFUNDED' then
+    perform app_private.hold_payout_on_full_refund(v_refund.payment_id);
+  end if;
+
+  insert into public.payment_events (payment_id, from_status, to_status, provider, provider_event_id, payload)
+  values (
+    v_refund.payment_id, v_payment.status, v_next, v_refund.provider,
+    v_refund.provider_event_id,
+    coalesce(p_details, '{}'::jsonb) || jsonb_build_object(
+      'operation', 'refund',
+      'kind', p_kind,
+      'refunded_total', v_confirmed
+    )
+  );
+
+  insert into public.audit_logs (actor_id, action, entity_type, entity_id, after)
+  values (v_refund.requested_by, 'payment_refund_confirmed', 'payments', v_refund.payment_id,
+          jsonb_build_object('refund_id', p_refund_id, 'kind', p_kind, 'from', v_refund.status,
+                             'refunded_total', v_confirmed));
+
+  return jsonb_build_object(
+    'outcome', 'applied',
+    'refund_status', 'CONFIRMED',
+    'payment_status', v_next,
+    'refunded_total', v_confirmed
+  );
+end;
+$$;
+
+revoke execute on function public.settle_payment_refund(uuid, boolean, text, bigint, jsonb) from public;
+revoke execute on function public.settle_payment_refund(uuid, boolean, text, bigint, jsonb) from anon;
+revoke execute on function public.settle_payment_refund(uuid, boolean, text, bigint, jsonb) from authenticated;
+grant execute on function public.settle_payment_refund(uuid, boolean, text, bigint, jsonb) to service_role;
+
+comment on function public.settle_payment_refund is
+  'Cierra una devolución pedida o por confirmar con la respuesta del proveedor. Idempotente. Lo devuelto no supera lo cobrado. Bloquea trabajo → asignación → pagos → devolución. Solo service_role.';
+
+
+create or replace function public.resolve_unknown_refund(
+  p_refund_id uuid,
+  p_succeeded boolean,
+  p_kind      text default null,
+  p_note      text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_refund public.payment_refunds;
+  v_payment public.payments;
+  v_result jsonb;
+  v_payment_id uuid;
+  v_job_id uuid;
+  v_assignment_id uuid;
+begin
+  if not app_private.is_admin() then
+    raise exception 'Solo la administración resuelve una devolución por confirmar'
+      using errcode = 'insufficient_privilege';
+  end if;
+
+  if p_succeeded is null then
+    raise exception 'Indica si el banco hizo o no la devolución'
+      using errcode = 'invalid_parameter_value';
+  end if;
+  if p_note is null or length(btrim(p_note)) < 10 then
+    raise exception 'Escribe lo que muestra el portal de Transbank (al menos 10 caracteres)'
+      using errcode = 'invalid_parameter_value';
+  end if;
+
+  -- [Nuevo] El orden de `settle_payment_refund`, que se llama abajo: trabajo →
+  -- asignación → pagos → la devolución. Tomar la devolución primero lo
+  -- invertiría.
+  select payment_id into v_payment_id from public.payment_refunds where id = p_refund_id;
+  if v_payment_id is null then
+    raise exception 'La devolución no existe' using errcode = 'no_data_found';
+  end if;
+  select job_id, assignment_id into v_job_id, v_assignment_id
+    from public.payments where id = v_payment_id;
+  perform 1 from public.jobs where id = v_job_id for update;
+  if v_assignment_id is not null then
+    perform 1 from public.assignments where id = v_assignment_id for update;
+    perform 1 from public.payments where assignment_id = v_assignment_id order by id for update;
+  end if;
+  perform 1 from public.payments where id = v_payment_id for update;
+
+  select * into v_refund from public.payment_refunds where id = p_refund_id for update;
+
+  -- Un doble clic sobre algo ya resuelto no es un error: devuelve lo que hay.
+  if v_refund.status in ('CONFIRMED', 'FAILED', 'CANCELLED') then
+    return jsonb_build_object('outcome', 'duplicate', 'refund_status', v_refund.status);
+  end if;
+  -- Una pedida sigue en manos de la aplicación (o de la conciliación, que la
+  -- pasa a UNKNOWN si se quedó colgada): no se decide por encima de ella.
+  if v_refund.status <> 'UNKNOWN' then
+    raise exception 'Solo se resuelve a mano una devolución con resultado por confirmar'
+      using errcode = 'check_violation';
+  end if;
+
+  if p_succeeded then
+    if p_kind is null or p_kind not in ('REVERSED', 'NULLIFIED') then
+      raise exception 'Indica si el portal la muestra como reversa o como anulación'
+        using errcode = 'invalid_parameter_value';
+    end if;
+    -- La reversa deshace la transacción entera: solo puede ser por el total y
+    -- sin nada devuelto antes.
+    if p_kind = 'REVERSED' then
+      select * into v_payment from public.payments where id = v_refund.payment_id;
+      if v_payment.refunded_amount <> 0 or v_refund.amount <> v_payment.amount then
+        raise exception 'Una reversa es siempre por el total y sin devoluciones anteriores: esta tiene que ser una anulación'
+          using errcode = 'check_violation';
+      end if;
+    end if;
+  end if;
+
+  update public.payment_refunds
+     set resolved_by     = auth.uid(),
+         resolution_note = btrim(p_note)
+   where id = p_refund_id;
+
+  if p_succeeded then
+    v_result := public.settle_payment_refund(
+      p_refund_id, true, p_kind, v_refund.amount,
+      jsonb_build_object('source', 'manual', 'resolved_by', auth.uid(), 'note', btrim(p_note))
+    );
+  else
+    v_result := public.settle_payment_refund(
+      p_refund_id, false, null, null,
+      jsonb_build_object('source', 'manual', 'resolved_by', auth.uid(), 'note', btrim(p_note),
+                         'failure_reason', 'manual_not_executed')
+    );
+  end if;
+
+  insert into public.audit_logs (actor_id, action, entity_type, entity_id, after)
+  values (auth.uid(), 'payment_refund_resolved_manually', 'payments', v_refund.payment_id,
+          jsonb_build_object('refund_id', p_refund_id, 'succeeded', p_succeeded,
+                             'kind', p_kind, 'note', btrim(p_note)));
+
+  return v_result;
+end;
+$$;
+
+revoke execute on function public.resolve_unknown_refund(uuid, boolean, text, text) from public;
+revoke execute on function public.resolve_unknown_refund(uuid, boolean, text, text) from anon;
+grant execute on function public.resolve_unknown_refund(uuid, boolean, text, text) to authenticated;
+
+comment on function public.resolve_unknown_refund is
+  'Solo administración: cierra una devolución UNKNOWN como hecha (reversa o anulación) o no hecha, con lo que muestra el portal de Transbank. Cierra por settle_payment_refund.';

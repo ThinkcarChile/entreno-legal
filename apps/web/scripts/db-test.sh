@@ -144,6 +144,7 @@ run -d "$DB_NAME" -f "$ROOT/supabase/seed/001_geo.sql" > /dev/null \
   psql -d "$DB_NAME" -f "$ROOT/supabase/tests/17_payments_followup.sql" 2>&1 \
     | grep -vE "$FILTER" | sed -E 's/^psql:[^ ]+ //; s/^NOTICE:  //'
   bash "$ROOT/supabase/tests/17_race_attempt_lock.sh" "$DB_NAME"
+  bash "$ROOT/supabase/tests/17_race_refund_settle.sh" "$DB_NAME"
 
   echo ""
   echo "════ Contrato entre la aplicación y el esquema ════"

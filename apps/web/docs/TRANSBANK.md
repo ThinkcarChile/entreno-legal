@@ -797,9 +797,12 @@ tardía. Las pruebas son J16–J40 (`supabase/tests/17_payments_followup.sql`) y
 `src/lib/payments/attempt-refund.test.ts`.
 
 Si el cobro ya se devolvió desde el portal de Transbank antes de esta función,
-se pide la devolución en el panel igualmente: el banco la rechazará (4xx →
-rechazada) o no contestará en firme; en el segundo caso se cierra a mano como
-hecha con la nota del portal.
+pedirla en el panel no lo arregla del todo: si el banco no contesta en firme,
+queda por confirmar y se cierra a mano como hecha con la nota del portal; pero
+lo normal es que la rechace (4xx → rechazada), y una rechazada no se cierra a
+mano. En ese caso el aviso sigue a la vista como pendiente: hoy el panel no
+tiene una acción para dar por devuelto un intento que se devolvió fuera de él.
+Anotar el caso con la referencia del portal.
 
 Si de verdad hay dos **pagos** `PAID` del mismo trabajo (no dos intentos),
 devolver uno (§ devoluciones) y abrir el caso.
