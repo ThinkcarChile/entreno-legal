@@ -774,6 +774,30 @@ select pg_temp.expect('Q67 con una disputa abierta, ni el código correcto cierr
   || ' · ' || (select status::text from assignments where id = :'p3_assignment_id'),
   'ERROR 23514: Hay una disputa abierta: la entrega queda en pausa hasta que la administración la resuelva · 0 · true · IN_PROGRESS');
 
+-- Con el pago del trabajo de vuelta en revisión (PAID → UNDER_REVIEW, que la
+-- base admite) `require_payment_before_work` no deja cerrar la entrega: ni el
+-- código correcto ni uno equivocado gastan intento.
+select * from pg_temp.montar_trabajo('q-pin4') \gset p4_
+select pg_temp.avanzar(:'p4_assignment_id', 'IN_PROGRESS') is null as _ \gset
+select pg_temp.rpc(:'p4_client_id', format('select public.generate_handoff_code(%L)::text', :'p4_assignment_id')) as p4_code \gset
+update payments set status = 'UNDER_REVIEW', review_reason = 'Prueba Q68' where id = :'p4_payment_id';
+create function pg_temp.validar_mal_y_bien(p_a uuid, p_w uuid, p_code text)
+returns text language plpgsql as $$
+begin
+  return pg_temp.rpc(p_w, format('select public.verify_handoff_code(%L, %L)::text', p_a,
+                                 case when p_code = '0000' then '1111' else '0000' end))
+      || ' | '
+      || pg_temp.rpc(p_w, format('select public.verify_handoff_code(%L, %L)::text', p_a, p_code));
+end $$;
+select pg_temp.validar_mal_y_bien(:'p4_assignment_id', :'p4_worker_id', :'p4_code') as q68 \gset
+select pg_temp.expect('Q68 con el pago en revisión, validar no gasta intento ni cierra la entrega',
+  :'q68'
+  || ' · ' || (select attempts::text || ' · ' || (verified_at is null)::text from handoff_codes where assignment_id = :'p4_assignment_id')
+  || ' · ' || (select status::text from assignments where id = :'p4_assignment_id'),
+  'ERROR 23514: El pago de este trabajo no está confirmado: la entrega queda en pausa hasta que se resuelva'
+  || ' | ERROR 23514: El pago de este trabajo no está confirmado: la entrega queda en pausa hasta que se resuelva'
+  || ' · 0 · true · IN_PROGRESS');
+
 
 -- =============================================================================
 \echo ''

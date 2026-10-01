@@ -26,9 +26,10 @@
 -- el tiempo acordado no habría empezado a correr.
 --
 -- Y el estado se comprueba ANTES de comparar el código: en cualquier estado en
--- que validar sea imposible —antes de comenzar, con la entrega ya registrada o
--- con una disputa abierta, que congela el trabajo— la función rechaza sin
--- gastar intento. Un intento solo se consume cuando acertar habría cerrado la
+-- que validar sea imposible —antes de comenzar, con la entrega ya registrada,
+-- con una disputa abierta, que congela el trabajo, o con el pago del trabajo
+-- fuera de PAID, que el disparador `require_payment_before_work` no deja
+-- avanzar— la función rechaza sin gastar intento. Un intento solo se consume cuando acertar habría cerrado la
 -- entrega.
 --
 -- Reparación de datos: los intentos gastados en una asignación que sigue en
@@ -166,6 +167,20 @@ begin
   if exists (select 1 from public.disputes d
               where d.assignment_id = p_assignment_id and d.status in ('OPEN', 'UNDER_REVIEW')) then
     raise exception 'Hay una disputa abierta: la entrega queda en pausa hasta que la administración la resuelva'
+      using errcode = 'check_violation';
+  end if;
+
+  -- Sin el pago del trabajo en PAID, `require_payment_before_work` no deja pasar
+  -- a HANDOFF_COMPLETED: acertar fallaría igual que en CHECKED_IN. Un pago puede
+  -- volver de PAID a UNDER_REVIEW con el trabajo en curso (lo admite
+  -- `guard_payment_no_rollback`, y `hold_payout_on_unhealthy_payment` lo
+  -- espera), así que es un estado alcanzable: se rechaza sin gastar intento.
+  -- Es la misma condición que el disparador, comprobada antes de comparar.
+  if not exists (
+    select 1 from public.payments p
+     where p.assignment_id = p_assignment_id and p.purpose = 'JOB' and p.status = 'PAID'
+  ) then
+    raise exception 'El pago de este trabajo no está confirmado: la entrega queda en pausa hasta que se resuelva'
       using errcode = 'check_violation';
   end if;
 

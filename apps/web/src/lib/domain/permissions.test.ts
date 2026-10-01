@@ -11,7 +11,7 @@ import { assignmentAbilities, nextWorkerStep, type AssignmentFacts } from "./per
  * Antes la matriz ofrecía el código desde el check-in: el trabajador lo
  * escribía, acertar era imposible y cada fallo gastaba uno de los cinco
  * intentos. Estas pruebas fijan que el panel aparezca exactamente donde la base
- * lo admite (Q60–Q67 en supabase/tests/15_abuse_storage.sql).
+ * lo admite (Q60–Q68 en supabase/tests/15_abuse_storage.sql).
  */
 
 function facts(overrides: Partial<AssignmentFacts>): AssignmentFacts {

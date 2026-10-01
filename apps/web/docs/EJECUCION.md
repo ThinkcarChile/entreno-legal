@@ -267,7 +267,7 @@ tiempo. Por eso el cliente lo ve y el trabajador lo escribe, nunca al revés.
 | Se usa en un solo estado | Pedirlo, generarlo y validarlo, solo con la asignación en `IN_PROGRESS` y sin disputa abierta. La interfaz muestra el panel exactamente ahí |
 | Se lee por función | `get_handoff_code`, solo el cliente. `handoff_codes` dejó de tener política de lectura: el PIN no sale por una consulta a la tabla |
 | Caduca | 12 horas |
-| Intentos | 5. **Solo los fallos consumen intento**, y solo cuando acertar habría cerrado la entrega: antes de comenzar, con la entrega ya registrada o con una disputa abierta, la validación se rechaza con su motivo y no gasta nada |
+| Intentos | 5. **Solo los fallos consumen intento**, y solo cuando acertar habría cerrado la entrega: antes de comenzar, con la entrega ya registrada, con una disputa abierta o con el pago del trabajo fuera de `PAID` (por ejemplo, en revisión), la validación se rechaza con su motivo y no gasta nada |
 | Un solo uso | Un código validado no vuelve a servir |
 | Regenerable | Un código vencido se puede volver a generar. Antes era imposible: `on conflict do update set code = code` conservaba el código y no tocaba la expiración, así que la entrega quedaba bloqueada para siempre |
 | No viaja | No aparece en el chat, ni en las notificaciones, ni en la bitácora de auditoría |
@@ -286,7 +286,7 @@ saltaría el inicio —el paso que exige un check-in verificado o aprobado— y 
 tiempo acordado no habría empezado a correr. Los intentos que se gastaron en
 una asignación que sigue en `CHECKED_IN` se devolvieron en la misma migración;
 los de una que ya avanzó no se pueden separar de los legítimos y se dejaron
-como estaban. `Q60`–`Q67`.
+como estaban. `Q60`–`Q68`.
 
 ---
 

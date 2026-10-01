@@ -447,6 +447,15 @@ begin
     raise exception 'No participas en esta disputa' using errcode = 'insufficient_privilege';
   end if;
 
+  -- El tope por persona y el «ya resuelta» se deciden bajo el bloqueo de la
+  -- disputa: sin él, dos pruebas simultáneas pasaban juntas el último cupo, y
+  -- una podía colarse mientras la administración resolvía. Solo se bloquea la
+  -- fila de la disputa, que en el orden canónico va última (jobs → assignments
+  -- → payments → disputes, como en `resolve_dispute`); después solo se toma el
+  -- candado consultivo del archivo, que la política de borrado toma sin tener
+  -- nada más.
+  select * into v_d from public.disputes where id = p_dispute_id for update;
+
   if v_d.status = 'RESOLVED' then
     raise exception 'Esta disputa ya está resuelta' using errcode = 'check_violation';
   end if;
