@@ -61,7 +61,7 @@ Todas en `.env.example`. Ninguna credencial real vive en el repositorio.
 | `SUPABASE_SECRET_KEY` | Solo servidor | Omite RLS. Reemplaza a `SERVICE_ROLE_KEY`. Nunca con prefijo `NEXT_PUBLIC_` |
 | `NEXT_PUBLIC_DATA_SOURCE` | No | `demo`, `supabase` o `auto` (por defecto) |
 | `PAYMENT_PROVIDER` | No | `mock`, `mock-delayed` o `transbank`. Los dos simulados están prohibidos en producción |
-| `TRANSBANK_ENVIRONMENT` | No | `integration` (por defecto) o `production`. En integración no se cargan credenciales: las trae el SDK |
+| `TRANSBANK_ENVIRONMENT` | Con `NODE_ENV=production` y `PAYMENT_PROVIDER=transbank` | `integration` (por defecto fuera de producción) o `production`. En producción hay que escribirla: si falta, Webpay no opera. En integración no se cargan credenciales: las trae el SDK |
 | `TRANSBANK_PRODUCTION_ENABLED` | Solo para cobrar de verdad | `true` habilita Webpay productivo. Sin ella, el proveedor productivo se niega a crear cobros |
 | `TRANSBANK_PRODUCTION_COMMERCE_CODE` | Solo producción | Código de comercio que entrega Transbank al certificar. Solo servidor |
 | `TRANSBANK_PRODUCTION_API_KEY_SECRET` | Solo producción | Llave secreta que entrega Transbank al certificar. Solo servidor |

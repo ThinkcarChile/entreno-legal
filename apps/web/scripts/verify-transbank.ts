@@ -31,6 +31,7 @@ import {
   INTEGRATION_API_KEY,
   INTEGRATION_COMMERCE_CODE,
   TRANSBANK_HOSTS,
+  environmentBlockers,
   isTrustedRedirect,
   productionBlockers,
   siteUrlBlockers,
@@ -184,6 +185,7 @@ async function main(): Promise<void> {
   await check("producción sigue desactivada", () => {
     const blockers = productionBlockers({
       environment: "production",
+      environmentExplicit: true,
       productionEnabled: process.env.TRANSBANK_PRODUCTION_ENABLED === "true",
       commerceCode: process.env.TRANSBANK_PRODUCTION_COMMERCE_CODE,
       apiKeySecret: process.env.TRANSBANK_PRODUCTION_API_KEY_SECRET,
@@ -194,6 +196,22 @@ async function main(): Promise<void> {
     });
     expect(blockers.length > 0, "¡producción NO está bloqueada! Revisa la configuración.");
     return `${blockers.length} motivos impiden operar en producción`;
+  });
+
+  await check("con NODE_ENV=production el ambiente no se toma por omisión", () => {
+    // Lo que pasaba antes: sin TRANSBANK_ENVIRONMENT, integración en silencio,
+    // y tarjetas de prueba habilitando trabajos en un despliegue productivo.
+    const blockers = environmentBlockers({
+      environment: "integration",
+      environmentExplicit: false,
+      productionEnabled: false,
+      siteUrl: "https://hagotufila.cl",
+      nodeEnv: "production",
+      demoMode: false,
+      selectedProvider: "transbank",
+    });
+    expect(blockers.length > 0, "sin TRANSBANK_ENVIRONMENT, Webpay operaría en integración");
+    return "sin TRANSBANK_ENVIRONMENT no opera ningún ambiente";
   });
 
   await check("la bandera TRANSBANK_PRODUCTION_ENABLED está en falso", () => {
@@ -365,6 +383,8 @@ async function main(): Promise<void> {
     },
     {
       environment: "integration",
+      // Este verificador elige integración a propósito, y lo dice.
+      environmentExplicit: true,
       productionEnabled: false,
       siteUrl: SITE_URL,
       nodeEnv: process.env.NODE_ENV ?? "development",
