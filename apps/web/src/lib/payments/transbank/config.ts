@@ -36,7 +36,18 @@ export interface TransbankSettings {
 }
 
 export interface GuardContext {
+  /** El ambiente efectivo: el escrito en `TRANSBANK_ENVIRONMENT`, o integración por omisión. */
   environment: "integration" | "production";
+  /**
+   * ¿`TRANSBANK_ENVIRONMENT` venía escrita, o `environment` es el valor por
+   * omisión?
+   *
+   * Fuera de producción da igual: integración es lo único sensato. Con
+   * `NODE_ENV=production` y Webpay seleccionado, NO: un ambiente que nadie
+   * eligió es la forma de terminar cobrando con tarjetas de prueba y pagando
+   * al trabajador con dinero real. Ver `environmentBlockers`.
+   */
+  environmentExplicit: boolean;
   /** `TRANSBANK_PRODUCTION_ENABLED`. Sin esto, producción no opera. */
   productionEnabled: boolean;
   commerceCode?: string;
@@ -77,13 +88,64 @@ export function looksLikeIntegrationCredential(
 }
 
 /**
+ * Lo que impide operar Webpay en CUALQUIER ambiente, también en integración.
+ *
+ * Una sola regla: con `NODE_ENV=production` y `PAYMENT_PROVIDER=transbank`, el
+ * ambiente tiene que estar escrito. Antes faltaba y se tomaba integración por
+ * omisión, en silencio: Webpay contestaba de verdad a tarjetas de prueba, el
+ * trabajo se habilitaba y el payout se transfería con dinero real.
+ *
+ * `integration` escrito a mano en producción sí vale —es un despliegue de
+ * pruebas (staging)—, pero se ve: lo dice `environmentNotices`.
+ */
+export function environmentBlockers(context: GuardContext): string[] {
+  if (
+    context.nodeEnv === "production" &&
+    context.selectedProvider === "transbank" &&
+    !context.environmentExplicit
+  ) {
+    return [
+      "falta TRANSBANK_ENVIRONMENT: con NODE_ENV=production hay que escribir el ambiente de Webpay " +
+        '("production" para cobrar de verdad, "integration" solo en un despliegue de pruebas); ' +
+        "no se toma integración por omisión",
+    ];
+  }
+  return [];
+}
+
+/**
+ * Avisos que no bloquean pero que quien opera tiene que ver.
+ *
+ * Integración elegida a mano con `NODE_ENV=production` es legítima en un
+ * despliegue de pruebas. En el de verdad sería un error de configuración: los
+ * cobros serían de prueba. La base lo frena del lado del dinero —con
+ * `platform_settings.allow_non_production_payouts` en falso no se transfiere
+ * un payout sobre un pago de integración—, y este aviso lo hace visible del
+ * lado de la aplicación.
+ */
+export function environmentNotices(context: GuardContext): string[] {
+  if (
+    context.nodeEnv === "production" &&
+    context.selectedProvider === "transbank" &&
+    context.environmentExplicit &&
+    context.environment === "integration"
+  ) {
+    return [
+      "Webpay opera en INTEGRACIÓN con NODE_ENV=production: los cobros son de prueba. " +
+        "Correcto en un despliegue de pruebas; en producción es un error de configuración.",
+    ];
+  }
+  return [];
+}
+
+/**
  * Las razones por las que el proveedor productivo se niega a operar.
  *
  * Devuelve la lista completa, no la primera: quien configura el hosting
  * necesita verlas todas de una vez, no descubrirlas de una en una.
  */
 export function productionBlockers(context: GuardContext): string[] {
-  const blockers: string[] = [];
+  const blockers: string[] = [...environmentBlockers(context)];
 
   if (context.environment !== "production") {
     blockers.push("TRANSBANK_ENVIRONMENT no es exactamente \"production\"");
@@ -172,6 +234,24 @@ export class TransbankProductionBlockedError extends Error {
   constructor(blockers: string[]) {
     super("Webpay Plus productivo está desactivado. Motivos: " + blockers.join("; ") + ".");
     this.name = "TransbankProductionBlockedError";
+    this.blockers = blockers;
+  }
+}
+
+/**
+ * Webpay no opera porque nadie eligió el ambiente.
+ *
+ * Distinta de `TransbankProductionBlockedError` a propósito: aquí no se
+ * intentaba cobrar en producción, se intentaba operar sin saber dónde.
+ */
+export class TransbankEnvironmentBlockedError extends Error {
+  readonly blockers: string[];
+
+  constructor(blockers: string[]) {
+    super(
+      "Webpay Plus no está configurado para este despliegue. Motivos: " + blockers.join("; ") + ".",
+    );
+    this.name = "TransbankEnvironmentBlockedError";
     this.blockers = blockers;
   }
 }

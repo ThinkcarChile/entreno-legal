@@ -294,13 +294,68 @@ async function assignmentStatus(id: string): Promise<string> {
   return row.status;
 }
 
+/* --------------------------------------------- nunca contra producción */
+
+function refuse(reason: string): never {
+  console.error(`\n✗ verify:execution no se ejecuta contra esta base.\n  ${reason}\n`);
+  process.exit(1);
+}
+
+/**
+ * Esta verificación crea cuentas, trabajos y cobros simulados, y registra
+ * transferencias sobre ellos. Contra la base de producción no corre nunca.
+ *
+ * Se niega si el entorno dice producción, o si la base ya tiene cobros del
+ * ambiente productivo. Y exige lo que una base de desarrollo o de pruebas
+ * enciende a mano y la de producción nunca: `allow_non_production_payouts`
+ * (docs/DESPLIEGUE-SUPABASE.md §4.5). Sin ella `mark_payout_paid` rechaza
+ * transferir sobre un cobro simulado, y la prueba de la transferencia fallaría
+ * por un motivo que no es el que prueba.
+ */
+async function assertDevelopmentDatabase(): Promise<void> {
+  if (process.env.TRANSBANK_ENVIRONMENT === "production") {
+    refuse("TRANSBANK_ENVIRONMENT=production: es una verificación con cobros simulados.");
+  }
+
+  const production = await admin
+    .from("payments")
+    .select("id", { count: "exact", head: true })
+    .eq("environment", "production");
+  if (production.error) refuse(`no se pudo leer payments: ${production.error.message}`);
+  if ((production.count ?? 0) > 0) {
+    refuse(`la base tiene ${production.count} cobros del ambiente de producción: es la de producción.`);
+  }
+
+  const settings = await admin
+    .from("platform_settings")
+    .select("allow_non_production_payouts")
+    .maybeSingle();
+  if (settings.error || !settings.data) {
+    refuse(
+      "no se pudo leer platform_settings.allow_non_production_payouts " +
+        `(${settings.error?.message ?? "sin fila"}): ¿falta aplicar la migración 20260601000810?`,
+    );
+  }
+  if ((settings.data as { allow_non_production_payouts: boolean }).allow_non_production_payouts !== true) {
+    refuse(
+      "allow_non_production_payouts está en falso, así que no se puede registrar una transferencia " +
+        "sobre un cobro simulado. Si esta es la base de desarrollo, enciéndela en el editor SQL " +
+        "(docs/DESPLIEGUE-SUPABASE.md §4.5). Si es la de producción, no la toques: no corras esto ahí.",
+    );
+  }
+
+  console.log("Base de desarrollo: admite transferir sobre cobros de prueba (allow_non_production_payouts)");
+}
+
 /* ----------------------------------------------------------------- flujo */
 
 async function main(): Promise<void> {
   console.log(`\nVerificación de la ejecución del trabajo contra Supabase real`);
   console.log(`Proyecto: ${new URL(SUPABASE_URL).hostname}`);
   console.log(`Repeticiones de carrera: ${RACE_REPS}`);
-  console.log(`Ejecución: ${RUN}\n`);
+  console.log(`Ejecución: ${RUN}`);
+  await assertDevelopmentDatabase();
+  console.log("");
 
   section("Cuentas y punto de partida");
 

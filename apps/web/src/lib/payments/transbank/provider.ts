@@ -3,8 +3,10 @@ import { WebpayPlus, type TransbankTransactionClient } from "./sdk";
 import { PaymentStatus } from "@/lib/domain/enums";
 
 import {
+  environmentBlockers,
   isTrustedRedirect,
   productionBlockers,
+  TransbankEnvironmentBlockedError,
   TransbankProductionBlockedError,
   type GuardContext,
   type TransbankSettings,
@@ -108,6 +110,12 @@ export class TransbankPaymentProvider implements PaymentProvider, ReconcilablePr
         "Faltan el código de comercio o la llave secreta.",
       );
     }
+
+    // En cualquier ambiente, también integración: con NODE_ENV=production el
+    // ambiente tiene que venir escrito. Tomar integración por omisión era
+    // cobrar con tarjetas de prueba en un despliegue que se dice productivo.
+    const unset = environmentBlockers(this.guards);
+    if (unset.length > 0) throw new TransbankEnvironmentBlockedError(unset);
 
     if (this.settings.environment === "production") {
       const blockers = productionBlockers(this.guards);

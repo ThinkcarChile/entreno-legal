@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   INTEGRATION_API_KEY,
   INTEGRATION_COMMERCE_CODE,
+  environmentBlockers,
+  environmentNotices,
   isTrustedRedirect,
   looksLikeIntegrationCredential,
   productionBlockers,
@@ -13,6 +15,7 @@ import {
 /** Una configuración productiva impecable. Cada prueba rompe UNA cosa. */
 const GOOD: GuardContext = {
   environment: "production",
+  environmentExplicit: true,
   productionEnabled: true,
   commerceCode: "597000000001",
   apiKeySecret: "una-llave-productiva-de-verdad-larga",
@@ -143,5 +146,62 @@ describe("ámbito de las guardas: pagos nuevos y pagos existentes", () => {
     ["sin llave", { apiKeySecret: undefined }],
   ])("el ámbito de existentes NO relaja %s", (_label, patch) => {
     expect(productionBlockers({ ...apagado, scope: "existing", ...patch }).length).toBeGreaterThan(0);
+  });
+});
+
+describe("el ambiente no se toma por omisión en producción", () => {
+  /**
+   * El despliegue del defecto: NODE_ENV=production, PAYMENT_PROVIDER=transbank
+   * y TRANSBANK_ENVIRONMENT sin escribir. El ambiente efectivo es integración,
+   * pero nadie lo eligió.
+   */
+  const SIN_AMBIENTE: GuardContext = {
+    environment: "integration",
+    environmentExplicit: false,
+    productionEnabled: false,
+    siteUrl: "https://hagotufila.cl",
+    nodeEnv: "production",
+    demoMode: false,
+    selectedProvider: "transbank",
+  };
+
+  it("sin TRANSBANK_ENVIRONMENT, Webpay no opera ni en integración, y dice por qué", () => {
+    const blockers = environmentBlockers(SIN_AMBIENTE);
+    expect(blockers).toHaveLength(1);
+    expect(blockers[0]).toContain("falta TRANSBANK_ENVIRONMENT");
+    expect(blockers[0]).toContain("no se toma integración por omisión");
+  });
+
+  it("vale también para cerrar pagos existentes", () => {
+    expect(environmentBlockers({ ...SIN_AMBIENTE, scope: "existing" })).toHaveLength(1);
+  });
+
+  it("y producción lo cuenta entre sus motivos", () => {
+    const blockers = productionBlockers({ ...GOOD, environmentExplicit: false });
+    expect(blockers.join(" ")).toContain("falta TRANSBANK_ENVIRONMENT");
+  });
+
+  it("integración escrita a mano en producción opera —un despliegue de pruebas—, pero se avisa", () => {
+    const staging = { ...SIN_AMBIENTE, environmentExplicit: true };
+    expect(environmentBlockers(staging)).toEqual([]);
+    expect(environmentNotices(staging)).toHaveLength(1);
+    expect(environmentNotices(staging)[0]).toContain("INTEGRACIÓN con NODE_ENV=production");
+  });
+
+  it("fuera de producción, integración por omisión sigue siendo lo normal y no avisa", () => {
+    for (const nodeEnv of ["development", "test"]) {
+      const local = { ...SIN_AMBIENTE, nodeEnv };
+      expect(environmentBlockers(local)).toEqual([]);
+      expect(environmentNotices(local)).toEqual([]);
+    }
+  });
+
+  it("con un proveedor simulado no aplica: ese ya lo prohíbe producción por su cuenta", () => {
+    expect(environmentBlockers({ ...SIN_AMBIENTE, selectedProvider: "mock" })).toEqual([]);
+  });
+
+  it("producción escrita y completa no bloquea ni avisa", () => {
+    expect(environmentBlockers(GOOD)).toEqual([]);
+    expect(environmentNotices(GOOD)).toEqual([]);
   });
 });

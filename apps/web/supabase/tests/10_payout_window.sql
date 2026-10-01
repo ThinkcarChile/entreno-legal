@@ -13,6 +13,12 @@
 -- decía «el pago queda retenido».
 -- =============================================================================
 
+-- Los pagos de esta batería son del proveedor simulado. Desde 20260601000810,
+-- `mark_payout_paid` no transfiere sobre un pago que no sea de producción salvo
+-- que la base lo admita de forma explícita: se admite aquí, a la vista, y se
+-- devuelve a FALSE al final del archivo. En producción, nunca.
+update public.platform_settings set allow_non_production_payouts = true where id;
+
 create function pg_temp.expect(label text, actual text, expected text)
 returns text language sql as $$
   select label || ' = ' || coalesce(actual, 'NULO') ||
@@ -476,3 +482,6 @@ exception when others then
   return 'FALLA: ' || sqlerrm;
 end $$;
 select pg_temp.expect('V46 la vista de administración sigue funcionando', pg_temp.leer_vista_admin(), 'LEE');
+
+-- La bandera de pagos de prueba vuelve a su valor por omisión.
+update public.platform_settings set allow_non_production_payouts = false where id;

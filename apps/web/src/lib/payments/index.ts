@@ -1,11 +1,14 @@
-import { env, resolveDataSource } from "@/lib/env";
+import { env, resolveDataSource, transbankEnvironmentExplicit } from "@/lib/env";
 
 import { DelayedMockPaymentProvider } from "./delayed-mock-provider";
 import { MockPaymentProvider } from "./mock-provider";
 import {
+  environmentBlockers,
+  environmentNotices,
   INTEGRATION_API_KEY,
   INTEGRATION_COMMERCE_CODE,
   productionBlockers,
+  TransbankEnvironmentBlockedError,
   type GuardContext,
 } from "./transbank/config";
 import { TransbankPaymentProvider } from "./transbank/provider";
@@ -40,6 +43,7 @@ export function transbankGuardContext(scope: "new" | "existing" = "new"): GuardC
   return {
     scope,
     environment: env.TRANSBANK_ENVIRONMENT,
+    environmentExplicit: transbankEnvironmentExplicit,
     productionEnabled: env.TRANSBANK_PRODUCTION_ENABLED,
     commerceCode: env.TRANSBANK_PRODUCTION_COMMERCE_CODE,
     apiKeySecret: env.TRANSBANK_PRODUCTION_API_KEY_SECRET,
@@ -97,6 +101,16 @@ function buildPaymentProvider(scope: "new" | "existing"): PaymentProvider {
   if (env.PAYMENT_PROVIDER === "transbank") {
     const guards = transbankGuardContext(scope);
     const production = env.TRANSBANK_ENVIRONMENT === "production";
+
+    // Primero, que alguien haya elegido el ambiente: con NODE_ENV=production y
+    // TRANSBANK_ENVIRONMENT sin escribir no se construye nada, ni siquiera
+    // integración. Antes se tomaba integración en silencio.
+    const unset = environmentBlockers(guards);
+    if (unset.length > 0) throw new TransbankEnvironmentBlockedError(unset);
+
+    // Integración escrita a mano en producción vale (un despliegue de
+    // pruebas), pero queda dicho en el registro del servidor.
+    for (const notice of environmentNotices(guards)) console.warn(`[pagos] ${notice}`);
 
     if (production) {
       const blockers = productionBlockers(guards);

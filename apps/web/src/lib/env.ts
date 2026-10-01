@@ -40,11 +40,20 @@ const serverSchema = z.object({
   PAYMENT_PROVIDER: z.enum(["mock", "mock-delayed", "transbank"]).default("mock"),
 
   /**
-   * Ambiente de Webpay Plus. Por defecto integración, siempre.
+   * Ambiente de Webpay Plus.
    *
    * No hay forma de llegar a producción por omisión: hace falta poner
    * `production` aquí Y `TRANSBANK_PRODUCTION_ENABLED=true`, y aun así pasar
    * todas las guardas de `payments/transbank/config.ts`.
+   *
+   * Tampoco a integración, cuando el despliegue es de producción. Si falta, el
+   * valor se resuelve a integración —el resto del código lee siempre un
+   * ambiente concreto—, pero queda marcado como no elegido
+   * (`transbankEnvironmentExplicit`), y con `NODE_ENV=production` y
+   * `PAYMENT_PROVIDER=transbank` las guardas se niegan a operar así. Antes se
+   * tomaba integración en silencio: tarjetas de prueba habilitaban trabajos en
+   * un despliegue productivo. Fuera de producción, integración por omisión
+   * sigue siendo lo correcto.
    */
   TRANSBANK_ENVIRONMENT: z.enum(["integration", "production"]).default("integration"),
 
@@ -101,29 +110,18 @@ function orUndefined(value: string | undefined): string | undefined {
   return trimmed.length === 0 ? undefined : trimmed;
 }
 
-function read(): ServerEnv {
-  const parsed = serverSchema.safeParse({
-    NODE_ENV: orUndefined(process.env.NODE_ENV),
-    NEXT_PUBLIC_SITE_URL: orUndefined(process.env.NEXT_PUBLIC_SITE_URL),
-    NEXT_PUBLIC_SUPABASE_URL: orUndefined(process.env.NEXT_PUBLIC_SUPABASE_URL),
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: orUndefined(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: orUndefined(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
-    SUPABASE_SECRET_KEY: orUndefined(process.env.SUPABASE_SECRET_KEY),
-    SUPABASE_SERVICE_ROLE_KEY: orUndefined(process.env.SUPABASE_SERVICE_ROLE_KEY),
-    NEXT_PUBLIC_DATA_SOURCE: orUndefined(process.env.NEXT_PUBLIC_DATA_SOURCE),
-    PAYMENT_PROVIDER: orUndefined(process.env.PAYMENT_PROVIDER),
-    TRANSBANK_ENVIRONMENT: orUndefined(process.env.TRANSBANK_ENVIRONMENT),
-    TRANSBANK_PRODUCTION_ENABLED: orUndefined(process.env.TRANSBANK_PRODUCTION_ENABLED),
-    TRANSBANK_PRODUCTION_COMMERCE_CODE: orUndefined(
-      process.env.TRANSBANK_PRODUCTION_COMMERCE_CODE,
-    ),
-    TRANSBANK_PRODUCTION_API_KEY_SECRET: orUndefined(
-      process.env.TRANSBANK_PRODUCTION_API_KEY_SECRET,
-    ),
-    CRON_SECRET: orUndefined(process.env.CRON_SECRET),
-    PLATFORM_COMMISSION_BPS: orUndefined(process.env.PLATFORM_COMMISSION_BPS),
-    DISPUTE_WINDOW_HOURS: orUndefined(process.env.DISPUTE_WINDOW_HOURS),
-  });
+/** Las variables tal como llegan del entorno, antes de validarlas. */
+export type RawServerEnv = { [K in keyof ServerEnv]?: string };
+
+/**
+ * Valida un conjunto de variables. La aplicación la llama una sola vez, desde
+ * `read()`; se exporta para poder probarla con otros conjuntos.
+ */
+export function parseServerEnv(raw: RawServerEnv): ServerEnv {
+  const normalized = Object.fromEntries(
+    Object.entries(raw).map(([name, value]) => [name, orUndefined(value)]),
+  );
+  const parsed = serverSchema.safeParse(normalized);
 
   if (!parsed.success) {
     // Falla ruidosa solo cuando el valor presente es inválido, no cuando falta.
@@ -137,7 +135,45 @@ function read(): ServerEnv {
   return parsed.data;
 }
 
+function read(): ServerEnv {
+  // Cada variable por su nombre literal: Next sustituye `process.env.X` al
+  // compilar, y este módulo también llega al navegador (vía config/platform).
+  return parseServerEnv({
+    NODE_ENV: process.env.NODE_ENV,
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    NEXT_PUBLIC_DATA_SOURCE: process.env.NEXT_PUBLIC_DATA_SOURCE,
+    PAYMENT_PROVIDER: process.env.PAYMENT_PROVIDER,
+    TRANSBANK_ENVIRONMENT: process.env.TRANSBANK_ENVIRONMENT,
+    TRANSBANK_PRODUCTION_ENABLED: process.env.TRANSBANK_PRODUCTION_ENABLED,
+    TRANSBANK_PRODUCTION_COMMERCE_CODE: process.env.TRANSBANK_PRODUCTION_COMMERCE_CODE,
+    TRANSBANK_PRODUCTION_API_KEY_SECRET: process.env.TRANSBANK_PRODUCTION_API_KEY_SECRET,
+    CRON_SECRET: process.env.CRON_SECRET,
+    PLATFORM_COMMISSION_BPS: process.env.PLATFORM_COMMISSION_BPS,
+    DISPUTE_WINDOW_HOURS: process.env.DISPUTE_WINDOW_HOURS,
+  });
+}
+
 export const env: ServerEnv = read();
+
+/**
+ * ¿`TRANSBANK_ENVIRONMENT` venía escrita, o `env.TRANSBANK_ENVIRONMENT` es el
+ * valor por omisión? Vacía cuenta como ausente, igual que en el resto.
+ *
+ * Lo leen las guardas de Webpay (`GuardContext.environmentExplicit`): con
+ * `NODE_ENV=production` un ambiente que nadie eligió no opera.
+ */
+export function isExplicitTransbankEnvironment(raw: string | undefined): boolean {
+  return orUndefined(raw) !== undefined;
+}
+
+export const transbankEnvironmentExplicit = isExplicitTransbankEnvironment(
+  process.env.TRANSBANK_ENVIRONMENT,
+);
 
 /** Clave pública efectiva: la nueva si existe, la heredada si no. */
 export const supabasePublishableKey =
