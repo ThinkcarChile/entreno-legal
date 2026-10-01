@@ -37,8 +37,8 @@ with inventario as (
     (select commission_bps from public.platform_settings)               as comision_pb
 ),
 esperado as (
-  select 34 as tablas, 7 as vistas, 44 as funciones_rpc, 24 as enums,
-         75 as politicas_rls, 5 as buckets, 346 as comunas, 16 as regiones,
+  select 35 as tablas, 7 as vistas, 46 as funciones_rpc, 24 as enums,
+         76 as politicas_rls, 5 as buckets, 346 as comunas, 16 as regiones,
          9 as categorias, 1400 as comision_pb
 )
 select 'I' || lpad((row_number() over ())::text, 2, '0') || ' ' || nombre || ' = ' || actual ||

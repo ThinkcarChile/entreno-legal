@@ -305,11 +305,11 @@ async function main(): Promise<void> {
       (select count(*) from supabase_migrations.schema_migrations)       as migraciones;
   `);
 
-  check("tablas en public", inv.tablas, 34);
+  check("tablas en public", inv.tablas, 35);
   check("vistas en public", inv.vistas, 7);
-  check("funciones en public", inv.funciones, 44);
+  check("funciones en public", inv.funciones, 46);
   check("enums", inv.enums, 24);
-  check("políticas RLS en public", inv.politicas, 75);
+  check("políticas RLS en public", inv.politicas, 76);
   check("buckets de Storage", inv.buckets, 5);
   check("políticas de Storage", inv.politicas_storage, 11);
   check("comunas", inv.comunas, 346);
