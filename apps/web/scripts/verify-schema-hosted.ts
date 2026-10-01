@@ -253,7 +253,7 @@ const AVISOS_ACEPTADOS: Record<string, Record<string, string>> = {
       "SOLO la administración: primera línea es app_private.is_admin(). authenticated no tiene " +
       "UPDATE sobre payouts. Baja el neto de un payout sin transferir —o lo cancela con 0—, " +
       "nunca lo sube, con motivo escrito; deja audit_logs, línea de tiempo y aviso al trabajador " +
-      "(B27–B41, …001610).",
+      "(B27–B43, …001610).",
     "public.admin_pending_reviews":
       "SOLO la administración: primera línea es app_private.is_admin(). Devuelve recuentos de " +
       "las colas del panel; sin el rol, lanza excepción en vez de contestar cero.",

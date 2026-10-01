@@ -67,9 +67,10 @@
 --     estuviera, y la transferencia se niega si el payout todavía lo incluye.
 --   · `public.adjust_payout`: administración BAJA el neto de un payout que no
 --     se transfirió, o lo cancela con $0, con motivo escrito, auditoría, línea
---     de tiempo y aviso al trabajador. `approve_payout` ya no aprueba un payout
---     con una devolución sin respuesta o con cifras que no cuadran: primero se
---     ajusta.
+--     de tiempo y aviso al trabajador. Con una disputa abierta también baja
+--     (no cancela): es lo que deja resolverla cuando las cifras ya no
+--     cuadraban. `approve_payout` ya no aprueba un payout con una devolución
+--     sin respuesta o con cifras que no cuadran: primero se ajusta.
 -- =============================================================================
 
 
@@ -236,7 +237,9 @@ comment on function app_private.default_client_wins_refund is
 --   · el payout se bloquea antes que la disputa (orden canónico: pagos →
 --     payouts → disputas);
 --   · `refund_registered` devuelve lo que quedó anotado, también el importe
---     por omisión de CLIENT_WINS.
+--     por omisión de CLIENT_WINS;
+--   · si la resolución no cuadra, el motivo apunta también a «Ajustar» (solo
+--     cambia el texto, después del prefijo de siempre).
 create or replace function public.resolve_dispute(
   p_dispute_id      uuid,
   p_resolution      public.dispute_resolution,
@@ -402,10 +405,15 @@ begin
     -- trabajador no pueden superar lo que el cliente pagó. Uno retenido no se
     -- mide aquí: no sale de la retención sin `approve_payout`, y la
     -- transferencia vuelve a medirlo todo.
+    -- [Nuevo, solo el texto] Si las cifras ya no cuadraban antes de resolver
+    -- (una devolución previa), ninguna resolución que le pague algo al
+    -- trabajador cuadra: la parcial resta del neto lo mismo que anota como
+    -- deuda. La salida es bajar antes el neto con «Ajustar», que se puede con
+    -- la disputa abierta.
     if v_payout_status = 'APPROVED' then
       v_overrun := app_private.payout_overrun(v_assignment_id);
       if v_overrun is not null then
-        raise exception 'Esta resolución no cuadra: %. Elige otra —a favor del cliente, o parcial descontando del trabajador lo que se devuelve— o revisa el caso con soporte',
+        raise exception 'Esta resolución no cuadra: %. Elige otra —a favor del cliente, o parcial descontando del trabajador lo que se devuelve—; si ya no cuadraba antes de resolver (por una devolución previa), baja primero el neto del trabajador con «Ajustar» en /admin/payouts, o revisa el caso con soporte',
           v_overrun
           using errcode = 'check_violation';
       end if;
@@ -714,7 +722,8 @@ comment on function public.request_payment_refund is
 --   · el neto no baja de cero (un ajuste previo pudo dejarlo por debajo del
 --     bono);
 --   · devuelve el estado real del payout, y el aviso al trabajador no dice
---     «aprobado» de un pago retenido.
+--     «aprobado» de un pago retenido ni de uno cancelado (`adjust_payout` en
+--     $0 con el trabajo en curso).
 create or replace function app_private.approve_completion_core(
   p_assignment_id uuid,
   p_bonus_awarded boolean,
@@ -785,10 +794,12 @@ begin
 
     perform app_private.notify_user(
       v_a.worker_id, 'JOB_APPROVED', 'Tu trabajo quedó aprobado',
-      -- [Nuevo] Un pago retenido no se anuncia como camino de la transferencia.
-      case when v_payout_status = 'HELD'
-           then 'Se aprobó automáticamente. Tu pago sigue retenido mientras administración revisa el caso: te avisaremos.'
-           else 'Se aprobó automáticamente. El pago se transfiere cuando venza el plazo de reclamo.' end,
+      -- [Nuevo] Un pago retenido o cancelado no se anuncia como camino de la
+      -- transferencia.
+      case v_payout_status
+        when 'HELD' then 'Se aprobó automáticamente. Tu pago sigue retenido mientras administración revisa el caso: te avisaremos.'
+        when 'CANCELLED' then 'Se aprobó automáticamente. Este trabajo no tiene pago: administración lo canceló y te avisó el motivo.'
+        else 'Se aprobó automáticamente. El pago se transfiere cuando venza el plazo de reclamo.' end,
       '/mis-trabajos/' || p_assignment_id, v_j.id);
 
     perform app_private.notify_user(
@@ -800,16 +811,18 @@ begin
     perform app_private.timeline_event(
       v_j.id, p_assignment_id, v_a.client_id, 'SYSTEM',
       'Trabajo aprobado por el cliente',
-      case when v_payout_status = 'HELD'
-           then 'El pago al trabajador sigue retenido: lo revisa la administración.'
-           else 'El pago al trabajador quedó liberado para su transferencia.' end,
+      case v_payout_status
+        when 'HELD' then 'El pago al trabajador sigue retenido: lo revisa la administración.'
+        when 'CANCELLED' then 'El pago al trabajador está cancelado.'
+        else 'El pago al trabajador quedó liberado para su transferencia.' end,
       'completion_approved');
 
     perform app_private.notify_user(
       v_a.worker_id, 'JOB_APPROVED', 'El cliente aprobó el trabajo',
-      case when v_payout_status = 'HELD'
-           then 'Tu pago sigue retenido mientras administración revisa el caso: te avisaremos. Ya puedes dejar tu reseña.'
-           else 'Tu pago quedó aprobado. Ya puedes dejar tu reseña.' end,
+      case v_payout_status
+        when 'HELD' then 'Tu pago sigue retenido mientras administración revisa el caso: te avisaremos. Ya puedes dejar tu reseña.'
+        when 'CANCELLED' then 'Este trabajo no tiene pago: administración lo canceló y te avisó el motivo. Ya puedes dejar tu reseña.'
+        else 'Tu pago quedó aprobado. Ya puedes dejar tu reseña.' end,
       '/mis-trabajos/' || p_assignment_id, v_j.id);
 
     perform app_private.notify_user(
@@ -1004,8 +1017,13 @@ $$;
 -- trabajador y lo escribe, con un motivo que él lee.
 --
 --   · Solo administración; motivo de al menos 10 caracteres.
---   · Solo un payout que no se transfirió (PENDING, APPROVED, HELD) y sin una
---     disputa abierta: esa la decide su resolución.
+--   · Solo un payout que no se transfirió (PENDING, APPROVED, HELD).
+--   · Con una disputa abierta, solo bajar, no cancelar. Si una devolución
+--     previa ya descuadró las cifras, ninguna resolución que le pague algo al
+--     trabajador cuadra (la parcial resta del neto lo mismo que anota como
+--     deuda): sin bajar antes el neto, la única salida era darle la razón
+--     entera al cliente. Cancelar, en cambio, es decidir la disputa: eso lo
+--     hace su resolución a favor del cliente.
 --   · Solo baja el neto. Subirlo sería pagar más de lo que entró sin que nada
 --     lo midiera; para eso está soporte. El mismo neto otra vez no hace nada
 --     (un doble clic no duplica el aviso).
@@ -1033,6 +1051,7 @@ declare
   v_status public.payout_status;
   v_overrun text;
   v_reason text := btrim(coalesce(p_reason, ''));
+  v_open_dispute boolean;
 begin
   if not app_private.is_admin() then
     raise exception 'Solo la administración ajusta un pago al trabajador'
@@ -1070,15 +1089,21 @@ begin
       using errcode = 'check_violation';
   end if;
 
-  if exists (select 1 from public.disputes d
-              where d.assignment_id = v_assignment_id and d.status in ('OPEN', 'UNDER_REVIEW')) then
-    raise exception 'Hay una disputa abierta sobre este trabajo: lo que recibe el trabajador lo decide su resolución'
-      using errcode = 'check_violation';
-  end if;
-
   if p_net_amount > v_p.net_amount then
     raise exception 'Un ajuste solo baja el neto: hoy es % y pediste %. Subirlo es un caso para soporte',
       app_private.format_clp(v_p.net_amount), app_private.format_clp(p_net_amount)
+      using errcode = 'check_violation';
+  end if;
+
+  -- Con una disputa abierta se puede BAJAR el neto —es lo que permite
+  -- resolverla cuando una devolución previa ya descuadró las cifras: ninguna
+  -- resolución que le pague algo al trabajador cuadra sin eso—, pero no
+  -- cancelarlo: que no reciba nada es una resolución a favor del cliente.
+  v_open_dispute := exists (
+    select 1 from public.disputes d
+     where d.assignment_id = v_assignment_id and d.status in ('OPEN', 'UNDER_REVIEW'));
+  if p_net_amount = 0 and v_open_dispute then
+    raise exception 'Hay una disputa abierta sobre este trabajo: para que el trabajador no reciba nada, resuélvela a favor del cliente. Mientras tanto, «Ajustar» solo baja el neto'
       using errcode = 'check_violation';
   end if;
 
@@ -1101,7 +1126,8 @@ begin
            when v_status = 'CANCELLED' then 'Cancelado por administración: ' || v_reason
            when v_status = 'HELD' then 'Neto ajustado de ' || app_private.format_clp(v_p.net_amount)
                 || ' a ' || app_private.format_clp(p_net_amount) || ': ' || v_reason
-                || '. Sigue retenido hasta que la administración lo apruebe'
+                || case when v_open_dispute then '. Sigue retenido hasta que se resuelva la disputa'
+                        else '. Sigue retenido hasta que la administración lo apruebe' end
            else held_reason end,
          notes = v_reason,
          updated_at = now()
@@ -1147,7 +1173,7 @@ end;
 $$;
 
 comment on function public.adjust_payout is
-  'Solo administración: baja el neto de un payout no transferido (PENDING, APPROVED, HELD), o lo cancela con 0, con motivo escrito. Auditoría, línea de tiempo y aviso al trabajador. Nunca lo sube.';
+  'Solo administración: baja el neto de un payout no transferido (PENDING, APPROVED, HELD), o lo cancela con 0 (no con una disputa abierta: eso es resolverla a favor del cliente), con motivo escrito. Auditoría, línea de tiempo y aviso al trabajador. Nunca lo sube.';
 
 
 -- -----------------------------------------------------------------------------

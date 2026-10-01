@@ -638,18 +638,55 @@ select pg_temp.expect_like('B39 con una devolución sin respuesta, aprobar se ni
   pg_temp.aprobar_payout(:'f4_assignment_id'),
   'RECHAZADO: Hay una devolución al cliente sin respuesta del banco%');
 
--- Con una disputa abierta, lo decide su resolución.
+-- Con una disputa abierta, que el trabajador no reciba nada lo decide su
+-- resolución: cancelar con $0 no.
 select * from pg_temp.montar('b-ajuste-disputa') \gset f5_
 select pg_temp.reclamar(:'f5_assignment_id') is not null as _ \gset
-select pg_temp.expect_like('B40 con una disputa abierta no se ajusta',
-  pg_temp.ajustar(:'f5_assignment_id', 1000, 'Durante la disputa no corresponde.'),
-  'RECHAZADO: Hay una disputa abierta sobre este trabajo%');
+select pg_temp.expect_like('B40 con una disputa abierta no se cancela con $0',
+  pg_temp.ajustar(:'f5_assignment_id', 0, 'Durante la disputa no corresponde.')
+    || ' / ' || pg_temp.payout(:'f5_assignment_id'),
+  'RECHAZADO: Hay una disputa abierta sobre este trabajo: para que el trabajador no reciba nada, resuélvela a favor del cliente% / HELD 18480');
 
 select pg_temp.expect('B41 ajustar: con sesión (comprueba administración dentro), nunca anon',
   (has_function_privilege('authenticated', 'public.adjust_payout(uuid, bigint, text)', 'execute')
    and not has_function_privilege('anon', 'public.adjust_payout(uuid, bigint, text)', 'execute')
    and not has_function_privilege('authenticated', 'app_private.dispute_refund_allocation(uuid)', 'execute'))::text,
   'true');
+
+-- Dentro de la ventana: una devolución de $3.000 descuadra (excede en $480) y
+-- después el cliente reclama. Ninguna resolución que le pague algo al
+-- trabajador cuadra —la parcial resta del neto lo mismo que anota como deuda—,
+-- así que sin bajar antes el neto la única salida era darle todo al cliente y
+-- dejar al trabajador sin sus $18.000.
+select * from pg_temp.montar('b-ajuste-en-ventana') \gset f6_
+select pg_temp.en_curso(:'f6_assignment_id') is null as _ \gset
+select pg_temp.aprobar_trabajo(:'f6_assignment_id', true) is not null as _ \gset
+select pg_temp.devolver(:'f6_payment_id', 3000) as f6_dev \gset
+select pg_temp.reclamar(:'f6_assignment_id') as f6_reclamo \gset
+select pg_temp.resolver(:'f6_assignment_id', 'WORKER_WINS', null) as f6_sin_ajuste \gset
+select pg_temp.ajustar(:'f6_assignment_id', 18000,
+  'Se le devolvieron $3.000 al cliente; el trabajador recibe lo que queda.') as f6_ajuste \gset
+select pg_temp.resolver(:'f6_assignment_id', 'WORKER_WINS', null) as f6_r \gset
+select pg_temp.transferir(:'f6_assignment_id') as f6_t \gset
+select pg_temp.expect_like('B43 con la disputa abierta se baja el neto, y entonces se resuelve a favor del trabajador y se transfiere',
+  :'f6_dev' || ' / ' || :'f6_reclamo' || ' / ' || :'f6_sin_ajuste' || ' / ' || :'f6_ajuste'
+    || ' / ' || :'f6_r' || ' / ' || :'f6_t' || ' / ' || pg_temp.payout(:'f6_assignment_id'),
+  'CONFIRMED / ABIERTA / RECHAZADO: Esta resolución no cuadra:%baja primero el neto del trabajador con «Ajustar»% / HELD 18000 / APPROVED · 0 / PAID / PAID 18000');
+
+-- Cancelado con el trabajo en curso: al aprobarlo, ni la respuesta ni el aviso
+-- dicen que el pago quedó aprobado.
+select * from pg_temp.montar('b-cancelado-en-curso') \gset f7_
+select pg_temp.en_curso(:'f7_assignment_id') is null as _ \gset
+select pg_temp.ajustar(:'f7_assignment_id', 0, 'El cliente pidió terminar antes: no corresponde pago.') as f7_ajuste \gset
+select pg_temp.aprobar_trabajo(:'f7_assignment_id', true) ->> 'payout_status' as f7_aprobado \gset
+select pg_temp.expect('B44 aprobado con el pago cancelado, la respuesta y el aviso lo dicen',
+  :'f7_ajuste' || ' / ' || :'f7_aprobado' || ' / '
+    || (select body from notifications
+         where user_id = (select worker_id from assignments where id = :'f7_assignment_id')
+           and notification_type = 'JOB_APPROVED'
+           and href = '/mis-trabajos/' || :'f7_assignment_id'
+         order by created_at desc limit 1),
+  'CANCELLED 0 / CANCELLED / Este trabajo no tiene pago: administración lo canceló y te avisó el motivo. Ya puedes dejar tu reseña.');
 
 \echo ''
 \echo '--- Invariantes'

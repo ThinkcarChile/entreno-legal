@@ -191,24 +191,25 @@ en `/admin/payouts`— lo hace:
 | Regla | Por qué |
 |---|---|
 | Solo administración, con un motivo de al menos 10 caracteres | Lo lee el trabajador en el aviso `PAYOUT_ADJUSTED`; queda en `audit_logs` (neto antes y después) y en la línea de tiempo, solo para administración |
-| Solo `PENDING`, `APPROVED` o `HELD`, sin una disputa abierta | Uno transferido ya pagó; uno con disputa lo decide su resolución |
+| Solo `PENDING`, `APPROVED` o `HELD`. Con una disputa abierta, solo bajar: no cancelar | Uno transferido ya pagó. Con una disputa abierta y las cifras ya descuadradas por una devolución previa, ninguna resolución que le pague algo al trabajador cuadra (la parcial resta del neto lo mismo que anota como deuda): bajar antes el neto es lo que deja resolverla sin darle todo al cliente. Que no reciba nada, en cambio, es resolverla a favor del cliente |
 | Solo baja el neto; con $0 lo cancela | Subirlo sería pagar más de lo que entró sin nada que lo mida. El mismo neto otra vez no hace nada |
-| El estado no cambia salvo al cancelar | Uno retenido sigue retenido y lo libera `approve_payout`, que vuelve a medir las cifras |
+| El estado no cambia salvo al cancelar | Uno retenido sigue retenido y lo libera `approve_payout` —o, con una disputa abierta, su resolución—, que vuelve a medir las cifras |
 | Bloquea trabajo → asignación → pagos → payout | El orden de la transferencia y de pedir una devolución: se esperan |
 
 Si tras el ajuste las cifras todavía no cuadran, la función lo dice y la
 aprobación y la transferencia se siguen negando. Los motivos de retención que
 deja una devolución lo indican («baja el neto … con «Ajustar» … o cancélalo con
-$0»). Pruebas: B27–B41 (`supabase/tests/19_payout_decisions.sql`).
+$0»), y el de `resolve_dispute` cuando no cuadra, también. Pruebas: B27–B41 y B43
+(`supabase/tests/19_payout_decisions.sql`).
 
 **El bono negado** (misma migración). Al aprobar el trabajo, el bono que el
 cliente no otorga sale del payout esté `PENDING`, `APPROVED` (aprobado por
 administración antes de tiempo) o `HELD` (retenido a mano o por un cobro en
 duda). Antes solo salía en `PENDING`, y uno retenido se liberaba y transfería
 con el bono. Solo `PENDING` cambia de estado; la aprobación devuelve el estado
-real del payout y el aviso al trabajador no dice «aprobado» de uno retenido. La
-transferencia se niega si `assignments.bonus_awarded` es falso y el payout
-todavía lleva bono. Pruebas: B20–B26.
+real del payout y el aviso al trabajador no dice «aprobado» de uno retenido ni
+de uno cancelado. La transferencia se niega si `assignments.bonus_awarded` es
+falso y el payout todavía lleva bono. Pruebas: B20–B26 y B44.
 
 **Y del lado de la devolución** (migración `20260601001400`). La transferencia
 medía el invariante; pedir una devolución no, así que con el payout ya `PAID`
@@ -319,7 +320,7 @@ es legible para ninguna sesión.
 | `supabase/tests/07_race_payment.sh` | R10 duplicado simultáneo, R11 aprobación contra cancelación, R12 invariantes. `RACE_REPS` repeticiones (5 por defecto), dos sesiones `psql` reales |
 | `scripts/verify-payments.ts` | Lo mismo contra `hagotufila-dev`, con `DelayedMockPaymentProvider` y `applyProviderResult` —las piezas que usa la aplicación— hablando con PostgREST. `RACE_REPS=10 npm run verify:payments` |
 | `supabase/tests/11_payment_health.sql` | L01–L44: la §4 bis. Devolución total, revisión, devolución sin respuesta y cifras que no cuadran frente a aprobar, resolver y transferir; el ambiente de cada cobro (el del trabajo y el del tiempo adicional) y la bandera `allow_non_production_payouts` |
-| `supabase/tests/19_payout_decisions.sql` | B01–B42: la deuda de una disputa repartida entre los cobros y la devolución ligada solo en su parte (§8 ter bis), el bono negado y el ajuste de un payout que no cuadra (§4 bis) |
+| `supabase/tests/19_payout_decisions.sql` | B01–B44: la deuda de una disputa repartida entre los cobros y la devolución ligada solo en su parte (§8 ter bis), el bono negado y el ajuste de un payout que no cuadra (§4 bis) |
 | `supabase/tests/13_payment_attempts.sql` | N01–N47: historial de intentos, guardas del reintento, cobro duplicado, retornos sin cobro de otro intento, revisión sin pasar por `PAID`, cola y vencimiento de intentos (también el vigente con commit pedido, y su autorización tardía), privilegios |
 | `src/lib/payments/return-handler.test.ts`, `reconcile.test.ts`, `return-target.test.ts` | Qué intento resuelve cada retorno, cuándo se llama al banco, con qué identidad se asienta, el barrido de intentos anteriores y a qué pantalla vuelve cada resultado según lo pagado |
 

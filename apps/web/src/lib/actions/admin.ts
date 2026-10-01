@@ -200,10 +200,11 @@ export async function holdPayoutAction(
  *
  * Es la salida de un payout retenido porque una devolución dejó las cifras sin
  * cuadrar, o porque el cliente recibió todo de vuelta fuera de una disputa. La
- * base (`adjust_payout`) comprueba el rol, que no esté transferido ni con una
- * disputa abierta y que el neto solo baje; deja el motivo en la auditoría y en
- * la línea de tiempo, y se lo avisa al trabajador. Si las cifras todavía no
- * cuadran tras el ajuste, lo devuelve en `overrun`.
+ * base (`adjust_payout`) comprueba el rol, que no esté transferido y que el
+ * neto solo baje —con una disputa abierta, sin cancelarlo: eso es resolverla a
+ * favor del cliente—; deja el motivo en la auditoría y en la línea de tiempo,
+ * y se lo avisa al trabajador. Si las cifras todavía no cuadran tras el ajuste,
+ * lo devuelve en `overrun`.
  */
 export async function adjustPayoutAction(
   payoutId: string,
