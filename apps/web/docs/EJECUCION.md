@@ -249,6 +249,14 @@ estado del trabajo y no crea un payout nuevo. Hizo falta darle su propia rama en
 `guard_payment_settlement`: sin ella, un cobro de extensión sobre un trabajo ya
 en curso caía en «confirmación tardía» y terminaba marcado para devolución.
 
+Solo mientras haya dónde sumar (`…20260601001700`): con el payout ya
+transferido o cancelado, o el trabajo cerrado, `start_extension_payment` ya no
+abre el cobro («El pago de este trabajo ya se cerró…»), y si uno que estaba en
+Webpay se confirma igual, el dinero queda en revisión
+(`payout_already_settled`) para devolverlo; el payout no se toca. Antes subía
+un payout ya transferido, con la misma referencia bancaria, por un dinero que
+el trabajador nunca recibía. Ver `PAGOS.md` §8 bis.
+
 Defecto real que se cerró aquí: `job_extensions` tenía `UPDATE` concedido sobre
 todas sus columnas y una política que dejaba pasar a cualquier participante. El
 trabajador podía aceptar su propia extensión, o cambiarle el importe a una ya
@@ -267,7 +275,7 @@ tiempo. Por eso el cliente lo ve y el trabajador lo escribe, nunca al revés.
 | Se usa en un solo estado | Pedirlo, generarlo y validarlo, solo con la asignación en `IN_PROGRESS` y sin disputa abierta. La interfaz muestra el panel exactamente ahí |
 | Se lee por función | `get_handoff_code`, solo el cliente. `handoff_codes` dejó de tener política de lectura: el PIN no sale por una consulta a la tabla |
 | Caduca | 12 horas |
-| Intentos | 5. **Solo los fallos consumen intento**, y solo cuando acertar habría cerrado la entrega: antes de comenzar, con la entrega ya registrada, con una disputa abierta o con el pago del trabajo fuera de `PAID` (por ejemplo, en revisión), la validación se rechaza con su motivo y no gasta nada |
+| Intentos | 5. **Solo los fallos consumen intento**, y solo cuando acertar habría cerrado la entrega: antes de comenzar, con la entrega ya registrada, con una disputa abierta o con el pago del trabajo fuera de `PAID` o `PARTIALLY_REFUNDED` (por ejemplo, en revisión o devuelto entero), la validación se rechaza con su motivo y no gasta nada. Una devolución parcial no frena la entrega (`…20260601001710`) |
 | Un solo uso | Un código validado no vuelve a servir |
 | Regenerable | Un código vencido se puede volver a generar. Antes era imposible: `on conflict do update set code = code` conservaba el código y no tocaba la expiración, así que la entrega quedaba bloqueada para siempre |
 | No viaja | No aparece en el chat, ni en las notificaciones, ni en la bitácora de auditoría |

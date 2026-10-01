@@ -265,11 +265,18 @@ describe("retornos sin cobro: solo el intento que los trae", () => {
     expect(db.callsTo("record_provider_snapshot")).toHaveLength(1);
   });
 
-  it("tiempo agotado con la orden de compra de un intento anterior cierra solo ese", async () => {
+  it("tiempo agotado con la orden de compra de un intento anterior cierra solo ese, tras preguntar con su token", async () => {
+    // El token guardado de ese intento: el proveedor simulado lo conoce y no
+    // está pagado, así que la consulta contesta un estado final sin autorizar.
+    const t1 = await createToken(ORDER_1);
+    const inspect = vi.spyOn(provider, "inspect");
     const db = new FakeAdmin(
       {
         payments: [paymentRow({ provider_token: "token-vigente" })],
-        payment_attempts: [attemptRow(1), attemptRow(2, { provider_token: "token-vigente" })],
+        payment_attempts: [
+          attemptRow(1, { provider_token: t1 }),
+          attemptRow(2, { provider_token: "token-vigente" }),
+        ],
       },
       {
         record_payment_abandonment: () => ({ data: { outcome: "attempt_only" } }),
@@ -282,10 +289,72 @@ describe("retornos sin cobro: solo el intento que los trae", () => {
       null,
     );
 
+    expect(inspect).toHaveBeenCalledWith(t1);
     const [call] = db.callsTo("record_payment_abandonment");
     expect(call.p_buy_order).toBe(ORDER_1);
-    expect(call.p_token).toBeNull();
+    expect(call.p_token).toBe(t1);
     expect(call.p_failure_reason).toBe("form_timeout");
+    // La foto de otra transacción no se escribe sobre el pago.
+    expect(db.callsTo("record_provider_snapshot")).toHaveLength(0);
+  });
+
+  it("un retorno sin token de un intento sin token guardado no cambia nada", async () => {
+    // Antes se registraba el abandono con lo que traía la URL, y nada más.
+    const inspect = vi.spyOn(provider, "inspect");
+    const db = new FakeAdmin({
+      payments: [paymentRow({ provider_token: "token-vigente" })],
+      payment_attempts: [attemptRow(1), attemptRow(2, { provider_token: "token-vigente" })],
+    });
+
+    const outcome = await handleReturn(
+      db.client(),
+      { kind: "TIMEOUT", sessionId: SESSION_ID, buyOrder: ORDER_1 },
+      null,
+    );
+
+    expect(outcome.kind).toBe("ABANDONED");
+    expect(inspect).not.toHaveBeenCalled();
+    expect(db.rpcCalls).toHaveLength(0);
+    expect(db.updates).toHaveLength(0);
+  });
+
+  it("un TBK_TOKEN que no es nuestro tampoco cierra nada por sí solo", async () => {
+    // Abortado con un token inventado y la orden de compra del intento
+    // vigente: se pregunta por el token GUARDADO, y el formulario sigue
+    // abierto (INITIALIZED).
+    class StillOpenProvider extends MockPaymentProvider {
+      async inspect(token: string): Promise<ProviderSnapshot> {
+        return snapshotOf(token, {
+          providerStatus: "INITIALIZED",
+          terminal: false,
+          authorized: false,
+          responseCode: null,
+          authorizationCode: null,
+        });
+      }
+    }
+    provider = new StillOpenProvider();
+    setPaymentProvider(provider);
+    const inspect = vi.spyOn(provider, "inspect");
+
+    const db = new FakeAdmin(
+      {
+        payments: [paymentRow({ buy_order: ORDER_1, attempt: 1, provider_token: "tok-guardado" })],
+        payment_attempts: [attemptRow(1, { provider_token: "tok-guardado" })],
+      },
+      { record_provider_snapshot: () => ({ data: null }) },
+    );
+
+    const outcome = await handleReturn(
+      db.client(),
+      { kind: "ABORTED", token: "tok-inventado", sessionId: SESSION_ID, buyOrder: ORDER_1 },
+      null,
+    );
+
+    expect(outcome.kind).toBe("PENDING");
+    expect(inspect).toHaveBeenCalledWith("tok-guardado");
+    expect(inspect).not.toHaveBeenCalledWith("tok-inventado");
+    expect(db.callsTo("record_payment_abandonment")).toHaveLength(0);
   });
 
   it("con solo la sesión y varios intentos no se adivina: el pago no se toca", async () => {
@@ -304,21 +373,109 @@ describe("retornos sin cobro: solo el intento que los trae", () => {
     expect(db.rpcCalls).toHaveLength(0);
   });
 
-  it("con solo la sesión y un único intento, es ese", async () => {
-    const db = new FakeAdmin(
+});
+
+/**
+ * Solo la sesión, sin token: `/pagos/retorno?TBK_ID_SESION=S-<uuid>`. Lo puede
+ * escribir cualquiera que conozca el UUID del pago —la otra parte del trabajo,
+ * por ejemplo—, sin sesión ni cookie, incluso desde una etiqueta <img>. Antes
+ * bastaba para dejar FAILED el pago que el cliente estaba pagando en Webpay;
+ * su autorización caía después en revisión («approved_after_failed»). Ahora se
+ * pregunta a Transbank con el token guardado del intento, y decide eso.
+ */
+describe("retorno con solo la sesión: decide Transbank, no la URL", () => {
+  class FixedSnapshotProvider extends MockPaymentProvider {
+    constructor(private readonly snapshot: Partial<ProviderSnapshot>) {
+      super();
+    }
+    async inspect(token: string): Promise<ProviderSnapshot> {
+      return snapshotOf(token, this.snapshot);
+    }
+  }
+
+  function withProvider(snapshot: Partial<ProviderSnapshot>) {
+    provider = new FixedSnapshotProvider(snapshot);
+    setPaymentProvider(provider);
+    return vi.spyOn(provider, "inspect");
+  }
+
+  function singleAttempt(handlers: ConstructorParameters<typeof FakeAdmin>[1] = {}) {
+    return new FakeAdmin(
       {
-        payments: [paymentRow({ buy_order: ORDER_1, attempt: 1 })],
-        payment_attempts: [attemptRow(1)],
+        payments: [paymentRow({ buy_order: ORDER_1, attempt: 1, provider_token: "tok-guardado" })],
+        payment_attempts: [attemptRow(1, { provider_token: "tok-guardado" })],
       },
-      {
-        record_payment_abandonment: () => ({ data: { outcome: "applied", payment_status: "FAILED" } }),
-      },
+      { record_provider_snapshot: () => ({ data: null }), ...handlers },
     );
+  }
 
-    await handleReturn(db.client(), { kind: "TIMEOUT", sessionId: SESSION_ID, buyOrder: null }, null);
+  const timeout = { kind: "TIMEOUT", sessionId: SESSION_ID, buyOrder: null } as const;
 
+  it("con el formulario todavía abierto (INITIALIZED) no se toca nada", async () => {
+    const inspect = withProvider({
+      providerStatus: "INITIALIZED",
+      terminal: false,
+      authorized: false,
+      responseCode: null,
+      authorizationCode: null,
+    });
+    const db = singleAttempt();
+
+    const outcome = await handleReturn(db.client(), timeout, null);
+
+    expect(inspect).toHaveBeenCalledWith("tok-guardado");
+    expect(outcome.kind).toBe("PENDING");
+    expect(db.callsTo("record_payment_abandonment")).toHaveLength(0);
+    expect(db.callsTo("confirm_payment_result")).toHaveLength(0);
+  });
+
+  it("cerrada sin autorizar, se registra el abandono con el token guardado", async () => {
+    withProvider({
+      providerStatus: "FAILED",
+      terminal: true,
+      authorized: false,
+      responseCode: -1,
+      authorizationCode: null,
+    });
+    const db = singleAttempt({
+      record_payment_abandonment: () => ({ data: { outcome: "applied", payment_status: "FAILED" } }),
+    });
+
+    const outcome = await handleReturn(db.client(), timeout, null);
+
+    expect(outcome.kind).toBe("ABANDONED");
     const [call] = db.callsTo("record_payment_abandonment");
+    expect(call.p_token).toBe("tok-guardado");
     expect(call.p_buy_order).toBe(ORDER_1);
+    expect(call.p_failure_reason).toBe("form_timeout");
+  });
+
+  it("autorizada, se asienta como PAID por la vía del commit", async () => {
+    withProvider({ buyOrder: ORDER_1 });
+    const db = singleAttempt({ confirm_payment_result: settled("PAID", "PAID") });
+
+    const outcome = await handleReturn(db.client(), timeout, null);
+
+    expect(outcome.kind).toBe("SETTLED");
+    expect(db.callsTo("record_payment_abandonment")).toHaveLength(0);
+    const [call] = db.callsTo("confirm_payment_result");
+    expect(call.p_result).toBe("PAID");
+    expect(call.p_token).toBe("tok-guardado");
+    expect(call.p_provider_event_id).toBe("commit:tok-guardado");
+  });
+
+  it("sin token guardado (la transacción no llegó a crearse), no se toca nada", async () => {
+    const inspect = vi.spyOn(provider, "inspect");
+    const db = new FakeAdmin({
+      payments: [paymentRow({ buy_order: ORDER_1, attempt: 1 })],
+      payment_attempts: [attemptRow(1)],
+    });
+
+    const outcome = await handleReturn(db.client(), timeout, null);
+
+    expect(outcome.kind).toBe("ABANDONED");
+    expect(inspect).not.toHaveBeenCalled();
+    expect(db.rpcCalls).toHaveLength(0);
   });
 });
 

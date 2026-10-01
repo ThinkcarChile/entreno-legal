@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 
-import { RefreshCw, Undo2 } from "lucide-react";
+import { CirclePause, CirclePlay, RefreshCw, Undo2 } from "lucide-react";
 
 import { OpenRefund } from "@/components/admin/open-refund";
 import { Alert } from "@/components/ui/feedback";
@@ -10,12 +10,22 @@ import { Button, Field, Input, Overlay, Textarea } from "@/components/ui";
 import {
   flagPaymentForReviewAction,
   reconcilePaymentsAction,
+  releasePaymentReviewAction,
   requestRefundAction,
 } from "@/lib/actions/finance";
 import type { AdminOpenRefund } from "@/lib/data/repositories";
 import { formatMoney } from "@/lib/utils/money";
 
 type Tone = "success" | "info" | "warning" | "danger";
+
+const PAYOUT_LABELS: Record<string, string> = {
+  PENDING: "pendiente de la aprobación del trabajo",
+  APPROVED: "aprobado",
+  HELD: "retenido",
+  PROCESSING: "en proceso",
+  PAID: "transferido",
+  CANCELLED: "cancelado",
+};
 
 /**
  * Identificador de una petición de devolución (un UUID v4).
@@ -32,13 +42,22 @@ export function newRequestId(): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+/** La marca con que la base distingue una revisión puesta a mano. */
+const MANUAL_REVIEW = "manual_review";
+
 /**
  * Acciones sobre un pago, desde administración.
  *
- * Tres cosas y ninguna más: consultar el estado real en el proveedor, marcar
- * el pago para revisión, y devolver. La devolución pide confirmación explícita
- * con el importe escrito a mano, porque es la única de las tres que mueve
- * dinero y no se deshace.
+ * Cuatro cosas y ninguna más: consultar el estado real en el proveedor, poner
+ * el pago en revisión (y quitarla, si se puso a mano), y devolver. La
+ * devolución pide confirmación explícita con el importe escrito a mano, porque
+ * es la única que mueve dinero y no se deshace.
+ *
+ * Poner en revisión solo aparece sobre un pago cobrado (PAID): congela el
+ * trabajo para las dos partes y retiene el pago al trabajador, así que pide
+ * confirmación y un motivo, que queda en la auditoría. Quitarla solo aparece
+ * sobre una revisión puesta a mano; una automática —un importe que no cuadra,
+ * un cobro tardío— se resuelve consultando al proveedor o devolviendo.
  *
  * Cada vez que se abre el formulario de devolución nace un identificador de
  * petición, y cambia en cuanto llega una respuesta. Un doble clic o un reenvío
@@ -49,6 +68,8 @@ export function newRequestId(): string {
  */
 export function PaymentActions({
   paymentId,
+  status,
+  reviewReason,
   amount,
   refunded,
   refundable,
@@ -57,6 +78,9 @@ export function PaymentActions({
   openRefund,
 }: {
   paymentId: string;
+  /** Estado del pago: decide si se ofrece ponerlo en revisión o quitarla. */
+  status: string;
+  reviewReason: string | null;
   amount: number;
   refunded: number;
   refundable: number;
@@ -73,6 +97,12 @@ export function PaymentActions({
   const [reason, setReason] = useState("");
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
+  const [reviewDialog, setReviewDialog] = useState<"flag" | "release" | null>(null);
+  const [reviewText, setReviewText] = useState("");
+  const [reviewError, setReviewError] = useState<string | null>(null);
+
+  const canFlag = status === "PAID";
+  const canRelease = status === "UNDER_REVIEW" && reviewReason === MANUAL_REVIEW;
 
   function reconcile() {
     setMessage(null);
@@ -102,17 +132,54 @@ export function PaymentActions({
     setRefundOpen(true);
   }
 
-  function flag() {
+  function openReviewDialog(kind: "flag" | "release") {
     setMessage(null);
+    setReviewError(null);
+    setReviewText("");
+    setReviewDialog(kind);
+  }
+
+  function submitReview() {
+    const kind = reviewDialog;
+    if (!kind) return;
+    setReviewError(null);
     startTransition(async () => {
-      const result = await flagPaymentForReviewAction(
-        paymentId,
-        "Marcado manualmente desde administración",
-      );
+      const result =
+        kind === "flag"
+          ? await flagPaymentForReviewAction(paymentId, reviewText)
+          : await releasePaymentReviewAction(paymentId, reviewText);
+      if (!result.ok) {
+        setReviewError(result.error);
+        return;
+      }
+      setReviewDialog(null);
+      setReviewText("");
+      if (!result.data.changed) {
+        setMessage({
+          tone: "info",
+          text:
+            kind === "flag"
+              ? "El pago ya estaba en revisión: no cambió nada."
+              : "El pago ya estaba confirmado: no cambió nada.",
+        });
+        return;
+      }
       setMessage(
-        result.ok
-          ? { tone: "success", text: "El pago quedó en revisión." }
-          : { tone: "danger", text: result.error },
+        kind === "flag"
+          ? {
+              tone: "success",
+              text:
+                "El pago quedó en revisión. El trabajo queda en pausa para las dos partes" +
+                (result.data.payoutStatus === "HELD" ? " y el pago al trabajador, retenido." : "."),
+            }
+          : {
+              tone: "success",
+              text:
+                "Se quitó la revisión: el pago vuelve a estar confirmado" +
+                (result.data.payoutStatus
+                  ? ` y el pago al trabajador queda ${PAYOUT_LABELS[result.data.payoutStatus] ?? result.data.payoutStatus}.`
+                  : "."),
+            },
       );
     });
   }
@@ -196,9 +263,28 @@ export function PaymentActions({
           <RefreshCw size={15} aria-hidden="true" />
           Consultar al proveedor
         </Button>
-        <Button variant="ghost" size="sm" onClick={flag} disabled={pending}>
-          Poner en revisión
-        </Button>
+        {canFlag && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => openReviewDialog("flag")}
+            disabled={pending}
+          >
+            <CirclePause size={15} aria-hidden="true" />
+            Poner en revisión
+          </Button>
+        )}
+        {canRelease && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => openReviewDialog("release")}
+            disabled={pending}
+          >
+            <CirclePlay size={15} aria-hidden="true" />
+            Quitar de revisión
+          </Button>
+        )}
         {canRefund && !openRefund && (
           <Button variant="danger" size="sm" onClick={openRefundDialog} disabled={pending}>
             <Undo2 size={15} aria-hidden="true" />
@@ -206,6 +292,51 @@ export function PaymentActions({
           </Button>
         )}
       </div>
+
+      <Overlay
+        open={reviewDialog !== null}
+        onClose={() => setReviewDialog(null)}
+        title={reviewDialog === "release" ? "Quitar el pago de revisión" : "Poner el pago en revisión"}
+        description={
+          reviewDialog === "release"
+            ? "El pago vuelve a estar confirmado y el trabajo sigue. El pago al trabajador sale de la retención que puso esta revisión."
+            : "El trabajo queda en pausa para las dos partes y el pago al trabajador, retenido, hasta que alguien quite la revisión o devuelva el dinero."
+        }
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setReviewDialog(null)} disabled={pending}>
+              Cancelar
+            </Button>
+            <Button
+              variant={reviewDialog === "release" ? "primary" : "danger"}
+              onClick={submitReview}
+              loading={pending}
+              disabled={reviewText.trim().length < 10}
+            >
+              {reviewDialog === "release" ? "Quitar de revisión" : "Poner en revisión"}
+            </Button>
+          </div>
+        }
+      >
+        {reviewError && (
+          <Alert tone="danger" className="mb-4">
+            {reviewError}
+          </Alert>
+        )}
+        <Field
+          label={reviewDialog === "release" ? "Por qué se quita" : "Motivo"}
+          htmlFor="review-text"
+          hint="Queda en la auditoría junto a tu nombre; el cliente no lo ve. Al menos 10 caracteres."
+          required
+        >
+          <Textarea
+            id="review-text"
+            value={reviewText}
+            rows={3}
+            onChange={(event) => setReviewText(event.target.value)}
+          />
+        </Field>
+      </Overlay>
 
       <Overlay
         open={refundOpen}

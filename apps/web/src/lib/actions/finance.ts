@@ -325,29 +325,104 @@ export async function resolveUnknownAttemptRefundAction(input: {
   }
 }
 
-/** Marca un pago para revisión manual, con motivo. */
+/** Lo que contesta la base al poner o quitar una revisión manual. */
+interface ManualReviewResult {
+  /** `false` si el pago ya estaba como se pedía: no cambió nada. */
+  changed: boolean;
+  paymentStatus: string;
+  payoutStatus: string | null;
+}
+
+function manualReviewResult(data: unknown): ManualReviewResult {
+  const row = (data ?? {}) as Record<string, unknown>;
+  return {
+    changed: row.outcome === "applied",
+    paymentStatus: String(row.payment_status ?? ""),
+    payoutStatus: row.payout_status == null ? null : String(row.payout_status),
+  };
+}
+
+/**
+ * Pone un pago cobrado en revisión manual, con motivo.
+ *
+ * Antes era un UPDATE directo con la clave de servicio: bloqueaba el pago
+ * antes que el trabajo (el orden inverso al de todas las funciones de dinero),
+ * podía dejar en revisión un pago sin dinero detrás y no tenía vuelta atrás.
+ * Ahora lo decide `flag_payment_for_review`, con la sesión de quien administra:
+ * solo un pago PAID, nunca con la cancelación en curso, bajo los cerrojos de
+ * siempre, y deja el payout retenido. El motivo va a la auditoría, no al pago
+ * (el cliente lee su pago). Si el pago ya estaba en revisión, lo dice.
+ */
 export async function flagPaymentForReviewAction(
   paymentId: string,
   reason: string,
-): Promise<ActionResult<void>> {
+): Promise<ActionResult<ManualReviewResult>> {
   try {
-    await requireAdmin();
-    if (reason.trim().length < 5) {
-      return { ok: false, error: "Escribe el motivo de la revisión.", field: "reason" };
+    const { supabase } = await requireAdmin();
+    if (reason.trim().length < 10) {
+      return {
+        ok: false,
+        error: "Escribe el motivo de la revisión (al menos 10 caracteres).",
+        field: "reason",
+      };
     }
 
-    const admin = createAdminClient();
-    const { error } = await admin
-      .from("payments")
-      .update({ status: "UNDER_REVIEW", review_reason: reason.trim() })
-      .eq("id", paymentId)
-      .in("status", ["PENDING", "CREATED", "AUTHORIZED", "PAID"]);
-    if (error) return actionError(error, "No pudimos marcar el pago para revisión.");
+    const { data, error } = await supabase.rpc("flag_payment_for_review", {
+      p_payment_id: paymentId,
+      p_reason: reason.trim(),
+    });
+    if (error) return actionError(error, "No pudimos poner el pago en revisión.");
 
-    paymentLog({ operation: "admin", result: "flagged", paymentId, reason: reason.trim() });
+    const result = manualReviewResult(data);
+    paymentLog({
+      operation: "admin",
+      result: result.changed ? "review_flagged" : "review_flag_unchanged",
+      paymentId,
+    });
     revalidatePath("/admin/pagos");
-    return actionOk();
+    revalidatePath("/admin");
+    return actionOk(result);
   } catch (error) {
-    return actionError(error, "No pudimos marcar el pago para revisión.");
+    return actionError(error, "No pudimos poner el pago en revisión.");
+  }
+}
+
+/**
+ * Quita una revisión puesta a mano: el pago vuelve a confirmado y el payout
+ * que esa revisión retuvo vuelve a donde estaba. Solo la marca manual; una
+ * revisión automática (un importe que no cuadra, un cobro tardío) se resuelve
+ * consultando al proveedor o devolviendo. La nota va a la auditoría.
+ */
+export async function releasePaymentReviewAction(
+  paymentId: string,
+  note: string,
+): Promise<ActionResult<ManualReviewResult>> {
+  try {
+    const { supabase } = await requireAdmin();
+    if (note.trim().length < 10) {
+      return {
+        ok: false,
+        error: "Escribe por qué se quita la revisión (al menos 10 caracteres).",
+        field: "note",
+      };
+    }
+
+    const { data, error } = await supabase.rpc("release_payment_review", {
+      p_payment_id: paymentId,
+      p_note: note.trim(),
+    });
+    if (error) return actionError(error, "No pudimos quitar la revisión del pago.");
+
+    const result = manualReviewResult(data);
+    paymentLog({
+      operation: "admin",
+      result: result.changed ? "review_released" : "review_release_unchanged",
+      paymentId,
+    });
+    revalidatePath("/admin/pagos");
+    revalidatePath("/admin");
+    return actionOk(result);
+  } catch (error) {
+    return actionError(error, "No pudimos quitar la revisión del pago.");
   }
 }

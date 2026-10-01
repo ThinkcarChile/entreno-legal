@@ -278,8 +278,19 @@ test.describe("pago protegido", () => {
       .eq("id", paymentId)
       .maybeSingle<{ status: string; failure_reason: string | null }>();
 
-    expect(after!.status).toBe("FAILED");
-    expect(after!.failure_reason).toBe("form_timeout");
+    // Un retorno sin token solo trae lo que cualquiera puede escribir en una
+    // URL (la sesión lleva dentro el UUID del pago). No cierra nada por sí
+    // mismo: se pregunta a Transbank con el token guardado del intento, y solo
+    // si contesta un estado final sin autorizar queda FAILED (form_timeout).
+    // El proveedor simulado contesta así; Webpay de integración, con un
+    // formulario que nadie abrió, contesta INITIALIZED y el pago sigue en
+    // curso (TRANSBANK.md §4). Antes se marcaba FAILED con la URL sola, y la
+    // otra parte del trabajo podía tumbar así el pago que el cliente estaba
+    // pagando.
+    expect(["FAILED", "CREATED"]).toContain(after!.status);
+    if (after!.status === "FAILED") {
+      expect(after!.failure_reason).toBe("form_timeout");
+    }
     // Ni rastro de un cobro.
     const { count } = await admin
       .from("payouts")
@@ -294,9 +305,9 @@ test.describe("pago protegido", () => {
     const admin = adminClient();
     const { data: previous } = await admin
       .from("payments")
-      .select("buy_order")
+      .select("buy_order,status")
       .eq("id", paymentId)
-      .maybeSingle<{ buy_order: string }>();
+      .maybeSingle<{ buy_order: string; status: string }>();
 
     const failedPaymentId = paymentId;
     paymentId = await startCheckout(page, assignmentId);
@@ -328,13 +339,26 @@ test.describe("pago protegido", () => {
       .in("status", ["PENDING", "CREATED", "AUTHORIZED", "PAID", "UNDER_REVIEW"]);
     expect(vivos ?? 0).toBe(1);
 
-    // El anterior sigue ahí, fallido: la historia no se reescribe.
-    const { data: old } = await admin
-      .from("payments")
-      .select("status")
-      .eq("id", failedPaymentId)
-      .maybeSingle<{ status: string }>();
-    expect(old!.status).toBe("FAILED");
+    if (previous!.status === "FAILED") {
+      // El anterior sigue ahí, fallido: la historia no se reescribe.
+      const { data: old } = await admin
+        .from("payments")
+        .select("status")
+        .eq("id", failedPaymentId)
+        .maybeSingle<{ status: string }>();
+      expect(old!.status).toBe("FAILED");
+    } else {
+      // El retorno de la prueba 4 no cerró nada (Transbank no dio la
+      // transacción por terminada): el reintento es un intento nuevo del MISMO
+      // pago, y el anterior queda en el historial para la conciliación.
+      expect(current!.id).toBe(failedPaymentId);
+      const { count: anterior } = await admin
+        .from("payment_attempts")
+        .select("id", { count: "exact", head: true })
+        .eq("payment_id", failedPaymentId)
+        .eq("buy_order", previous!.buy_order);
+      expect(anterior ?? 0).toBe(1);
+    }
 
     expect(current!.id).toBe(paymentId);
   });

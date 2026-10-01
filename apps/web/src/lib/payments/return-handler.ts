@@ -214,6 +214,12 @@ export async function findReturnTarget(
  * quien pagó. Confirmar siempre es correcto: si no hacía falta, un segundo
  * `commit` contesta 4xx y se lee el estado.
  *
+ * Un retorno SIN token (tiempo agotado, o un `TBK_TOKEN` que no es nuestro) no
+ * prueba nada: la sesión y la orden de compra las puede escribir cualquiera
+ * que conozca el pago. Por eso nunca cierra un pago por sí solo: se consulta a
+ * Transbank con el token guardado del intento, y solo un estado final sin
+ * autorizar registra el abandono (ver `resolveWithoutCommit`).
+ *
  * Con un `viewerId` que NO es el dueño se responde FORBIDDEN sin tocar nada:
  * la ruta llama sin identidad para resolver y decide la redirección por su
  * cuenta, sin revelar a un tercero el estado de un pago ajeno.
@@ -300,8 +306,49 @@ async function resolveWithoutCommit(
     const snapshot = await provider.inspect(target.token);
     return resolveFromSnapshot(admin, provider.id, target, snapshot, reason, { flow: flow.kind });
   }
+  if (target.token) {
+    // Un token del retorno que es de este pago: solo lo tiene quien pasó por
+    // el formulario de Webpay. Sin consulta de estado, vale como prueba.
+    return recordAbandonment(admin, provider.id, target, reason, { flow: flow.kind });
+  }
 
-  return recordAbandonment(admin, provider.id, target, reason, { flow: flow.kind });
+  // Sin token —tiempo agotado, o un TBK_TOKEN que no es nuestro— el retorno
+  // solo trae lo que cualquiera puede escribir en una URL: una sesión y una
+  // orden de compra. La sesión lleva dentro el UUID del pago, y ese UUID no es
+  // secreto para la otra parte del trabajo. Con eso solo NO se cierra nada:
+  // se pregunta a Transbank por el token que guardamos del intento
+  // identificado, y solo un estado final y sin autorizar registra el
+  // abandono. Un formulario todavía abierto contesta INITIALIZED y no se toca.
+  const stored = storedTokenOf(target);
+  if (!stored || !isReconcilable(provider)) {
+    paymentLog({
+      operation: "return",
+      result: `${reason}:sin_token_que_consultar`,
+      paymentId: target.payment.id,
+      flow: flow.kind,
+    });
+    return { kind: "ABANDONED", payment: target.payment, reason };
+  }
+
+  const snapshot = await provider.inspect(stored);
+  return resolveFromSnapshot(
+    admin,
+    provider.id,
+    { ...target, token: stored },
+    snapshot,
+    reason,
+    { flow: flow.kind },
+  );
+}
+
+/**
+ * El token que guardamos del intento del retorno: el de su fila en el
+ * historial o, para el intento vigente de un pago sin historial, el del pago.
+ * Nunca uno que venga en la URL.
+ */
+function storedTokenOf({ payment, attempt, current }: ReturnTarget): string | null {
+  if (attempt) return attempt.provider_token ?? (current ? payment.provider_token : null);
+  return current ? payment.provider_token : null;
 }
 
 /**
