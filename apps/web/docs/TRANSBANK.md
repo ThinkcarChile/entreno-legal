@@ -357,7 +357,8 @@ no salió es lo que permitía devolver dos veces.
 La base sostiene la regla con un índice único: una sola devolución abierta
 (`REQUESTED` o `UNKNOWN`) por pago. Y un disparador fija los pasos para todos,
 también para la clave de servicio: `REQUESTED → UNKNOWN | CONFIRMED | FAILED |
-CANCELLED`, `UNKNOWN → CONFIRMED | FAILED`, el resto es final.
+CANCELLED` (`CANCELLED` solo si no se envió), `UNKNOWN → CONFIRMED | FAILED`, el
+resto es final.
 
 La resuelve la misma ruta programada, después de los pagos
 (`src/lib/payments/refund-reconcile.ts`), y el botón «Consultar al proveedor»
@@ -365,7 +366,10 @@ para un pago concreto:
 
 1. Una `REQUESTED` enviada y sin respuesta pasados 15 minutos (el SDK espera
    hasta 10) pasa a `UNKNOWN` con motivo `stale_request`. Una que ni siquiera
-   llegó a enviarse se cierra `FAILED` (`not_dispatched`).
+   llegó a enviarse se reserva con `claim_payment_refund` —por si la misma
+   petición, repetida desde el formulario, la está enviando en ese instante— y
+   se cierra `FAILED` (`not_dispatched`). Las dos cosas se hacen aunque el
+   proveedor no se pueda construir; solo la consulta de estado lo necesita.
 2. Una `UNKNOWN` se contrasta con `status(token)`, que describe la
    transacción: estado, importe y, si se anuló en parte, saldo (`balance`). Solo
    se cierra si eso la explica sin ambigüedad con lo ya registrado:

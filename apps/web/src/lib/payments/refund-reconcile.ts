@@ -203,13 +203,31 @@ export async function reconcileRefunds(
   const rows = (data ?? []) as PendingRefundRow[];
   if (rows.length === 0) return { examined: 0, resolved: 0, undecided: 0, results: [] };
 
-  const provider = getPaymentProviderForExistingPayments();
+  // El proveedor se construye cuando una fila lo necesita, y si no se puede
+  // construir (p. ej. Webpay productivo con un bloqueo de configuración), las
+  // demás filas siguen: una pedida que nunca salió se cierra, y una colgada
+  // pasa a «por confirmar», sin preguntar al banco. Antes, un proveedor que no
+  // se construía dejaba toda la cola sin tocar, y una REQUESTED no la puede
+  // cerrar una persona: el pago quedaba sin poder devolver.
+  let provider: PaymentProvider | null | undefined;
+  let providerFailure = "";
+  const getProvider = (): PaymentProvider | null => {
+    if (provider === undefined) {
+      try {
+        provider = getPaymentProviderForExistingPayments();
+      } catch (failure) {
+        provider = null;
+        providerFailure = errorCategory(failure);
+      }
+    }
+    return provider;
+  };
   const results: RefundReconcileResult[] = [];
 
   for (const row of rows) {
     let result: RefundReconcileResult;
     try {
-      result = await reconcileOne(admin, provider, row);
+      result = await reconcileOne(admin, getProvider, () => providerFailure, row);
     } catch (failure) {
       result = {
         refundId: row.refund_id,
@@ -239,7 +257,8 @@ export async function reconcileRefunds(
 
 async function reconcileOne(
   admin: SupabaseClient,
-  provider: PaymentProvider,
+  getProvider: () => PaymentProvider | null,
+  providerFailure: () => string,
   row: PendingRefundRow,
 ): Promise<RefundReconcileResult> {
   const base = { refundId: row.refund_id, paymentId: row.payment_id };
@@ -252,6 +271,16 @@ async function reconcileOne(
       if (now - new Date(row.requested_at).getTime() < STALE_REQUEST_MINUTES * MINUTE) {
         return { ...base, outcome: "in_flight" };
       }
+      // La cola se leyó hace un instante: entre tanto, la misma petición
+      // repetida desde el formulario pudo reservarla y estar llamando al banco.
+      // Se reserva igual que lo haría ella; si la reserva es de otro, no se
+      // toca. Cerrarla FAILED en ese cruce dejaba libre un saldo que el banco
+      // sí devolvió.
+      const { data: claimed, error: claimError } = await admin.rpc("claim_payment_refund", {
+        p_refund_id: row.refund_id,
+      });
+      if (claimError) throw new Error(claimError.message);
+      if (claimed !== true) return { ...base, outcome: "in_flight", reason: "claimed_elsewhere" };
       await settle(admin, row.refund_id, false, null, null, { failure_reason: "not_dispatched" });
       return { ...base, outcome: "failed", reason: "not_dispatched" };
     }
@@ -261,6 +290,13 @@ async function reconcileOne(
       return { ...base, outcome: "in_flight" };
     }
     await note(admin, row.refund_id, "stale_request");
+  }
+
+  const provider = getProvider();
+  if (!provider) {
+    const reason = `provider_unavailable:${providerFailure()}`;
+    await note(admin, row.refund_id, reason);
+    return { ...base, outcome: "unreachable", reason };
   }
 
   if (!isReconcilable(provider)) {

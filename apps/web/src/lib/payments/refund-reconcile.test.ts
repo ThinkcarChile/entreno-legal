@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { setPaymentProvider } from "./index";
 import { MockPaymentProvider } from "./mock-provider";
@@ -174,6 +174,8 @@ function fakeService(
   calls: Call[],
   rows: Record<string, unknown>[],
   failOn: { fn: string; refundId: string } | null = null,
+  /** Lo que contesta `claim_payment_refund`: `false` si otra llamada ya la reservó. */
+  claimed = true,
 ): SupabaseClient {
   const chain = {
     select: () => chain,
@@ -190,6 +192,7 @@ function fakeService(
       if (fn === "settle_payment_refund" || fn === "mark_payment_refund_unknown") {
         return { data: { outcome: "applied" }, error: null };
       }
+      if (fn === "claim_payment_refund") return { data: claimed, error: null };
       return { data: null, error: { message: `inesperado: ${fn}` } };
     },
     from: () => chain,
@@ -287,10 +290,83 @@ describe("reconcileRefunds", () => {
     );
 
     expect(inspected).toHaveLength(0);
-    expect(calls[1]).toMatchObject({
+    // Se reserva antes de cerrarla, como haría quien la envía.
+    expect(calls[1]).toMatchObject({ fn: "claim_payment_refund", args: { p_refund_id: "dev-1" } });
+    expect(calls[2]).toMatchObject({
       fn: "settle_payment_refund",
       args: { p_confirmed: false, p_details: { failure_reason: "not_dispatched" } },
     });
+  });
+
+  it("pedida y nunca enviada, pero reservada por otra llamada entre tanto: no se cierra", async () => {
+    // La misma petición repetida desde el formulario la reservó justo después
+    // de leer la cola, y está llamando al banco. Cerrarla FAILED dejaría libre
+    // un saldo que el banco puede estar devolviendo.
+    const inspected: string[] = [];
+    setPaymentProvider(providerAnswering(async () => ({ providerStatus: "AUTHORIZED" }), inspected));
+    const calls: Call[] = [];
+
+    const summary = await reconcileRefunds(
+      fakeService(
+        calls,
+        [
+          pendingRow({
+            status: "REQUESTED",
+            dispatched_at: null,
+            requested_at: minutesAgo(STALE_REQUEST_MINUTES + 1),
+          }),
+        ],
+        null,
+        false,
+      ),
+    );
+
+    expect(summary.results[0]).toMatchObject({ outcome: "in_flight", reason: "claimed_elsewhere" });
+    expect(calls.map((c) => c.fn)).toEqual(["refunds_pending_reconciliation", "claim_payment_refund"]);
+    expect(inspected).toHaveLength(0);
+  });
+
+  it("sin proveedor construible, la colgada igual pasa a por confirmar y la nunca enviada se cierra", async () => {
+    // Lo que hace `buildPaymentProvider` con Webpay productivo bloqueado.
+    vi.resetModules();
+    vi.doMock("./index", () => ({
+      getPaymentProviderForExistingPayments: () => {
+        throw new Error("Webpay Plus productivo está desactivado y no se construye el proveedor.");
+      },
+    }));
+    const fresh = await import("./refund-reconcile");
+    const calls: Call[] = [];
+
+    try {
+      const summary = await fresh.reconcileRefunds(
+        fakeService(calls, [
+          pendingRow({
+            refund_id: "nunca-enviada",
+            status: "REQUESTED",
+            dispatched_at: null,
+            requested_at: minutesAgo(STALE_REQUEST_MINUTES + 1),
+          }),
+          pendingRow({
+            refund_id: "colgada",
+            status: "REQUESTED",
+            dispatched_at: minutesAgo(STALE_REQUEST_MINUTES + 1),
+            requested_at: minutesAgo(STALE_REQUEST_MINUTES + 1),
+          }),
+        ]),
+      );
+
+      expect(summary.results.map((r) => r.outcome)).toEqual(["failed", "unreachable"]);
+      expect(calls.map((c) => [c.fn, c.args.p_refund_id ?? null, c.args.p_reason ?? null])).toEqual([
+        ["refunds_pending_reconciliation", null, null],
+        ["claim_payment_refund", "nunca-enviada", null],
+        ["settle_payment_refund", "nunca-enviada", null],
+        ["mark_payment_refund_unknown", "colgada", "stale_request"],
+        ["mark_payment_refund_unknown", "colgada", expect.stringMatching(/^provider_unavailable:/)],
+      ]);
+    } finally {
+      vi.doUnmock("./index");
+      vi.resetModules();
+    }
   });
 
   it("enviada hace poco: sigue en vuelo y no se toca", async () => {

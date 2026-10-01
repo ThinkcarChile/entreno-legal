@@ -64,6 +64,9 @@ function explainCheck(code: string): string {
     return "Webpay no contestó la consulta de estado (pasados 7 días ya no lo hace)";
   }
   if (code.startsWith("environment_")) return "la devolución es de otro ambiente de Transbank";
+  if (code.startsWith("provider_unavailable")) {
+    return "no se pudo preparar la conexión con Transbank (revisa su configuración)";
+  }
   if (code.startsWith("status_")) return `estado inesperado de la transacción (${code.slice(7)})`;
   return code;
 }

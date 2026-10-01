@@ -32,8 +32,8 @@
 -- · FAILED solo cuando el banco dijo que no, o cuando la petición no llegó a
 --   salir. No compromete saldo: se puede volver a pedir por lo que quede.
 -- · Un disparador fija la máquina de estados para todos, también para la clave
---   de servicio: REQUESTED → UNKNOWN | CONFIRMED | FAILED | CANCELLED;
---   UNKNOWN → CONFIRMED | FAILED; lo demás es final.
+--   de servicio: REQUESTED → UNKNOWN | CONFIRMED | FAILED | CANCELLED (esta,
+--   solo si no se envió); UNKNOWN → CONFIRMED | FAILED; lo demás es final.
 -- · `claim_payment_refund`: solo una llamada envía cada devolución al banco,
 --   aunque la misma petición llegue dos veces a la vez.
 -- · `mark_payment_refund_unknown`, `refunds_pending_reconciliation` y
@@ -116,6 +116,14 @@ begin
       using errcode = 'check_violation';
   end if;
 
+  -- «Descartada antes de salir» solo vale si no salió: una enviada al banco
+  -- pudo hacerse, y descartarla liberaría un saldo que quizá ya se devolvió.
+  -- Su salida es la respuesta del banco, UNKNOWN o la conciliación.
+  if new.status = 'CANCELLED' and old.status = 'REQUESTED' and old.dispatched_at is not null then
+    raise exception 'Una devolución ya enviada al banco no se descarta: se cierra con su resultado o queda por confirmar'
+      using errcode = 'check_violation';
+  end if;
+
   -- Lo confirmado es un hecho contable: ni el importe ni el tipo se reescriben.
   if old.status = 'CONFIRMED'
      and (new.amount is distinct from old.amount or new.kind is distinct from old.kind) then
@@ -135,7 +143,7 @@ create trigger payment_refunds_guard_transitions
   for each row execute function app_private.guard_refund_transitions();
 
 comment on function app_private.guard_refund_transitions is
-  'REQUESTED → UNKNOWN | CONFIRMED | FAILED | CANCELLED; UNKNOWN → CONFIRMED | FAILED; el resto es final. Sin exención para el rol de servicio.';
+  'REQUESTED → UNKNOWN | CONFIRMED | FAILED | CANCELLED (esta, solo si no se envió); UNKNOWN → CONFIRMED | FAILED; el resto es final. Sin exención para el rol de servicio.';
 
 
 -- -----------------------------------------------------------------------------

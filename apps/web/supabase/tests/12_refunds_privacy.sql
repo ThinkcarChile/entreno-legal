@@ -538,3 +538,23 @@ select pg_temp.expect('D67 invariantes de pago sobre estos pagos',
     where v.entity_id in (select id from d_pagos)
        or v.entity_id in (select o.id from payouts o where o.payment_id in (select id from d_pagos))),
   'ninguna');
+
+
+\echo ''
+\echo '--- Una devolución enviada al banco no se descarta'
+
+select * from pg_temp.montar_cobro('d7') \gset d7_
+select pg_temp.pedir(:'d7_payment_id', 2000, 'refund:d7a') as d7a \gset
+select public.claim_payment_refund(:'d7a') is null as _ \gset
+select pg_temp.expect('D68 una enviada no pasa a CANCELLED, ni con la clave de servicio',
+  left(pg_temp.forzar(format('update payment_refunds set status = ''CANCELLED'' where id = %L', :'d7a')), 9),
+  'RECHAZADO');
+select public.settle_payment_refund(:'d7a', false, null, null,
+  '{"failure_reason":"provider_http_422"}') is null as _ \gset
+select pg_temp.pedir(:'d7_payment_id', 2000, 'refund:d7b') as d7b \gset
+select pg_temp.expect('D69 una que nunca salió sí se puede descartar',
+  pg_temp.forzar(format('update payment_refunds set status = ''CANCELLED'' where id = %L', :'d7b')),
+  'ACEPTADO');
+select pg_temp.pedir(:'d7_payment_id', 2000, 'refund:d7c') as d7c \gset
+select pg_temp.expect('D70 y descartada no compromete saldo ni bloquea: se puede pedir otra',
+  (select status::text from payment_refunds where id::text = :'d7c'), 'REQUESTED');

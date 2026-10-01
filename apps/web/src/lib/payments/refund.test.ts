@@ -38,6 +38,8 @@ interface ServiceOptions {
   claimed?: boolean;
   /** La fila de la devolución, para cuando la petición se repite. */
   refundRow?: Record<string, unknown>;
+  /** `settle_payment_refund` contesta `duplicate`: otra vía ya la cerró. */
+  settledElsewhere?: boolean;
 }
 
 function fakeService(calls: Call[], options: ServiceOptions = {}): SupabaseClient {
@@ -62,6 +64,12 @@ function fakeService(calls: Call[], options: ServiceOptions = {}): SupabaseClien
       }
       if (fn === "claim_payment_refund") return { data: options.claimed ?? true, error: null };
       if (fn === "settle_payment_refund") {
+        if (options.settledElsewhere) {
+          return {
+            data: { outcome: "duplicate", refund_status: rows.payment_refunds.status, payment_status: "PAID" },
+            error: null,
+          };
+        }
         return {
           data: { payment_status: args.p_confirmed ? "PARTIALLY_REFUNDED" : "PAID" },
           error: null,
@@ -266,6 +274,18 @@ describe("performRefund: lo que contesta el banco decide cómo se registra", () 
 
     expect(sent).toHaveLength(0);
     expect(outcome).toMatchObject({ state: "UNKNOWN", reason: "timeout", replayed: true });
+  });
+
+  it("si otra vía la cerró mientras el banco contestaba, cuenta lo registrado, no lo que dijo el banco", async () => {
+    // La conciliación la dio por no hecha en el cruce; el banco contestó que
+    // la hizo. Decir «confirmada» sobre una fila FAILED ocultaría el desfase.
+    const { outcome, sent } = await run(async () => nullified(), {
+      settledElsewhere: true,
+      refundRow: { status: "FAILED", kind: null, amount: 5000, failure_reason: "not_dispatched" },
+    });
+
+    expect(sent).toHaveLength(1);
+    expect(outcome).toMatchObject({ state: "FAILED", confirmed: false, reason: "not_dispatched" });
   });
 
   it("repetida sobre una ya confirmada, devuelve lo que se devolvió", async () => {

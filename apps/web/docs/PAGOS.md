@@ -268,7 +268,7 @@ impide cualquier otro paso, también con la clave de servicio:
 | `UNKNOWN` | enviada, y el banco no dio respuesta en firme | sí | `CONFIRMED`, `FAILED` |
 | `CONFIRMED` | el banco la hizo; baja `payments.refunded_amount` | — | final |
 | `FAILED` | el banco dijo que no, o no llegó a salir | no | final |
-| `CANCELLED` | descartada antes de salir | no | final |
+| `CANCELLED` | descartada antes de salir (una enviada no se puede descartar) | no | final |
 
 Tres reglas, todas en la base (migración `20260601000910`):
 
@@ -288,7 +288,7 @@ Tres reglas, todas en la base (migración `20260601000910`):
 Una `UNKNOWN` la cierra la conciliación cuando la consulta de estado de Webpay
 la explica, o una persona con lo que muestra el portal de Transbank
 (`resolve_unknown_refund`). El detalle está en `TRANSBANK.md` §7 y §11. Lo
-prueban D01–D51 (`supabase/tests/12_refunds_privacy.sql`) y
+prueban D01–D51 y D68–D70 (`supabase/tests/12_refunds_privacy.sql`) y
 `src/lib/payments/refund.test.ts` y `refund-reconcile.test.ts`.
 
 Riesgo que queda, a sabiendas: mientras una devolución **total** está por

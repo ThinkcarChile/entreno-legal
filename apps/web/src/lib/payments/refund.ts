@@ -271,6 +271,20 @@ export async function performRefund(
 
   const row = (settled ?? {}) as Record<string, unknown>;
 
+  // Otra vía (la conciliación, o una persona) la cerró mientras el banco
+  // contestaba. Lo que vale es lo registrado, no lo que se iba a registrar:
+  // decir «confirmada» sobre una fila FAILED es justo lo que lleva a devolver
+  // dos veces. Queda en el registro para revisarlo.
+  if (row.outcome === "duplicate") {
+    paymentLog({
+      operation: "refund",
+      result: `settled_elsewhere:${String(row.refund_status ?? "")}:provider_${verdict.outcome.toLowerCase()}`,
+      paymentId: request.paymentId,
+      environment: provider.environment,
+    });
+    return replayOutcome(admin, id, request.paymentId);
+  }
+
   paymentLog({
     operation: "refund",
     result: confirmed ? `confirmed:${providerResult.kind}` : "rejected",
