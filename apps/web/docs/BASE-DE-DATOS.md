@@ -42,6 +42,9 @@ en orden alfabético.
 | `…20260601001000_payment_attempts.sql` | `payment_attempts`: historial de intentos con su token; el token se ata a su intento; cola de intentos anteriores; la vista de administración los cuenta |
 | `…20260601001010_attempt_aware_confirmation.sql` | `confirm_payment_result` resuelve el intento del token (cobro duplicado → `DOUBLE_CHARGE`) y manda un descuadre a revisión sin pasar por `PAID` |
 | `…20260601001020_abandonment_scoped_to_attempt.sql` | Un retorno sin cobro cierra solo su intento; los intentos anteriores también vencen con la ventana |
+| `…20260601001400_refund_after_payout.sql` | Con el payout transferido, una devolución no pasa de lo que queda de la plataforma; una confirmada que descuadra las cifras retiene el payout; pedir, cerrar y resolver a mano una devolución bloquean trabajo → asignación → pagos → devolución |
+| `…20260601001410_attempt_clock_and_lock_order.sql` | La ventana de conciliación corre desde el intento vigente; `register_payment_attempt` bloquea trabajo → asignación → pago |
+| `…20260601001420_attempt_refunds.sql` | `payment_attempt_refunds`: devolver un cobro duplicado contra el token de su intento, con su conciliación y su cierre a mano |
 | `…000500_evidence_and_chat.sql` | Evidencia, vistas `checkins` y `job_updates`, conversaciones, mensajes |
 | `…000600_reviews_disputes.sql` | Reseñas con validación, disputas, evidencia de disputa |
 | `…000700_loyalty_notifications_audit.sql` | FilaPuntos, notificaciones, `audit_logs` y sus triggers |
@@ -137,6 +140,12 @@ sesión, número, token, fechas y resultado (`CREATED`, `FAILED`, `SETTLED`,
 los anteriores no se sobrescriben. Solo lo escribe el rol de servicio y solo lo
 lee administración, sin el token.
 
+`payment_attempt_refunds` guarda las devoluciones del cobro de UN intento —un
+cobro duplicado o un intento en revisión—, contra el token de ese intento y por
+su cobro entero. Mismos estados y mismo disparador de transiciones que
+`payment_refunds`, una sola comprometida por intento, y no toca el pago. Solo la
+escribe el rol de servicio por RPC y solo la lee administración.
+
 ### Evidencia
 
 `job_evidence` es la única tabla de bitácora. `checkins` y `job_updates` son vistas
@@ -179,6 +188,9 @@ con `security_invoker = true`.
 | `request_payment_refund(pago, importe, motivo, clave, disputa)` | **Administración** | Deja pedida una devolución. Idempotente por petición; una sola abierta por pago |
 | `resolve_unknown_refund(devolución, hecha, tipo, nota)` | **Administración** | Cierra una devolución por confirmar con lo que muestra el portal de Transbank |
 | `claim_payment_refund`, `settle_payment_refund`, `mark_payment_refund_unknown`, `refunds_pending_reconciliation` | **Solo la clave de servicio** | Reservar el envío al banco, cerrar con su respuesta, dejarla por confirmar y encontrar las que hay que conciliar. Ver `TRANSBANK.md` §7 |
+| `request_attempt_refund(intento, motivo, clave)` | **Administración** | Deja pedida la devolución del cobro entero de un intento `DOUBLE_CHARGE` o `UNDER_REVIEW` que no respalda el pago. Idempotente por petición; una sola comprometida por intento |
+| `resolve_unknown_attempt_refund(devolución, hecha, tipo, nota)` | **Administración** | Cierra la devolución por confirmar de un cobro duplicado con lo que muestra el portal de Transbank |
+| `claim_attempt_refund`, `settle_attempt_refund`, `mark_attempt_refund_unknown`, `attempt_refunds_pending_reconciliation` | **Solo la clave de servicio** | Lo mismo que las de arriba, para la devolución de un intento. Ver `PAGOS.md` §8 quater |
 
 ### Ejecución del trabajo (Bloque 3)
 
@@ -272,6 +284,8 @@ supuestos, y todos rodean a una de las dieciséis:
 | Que un pago sin resolver se pierda al salir de la ventana de conciliación | `expire_stale_payments()` lo lleva a `FAILED` o a `UNDER_REVIEW`, y el invariante `stale_payment_out_of_window` lo delata si nadie lo hizo | `…20260501000500` |
 | Leer o escribir el historial de intentos, o el token de uno | ninguna: sin privilegios para `anon`; `authenticated` solo lee columnas sin token y solo administración ve filas | `…20260601001000` |
 | Que un segundo cobro de otro intento se pierda, o que un descuadre habilite el trabajo | `confirm_payment_result` resuelve el intento del token bajo cerrojo: `DOUBLE_CHARGE` a la vista, revisión sin pasar por `PAID` | `…20260601001010` |
+| Devolver, con el trabajador ya pagado, más de lo que queda de la plataforma | `request_payment_refund` (`refund_after_payout_blocker`) | `…20260601001400` |
+| Escribir en `payment_attempt_refunds`, devolver dos veces el cobro de un intento o devolver por ahí el cobro que pagó el trabajo | ninguna para el usuario; `request_attempt_refund`, índice de una comprometida por intento, disparadores `payment_attempt_refunds_guard_*` y `payment_attempts_guard_money` | `…20260601001420` |
 | «Confirmar» el propio pago llamando a la función de confirmación | `confirm_payment_result` es solo del servicio | `…000400` |
 | Marcar «voy en camino» en nombre del trabajador siendo el cliente | `mark_on_the_way` | Bloque 3 `…000100` |
 | Escribir el estado de la asignación a mano, para saltarse el orden | ninguna: el usuario perdió el `UPDATE` | Bloque 3 `…000100` |
@@ -317,6 +331,16 @@ trabajador), `guard_job_terminal` (un trabajo cancelado no revive),
 tardía), `create_payout_for_assignment` (idempotente) y
 `payment_invariant_violations()` (devuelve toda fila que rompa los invariantes;
 las pruebas exigen cero).
+
+Y las del seguimiento de pagos (`20260601001400`–`…001420`):
+`refund_after_payout_blocker` (lo que queda de la plataforma con el payout
+transferido), `hold_payout_on_unhealthy_payment` ampliada (retiene el payout
+cuando una devolución confirmada descuadra las cifras), `payment_window_start`
+(desde cuándo corre la ventana del proveedor: el intento vigente),
+`guard_attempt_refund_identity` y `guard_attempt_money` (un intento devuelto no
+pasa a ser el dinero del pago; un `DOUBLE_CHARGE` registra su cobro), y
+`refund_invariant_violations()` con `attempt_refund_on_payment_money` y
+`attempt_refund_over_charge`.
 
 Y las de qué se lee y qué se escribe en público (`20260601001100`–`…001140`):
 `can_see_profile` (la regla única de visibilidad de `profiles`,

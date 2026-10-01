@@ -214,3 +214,132 @@ describe("reconcilePayments: intentos anteriores", () => {
     expect(db.callsTo("expire_stale_payments")).toHaveLength(1);
   });
 });
+
+/**
+ * El margen para CONFIRMAR el token vigente se cuenta desde su intento.
+ *
+ * Antes se contaba desde `payments.updated_at`, que `record_provider_snapshot`
+ * renueva en cada pasada: con el cron cada 15 minutos o menos, un pago que
+ * nadie confirmó en el retorno se consultaba siempre y no se confirmaba nunca.
+ */
+describe("reconcilePayments: el token vigente", () => {
+  const JUST_NOW = new Date().toISOString();
+
+  function currentScenario(token: string, payment: Row, attempt: Row) {
+    return new FakeAdmin(
+      {
+        payments: [
+          {
+            id: PAYMENT_ID,
+            job_id: "trabajo-1",
+            assignment_id: "asignacion-1",
+            client_id: "cliente-1",
+            purpose: "JOB",
+            amount: AMOUNT,
+            currency: "CLP",
+            status: "CREATED",
+            provider_token: token,
+            buy_order: ORDER_2,
+            session_id: SESSION_ID,
+            environment: "mock",
+            attempt: 2,
+            committed_at: null,
+            created_at: LONG_AGO,
+            updated_at: LONG_AGO,
+            ...payment,
+          },
+        ],
+        payment_attempts: [
+          {
+            id: "intento-2",
+            payment_id: PAYMENT_ID,
+            attempt: 2,
+            status: "CREATED",
+            buy_order: ORDER_2,
+            session_id: SESSION_ID,
+            provider_token: token,
+            commit_requested_at: null,
+            committed_at: null,
+            created_at: LONG_AGO,
+            token_at: LONG_AGO,
+            ...attempt,
+          },
+        ],
+      },
+      {
+        payments_pending_reconciliation: () => ({
+          data: [
+            {
+              payment_id: PAYMENT_ID,
+              job_id: "trabajo-1",
+              assignment_id: "asignacion-1",
+              reference: "HTF-0002",
+              status: "CREATED",
+              provider: "mock",
+              environment: "mock",
+              buy_order: ORDER_2,
+              session_id: SESSION_ID,
+              amount: AMOUNT,
+              attempt: 2,
+              created_at: LONG_AGO,
+              reconciled_at: JUST_NOW,
+              review_reason: null,
+            },
+          ],
+        }),
+        payment_attempts_pending_reconciliation: () => ({ data: [] }),
+        expire_stale_payments: () => ({ data: [] }),
+        confirm_payment_result: () => ({
+          data: {
+            outcome: "applied",
+            decision: "PAID",
+            payment_status: "PAID",
+            attempt_status: "SETTLED",
+          },
+        }),
+        record_provider_snapshot: () => ({ data: null }),
+        record_payment_abandonment: () => ({
+          data: { outcome: "applied", payment_status: "FAILED" },
+        }),
+      },
+    );
+  }
+
+  it("se confirma pasados 15 minutos del token aunque la pasada anterior acabe de tocar el pago", async () => {
+    const token = await createToken(ORDER_2);
+    // La pasada anterior registró la foto del proveedor hace un instante.
+    const db = currentScenario(token, { updated_at: JUST_NOW }, { token_at: LONG_AGO });
+    const commit = vi.spyOn(provider, "confirmPayment");
+
+    const summary = await reconcilePayments(db.client(), { olderThanMinutes: 5 });
+
+    expect(commit).toHaveBeenCalledWith({ token });
+    expect(db.callsTo("confirm_payment_result")[0].p_token).toBe(token);
+    expect(summary.results[0]).toMatchObject({ paymentId: PAYMENT_ID, outcome: "settled" });
+  });
+
+  it("un intento recién abierto sobre un pago viejo no se confirma todavía: el cliente puede estar en el formulario", async () => {
+    const token = await createToken(ORDER_2);
+    const db = currentScenario(
+      token,
+      { created_at: LONG_AGO, updated_at: LONG_AGO },
+      { created_at: JUST_NOW, token_at: JUST_NOW },
+    );
+    const commit = vi.spyOn(provider, "confirmPayment");
+
+    await reconcilePayments(db.client(), { olderThanMinutes: 5 });
+
+    expect(commit).not.toHaveBeenCalled();
+    expect(db.callsTo("confirm_payment_result")).toHaveLength(0);
+  });
+
+  it("sin el intento en el historial se cuenta desde la creación del pago, no desde su última escritura", async () => {
+    const token = await createToken(ORDER_2);
+    const db = currentScenario(token, { updated_at: JUST_NOW }, { buy_order: "OTRA-ORDEN" });
+    const commit = vi.spyOn(provider, "confirmPayment");
+
+    await reconcilePayments(db.client(), { olderThanMinutes: 5 });
+
+    expect(commit).toHaveBeenCalledWith({ token });
+  });
+});

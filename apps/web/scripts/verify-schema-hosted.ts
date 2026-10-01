@@ -279,6 +279,17 @@ const AVISOS_ACEPTADOS: Record<string, Record<string, string>> = {
       "Transbank, por la misma vía que el banco (settle_payment_refund), y exige una nota que " +
       "queda en audit_logs. Rechaza las que siguen en curso y una reversa que no sea por el " +
       "total. payment_refunds no tiene ninguna vía de escritura para el usuario (D40–D49).",
+    "public.request_attempt_refund":
+      "SOLO la administración: primera línea del cuerpo es app_private.is_admin(). Concedida a " +
+      "authenticated porque el panel la llama con la sesión de quien administra. Escribe " +
+      "payment_attempt_refunds, sin ninguna vía de escritura para el usuario, y solo sobre un " +
+      "intento DOUBLE_CHARGE o UNDER_REVIEW que no respalde el pago; el importe lo fija la base " +
+      "(el cobro entero del intento). NO devuelve dinero: la llamada al proveedor y el cierre son " +
+      "de settle_attempt_refund, exclusiva de service_role (J16–J34).",
+    "public.resolve_unknown_attempt_refund":
+      "SOLO la administración: primera línea del cuerpo es app_private.is_admin(). Cierra la " +
+      "devolución UNKNOWN de un cobro duplicado con lo que muestra el portal de Transbank, por " +
+      "settle_attempt_refund, con una nota obligatoria que queda en audit_logs (J29–J30).",
     "public.assignment_payment_states":
       "La llaman el cliente y el trabajador de la asignación, y la administración. Existe " +
       "porque el trabajador ya no lee filas de payments (la política payments_read es del " +
@@ -327,11 +338,11 @@ async function main(): Promise<void> {
       (select count(*) from supabase_migrations.schema_migrations)       as migraciones;
   `);
 
-  check("tablas en public", inv.tablas, 35);
+  check("tablas en public", inv.tablas, 36);
   check("vistas en public", inv.vistas, 7);
-  check("funciones en public", inv.funciones, 53);
+  check("funciones en public", inv.funciones, 59);
   check("enums", inv.enums, 24);
-  check("políticas RLS en public", inv.politicas, 76);
+  check("políticas RLS en public", inv.politicas, 77);
   check("buckets de Storage", inv.buckets, 5);
   // 11 de …000900 y 20260401000100, más las tres de borrado de 20260601001210
   // (avatares propios, y evidencia y archivos de disputa propios sin registrar).

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 
 import { Alert } from "@/components/ui/feedback";
 import { Button, Field, Radio, Textarea } from "@/components/ui";
-import { resolveUnknownRefundAction } from "@/lib/actions/finance";
+import { resolveUnknownAttemptRefundAction, resolveUnknownRefundAction } from "@/lib/actions/finance";
 import type { AdminOpenRefund } from "@/lib/data/repositories";
 import { formatDateTime } from "@/lib/utils/datetime";
 import { formatMoney } from "@/lib/utils/money";
@@ -20,6 +20,10 @@ import { formatMoney } from "@/lib/utils/money";
  * Webpay lo deja claro. Cuando no —fuera de los 7 días en que Webpay contesta,
  * o con un estado que no cuadra—, la cierra una persona con lo que muestra el
  * portal de Transbank.
+ *
+ * Sirve para las dos devoluciones: la del cobro de un pago (`scope="payment"`)
+ * y la del cobro duplicado de un intento (`scope="attempt"`), que se busca en
+ * el portal por la orden de compra de ese intento.
  */
 
 /** Por qué no se sabe qué hizo el banco. */
@@ -77,10 +81,13 @@ export function OpenRefund({
   refund,
   paymentAmount,
   alreadyRefunded,
+  scope = "payment",
 }: {
   refund: AdminOpenRefund;
+  /** Importe de la transacción: la del pago, o la del intento. */
   paymentAmount: number;
   alreadyRefunded: number;
+  scope?: "payment" | "attempt";
 }) {
   const [pending, startTransition] = useTransition();
   const [resolution, setResolution] = useState<Resolution | null>(null);
@@ -91,6 +98,7 @@ export function OpenRefund({
 
   const amount = formatMoney({ amount: refund.amount, currency: "CLP" });
   const requestedAt = formatDateTime(refund.requestedAt);
+  const subject = scope === "attempt" ? "este cobro" : "este pago";
   // Una reversa deshace la transacción entera: solo cabe por el total.
   const reversalPossible = alreadyRefunded === 0 && refund.amount === paymentAmount;
 
@@ -98,19 +106,25 @@ export function OpenRefund({
     if (!resolution) return;
     setMessage(null);
     startTransition(async () => {
-      const result = await resolveUnknownRefundAction({
+      const input = {
         refundId: refund.refundId,
         succeeded: resolution !== "NOT_DONE",
         kind: resolution === "NOT_DONE" ? undefined : resolution,
         note,
-      });
+      };
+      const result =
+        scope === "attempt"
+          ? await resolveUnknownAttemptRefundAction(input)
+          : await resolveUnknownRefundAction(input);
       setMessage(
         result.ok
           ? {
               tone: "success",
               text:
                 result.data.refundStatus === "CONFIRMED"
-                  ? "La devolución quedó confirmada y el saldo del pago, actualizado."
+                  ? scope === "attempt"
+                    ? "La devolución del cobro quedó confirmada."
+                    : "La devolución quedó confirmada y el saldo del pago, actualizado."
                   : "La devolución quedó como no hecha. Ya se puede pedir otra si corresponde.",
             }
           : { tone: "danger", text: result.error },
@@ -122,7 +136,7 @@ export function OpenRefund({
     return (
       <Alert tone="info" title="Devolución en curso">
         Se pidió al banco una devolución de {amount} el {requestedAt} y todavía no hay respuesta
-        registrada. Mientras tanto no se puede pedir otra devolución sobre este pago. Si sigue así
+        registrada. Mientras tanto no se puede pedir otra devolución sobre {subject}. Si sigue así
         pasados 15 minutos, la conciliación la deja «por confirmar» y la contrasta con Webpay.
       </Alert>
     );
@@ -133,7 +147,7 @@ export function OpenRefund({
       <Alert tone="warning" title="Devolución por confirmar">
         Se pidió una devolución de {amount} el {requestedAt} y no sabemos si el banco la hizo:{" "}
         {explainUnknown(refund.unknownReason)}. Puede que el dinero haya salido, así que no se
-        puede pedir otra devolución sobre este pago hasta resolver esta. La conciliación la
+        puede pedir otra devolución sobre {subject} hasta resolver esta. La conciliación la
         contrasta con el estado de la transacción en Webpay
         {refund.lastCheckedAt && refund.lastCheckResult
           ? `; la última consulta (${formatDateTime(refund.lastCheckedAt)}) no pudo decidir: ${explainCheck(refund.lastCheckResult)}`

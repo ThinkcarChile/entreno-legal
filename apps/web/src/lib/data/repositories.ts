@@ -258,6 +258,45 @@ export interface AdminPayment {
   attemptsReviewDetail: string | null;
   /** La devolución en curso o por confirmar, si la hay. Bloquea pedir otra. */
   openRefund: AdminOpenRefund | null;
+  /**
+   * Cada intento en revisión —también los ya devueltos— con su cobro y su
+   * última devolución. Es lo que se devuelve desde el panel, contra el token
+   * de ese intento y sin tocar el pago.
+   */
+  reviewAttempts: readonly AdminReviewAttempt[];
+}
+
+/** Un intento con un cobro que no es el del pago: duplicado o en revisión. */
+export interface AdminReviewAttempt {
+  attemptId: UUID;
+  attempt: number;
+  buyOrder: string;
+  /** DOUBLE_CHARGE (cobro duplicado) o UNDER_REVIEW (vencido con indicios de cobro). */
+  status: string;
+  reviewReason: string | null;
+  /** El cobro entero del intento: lo que se devuelve. */
+  amount: number;
+  /**
+   * Es el intento cuyo dinero es el del pago (el vigente de un pago en
+   * revisión): se devuelve con la devolución del pago, no con la suya.
+   */
+  backsPayment: boolean;
+  /** Su devolución más reciente, si alguna vez se pidió. */
+  refund: AdminAttemptRefund | null;
+}
+
+/** La devolución del cobro de un intento. */
+export interface AdminAttemptRefund {
+  refundId: UUID;
+  status: "REQUESTED" | "UNKNOWN" | "CONFIRMED" | "FAILED" | "CANCELLED";
+  kind: string | null;
+  amount: number;
+  requestedAt: ISODateTime;
+  settledAt: ISODateTime | null;
+  failureReason: string | null;
+  unknownReason: string | null;
+  lastCheckedAt: ISODateTime | null;
+  lastCheckResult: string | null;
 }
 
 /** Una devolución sin resultado final, con lo que explica por qué. */

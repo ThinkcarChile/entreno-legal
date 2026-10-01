@@ -23,7 +23,7 @@ type Tone = "success" | "info" | "warning" | "danger";
  * `crypto.randomUUID()` solo existe en contextos seguros; abriendo el panel por
  * HTTP desde otra máquina de la red local no está, y `getRandomValues` sí.
  */
-function newRequestId(): string {
+export function newRequestId(): string {
   if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   bytes[6] = (bytes[6] & 0x0f) | 0x40;

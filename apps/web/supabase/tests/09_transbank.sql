@@ -497,15 +497,18 @@ begin
     (case when p.status = 'REFUNDED' and o.status = 'HELD' then '' else ' FALLO' end);
 end $$;
 
--- W24 · Una devolución PARCIAL no toca el pago al trabajador.
+-- W24 · Una devolución PARCIAL que cabe en la parte de la plataforma no toca
+-- el pago al trabajador. Era de $3.000: con el payout de $18.480 sobre un cobro
+-- de $21.000, eso ya no cuadra, y desde 20260601001400 lo retiene (J08); aquí
+-- se devuelven $2.000, que sí caben.
 do $$
 declare m record; v_refund uuid; p public.payments; o public.payouts;
 begin
   select * into m from pg_temp.montar_pago('w24', true);
   perform set_config('request.jwt.claim.sub', m.admin_id::text, true);
-  v_refund := public.request_payment_refund(m.payment_id, 3000, 'Devolución parcial acordada', 'refund:w24');
+  v_refund := public.request_payment_refund(m.payment_id, 2000, 'Devolución parcial acordada', 'refund:w24');
   perform set_config('request.jwt.claim.sub', '', true);
-  perform public.settle_payment_refund(v_refund, true, 'NULLIFIED', 3000, jsonb_build_object('response_code', 0));
+  perform public.settle_payment_refund(v_refund, true, 'NULLIFIED', 2000, jsonb_build_object('response_code', 0));
 
   select * into p from public.payments where id = m.payment_id;
   select * into o from public.payouts where payment_id = m.payment_id;
@@ -687,12 +690,17 @@ begin
           then '' else ' FALLO' end);
 end $$;
 
+-- W33–W39 envejecen el pago Y su intento: desde 20260601001410 la ventana se
+-- mide desde el intento vigente, no desde la creación del pago (un intento
+-- recién abierto sobre un pago viejo no está rezagado; lo prueba J13).
+--
 -- W33 · Un pago rezagado y sin cobro se cierra, y el cliente puede reintentar.
 do $$
 declare m record; v_res record; p public.payments;
 begin
   select * into m from pg_temp.montar_pago('w33', false);
   update public.payments set created_at = now() - interval '30 days' where id = m.payment_id;
+  update public.payment_attempts set created_at = now() - interval '30 days' where payment_id = m.payment_id;
 
   select * into v_res from public.expire_stale_payments(100)
    where payment_id = m.payment_id;
@@ -712,6 +720,7 @@ begin
   update public.payments
      set status = 'AUTHORIZED', created_at = now() - interval '30 days'
    where id = m.payment_id;
+  update public.payment_attempts set created_at = now() - interval '30 days' where payment_id = m.payment_id;
 
   perform public.expire_stale_payments(100);
   select * into p from public.payments where id = m.payment_id;
@@ -730,6 +739,7 @@ declare m record; v_eventos int; v_audit int;
 begin
   select * into m from pg_temp.montar_pago('w35', false);
   update public.payments set created_at = now() - interval '30 days' where id = m.payment_id;
+  update public.payment_attempts set created_at = now() - interval '30 days' where payment_id = m.payment_id;
   perform public.expire_stale_payments(100);
 
   select count(*) into v_eventos from public.payment_events
@@ -747,6 +757,7 @@ declare m record; v_eventos int;
 begin
   select * into m from pg_temp.montar_pago('w36', false);
   update public.payments set created_at = now() - interval '30 days' where id = m.payment_id;
+  update public.payment_attempts set created_at = now() - interval '30 days' where payment_id = m.payment_id;
   perform public.expire_stale_payments(100);
   perform public.expire_stale_payments(100);
 
@@ -763,6 +774,7 @@ declare m record; v_antes int; v_despues int;
 begin
   select * into m from pg_temp.montar_pago('w37', false);
   update public.payments set created_at = now() - interval '30 days' where id = m.payment_id;
+  update public.payment_attempts set created_at = now() - interval '30 days' where payment_id = m.payment_id;
 
   select count(*) into v_antes from app_private.refund_invariant_violations()
    where rule = 'stale_payment_out_of_window' and entity_id = m.payment_id;
@@ -783,6 +795,7 @@ declare m record; p public.payments;
 begin
   select * into m from pg_temp.montar_pago('w38', false);
   update public.payments set created_at = now() - interval '2 days' where id = m.payment_id;
+  update public.payment_attempts set created_at = now() - interval '2 days' where payment_id = m.payment_id;
   perform public.expire_stale_payments(100);
   select * into p from public.payments where id = m.payment_id;
 
@@ -797,6 +810,7 @@ begin
   select reconciliation_window_days into v_original from public.platform_settings limit 1;
   select * into m from pg_temp.montar_pago('w39', false);
   update public.payments set created_at = now() - interval '5 days' where id = m.payment_id;
+  update public.payment_attempts set created_at = now() - interval '5 days' where payment_id = m.payment_id;
 
   -- Con la ventana por defecto (7 días) está en la cola.
   select count(*) into v_en_cola from public.payments_pending_reconciliation(0, 200)

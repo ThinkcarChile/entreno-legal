@@ -406,13 +406,18 @@ select * from pg_temp.listo_para_transferir('l-cifras', 'production') \gset h4_
 insert into l_ctx values ('h4', :'h4_assignment_id');
 select pg_temp.devolver(:'h4_assignment_id', 5000, true) is not null as _ \gset
 
-select pg_temp.expect('L22 una devolución parcial no retiene el payout',
+-- Antes de 20260601001400 esta devolución dejaba el payout APPROVED, en la cola
+-- de transferencias, y solo la barrera de la transferencia lo frenaba. Ahora,
+-- confirmada y sin cuadrar, lo retiene (más casos en 17_payments_followup.sql).
+select pg_temp.expect('L22 una devolución parcial que descuadra las cifras retiene el payout',
   (select status::text from payments where id = :'h4_payment_id') || ' / ' || pg_temp.payout(:'h4_assignment_id'),
-  'PARTIALLY_REFUNDED / APPROVED');
+  'PARTIALLY_REFUNDED / HELD');
 
-select pg_temp.expect_like('L23 pero $5.000 devueltos más $18.480 al trabajador superan los $21.000 cobrados',
+select pg_temp.forzar_aprobado(:'h4_assignment_id') is null as _ \gset
+select pg_temp.expect_like('L23 y aunque llegue aprobado por otra vía, $5.000 devueltos más $18.480 al trabajador superan los $21.000 cobrados',
   pg_temp.transferir(:'h4_assignment_id'),
   'RECHAZADO: Las cifras de este trabajo no cuadran: el cliente pagó $21.000, se le devolvió $5.000 y al trabajador irían $18.480: suman $23.480, $2.480 más de lo que entró%');
+select pg_temp.devolver_a_retenido(:'h4_assignment_id') is null as _ \gset
 
 -- Una devolución que cabe en la comisión no le quita nada al trabajador.
 select * from pg_temp.listo_para_transferir('l-cuadra', 'production') \gset h5_
