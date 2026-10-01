@@ -315,3 +315,32 @@ exception when insufficient_privilege then
   raise notice 'V28 OK: nadie fuerza aprobaciones automáticas desde la aplicación';
 end $$;
 reset role;
+
+\echo ''
+\echo '--- Una fila mala no detiene la pasada'
+
+-- v6: el cliente reclama en vez de aprobar y la administración resuelve. El
+-- trabajo queda CLOSED y la asignación en HANDOFF_COMPLETED. Antes de la
+-- corrección, la aprobación automática lo tomaba, chocaba con la guarda de
+-- estados terminales y abortaba la pasada entera.
+select * from pg_temp.montar_trabajo('v6') \gset v6_
+select pg_temp.hasta_cierre_pedido(:'v6_assignment_id', :'v6_worker_id') is null as _ \gset
+select pg_temp.reclamar(:'v6_assignment_id') is not null as _ \gset
+select pg_temp.resolver_a_favor_del_trabajador(:'v6_assignment_id') is null as _ \gset
+
+-- v7: un caso sano que debe aprobarse en la MISMA pasada.
+select * from pg_temp.montar_trabajo('v7') \gset v7_
+select pg_temp.hasta_cierre_pedido(:'v7_assignment_id', :'v7_worker_id') is null as _ \gset
+
+update assignments set handoff_completed_at = now() - interval '13 hours'
+ where id in (:'v6_assignment_id', :'v7_assignment_id');
+
+select app_private.run_scheduled_tasks() as v29_r \gset
+
+select pg_temp.expect('V29 la pasada termina sin errores',
+  (:'v29_r'::jsonb -> 'errores')::text, '[]');
+select pg_temp.expect('V30 el caso sano se aprueba en la misma pasada',
+  (select status::text from assignments where id = :'v7_assignment_id'), 'COMPLETED');
+select pg_temp.expect('V31 el resuelto no se toca: trabajo y asignación como los dejó la resolución',
+  (select j.status::text || ' / ' || a.status::text from assignments a join jobs j on j.id = a.job_id
+    where a.id = :'v6_assignment_id'), 'CLOSED / HANDOFF_COMPLETED');
