@@ -17,6 +17,13 @@
 -- 08_race_execution.sh, porque necesitan dos sesiones de verdad.
 -- =============================================================================
 
+-- Esta base es de pruebas y todos sus pagos son del proveedor simulado. Desde
+-- 20260601000810, `mark_payout_paid` no transfiere sobre un pago que no sea de
+-- producción salvo que la base lo admita de forma explícita. Se admite aquí, a
+-- la vista, y se devuelve a FALSE al final del archivo. En una base de
+-- producción esta bandera no se toca nunca.
+update public.platform_settings set allow_non_production_payouts = true where id;
+
 -- ---------------------------------------------------------------------------
 -- Montaje: un trabajo pagado y listo para comenzar.
 -- ---------------------------------------------------------------------------
@@ -885,3 +892,7 @@ begin
   raise notice '%', 'E28 pagos liberados sobre trabajo cancelado o en disputa = ' || v
     || case when v = 0 then '' else ' FALLO' end;
 end $$;
+
+-- La bandera de pagos de prueba vuelve a su valor por omisión: el siguiente
+-- archivo que transfiera tiene que habilitarla él mismo, a la vista.
+update public.platform_settings set allow_non_production_payouts = false where id;
