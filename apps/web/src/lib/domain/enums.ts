@@ -205,6 +205,15 @@ export const NotificationType = {
   PAYOUT_ADJUSTED: "PAYOUT_ADJUSTED",
   NEW_REVIEW: "NEW_REVIEW",
   VERIFICATION_UPDATED: "VERIFICATION_UPDATED",
+  // Los que la base ya tenía y aquí faltaban: `mapNotification` los recibía y
+  // los forzaba al tipo sin que existieran. `check-db-contract.sh` compara
+  // ahora este objeto con el enum `notification_type`, en los dos sentidos.
+  OFFER_WITHDRAWN: "OFFER_WITHDRAWN",
+  JOB_UPDATED: "JOB_UPDATED",
+  JOB_ASSIGNED: "JOB_ASSIGNED",
+  JOB_STARTING_SOON: "JOB_STARTING_SOON",
+  PAYMENT_UNDER_REVIEW: "PAYMENT_UNDER_REVIEW",
+  REFUND_CONFIRMED: "REFUND_CONFIRMED",
   JOB_CANCELLED: "JOB_CANCELLED",
   JOB_EXPIRED: "JOB_EXPIRED",
   /** Solo administración: una regla de invariante rota (migración 20260601001520). */

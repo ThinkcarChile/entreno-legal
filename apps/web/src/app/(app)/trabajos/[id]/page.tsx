@@ -68,10 +68,14 @@ export default async function JobDetailPage({ params }: PageProps) {
   const job = await data.jobs.getById(id);
   if (!job) notFound();
 
-  const [offers, timeline, session] = await Promise.all([
+  // La línea de tiempo solo la ven las partes y la administración (RLS), así que
+  // sin sesión no se pide: esta página es pública y está en el sitemap, y antes
+  // la consulta fallaba para cualquier visitante y la página entera cambiaba
+  // por la de error (migración 20260601001800).
+  const session = await getViewer();
+  const [offers, timeline] = await Promise.all([
     data.jobs.listOffers(job.id),
-    data.jobs.getTimeline(job.id),
-    getViewer(),
+    session ? data.jobs.getTimeline(job.id) : Promise.resolve([]),
   ]);
 
   const isOwner = session?.id === job.clientId;

@@ -83,13 +83,41 @@ export const notificationTemplates: Record<NotificationType, Template> = {
     title: "El trabajo comenzó",
     body: `${quotedName(c.actorName, "El trabajador")} empezó "${c.jobTitle ?? "el trabajo"}". Te avisamos de cada avance.`,
   }),
+  // Quién y dónde, nunca lo que escribió: el texto de la actualización lo pone
+  // la otra parte y se lee en la línea de tiempo, firmado. Igual que el aviso
+  // de la base (`add_job_evidence`, migración …001820).
   JOB_UPDATE: (c) => ({
     title: "Nueva actualización del trabajo",
-    body: `${quotedName(c.actorName, "El trabajador")} envió novedades de "${c.jobTitle ?? "el trabajo"}".`,
+    body: `${quotedName(c.actorName, "El trabajador")} envió una actualización de "${c.jobTitle ?? "el trabajo"}". Revísala en el trabajo.`,
   }),
   NEW_EVIDENCE: (c) => ({
     title: "Nueva evidencia del trabajo",
-    body: `Se adjuntó una foto o comprobante a "${c.jobTitle ?? "el trabajo"}".`,
+    body: `${quotedName(c.actorName, "El trabajador")} adjuntó una foto o un comprobante a "${c.jobTitle ?? "el trabajo"}". Revísalo en el trabajo.`,
+  }),
+  OFFER_WITHDRAWN: (c) => ({
+    title: "Una oferta fue retirada",
+    body: `Un trabajador retiró su oferta para "${c.jobTitle ?? "tu trabajo"}".`,
+  }),
+  JOB_UPDATED: (c) => ({
+    title: "Cambió un trabajo al que ofertaste",
+    body: `El cliente actualizó "${c.jobTitle ?? "el trabajo"}". Revisa si tu oferta sigue vigente.`,
+  }),
+  JOB_ASSIGNED: (c) => ({
+    title: "Tienes un trabajo asignado",
+    body: `"${c.jobTitle ?? "El trabajo"}" quedó asignado a ti. Revisa la fecha y el lugar.`,
+  }),
+  JOB_STARTING_SOON: (c) => ({
+    title: "Tu trabajo empieza pronto",
+    body: `"${c.jobTitle ?? "El trabajo"}" comienza dentro de poco. Revisa el lugar y la hora.`,
+  }),
+  // Lo escribe la base para la administración (cobro duplicado o en duda).
+  PAYMENT_UNDER_REVIEW: (c) => ({
+    title: "Pago en revisión",
+    body: `Un pago de "${c.jobTitle ?? "un trabajo"}" quedó en revisión. Revísalo en el panel de pagos.`,
+  }),
+  REFUND_CONFIRMED: (c) => ({
+    title: "Devolución confirmada",
+    body: `La devolución de ${c.amount ?? "tu pago"} por "${c.jobTitle ?? "el trabajo"}" quedó confirmada.`,
   }),
   HANDOFF_REQUESTED: (c) => ({
     title: "Te piden el código de entrega",

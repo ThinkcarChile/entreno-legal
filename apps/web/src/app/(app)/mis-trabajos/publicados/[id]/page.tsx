@@ -15,6 +15,7 @@ import { getData } from "@/lib/data";
 import { JobStatus, PaymentStatus } from "@/lib/domain/enums";
 import { isCancellationPending, jobPermissions } from "@/lib/domain/job-actions";
 import { jobStatusLabels } from "@/lib/domain/labels";
+import { paymentIsPayable } from "@/lib/domain/permissions";
 import { formatDate, formatDuration, formatTime } from "@/lib/utils/datetime";
 
 export const metadata: Metadata = {
@@ -142,7 +143,9 @@ export default async function ClientJobDetailPage({ params, searchParams }: Page
             </Alert>
           )}
 
-          {permissions.needsPayment && assignment && (
+          {/* Un pago en revisión o en curso con el proveedor no se vuelve a
+              pagar: «Ir al pago» aparecía junto a «No vuelvas a pagar». */}
+          {permissions.needsPayment && assignment && paymentIsPayable(paymentStatus) && (
             <Alert tone="warning" title="Falta confirmar el pago">
               El trabajo no puede comenzar hasta que el pago esté confirmado.{" "}
               <Link

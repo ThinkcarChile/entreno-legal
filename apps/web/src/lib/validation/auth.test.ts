@@ -40,6 +40,26 @@ describe("mínimo de contraseña", () => {
     expect(corta.error?.issues[0].path).toEqual(["password"]);
   });
 
+  it("el nombre sigue la regla de la base: lo que no se podría guardar se dice antes", () => {
+    // Estos nombres la base los cambiaba en silencio por «Usuario».
+    for (const firstName of ["Ana.Maria", "HagoTuFila soporte", 'Ana "Pepa"', "ana@correo.cl"]) {
+      const result = signUpSchema.safeParse({ ...registro, firstName });
+      expect({ firstName, ok: result.success }).toEqual({ firstName, ok: false });
+      expect(result.error?.issues[0].path).toEqual(["firstName"]);
+    }
+    expect(signUpSchema.safeParse({ ...registro, firstName: "María José" }).success).toBe(true);
+    expect(signUpSchema.safeParse({ ...registro, firstName: "A" }).success).toBe(false);
+  });
+
+  it("los espacios sobrantes del nombre se corrigen solos, como en el onboarding", () => {
+    const result = signUpSchema.safeParse({ ...registro, firstName: "  María   José " });
+    expect(result.success && result.data.firstName).toBe("María José");
+  });
+
+  it("el apellido tiene que empezar con una letra: es la inicial que se publica", () => {
+    expect(signUpSchema.safeParse({ ...registro, lastName: "1Rojas" }).success).toBe(false);
+  });
+
   it("la contraseña nueva tras recuperar aplica el mismo mínimo y exige repetirla igual", () => {
     expect(newPasswordSchema.safeParse({ password: "ocho1234", confirmPassword: "ocho1234" }).success).toBe(
       true,

@@ -7,6 +7,7 @@ import { Amount, Badge, Card, CardContent, EmptyState, Stat } from "@/components
 import { Alert } from "@/components/ui/feedback";
 import { requireWorker } from "@/lib/auth/session";
 import { getData } from "@/lib/data";
+import { PayoutStatus } from "@/lib/domain/enums";
 import { payoutStatusLabels } from "@/lib/domain/labels";
 import { formatDate } from "@/lib/utils/datetime";
 
@@ -14,6 +15,10 @@ export const metadata: Metadata = {
   title: "Mis ganancias",
   robots: { index: false, follow: false },
 };
+
+/** Lo que ve el trabajador de un pago retenido, sea cual sea el motivo interno. */
+const WORKER_HELD_TEXT =
+  "Retenido mientras soporte revisa el caso. Te avisaremos cuando se resuelva.";
 
 /**
  * Mis ganancias.
@@ -61,7 +66,11 @@ export default async function EarningsPage() {
           value={<Amount value={summary.pending} />}
           hint="Falta que el cliente apruebe"
         />
-        <Stat label="Retenido" value={<Amount value={summary.held} />} hint="Hay una disputa" />
+        <Stat
+          label="Retenido"
+          value={<Amount value={summary.held} />}
+          hint="En revisión de soporte"
+        />
         <Stat
           label="Transferido"
           value={<Amount value={summary.paid} />}
@@ -103,8 +112,14 @@ export default async function EarningsPage() {
                         <p className="mt-0.5 text-small text-ink-500">
                           {formatDate(row.jobStartsAt)}
                         </p>
-                        {row.heldReason && (
-                          <p className="mt-1 text-small text-warning-700">{row.heldReason}</p>
+                        {/* `held_reason` lo escribe la base para la administración:
+                            puede traer las cifras del cliente (cobrado, devuelto)
+                            o códigos internos de revisión. Al trabajador, una
+                            frase genérica. */}
+                        {row.status === PayoutStatus.HELD && (
+                          <p className="mt-1 text-small text-warning-700">
+                            {WORKER_HELD_TEXT}
+                          </p>
                         )}
                         {row.bankReference && (
                           <p className="mt-1 text-small text-success-700">

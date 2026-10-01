@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 
 import { Button, Input, Select } from "@/components/ui";
+import { SEARCH_QUERY_MAX } from "@/lib/data/supabase/search";
 import { CategoryGroup } from "@/lib/domain/enums";
 import { regions } from "@/lib/geo/chile";
 import { cn } from "@/lib/utils/cn";
@@ -100,6 +101,7 @@ export function JobFilters({ categories }: { categories: readonly JobCategory[] 
             placeholder="Buscar por título o comuna"
             aria-label="Buscar trabajos"
             defaultValue={params.get("q") ?? ""}
+            maxLength={SEARCH_QUERY_MAX}
             className="pl-10"
             onChange={(event) => updateDebounced("q", event.target.value)}
           />

@@ -55,6 +55,11 @@ en orden alfabético.
 | `…20260601001720_manual_payment_review.sql` | `flag_payment_for_review` y `release_payment_review`: la revisión manual pasa por la base, en el orden de cerrojos de todos, solo sobre un pago cobrado y con vuelta atrás; un pago en revisión sin `captured_at` no cuenta como cobrado al devolver |
 | `…20260601001730_attempts_abandonment_and_cap.sql` | El abandono del intento vigente no cierra el pago si otro intento se está confirmando; cinco intentos por pago en treinta minutos; el trabajador recibe en nulo el `id` del pago en `assignment_payment_states` |
 | `…20260601001740_payment_events_privacy.sql` | La historia del pago (`payment_events`), que lee el cliente, no lleva quién de administración cerró una devolución ni su nota |
+| `…20260601001800_job_evidence_anon_read.sql` | `anon` lee las columnas sin coordenadas de `job_evidence` (RLS le da cero filas): la página pública del trabajo dejó de fallar sin sesión |
+| `…20260601001810_free_text_rule.sql` | `app_private.free_text_problem` y restricciones CHECK sobre `jobs.title`, `jobs.cancellation_reason` y `assignments.cancellation_reason`: sin comillas, saltos de línea, direcciones, correos ni «HagoTuFila». Se crean `NOT VALID`, se limpian las filas existentes y se validan |
+| `…20260601001820_evidence_attributed_and_gated.sql` | `add_job_evidence` avisa quién y dónde, nunca el texto de la otra parte, y solo acepta evidencia con el trabajo en marcha y pagado (`app_private.job_evidence_open`) |
+| `…20260601001830_handoff_request_cooldown.sql` | `request_handoff_code` avisa al cliente una vez por asignación cada 5 minutos (`PT429` antes de tiempo) |
+| `…20260601001840_storage_listing_and_caps.sql` | Sin lectura pública de `avatars` ni `job-images` (no se listan); `avatars` solo la carpeta propia; subir exige ámbito vivo y tiene tope por persona y ámbito |
 | `…000500_evidence_and_chat.sql` | Evidencia, vistas `checkins` y `job_updates`, conversaciones, mensajes |
 | `…000600_reviews_disputes.sql` | Reseñas con validación, disputas, evidencia de disputa |
 | `…000700_loyalty_notifications_audit.sql` | FilaPuntos, notificaciones, `audit_logs` y sus triggers |
@@ -214,13 +219,13 @@ exige sesión y comprueba el papel de quien llama. Ver `docs/EJECUCION.md`.
 | `mark_on_the_way(assignment)` | El trabajador asignado | Avisa que salió. Idempotente |
 | `register_check_in(assignment, consentimiento, lat, lng, precisión, origen)` | El trabajador asignado | Registra la llegada, calcula la distancia contra la dirección real y decide si queda verificada o en revisión. Se puede repetir |
 | `start_job_work(assignment)` | El trabajador asignado | Comienza el trabajo. Exige un check-in verificado o aprobado a mano |
-| `add_job_evidence(assignment, tipo, título, cuerpo, ruta, mime, tamaño, fila)` | Las dos partes | Publica una actualización o un archivo. Rechaza los tipos reservados al sistema |
+| `add_job_evidence(assignment, tipo, título, cuerpo, ruta, mime, tamaño, fila)` | Las dos partes | Publica una actualización o un archivo. Rechaza los tipos reservados al sistema, y cualquier evidencia sin el trabajo en marcha y pagado. El aviso a la contraparte dice quién y dónde, no el texto |
 | `request_job_extension(assignment, minutos, motivo)` | El trabajador asignado | Pide más tiempo. El importe lo calcula la base |
 | `answer_job_extension(extensión, aceptar)` | El cliente | Responde, una sola vez. Al aceptar crea el cobro adicional |
 | `start_extension_payment(extensión)` | El cliente | Devuelve el cobro adicional para llevarlo al proveedor |
 | `generate_handoff_code(assignment)` | El cliente | Crea o renueva el PIN de 4 dígitos |
 | `get_handoff_code(assignment)` | El cliente | Única vía de lectura del PIN |
-| `request_handoff_code(assignment)` | El trabajador asignado | Avisa al cliente. No devuelve el código |
+| `request_handoff_code(assignment)` | El trabajador asignado | Avisa al cliente, una vez cada 5 minutos. No devuelve el código |
 | `verify_handoff_code(assignment, código)` | El trabajador asignado | Valida la entrega. Un solo uso, cinco intentos, solo los fallos gastan intento |
 | `request_job_completion(assignment, nota)` | El trabajador asignado | Da el trabajo por terminado. **No libera el pago** |
 | `approve_job_completion(assignment, bono)` | El cliente | Aprueba y libera el pago al trabajador |
@@ -437,20 +442,23 @@ configura en el panel (`DESPLIEGUE-SUPABASE.md` §4.6).
 
 ## Storage
 
-| Bucket | Público | Contenido | Subir (con sesión) | Borrar (con sesión) |
-|---|---|---|---|---|
-| `avatars` | Sí | Fotos de perfil | Carpeta propia | Carpeta propia |
-| `job-images` | Sí | Fotos del trabajo publicado | Carpeta propia, en un trabajo propio en `DRAFT` o `PUBLISHED` | Nadie |
-| `evidence` | No | Fotos de check-in y avance | Carpeta propia, en una asignación en la que participa | Lo propio, mientras no esté registrado |
-| `verification` | No | Documento y selfie de verificación | Carpeta propia | Nadie |
-| `dispute-files` | No | Archivos adjuntos a una disputa | Carpeta propia, en una disputa sin resolver en la que participa | Lo propio, mientras no esté registrado |
+| Bucket | Público | Contenido | Subir (con sesión) | Listar con la API | Borrar (con sesión) |
+|---|---|---|---|---|---|
+| `avatars` | Sí | Fotos de perfil | Carpeta propia, `<usuario>/<nombre>.jpg\|png\|webp`, hasta 5 | Solo la carpeta propia | Carpeta propia |
+| `job-images` | Sí | Fotos del trabajo publicado | Carpeta propia, en un trabajo propio en `DRAFT` o `PUBLISHED`, hasta 6 | Nadie | Nadie |
+| `evidence` | No | Fotos de check-in y avance | Carpeta propia, en una asignación propia que admite evidencia (pagada y en marcha), hasta `evidence_max_per_assignment` | Las partes y administración | Lo propio, mientras no esté registrado |
+| `verification` | No | Documento y selfie de verificación | Carpeta propia | Carpeta propia y administración | Nadie |
+| `dispute-files` | No | Archivos adjuntos a una disputa | Carpeta propia, en una disputa sin resolver en la que participa, hasta `evidence_max_per_assignment` (administración sin tope) | Las partes y administración | Lo propio, mientras no esté registrado |
 
 La primera carpeta de la ruta es siempre el identificador del usuario, y en
 `evidence`, `dispute-files` y `job-images` la segunda es el ámbito: la
 asignación, la disputa o el trabajo (`<usuario>/<ámbito>/<archivo>`). Lo exigen
-las políticas de Storage (migración `20260601001210`), no solo la aplicación.
-Una evidencia registrada no la borra nadie con sesión. Tamaño y tipos por
-bucket: migración `20260601000600`.
+las políticas de Storage (migraciones `20260601001210` y `20260601001840`), no
+solo la aplicación. Los topes cuentan los archivos de esa persona en ese
+ámbito, registrados o no. Los buckets públicos se sirven por su URL pública sin
+pasar por políticas; desde `20260601001840` no tienen política de lectura para
+todos, que solo servía para listarlos. Una evidencia registrada no la borra
+nadie con sesión. Tamaño y tipos por bucket: migración `20260601000600`.
 
 ---
 

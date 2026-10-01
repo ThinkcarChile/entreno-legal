@@ -99,6 +99,51 @@ elif ! node "$ROOT/scripts/compare-assignment-transitions.mjs" "$CUERPO"; then
   STATUS=1
 fi
 
+# Los tipos de aviso. La base los emite y la aplicación los recibe con
+# `as NotificationType`: un valor que falta en TypeScript no lo detecta el
+# compilador, y la plantilla de ese aviso no existe. Se comparan en los dos
+# sentidos, también contra las plantillas de src/lib/notifications/templates.ts.
+echo "→ Tipos de aviso (notification_type)"
+psql -tAq -d "$DB_NAME" -c "
+  select e.enumlabel from pg_enum e
+    join pg_type t on t.oid = e.enumtypid
+    join pg_namespace n on n.oid = t.typnamespace
+   where n.nspname = 'public' and t.typname = 'notification_type'
+" | sort -u > /tmp/db_notification_types.txt
+
+awk '/^export const NotificationType = \{/ { dentro = 1; next }
+     dentro && /^\}/ { dentro = 0 }
+     dentro' "$ROOT/src/lib/domain/enums.ts" \
+  | grep -oE '^[[:space:]]+[A-Z_]+:' | tr -d ' :' | sort -u > /tmp/code_notification_types.txt
+
+awk '/^export const notificationTemplates/ { dentro = 1; next }
+     dentro && /^\};/ { dentro = 0 }
+     dentro' "$ROOT/src/lib/notifications/templates.ts" \
+  | grep -oE '^  [A-Z_]+:' | tr -d ' :' | sort -u > /tmp/code_notification_templates.txt
+
+if [ ! -s /tmp/db_notification_types.txt ] || [ ! -s /tmp/code_notification_types.txt ]; then
+  echo "FALLO: no se pudieron leer los tipos de aviso de la base o de enums.ts"
+  STATUS=1
+else
+  while read -r tipo; do
+    if ! grep -qx "$tipo" /tmp/code_notification_types.txt; then
+      echo "FALLO: la base emite el aviso \"$tipo\" y NotificationType no lo tiene"
+      STATUS=1
+    fi
+    if ! grep -qx "$tipo" /tmp/code_notification_templates.txt; then
+      echo "FALLO: el aviso \"$tipo\" no tiene plantilla en templates.ts"
+      STATUS=1
+    fi
+  done < /tmp/db_notification_types.txt
+  while read -r tipo; do
+    if ! grep -qx "$tipo" /tmp/db_notification_types.txt; then
+      echo "FALLO: NotificationType tiene \"$tipo\" y el enum notification_type no"
+      STATUS=1
+    fi
+  done < /tmp/code_notification_types.txt
+  echo "  $(wc -l < /tmp/db_notification_types.txt) tipos en la base, $(wc -l < /tmp/code_notification_types.txt) en la aplicación"
+fi
+
 if [ "$STATUS" = "0" ]; then
   echo "✓ La aplicación y el esquema coinciden"
 fi

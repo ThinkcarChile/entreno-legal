@@ -374,8 +374,11 @@ async function main(): Promise<void> {
   check("políticas RLS en public", inv.politicas, 77);
   check("buckets de Storage", inv.buckets, 5);
   // 11 de …000900 y 20260401000100, más las tres de borrado de 20260601001210
-  // (avatares propios, y evidencia y archivos de disputa propios sin registrar).
-  check("políticas de Storage", inv.politicas_storage, 14);
+  // (avatares propios, y evidencia y archivos de disputa propios sin registrar);
+  // 20260601001840 quita las dos lecturas públicas (avatars, job-images), que
+  // dejaban listar los buckets sin sesión, y añade la de la carpeta propia de
+  // avatars.
+  check("políticas de Storage", inv.politicas_storage, 13);
   check("comunas", inv.comunas, 346);
   check("regiones", inv.regiones, 16);
   check("categorías de trabajo", inv.categorias, 9);

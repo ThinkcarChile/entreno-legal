@@ -549,7 +549,12 @@ Abierto en otro navegador o en la app de correo, falla, y fallaba en silencio
 
 `/auth/confirm` recibe `token_hash` y `type`, valida los dos
 (`lib/auth/email-link.ts`, con pruebas) y verifica con `verifyOtp` en el
-servidor: la sesión queda en el navegador que abre el enlace. La recuperación
+servidor: la sesión queda en el navegador que abre el enlace. Abrir el enlace
+no verifica nada: muestra una página con «Continuar», y solo ese botón (una
+acción de servidor, `POST`) llama a `verifyOtp`. Sin ese paso, un enlace pedido
+por otra persona para su propia cuenta dejaba a quien lo abría dentro de ella,
+sin aviso, y los filtros de correo que abren enlaces los gastaban. Solo acepta
+los tipos que la aplicación envía; `magiclink` e `invite`, no. La recuperación
 termina siempre en `/nueva-clave`, diga lo que diga `next`; el resto pasa por
 `safeNextPath`. Un enlace que no sirve vuelve a `/entrar` o a `/recuperar-clave`
 con un motivo (`enlace-vencido`, `enlace-invalido`, `otro-navegador`) que la

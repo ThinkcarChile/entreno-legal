@@ -5,19 +5,29 @@ import { Briefcase } from "lucide-react";
 import { BucketTabs } from "@/components/jobs/bucket-tabs";
 import { ClientJobCard } from "@/components/jobs/my-job-card";
 import { ButtonLink, EmptyState } from "@/components/ui";
+import { Alert } from "@/components/ui/feedback";
 import { requireOnboardedUser } from "@/lib/auth/session";
 import { clientBuckets } from "@/lib/domain/buckets";
 import { getData } from "@/lib/data";
+import { publishedListNotice } from "@/lib/payments/published-list-notice";
 
 export const metadata: Metadata = {
   title: "Trabajos que publiqué",
   robots: { index: false, follow: false },
 };
 
-export default async function MyPublishedJobsPage() {
+interface PageProps {
+  searchParams: Promise<{ pago?: string }>;
+}
+
+export default async function MyPublishedJobsPage({ searchParams }: PageProps) {
+  const { pago } = await searchParams;
   await requireOnboardedUser("/mis-trabajos/publicados");
   const jobs = await getData().jobs.listMinePublished();
   const buckets = clientBuckets(jobs);
+  // `/pagos/retorno` manda aquí los retornos que no pudo resolver: el aviso es
+  // lo que evita un segundo pago mientras se verifica.
+  const notice = publishedListNotice(pago);
 
   return (
     <div className="container-page py-8 sm:py-12">
@@ -34,6 +44,12 @@ export default async function MyPublishedJobsPage() {
           Publicar otro
         </ButtonLink>
       </header>
+
+      {notice && (
+        <Alert tone={notice.tone} className="mt-6" title={notice.title}>
+          {notice.body}
+        </Alert>
+      )}
 
       <div className="mt-8">
         {jobs.length === 0 ? (

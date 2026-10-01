@@ -5,8 +5,10 @@ import { SearchX } from "lucide-react";
 import { JobCard } from "@/components/jobs/job-card";
 import { JobFilters } from "@/components/jobs/job-filters";
 import { ButtonLink, EmptyState } from "@/components/ui";
+import { Alert } from "@/components/ui/feedback";
 import { CategoryGroup, JobUrgency } from "@/lib/domain/enums";
 import { getData, type JobFilters as Filters, type JobSort } from "@/lib/data";
+import { normalizeSearchQuery } from "@/lib/data/supabase/search";
 
 export const metadata: Metadata = {
   title: "Trabajos disponibles",
@@ -36,7 +38,8 @@ export default async function JobsPage({ searchParams }: PageProps) {
   const page = Math.max(1, Number(single(params.pagina) ?? 1) || 1);
 
   const filters: Filters = {
-    query: single(params.q),
+    // Con tope de largo y sin espacios sobrantes; el repositorio lo escapa.
+    query: normalizeSearchQuery(single(params.q)) ?? undefined,
     categoryGroup: single(params.tipo) as CategoryGroup | undefined,
     categoryIds: category ? [category.id] : undefined,
     regionCode: single(params.region),
@@ -53,8 +56,16 @@ export default async function JobsPage({ searchParams }: PageProps) {
     offset: (page - 1) * PAGE_SIZE,
   };
 
-  const result = await data.jobs.listOpen(filters);
-  const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
+  // Si la lista no se puede leer, los filtros siguen a la vista con un aviso:
+  // antes la página entera cambiaba por la de error, buscador incluido, y
+  // «Reintentar» repetía la misma búsqueda que había fallado.
+  const result = await data.jobs.listOpen(filters).catch((error: unknown) => {
+    console.error("[trabajos] no se pudo leer el listado", {
+      code: typeof error === "object" && error !== null && "code" in error ? error.code : null,
+    });
+    return null;
+  });
+  const totalPages = result ? Math.max(1, Math.ceil(result.total / PAGE_SIZE)) : 1;
 
   return (
     <div className="container-page py-8 sm:py-12">
@@ -72,13 +83,20 @@ export default async function JobsPage({ searchParams }: PageProps) {
         <JobFilters categories={categories} />
       </div>
 
-      <p className="mt-6 text-small text-ink-500">
-        {result.total === 0
-          ? "Sin resultados"
-          : `${result.total} ${result.total === 1 ? "trabajo" : "trabajos"} disponibles`}
-      </p>
+      {!result ? (
+        <Alert tone="warning" className="mt-6" title="No pudimos cargar los trabajos">
+          Prueba con otra búsqueda o quita algún filtro. Si sigue pasando, vuelve a intentarlo
+          en unos minutos.
+        </Alert>
+      ) : (
+        <p className="mt-6 text-small text-ink-500">
+          {result.total === 0
+            ? "Sin resultados"
+            : `${result.total} ${result.total === 1 ? "trabajo" : "trabajos"} disponibles`}
+        </p>
+      )}
 
-      {result.items.length === 0 ? (
+      {!result ? null : result.items.length === 0 ? (
         <EmptyState
           className="mt-4"
           icon={<SearchX size={28} aria-hidden="true" />}

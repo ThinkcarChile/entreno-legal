@@ -103,27 +103,36 @@ export function clientBuckets(jobs: readonly ClientJobSummary[]): readonly Bucke
 }
 
 export function workerBuckets(jobs: readonly WorkerJobSummary[]): readonly Bucket<WorkerJobSummary>[] {
+  // Un trabajo que la administración cerró al resolver una disputa está
+  // terminado aunque la asignación haya quedado IN_PROGRESS: `resolve_dispute`
+  // no la mueve. Antes se quedaba para siempre en «En curso».
+  const closed = (j: WorkerJobSummary) => j.status === JobStatus.CLOSED;
+
   const offered = jobs.filter((j) => j.offerStatus === OfferStatus.PENDING && !j.assignmentId);
   const accepted = jobs.filter(
-    (j) => j.assignmentStatus === AssignmentStatus.AWAITING_PAYMENT,
+    (j) => !closed(j) && j.assignmentStatus === AssignmentStatus.AWAITING_PAYMENT,
   );
-  const upcoming = jobs.filter((j) => j.assignmentStatus === AssignmentStatus.CONFIRMED);
+  const upcoming = jobs.filter(
+    (j) => !closed(j) && j.assignmentStatus === AssignmentStatus.CONFIRMED,
+  );
   const running = jobs.filter(
     (j) =>
-      j.assignmentStatus === AssignmentStatus.ON_THE_WAY ||
-      j.assignmentStatus === AssignmentStatus.CHECKED_IN ||
-      j.assignmentStatus === AssignmentStatus.IN_PROGRESS,
+      !closed(j) &&
+      (j.assignmentStatus === AssignmentStatus.ON_THE_WAY ||
+        j.assignmentStatus === AssignmentStatus.CHECKED_IN ||
+        j.assignmentStatus === AssignmentStatus.IN_PROGRESS),
   );
   // Pedida la finalización, el trabajo ya no está «en curso» ni «terminado»:
   // espera al cliente, y esa espera merece su propia pestaña.
   const awaitingApproval = jobs.filter(
-    (j) => j.assignmentStatus === AssignmentStatus.HANDOFF_COMPLETED,
+    (j) => !closed(j) && j.assignmentStatus === AssignmentStatus.HANDOFF_COMPLETED,
   );
   const disputed = jobs.filter((j) => j.status === JobStatus.DISPUTED);
   const finished = jobs.filter(
     (j) =>
       j.status !== JobStatus.DISPUTED &&
-      (j.assignmentStatus === AssignmentStatus.COMPLETED ||
+      ((closed(j) && j.assignmentId !== null) ||
+        j.assignmentStatus === AssignmentStatus.COMPLETED ||
         j.assignmentStatus === AssignmentStatus.CANCELLED_BY_CLIENT ||
         j.assignmentStatus === AssignmentStatus.CANCELLED_BY_WORKER ||
         j.offerStatus === OfferStatus.REJECTED ||

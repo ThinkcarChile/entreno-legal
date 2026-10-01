@@ -5,6 +5,7 @@ import {
   authLinkMessage,
   classifyAuthLinkError,
   CONFIRM_LINK_TYPES,
+  confirmLinkCopy,
   parseConfirmLink,
 } from "./email-link";
 
@@ -80,6 +81,9 @@ describe("parseConfirmLink", () => {
     ["sin tipo", `token_hash=${HASH}`],
     ["tipo desconocido", `token_hash=${HASH}&type=admin`],
     ["invitación, que la aplicación no usa", `token_hash=${HASH}&type=invite`],
+    // La aplicación no entra con enlaces mágicos: aceptarlos solo servía para
+    // mandarle a otra persona uno pedido para la cuenta propia.
+    ["enlace mágico, que la aplicación no usa", `token_hash=${HASH}&type=magiclink`],
     ["tipo de SMS", `token_hash=${HASH}&type=sms`],
     ["propiedad heredada del objeto", `token_hash=${HASH}&type=constructor`],
     ["mayúsculas", `token_hash=${HASH}&type=RECOVERY`],
@@ -90,6 +94,19 @@ describe("parseConfirmLink", () => {
   it("solo declara tipos que verifyOtp conoce", () => {
     const deSupabase = ["signup", "invite", "magiclink", "recovery", "email_change", "email"];
     for (const type of CONFIRM_LINK_TYPES) expect(deSupabase).toContain(type);
+  });
+});
+
+describe("confirmLinkCopy", () => {
+  it("cada tipo dice qué pasa al continuar y qué hacer con un enlace ajeno", () => {
+    for (const type of CONFIRM_LINK_TYPES) {
+      const copy = confirmLinkCopy(type);
+      expect(copy.title).toBeTruthy();
+      expect(copy.button).toBeTruthy();
+      expect(copy.body).toMatch(/no continúes/);
+    }
+    expect(confirmLinkCopy("recovery").title).toMatch(/contraseña/);
+    expect(confirmLinkCopy("email_change").title).toMatch(/correo/);
   });
 });
 

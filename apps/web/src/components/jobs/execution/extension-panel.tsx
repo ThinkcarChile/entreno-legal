@@ -10,8 +10,8 @@ import { Alert } from "@/components/ui/feedback";
 import { answerExtensionAction, requestExtensionAction } from "@/lib/actions/assignment";
 import { startExtensionPaymentAction } from "@/lib/actions/payments";
 import { platform } from "@/config/platform";
-import type { JobExtension, Payment } from "@/lib/domain/types";
-import { PaymentStatus } from "@/lib/domain/enums";
+import type { ExtensionPaymentView } from "@/lib/domain/permissions";
+import type { JobExtension } from "@/lib/domain/types";
 import { formatDuration } from "@/lib/utils/datetime";
 
 /**
@@ -157,21 +157,39 @@ export function ExtensionAnswer({
   );
 }
 
-/** El cobro del tiempo adicional aceptado, cuando aún está pendiente. */
+/**
+ * El cobro del tiempo adicional aceptado. Qué se muestra lo decide
+ * `extensionPaymentView` (src/lib/domain/permissions.ts): el botón de pagar solo
+ * aparece cuando el cobro todavía se puede intentar y llegaría al pago del
+ * trabajador.
+ */
 export function ExtensionPaymentPrompt({
   extension,
-  payment,
+  view,
 }: {
   extension: JobExtension;
-  payment: Payment | null;
+  view: ExtensionPaymentView;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const minutes = formatDuration(extension.additionalMinutes);
 
-  if (payment?.status === PaymentStatus.PAID) {
+  if (view === "paid") {
     return (
-      <p className="text-small text-success-700">
-        Tiempo adicional de {formatDuration(extension.additionalMinutes)} pagado.
+      <p className="text-small text-success-700">Tiempo adicional de {minutes} pagado.</p>
+    );
+  }
+
+  if (view !== "payable") {
+    const text: Record<Exclude<ExtensionPaymentView, "paid" | "payable">, string> = {
+      in_flight: `Estamos confirmando con el proveedor el cobro del tiempo adicional (${minutes}). No vuelvas a pagar.`,
+      in_review: `El cobro del tiempo adicional (${minutes}) está en revisión. No vuelvas a pagar: te avisamos cuando se resuelva.`,
+      refunded: `El cobro del tiempo adicional (${minutes}) se devolvió.`,
+      closed: `El tiempo adicional (${minutes}) quedó sin pagar y el pago de este trabajo ya se cerró: ya no se puede pagar desde aquí. Si crees que corresponde, escríbenos.`,
+    };
+    return (
+      <p className="rounded-[var(--radius-control)] border border-line p-4 text-small text-ink-700">
+        {text[view]}
       </p>
     );
   }

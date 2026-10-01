@@ -337,10 +337,20 @@ contraseña»—, el canje falla. Antes fallaba en silencio; ahora la pantalla
 explica qué pasó, pero el enlace sigue sin servir.
 
 **La corrección** ya está en el código: `/auth/confirm` recibe `token_hash` y
-`type`, verifica con `verifyOtp` en el servidor y deja la sesión en el navegador
-que abre el enlace, sea cual sea. La recuperación termina siempre en
-`/nueva-clave`. Falta que los correos traigan ese enlace, y eso solo se cambia
-en el panel.
+`type` y deja la sesión en el navegador que abre el enlace, sea cual sea. La
+recuperación termina siempre en `/nueva-clave`. Falta que los correos traigan
+ese enlace, y eso solo se cambia en el panel.
+
+Abrir el enlace **no** abre la sesión: `/auth/confirm` muestra una página con un
+botón «Continuar», y solo ese botón —un `POST`— verifica con `verifyOtp`. Antes
+lo hacía el `GET` mismo, y eso permitía entrar a alguien en una cuenta ajena: el
+atacante pide para SU cuenta un correo de confirmación o de recuperación, copia
+el `token_hash` y le manda el enlace a la víctima, que al abrirlo quedaba dentro
+de la cuenta del atacante sin aviso (y podía subir ahí su carnet o pagar). La
+página dice qué va a pasar, avisa si ya había otra sesión abierta, y pide no
+continuar si el correo no lo pidió la persona. De paso, los filtros de correo
+que abren los enlaces para revisarlos ya no los gastan. Solo acepta los tipos
+que la aplicación envía (`email`, `signup`, `recovery`, `email_change`).
 
 Paso manual, en cada proyecto: **Authentication → Emails → Templates**
 (*Email Templates* en algunas versiones del panel). En cada plantilla,
@@ -352,11 +362,17 @@ alrededor es libre; abajo hay una propuesta en español.
 | **Confirm signup** | `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email` | `/bienvenida` |
 | **Reset password** | `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery` | `/nueva-clave`, siempre |
 | **Change email address** | `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email_change` | `/cuenta` |
-| **Magic link** | `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email` | `/bienvenida`. La aplicación no envía enlaces mágicos hoy; cámbiala igual para que no quede ninguna con el flujo antiguo |
 
-**Invite user** no se toca: la aplicación no invita a nadie, y `/auth/confirm`
-rechaza `type=invite` a propósito (una invitación deja una sesión sin
-contraseña). **Reauthentication** usa un código, no un enlace.
+**Magic link** no lleva a `/auth/confirm`: la aplicación no entra con enlaces
+mágicos, y un enlace mágico solo le sirve a quien lo pide para su propia cuenta
+y se lo manda a otra persona. Lo más seguro es quitarle el enlace a esa
+plantilla (por ejemplo: «HagoTuFila no envía enlaces de acceso: si no pediste
+nada, ignora este correo»); si se deja la plantilla por omisión, su enlace va
+por PKCE a `/auth/callback` y no sirve fuera del navegador que lo pidió.
+`/auth/confirm` rechaza `type=magiclink`. **Invite user** tampoco se toca: la
+aplicación no invita a nadie, y `/auth/confirm` rechaza `type=invite` a
+propósito (una invitación deja una sesión sin contraseña).
+**Reauthentication** usa un código, no un enlace.
 
 Propuesta para *Reset password* (asunto: «Crea una contraseña nueva en
 HagoTuFila»):
@@ -394,11 +410,9 @@ Notas:
   tiene su destino fijo (columna de la derecha).
 - Con *Secure email change* activado llegan dos correos, uno a cada dirección;
   el cambio se aplica cuando se abren los dos.
-- `/auth/confirm` consume el enlace al abrirlo (`GET`); a un `HEAD` responde
-  sin consumirlo. Algunos filtros de correo corporativos abren los enlaces con
-  `GET` antes que la persona; si eso pasara, el enlace llegaría usado y la
-  pantalla diría «venció o ya se usó». No se ha visto en este proyecto; si
-  aparece, la salida es una página intermedia con un botón.
+- `/auth/confirm` no consume el enlace al abrirlo (`GET` ni `HEAD`): muestra la
+  página intermedia, y el enlace se gasta al pulsar «Continuar». Un filtro de
+  correo que abra los enlaces antes que la persona ya no los deja usados.
 - `/auth/callback` sigue funcionando para los correos ya enviados con la
   plantilla antigua.
 
@@ -801,7 +815,7 @@ llega es el de la otra persona hasta recargar.
 | `/nueva-clave` dice «Este enlace ya no sirve» | El enlace venció, ya se usó o no abrió sesión. Se pide otro desde `/recuperar-clave` |
 | El chat no actualiza sin recargar | La tabla `messages` no está en la publicación de Realtime |
 | "Falta la clave privada de Supabase" al pagar | Falta `SUPABASE_SECRET_KEY` |
-| `db push` falla al crear políticas de Storage | El rol no puede escribir en `storage.objects`: crea esas políticas desde **Storage → Policies** con las reglas de las migraciones `…000900`, `20260401000100` y `20260601001210` |
+| `db push` falla al crear políticas de Storage | El rol no puede escribir en `storage.objects`: crea esas políticas desde **Storage → Policies** con las reglas de las migraciones `…000900`, `20260401000100`, `20260601001210` y `20260601001840` (esta última quita las dos lecturas públicas de `avatars` y `job-images`) |
 | Publicar, ofertar o escribir responde «Alcanzaste el máximo…» o «Estás enviando mensajes muy seguido…» | Es el límite por persona (`platform_settings.rate_limit_*`). Si pasa en las verificaciones contra `hagotufila-dev`, faltó subirlo en ese proyecto (§8.1) |
 | Un trabajador verificado no puede ofertar | Revisa `worker_profiles.verification_status`; debe ser `VERIFIED` |
 | `db push` se queda colgado sin mensaje | El puerto 5432/6543 está bloqueado en tu red: usa `npm run db:push:hosted` (sección 3.b) |

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { lastNameSchema, personNameSchema } from "./profile";
+
 export const emailSchema = z.string().email("Ingresa un correo válido");
 
 /**
@@ -35,10 +37,18 @@ export const signInSchema = z.object({
   password: z.string().min(1, "Ingresa tu contraseña"),
 });
 
+/**
+ * El registro aplica la MISMA regla de nombre que la base (`personNameSchema`,
+ * espejo de `app_private.person_name_problem`). Antes solo pedía 2 a 60
+ * caracteres: un nombre como «Ana.Maria» —parece una dirección web— pasaba el
+ * formulario, `handle_new_user` no podía guardarlo y lo cambiaba en silencio
+ * por «Usuario», que después aparecía en el onboarding. Ahora el formulario lo
+ * dice antes de enviar. El mínimo de 2 caracteres es del formulario.
+ */
 export const signUpSchema = z
   .object({
-    firstName: z.string().min(2, "Ingresa tu nombre").max(60),
-    lastName: z.string().min(2, "Ingresa tu apellido").max(60),
+    firstName: personNameSchema.refine((v) => [...v].length >= 2, "Ingresa tu nombre"),
+    lastName: lastNameSchema,
     email: emailSchema,
     password: passwordSchema,
     confirmPassword: z.string(),

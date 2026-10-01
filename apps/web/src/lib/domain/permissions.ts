@@ -38,6 +38,12 @@ export interface AssignmentFacts {
   paymentStatus: PaymentStatus | null;
   /** Hay una disputa OPEN o UNDER_REVIEW sobre este trabajo. */
   hasOpenDispute: boolean;
+  /**
+   * Hay una disputa ya RESUELTA. La administración cerró el caso: el trabajo
+   * queda CLOSED y la base no admite otra disputa
+   * (`guard_dispute_after_resolution`).
+   */
+  hasResolvedDispute: boolean;
   /** Hay una extensión PENDING sin vencer. */
   pendingExtension: boolean;
   /** Existe un check-in verificado, o uno aprobado a mano. */
@@ -106,21 +112,58 @@ const NOTHING: AssignmentAbilities = {
 };
 
 /** Estados en los que la asignación terminó, de una manera u otra. */
-const CLOSED_ASSIGNMENT: readonly AssignmentStatus[] = [
-  AssignmentStatus.COMPLETED,
+const CANCELLED_ASSIGNMENT: readonly AssignmentStatus[] = [
   AssignmentStatus.CANCELLED_BY_CLIENT,
   AssignmentStatus.CANCELLED_BY_WORKER,
 ];
+const CLOSED_ASSIGNMENT: readonly AssignmentStatus[] = [
+  AssignmentStatus.COMPLETED,
+  ...CANCELLED_ASSIGNMENT,
+];
+
+/**
+ * ¿El pago del trabajo respalda que se trabaje? PAID, o PARTIALLY_REFUNDED: una
+ * devolución parcial (un bono devuelto, una de buena voluntad) no deja el
+ * trabajo sin pagar. Es la regla de la base (`job_payment_blocker`, y la que
+ * usan `require_payment_before_work` y `job_evidence_open`). Devuelto entero,
+ * en revisión, fallido o en curso, no.
+ */
+export function paymentBacksWork(status: PaymentStatus | null): boolean {
+  return status === PaymentStatus.PAID || status === PaymentStatus.PARTIALLY_REFUNDED;
+}
+
+/**
+ * ¿Este pago todavía se puede intentar? Sin pago, o con uno que no llegó a
+ * cobrarse. Uno en revisión NO: el dinero pudo haber entrado, y pagar de nuevo
+ * sería cobrar dos veces (`start_protected_payment` lo rechaza).
+ */
+export function paymentIsPayable(status: PaymentStatus | null): boolean {
+  return (
+    status === null ||
+    status === PaymentStatus.PENDING ||
+    status === PaymentStatus.CREATED ||
+    status === PaymentStatus.FAILED
+  );
+}
+
+/**
+ * La administración cerró el trabajo al resolver una disputa. Es terminal: no
+ * corre el tiempo, no se aporta evidencia ni se abre otra disputa, aunque la
+ * asignación haya quedado IN_PROGRESS (`resolve_dispute` no la mueve).
+ */
+function closedByAdministration(f: AssignmentFacts): boolean {
+  return f.jobStatus === JobStatus.CLOSED || f.hasResolvedDispute;
+}
 
 /** El trabajo está vivo y con dinero confirmado detrás. */
 function isLive(f: AssignmentFacts): boolean {
   return (
-    f.paymentStatus === PaymentStatus.PAID &&
+    paymentBacksWork(f.paymentStatus) &&
     !CLOSED_ASSIGNMENT.includes(f.assignmentStatus) &&
+    !closedByAdministration(f) &&
     f.jobStatus !== JobStatus.CANCELLED &&
     f.jobStatus !== JobStatus.CANCELLATION_PENDING &&
-    f.jobStatus !== JobStatus.EXPIRED &&
-    f.jobStatus !== JobStatus.CLOSED
+    f.jobStatus !== JobStatus.EXPIRED
   );
 }
 
@@ -176,9 +219,14 @@ export function assignmentAbilities(f: AssignmentFacts): AssignmentAbilities {
     canRequestCompletion: worker && live && !frozen && s === AssignmentStatus.IN_PROGRESS,
 
     /* ------------------------------------------------------------ cliente */
+    // Solo antes de comenzar y con un pago que todavía se puede intentar. Un
+    // pago en revisión, devuelto o ya cobrado no se vuelve a pagar: antes
+    // cualquier estado distinto de PAID ofrecía «Confirmar el pago», y
+    // `/pagar` rebotaba o la base lo rechazaba.
     canPay:
       client &&
-      f.paymentStatus !== PaymentStatus.PAID &&
+      s === AssignmentStatus.AWAITING_PAYMENT &&
+      paymentIsPayable(f.paymentStatus) &&
       (f.jobStatus === JobStatus.OFFER_ACCEPTED || f.jobStatus === JobStatus.PAYMENT_PENDING),
 
     canAnswerExtension: client && live && !frozen && f.pendingExtension,
@@ -217,23 +265,30 @@ export function assignmentAbilities(f: AssignmentFacts): AssignmentAbilities {
 
     // Mientras el trabajo está vivo, las dos partes aportan evidencia. Una vez
     // cerrado ya no se añade nada a la línea de tiempo: si hay algo que decir,
-    // es dentro de una disputa abierta, que tiene su propio expediente.
-    canAddEvidence:
-      (worker || client) &&
-      f.paymentStatus === PaymentStatus.PAID &&
-      !CLOSED_ASSIGNMENT.includes(s),
+    // es dentro de una disputa abierta, que tiene su propio expediente. Es la
+    // misma pregunta que hace la base (`app_private.job_evidence_open`,
+    // 20260601001820).
+    canAddEvidence: (worker || client) && live && s !== AssignmentStatus.AWAITING_PAYMENT,
 
     // Reclamar necesita que haya habido trabajo y dinero, y que el plazo siga
-    // abierto cuando el trabajo ya se aprobó.
+    // abierto cuando el trabajo ya se aprobó. Una sola disputa por trabajo, y
+    // ninguna con la transferencia al trabajador ya hecha: lo mismo que
+    // `guard_dispute_after_resolution`.
     canOpenDispute:
       (worker || client) &&
-      f.paymentStatus === PaymentStatus.PAID &&
+      paymentBacksWork(f.paymentStatus) &&
       !f.hasOpenDispute &&
+      !closedByAdministration(f) &&
+      f.payoutStatus !== PayoutStatus.PAID &&
       s !== AssignmentStatus.AWAITING_PAYMENT &&
+      !CANCELLED_ASSIGNMENT.includes(s) &&
       !(s === AssignmentStatus.COMPLETED && f.disputeWindowClosed),
 
     canAddDisputeEvidence: (worker || client || admin) && f.hasOpenDispute,
 
+    // Se reseña un trabajo aprobado (la base exige COMPLETED), también si
+    // después hubo una disputa ya resuelta. Uno que la administración cerró
+    // antes de aprobarse no se reseña: la asignación nunca llega a COMPLETED.
     canReview:
       (worker || client) && s === AssignmentStatus.COMPLETED && !f.hasReviewed && !frozen,
   };
@@ -289,11 +344,26 @@ export function nextWorkerStep(
 /** Qué está esperando el trabajo ahora mismo, en una frase. */
 export function waitingFor(f: AssignmentFacts): string {
   if (f.hasOpenDispute) return "La administración está revisando la disputa.";
+  // Cerrado por la administración: la asignación puede seguir IN_PROGRESS en la
+  // base, pero ya no hay nada en curso que esperar.
+  if (closedByAdministration(f)) return "La administración resolvió la disputa y cerró el trabajo.";
   if (f.jobStatus === JobStatus.CANCELLATION_PENDING) {
     return "Estamos verificando el estado del pago antes de completar la cancelación.";
   }
   if (f.assignmentStatus === AssignmentStatus.AWAITING_PAYMENT) {
-    return "Falta que el cliente confirme el pago.";
+    return f.paymentStatus === PaymentStatus.UNDER_REVIEW
+      ? "Estamos verificando el pago del cliente con el proveedor."
+      : "Falta que el cliente confirme el pago.";
+  }
+  // Un pago puede volver de PAID a revisión, o devolverse entero, con el
+  // trabajo ya en marcha: la base no deja avanzar, y la frase lo dice.
+  if (!CLOSED_ASSIGNMENT.includes(f.assignmentStatus)) {
+    if (f.paymentStatus === PaymentStatus.UNDER_REVIEW) {
+      return "El pago del cliente está en revisión: el trabajo queda en pausa hasta que se resuelva.";
+    }
+    if (f.paymentStatus === PaymentStatus.REFUNDED) {
+      return "El pago del cliente se devolvió: el trabajo no puede seguir.";
+    }
   }
   if (f.pendingExtension) return "El cliente tiene que responder a la solicitud de más tiempo.";
   if (f.hasCheckInUnderReview && !f.hasValidCheckIn) {
@@ -314,6 +384,89 @@ export function waitingFor(f: AssignmentFacts): string {
       return "Trabajo completado.";
     default:
       return "Trabajo cancelado.";
+  }
+}
+
+/* --------------------------------------------------- tiempo adicional */
+
+/**
+ * Qué mostrarle al cliente del cobro de un tiempo adicional que aceptó.
+ *
+ *   paid        pagado
+ *   payable     falta pagarlo, y todavía se puede
+ *   closed      quedó sin pagar y ya no se puede: el pago al trabajador se
+ *               cerró (transferido, cancelado o decidido en una disputa)
+ *   in_flight   el proveedor todavía no responde
+ *   in_review   el cobro está en revisión: no se vuelve a pagar
+ *   refunded    el cobro se devolvió, entero o en parte
+ *
+ * Antes cualquier estado distinto de PAID mostraba «Falta pagar» con su botón:
+ * también un cobro en revisión, uno devuelto, y el de un trabajo ya cerrado,
+ * que la base rechaza (`start_extension_payment` solo cobra con el payout
+ * PENDING, APPROVED o HELD y el trabajo sin cerrar).
+ */
+export type ExtensionPaymentView =
+  | "paid"
+  | "payable"
+  | "closed"
+  | "in_flight"
+  | "in_review"
+  | "refunded";
+
+export interface ExtensionPaymentContext {
+  jobStatus: JobStatus;
+  assignmentStatus: AssignmentStatus;
+  hasResolvedDispute: boolean;
+  disputeWindowClosed: boolean;
+  /**
+   * El estado del payout si quien mira lo puede leer; `null` si no existe o
+   * no lo puede leer, que es el caso del cliente (RLS de `payouts`).
+   */
+  payoutStatus: PayoutStatus | null;
+}
+
+/** Los estados del payout a los que todavía se le puede sumar un cobro. */
+const PAYOUT_OPEN: readonly PayoutStatus[] = [
+  PayoutStatus.PENDING,
+  PayoutStatus.APPROVED,
+  PayoutStatus.HELD,
+];
+
+/** ¿Un cobro adicional pagado ahora todavía llegaría al pago del trabajador? */
+export function extensionStillPayable(ctx: ExtensionPaymentContext): boolean {
+  if (
+    ctx.hasResolvedDispute ||
+    ctx.jobStatus === JobStatus.CLOSED ||
+    ctx.jobStatus === JobStatus.CANCELLED ||
+    ctx.jobStatus === JobStatus.CANCELLATION_PENDING ||
+    ctx.jobStatus === JobStatus.EXPIRED ||
+    CANCELLED_ASSIGNMENT.includes(ctx.assignmentStatus)
+  ) {
+    return false;
+  }
+  if (ctx.payoutStatus !== null) return PAYOUT_OPEN.includes(ctx.payoutStatus);
+  // Sin ver el payout: no se transfiere ni se cancela antes de que venza el
+  // plazo para reportar problemas o de que se resuelva una disputa
+  // (`payout_transfer_blocker`), así que hasta entonces sigue abierto.
+  return !(ctx.assignmentStatus === AssignmentStatus.COMPLETED && ctx.disputeWindowClosed);
+}
+
+export function extensionPaymentView(
+  status: PaymentStatus | null,
+  ctx: ExtensionPaymentContext,
+): ExtensionPaymentView {
+  switch (status) {
+    case PaymentStatus.PAID:
+      return "paid";
+    case PaymentStatus.UNDER_REVIEW:
+      return "in_review";
+    case PaymentStatus.REFUNDED:
+    case PaymentStatus.PARTIALLY_REFUNDED:
+      return "refunded";
+    case PaymentStatus.AUTHORIZED:
+      return "in_flight";
+    default:
+      return extensionStillPayable(ctx) ? "payable" : "closed";
   }
 }
 

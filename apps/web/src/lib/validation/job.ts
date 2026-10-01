@@ -3,6 +3,8 @@ import { z } from "zod";
 import { platform } from "@/config/platform";
 import { JobObjectiveType, JobUrgency } from "@/lib/domain/enums";
 
+import { jobTitleProblem } from "./free-text";
+
 /**
  * Esquemas de validación del flujo "Publicar trabajo".
  *
@@ -35,7 +37,12 @@ export const stepScheduleSchema = z.object({
 });
 
 export const stepDescriptionSchema = z.object({
-  title: z.string().min(10, "El título necesita al menos 10 caracteres").max(120),
+  // El título entra entre comillas en los avisos: la misma regla que la base
+  // (free-text.ts, migración …001810), con el mensaje en palabras.
+  title: z.string().superRefine((value, ctx) => {
+    const problem = jobTitleProblem(value);
+    if (problem) ctx.addIssue({ code: "custom", message: problem });
+  }),
   description: z.string().min(30, "Describe el trabajo con al menos 30 caracteres").max(2000),
   instructions: z.string().max(2000).optional().or(z.literal("")),
   imageUrls: z.array(z.string().url()).max(6).default([]),
