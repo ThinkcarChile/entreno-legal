@@ -3,6 +3,7 @@
  * los advisors de seguridad y rendimiento.
  *
  *   npm run verify:schema:hosted
+ *   npm run verify:schema:hosted -- --produccion   (contra el proyecto de producción)
  *
  * Es el equivalente remoto de `supabase/tests/05_schema_inventory.sql`, que
  * corre contra el PostgreSQL local dentro de `npm run db:test`. Las cifras
@@ -13,6 +14,12 @@
  *
  * Sale con código distinto de cero si alguna comprobación falla o si los
  * advisors reportan algún aviso de seguridad.
+ *
+ * `--produccion` es más estricto: exige `NEXT_PUBLIC_SITE_URL` con HTTPS y no
+ * acepta los avisos que solo se toleran en desarrollo (hoy, la protección de
+ * contraseñas filtradas, que el plan Free no permite activar). La misma lista
+ * sirve así para `hagotufila-dev` y para producción sin editarla al cambiar de
+ * proyecto.
  */
 import { readdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
@@ -45,6 +52,9 @@ function projectRef(): string {
 }
 
 const REF = projectRef();
+
+/** Contra el proyecto de producción: ver la cabecera. */
+const PRODUCCION = process.argv.includes("--produccion");
 
 if (!TOKEN || !REF) {
   console.error("\n✗ Faltan variables para consultar el proyecto:\n");
@@ -119,14 +129,14 @@ function check(label: string, actual: unknown, expected: unknown): void {
  *   · un objeto de la lista que el advisor ya NO reporta también es un fallo,
  *     para que la lista no envejezca sola.
  *
- * Las catorce primeras se auditaron una por una en la Etapa 2.5, y las veinte
- * del Bloque 3 al escribirlas: quién debe llamarlas, qué escritura concreta les
+ * Las RPC de la Etapa 2.5 se auditaron una por una, y las del Bloque 3 y las
+ * posteriores al escribirlas: quién debe llamarlas, qué escritura concreta les
  * negaría RLS al llamante, qué comprueban por dentro y qué prueba negativa lo
  * respalda. El detalle está en `docs/BASE-DE-DATOS.md`.
  * `mark_conversation_read` y `mark_notifications_read` salieron de esta lista en
  * aquella auditoría: no necesitaban SECURITY DEFINER y pasaron a INVOKER.
  *
- * Nota que vale para las veinte del Bloque 3: todas escriben tablas sobre las
+ * Nota que vale para las del Bloque 3: todas escriben tablas sobre las
  * que `authenticated` ya no tiene ningún privilegio de escritura —`assignments`,
  * `job_evidence`, `job_extensions`, `handoff_codes`, `disputes`, `payouts`,
  * `reviews`, `assignment_check_ins`— y todas empiezan por
@@ -139,7 +149,8 @@ const AVISOS_ACEPTADOS: Record<string, Record<string, string>> = {
     "Leaked Password Protection Disabled":
       "Supabase solo permite activarlo desde el plan Pro (la API responde 402 en Free) y el " +
       "proyecto de desarrollo es Free. El mínimo de 8 caracteres lo impone mientras tanto la " +
-      "aplicación. EN PRODUCCIÓN, que será de pago, hay que activarlo y quitar esta entrada.",
+      "aplicación. EN PRODUCCIÓN, que será de pago, hay que activarlo: con --produccion este " +
+      "aviso no se acepta.",
   },
   authenticated_security_definer_function_executable: {
     "public.accept_job_offer":
@@ -312,6 +323,20 @@ const AVISOS_ACEPTADOS: Record<string, Record<string, string>> = {
   },
 };
 
+/**
+ * Tipos de aviso que se aceptan en desarrollo y NO en producción. Con
+ * `--produccion` salen de la lista: el aviso pasa a ser un fallo, y que el
+ * advisor ya no lo reporte no lo es.
+ */
+const SOLO_FUERA_DE_PRODUCCION = new Set(["auth_leaked_password_protection"]);
+
+function avisosAceptados(): Record<string, Record<string, string>> {
+  if (!PRODUCCION) return AVISOS_ACEPTADOS;
+  return Object.fromEntries(
+    Object.entries(AVISOS_ACEPTADOS).filter(([nombre]) => !SOLO_FUERA_DE_PRODUCCION.has(nombre)),
+  );
+}
+
 interface Lint {
   name: string;
   level: string;
@@ -329,7 +354,9 @@ function objetoDe(lint: Lint): string {
 /* ------------------------------------------------------------------ proceso */
 
 async function main(): Promise<void> {
-  console.log(`\n══ Inventario del esquema · proyecto ${REF} ══\n`);
+  console.log(
+    `\n══ Inventario del esquema · proyecto ${REF}${PRODUCCION ? " · producción" : ""} ══\n`,
+  );
 
   const [inv] = await query<Record<string, number>>(`
     select
@@ -410,21 +437,27 @@ async function main(): Promise<void> {
     "ninguna",
   );
 
-  // Las funciones privilegiadas deben tener search_path fijado: si no, quien
-  // pueda crear objetos en otro esquema puede secuestrar la resolución.
-  const definerSinPath = await query<{ proname: string }>(`
-    select p.proname from pg_proc p
+  // Toda función de `public` y `app_private` debe tener search_path fijado: si
+  // no, quien pueda crear objetos en otro esquema puede secuestrar la
+  // resolución. Antes miraba solo las SECURITY DEFINER y dejó pasar
+  // `app_private.job_is_approvable`, que el advisor sí reporta
+  // (`function_search_path_mutable` revisa también las INVOKER). Las de una
+  // extensión quedan fuera, igual que en el advisor. Equivale a I14 local.
+  const sinPath = await query<{ funcion: string }>(`
+    select ns.nspname || '.' || p.proname as funcion from pg_proc p
       join pg_namespace ns on ns.oid = p.pronamespace
      where ns.nspname in ('public', 'app_private')
-       and p.prosecdef
+       and not exists (
+         select 1 from pg_depend d
+          where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
        and not exists (
          select 1 from unnest(coalesce(p.proconfig, '{}')) cfg
           where cfg like 'search_path=%')
      order by 1;
   `);
   check(
-    "funciones SECURITY DEFINER sin search_path",
-    definerSinPath.length === 0 ? "ninguna" : definerSinPath.map((r) => r.proname).join(", "),
+    "funciones sin search_path fijo",
+    sinPath.length === 0 ? "ninguna" : sinPath.map((r) => r.funcion).join(", "),
     "ninguna",
   );
 
@@ -461,6 +494,14 @@ async function main(): Promise<void> {
     .filter(Boolean);
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
   const callback = `${siteUrl}/auth/callback`;
+  if (PRODUCCION) {
+    // Sin esto, olvidar NEXT_PUBLIC_SITE_URL comprobaba la URL de localhost.
+    check(
+      "NEXT_PUBLIC_SITE_URL con HTTPS (--produccion)",
+      siteUrl.startsWith("https://") ? "sí" : `no: ${siteUrl}`,
+      "sí",
+    );
+  }
   check(
     "URL de retorno de autenticación autorizada",
     permitidas.includes(callback) ? callback : `falta ${callback} (hay: ${permitidas.join(", ") || "ninguna"})`,
@@ -499,6 +540,7 @@ async function main(): Promise<void> {
 
   let securityLeido = false;
   const aceptadosVistos = new Set<string>();
+  const aceptados = avisosAceptados();
 
   for (const kind of ["security", "performance"] as const) {
     let lints: Lint[] = [];
@@ -538,7 +580,7 @@ async function main(): Promise<void> {
     // Seguridad: un aviso no se ignora. O está revisado y en la lista, o falla.
     for (const l of [...errores, ...avisos]) {
       const objeto = objetoDe(l);
-      const aceptado = l.level === "WARN" && Boolean(AVISOS_ACEPTADOS[l.name]?.[objeto]);
+      const aceptado = l.level === "WARN" && Boolean(aceptados[l.name]?.[objeto]);
       if (aceptado) {
         aceptadosVistos.add(`${l.name}\u0000${objeto}`);
         continue;
@@ -547,7 +589,7 @@ async function main(): Promise<void> {
       failures += 1;
     }
 
-    for (const [nombre, objetos] of Object.entries(AVISOS_ACEPTADOS)) {
+    for (const [nombre, objetos] of Object.entries(aceptados)) {
       const entradas = Object.entries(objetos);
       const vistos = entradas.filter(([o]) => aceptadosVistos.has(`${nombre}\u0000${o}`));
       if (vistos.length > 0) {

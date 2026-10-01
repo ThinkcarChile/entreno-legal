@@ -37,9 +37,32 @@ for file in "$ROOT"/supabase/migrations/*.sql; do
   run -d "$DB_NAME" -f "$file" > /dev/null || fail "falló la migración $(basename "$file")"
 done
 
+# Regiones y comunas: cuántas hay y una huella de todas sus columnas.
+GEO_SQL="select format('%s regiones, %s comunas|%s',
+  (select count(*) from public.regions),
+  (select count(*) from public.communes),
+  md5(coalesce((select string_agg(concat_ws(',', code, country_code, name, short_name,
+                  ordinal, timezone, sort_order), ';' order by code) from public.regions), '')
+      || coalesce((select string_agg(concat_ws(',', code, region_code, name, timezone),
+                  ';' order by code) from public.communes), '')))"
+
+# Los datos geográficos tienen que llegar con las migraciones, sin la semilla:
+# la semilla es un paso aparte que un despliegue a producción se saltaba
+# (20260601001900). Se comprueba aquí, antes de aplicarla, porque después ya
+# no se distingue quién los cargó.
+echo "→ Comprobando que las migraciones solas traen las regiones y comunas"
+GEO_MIGRACIONES="$(psql -X -At -d "$DB_NAME" -c "$GEO_SQL")" \
+  || fail "no se pudieron contar las regiones y comunas"
+case "$GEO_MIGRACIONES" in
+  "16 regiones, 346 comunas|"*) ;;
+  *) fail "las migraciones dejan ${GEO_MIGRACIONES%%|*}; se esperaban 16 regiones, 346 comunas" ;;
+esac
+
 echo "→ Aplicando semilla geográfica"
 run -d "$DB_NAME" -f "$ROOT/supabase/seed/001_geo.sql" > /dev/null \
   || fail "falló la semilla geográfica"
+GEO_SEMILLA="$(psql -X -At -d "$DB_NAME" -c "$GEO_SQL")" \
+  || fail "no se pudieron contar las regiones y comunas"
 
 {
   echo ""
@@ -152,6 +175,12 @@ run -d "$DB_NAME" -f "$ROOT/supabase/seed/001_geo.sql" > /dev/null \
     | grep -vE "$FILTER" | sed -E 's/^psql:[^ ]+ //; s/^NOTICE:  //'
 
   echo ""
+  echo "════ Despliegue y operación: datos de referencia, search_path y restos de pruebas ════"
+  psql -v geo_migraciones="$GEO_MIGRACIONES" -v geo_semilla="$GEO_SEMILLA" \
+    -d "$DB_NAME" -f "$ROOT/supabase/tests/22_ops.sql" 2>&1 \
+    | grep -vE "$FILTER" | sed -E 's/^psql:[^ ]+ //; s/^NOTICE:  //'
+
+  echo ""
   echo "════ Contrato entre la aplicación y el esquema ════"
   DB_NAME="$DB_NAME" bash "$ROOT/scripts/check-db-contract.sh"
 } | tee "$REPORT"
@@ -179,6 +208,6 @@ fi
 # ejecutaban y un FALLO suyo seguía tumbando la batería —eso lo decide el grep
 # de "FALLO" de más arriba—, pero no entraban en el total, así que el número
 # que se publicaba era menor que el real.
-TOTAL=$(grep -cE "^(T|E|R|S|I|H|P|W|X|V|L|D|N|U|Q|Z|J|K)[0-9]+" "$REPORT")
+TOTAL=$(grep -cE "^(T|E|R|S|I|H|P|W|X|V|L|D|N|U|Q|Z|J|K|M)[0-9]+" "$REPORT")
 echo "✓ $TOTAL comprobaciones pasaron"
 rm -f "$REPORT"

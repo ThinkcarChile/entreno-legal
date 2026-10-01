@@ -1,11 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
 
 import {
   adminClient,
   clientAccount,
   ensureFixtures,
+  publishableKey,
   runTag,
   supabaseReady,
+  supabaseUrl,
   workerAccount,
   signIn,
 } from "./fixtures";
@@ -35,10 +38,34 @@ test.describe("marketplace de punta a punta", () => {
   });
 
   test.afterAll(async () => {
-    // Se retira el trabajo creado para no dejar ruido en el proyecto.
+    // Se retira el trabajo por el mismo camino que la aplicación: `cancel_job`
+    // con la sesión del cliente, y que la base decida.
+    //
+    // Antes se forzaba `status = 'CANCELLED'` con la clave de servicio. Al
+    // final del recorrido el trabajo ya está pagado, así que quedaban un cobro
+    // PAID, una asignación confirmada y un payout pendiente colgando de un
+    // trabajo cancelado: cuatro invariantes rotos que, desde 20260601001520,
+    // las tareas programadas avisan a cada administrador. Con el cobro hecho
+    // `cancel_job` se niega —corresponde una devolución o una disputa— y el
+    // trabajo se queda como está: pagado y coherente. Si el recorrido se cortó
+    // antes del pago, se cancela de verdad. Los restos de la limpieza antigua
+    // se reparan con supabase/ops/reparar-restos-e2e-dev.sql
+    // (docs/DESPLIEGUE-SUPABASE.md §8.2).
     if (!jobId) return;
-    const admin = adminClient();
-    await admin.from("jobs").update({ status: "CANCELLED" }).eq("id", jobId);
+    const client = createClient(supabaseUrl, publishableKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { error: signInError } = await client.auth.signInWithPassword(clientAccount!);
+    if (signInError) {
+      console.warn(`No se pudo entrar para retirar ${jobId}: ${signInError.message}`);
+      return;
+    }
+    const { error } = await client.rpc("cancel_job", {
+      p_job_id: jobId,
+      p_reason: `Limpieza de la prueba ${runTag}`,
+    });
+    if (error) console.info(`El trabajo ${jobId} queda como está: ${error.message}`);
+    await client.auth.signOut();
   });
 
   /**
