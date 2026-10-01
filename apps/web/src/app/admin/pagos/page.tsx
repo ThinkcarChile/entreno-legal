@@ -197,8 +197,15 @@ export default async function AdminPaymentsPage({
                           </div>
 
                           <p className="mt-2.5 font-semibold text-ink-950">
+                            {/* El caso completo, con la asignación si la hay; si
+                                no, la página pública, que la administración lee
+                                con la línea de tiempo. */}
                             <Link
-                              href={`/mis-trabajos/publicados/${row.jobId}`}
+                              href={
+                                row.assignmentId
+                                  ? `/admin/trabajos/${row.assignmentId}`
+                                  : `/trabajos/${row.jobId}`
+                              }
                               className="hover:text-brand-700"
                             >
                               {row.jobTitle}

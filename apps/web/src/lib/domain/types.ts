@@ -509,6 +509,27 @@ export interface Dispute {
   createdAt: ISODateTime;
 }
 
+/**
+ * Una prueba aportada a una disputa: texto, archivo, o las dos cosas. La leen
+ * las dos partes y la administración (RLS de `dispute_evidence`).
+ */
+export interface DisputeEvidence {
+  id: UUID;
+  disputeId: UUID;
+  authorId: UUID | null;
+  /** Con qué papel la aportó, según la base. */
+  authorRole: UserRole | null;
+  /** Nombre visible, si quien consulta puede leer ese perfil. */
+  authorName: string | null;
+  body: string | null;
+  /**
+   * Qué archivo trae, si trae. La ruta no viaja a la pantalla: el archivo se
+   * abre con una URL firmada de un minuto al pulsarlo.
+   */
+  file: "image" | "pdf" | null;
+  createdAt: ISODateTime;
+}
+
 /* -------------------------------------------------------------- FilaPuntos */
 
 export interface LoyaltyAccount {

@@ -340,7 +340,7 @@ export class SupabaseAdminRepository implements AdminRepository {
     );
     const assignmentById = new Map(assignments.map((a) => [a.id, a]));
 
-    const [jobs, profiles, payouts, jobPayments, shares] = await Promise.all([
+    const [jobs, profiles, payouts, jobPayments, shares, evidenceCounts] = await Promise.all([
       selectByIds(
         assignments.map((a) => a.job_id),
         (part) =>
@@ -393,6 +393,12 @@ export class SupabaseAdminRepository implements AdminRepository {
         },
         "devoluciones de disputas",
       ),
+      // Cuántas pruebas hay: la casilla «Confirmo que revisé la evidencia»
+      // tiene que referirse a algo que se pueda ver.
+      loadEvidenceCounts(
+        supabase,
+        rows.map((r) => r.id),
+      ),
     ]);
 
     const jobById = new Map(jobs.map((j) => [j.id, j]));
@@ -432,6 +438,7 @@ export class SupabaseAdminRepository implements AdminRepository {
             sharesByDispute.get(row.id) ?? [],
             new Set((paymentsByAssignment.get(row.assignment_id) ?? []).map((p) => p.id)),
           ) ?? disputePaymentId(paymentsByAssignment.get(row.assignment_id) ?? []),
+        evidenceCount: evidenceCounts ? (evidenceCounts.get(row.id) ?? 0) : null,
       };
     });
   }
@@ -922,6 +929,36 @@ async function loadConfirmedRefunds(
       code: typeof error === "object" && error !== null && "code" in error ? error.code : null,
     });
     return new Map();
+  }
+}
+
+/**
+ * Pruebas aportadas por disputa. Si la lectura falla devuelve `null` y la
+ * tarjeta lo dice: mostrar «0 pruebas» cuando no se pudo contar invitaría a
+ * resolver sin mirar.
+ */
+async function loadEvidenceCounts(
+  supabase: Client,
+  disputeIds: readonly string[],
+): Promise<Map<string, number> | null> {
+  const unique = [...new Set(disputeIds)].filter(Boolean);
+  if (unique.length === 0) return new Map();
+  try {
+    const rows = await selectStrict<{ dispute_id: string }>(unique, (part) =>
+      supabase
+        .from("dispute_evidence")
+        .select("dispute_id")
+        .in("dispute_id", part)
+        .returns<{ dispute_id: string }[]>(),
+    );
+    const counts = new Map<string, number>();
+    for (const row of rows) counts.set(row.dispute_id, (counts.get(row.dispute_id) ?? 0) + 1);
+    return counts;
+  } catch (error) {
+    console.error("[admin] no se pudieron contar las pruebas de las disputas", {
+      code: typeof error === "object" && error !== null && "code" in error ? error.code : null,
+    });
+    return null;
   }
 }
 

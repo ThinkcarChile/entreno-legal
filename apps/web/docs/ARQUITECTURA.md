@@ -494,17 +494,27 @@ mismo orden, a la Management API sobre HTTPS, y registra cada versión en
 que un `supabase db push` posterior desde otra máquina las vea aplicadas y no las
 repita.
 
-Tres decisiones deliberadas:
+Cuatro decisiones deliberadas:
 
 - **No reconstruye SQL.** Las migraciones del repositorio son el esquema oficial;
   el script es transporte, no una segunda fuente de verdad.
-- **No ignora errores.** Si una migración falla, se detiene en ese archivo, no la
-  registra y sale con código distinto de cero. La siguiente ejecución retoma
-  desde ahí.
+- **La migración y su registro van juntos.** Cada archivo viaja en la misma
+  petición que su fila del historial, y la API ejecuta una petición de varias
+  sentencias como una sola transacción: quedan las dos cosas o ninguna, como en
+  el CLI. Antes iban en dos peticiones, y si la segunda se perdía la migración
+  quedaba aplicada sin registrar; al reintentar se volvía a aplicar, y las que
+  crean un tipo, un disparador o una restricción sin `if not exists` fallaban
+  siempre. Por eso el script se niega a enviar un archivo con su propio
+  `begin;`/`commit;`.
+- **No ignora errores.** Si una migración falla, se detiene en ese archivo sin
+  aplicar nada de él y sale con código distinto de cero. La siguiente ejecución
+  retoma desde ahí. Si la respuesta se pierde, mira el historial antes de dar el
+  archivo por fallido.
 - **No sustituye al CLI.** Es la salida de emergencia, y la documentación dice
   cuándo usarla (`docs/DESPLIEGUE-SUPABASE.md` §3.b).
 
-No cubre `--include-seed`: la semilla se aplica aparte.
+No cubre `--include-seed`, y ya no hace falta: desde `20260601001900` las
+regiones y comunas son una migración más (§7.8).
 
 ### 7.7 Una variable vacía es una variable ausente
 
@@ -519,7 +529,7 @@ seguir su propia plantilla.
 espacios equivale a no definido. La validación sigue siendo ruidosa cuando el
 valor está presente y es inválido, que es cuando de verdad conviene fallar.
 
-### 7.8 La semilla de referencia no es una migración
+### 7.8 La semilla de referencia no se anota como migración
 
 `db:seed:hosted` aplica `supabase/seed/001_geo.sql` al proyecto alojado, y **no**
 lo anota en `supabase_migrations.schema_migrations`. La distinción no es
@@ -528,10 +538,17 @@ qué falta aplicar. Anotar allí una semilla haría que `supabase db push` creye
 aplicada una migración que no existe como archivo, y la siguiente migración real
 con ese mismo sello quedaría fuera en silencio.
 
-La separación también permite tratarlas con reglas distintas, que es lo que de
-verdad importa: una migración se aplica en todos los entornos, incluida
-producción; esta semilla se niega a correr con `NODE_ENV=production` y exige que
-quien la ejecute escriba el ref del proyecto de destino.
+La separación también permite tratar la **herramienta** con reglas distintas:
+`db:seed:hosted` usa el token personal de la cuenta, así que se niega a correr
+con `NODE_ENV=production` y exige que quien la ejecute escriba el ref del
+proyecto de destino. Lo que se restringe es la herramienta, no los datos: las
+regiones y comunas hacen falta en todos los entornos, producción incluida, y
+desde `20260601001900_geo_reference_data.sql` llegan con las migraciones
+—generadas desde la misma fuente que la semilla, con las mismas filas—. Antes
+este párrafo decía que la semilla «se niega» a producción, y la guía de
+despliegue lo leía como «producción sin comunas»: nadie podía terminar el
+registro ni publicar. `npm run db:test` comprueba ahora 16 regiones y 346
+comunas justo después de las migraciones, antes de aplicar la semilla.
 
 El script analiza el SQL antes de enviarlo y se niega si toca algo que no sean
 `countries`, `regions` y `communes`, si menciona `auth.` o `storage.`, si parece

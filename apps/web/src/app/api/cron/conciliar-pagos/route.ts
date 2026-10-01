@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { env, resolveDataSource } from "@/lib/env";
+import { cronSecretState, CRON_SECRET_MIN_LENGTH, env, resolveDataSource } from "@/lib/env";
 import { isAuthorizedCronRequest } from "@/lib/payments/cron-auth";
 import { errorCategory, paymentLog } from "@/lib/payments/logging";
 import { reconcilePayments } from "@/lib/payments/reconcile";
@@ -24,15 +24,27 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * token de su intento.
  *
  * Protegida por `CRON_SECRET` (`Authorization: Bearer …`). Sin secreto
- * configurado responde 503. Recomendado: cada 10 minutos.
+ * configurado responde 503; con uno de menos de 32 caracteres también, y lo
+ * deja en el registro del servidor (el resto de la aplicación sigue en pie).
+ * Recomendado: cada 10 minutos.
  */
 export const dynamic = "force-dynamic";
 
 async function run(request: NextRequest) {
-  if (!env.CRON_SECRET) {
-    return NextResponse.json({ error: "CRON_SECRET no configurado" }, { status: 503 });
+  const cron = cronSecretState(env.CRON_SECRET);
+  if (!cron.ok) {
+    if (cron.reason === "too_short") {
+      console.error(
+        `[cron] CRON_SECRET tiene menos de ${CRON_SECRET_MIN_LENGTH} caracteres: ` +
+          "la conciliación programada no corre hasta cambiarlo (openssl rand -hex 32)",
+      );
+    }
+    return NextResponse.json(
+      { error: cron.reason === "missing" ? "CRON_SECRET no configurado" : "CRON_SECRET inválido" },
+      { status: 503 },
+    );
   }
-  if (!isAuthorizedCronRequest(request.headers.get("authorization"), env.CRON_SECRET)) {
+  if (!isAuthorizedCronRequest(request.headers.get("authorization"), cron.secret)) {
     return NextResponse.json({ error: "no autorizado" }, { status: 401 });
   }
   if (resolveDataSource() !== "supabase") {

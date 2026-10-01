@@ -38,7 +38,7 @@ con datos realistas en pesos chilenos. Es la forma más rápida de revisar la in
 | `npm run verify:payments` | Cancelación contra confirmación tardía, duplicada y simultánea, contra un Supabase real y con el proveedor retardado |
 | `npm run verify:execution` | Ejecución completa del trabajo contra un Supabase real, con sesiones de cliente, trabajador, tercero y administración |
 | `npm run db:push:hosted` | Aplica las migraciones a un proyecto alojado por HTTPS, cuando el puerto 5432 está cerrado |
-| `npm run db:seed:hosted` | Aplica la semilla geográfica oficial a un proyecto alojado de desarrollo, por HTTPS |
+| `npm run db:seed:hosted` | Reaplica la semilla geográfica en un proyecto alojado de desarrollo, por HTTPS. Desde `20260601001900` las regiones y comunas ya llegan con las migraciones |
 | `npm run verify:schema:hosted` | Inventario del esquema alojado y advisors de seguridad y rendimiento |
 | `npm run verify:transbank` | Webpay Plus: SDK, guardas, identificadores, retornos, secretos y ambiente de integración |
 | `npm run test:unit` | Pruebas unitarias del dominio financiero (Vitest) |
@@ -62,11 +62,11 @@ Todas en `.env.example`. Ninguna credencial real vive en el repositorio.
 | `SUPABASE_SECRET_KEY` | Solo servidor | Omite RLS. Reemplaza a `SERVICE_ROLE_KEY`. Nunca con prefijo `NEXT_PUBLIC_` |
 | `NEXT_PUBLIC_DATA_SOURCE` | No | `demo`, `supabase` o `auto` (por defecto) |
 | `PAYMENT_PROVIDER` | No | `mock`, `mock-delayed` o `transbank`. Los dos simulados están prohibidos en producción |
-| `TRANSBANK_ENVIRONMENT` | Con `NODE_ENV=production` y `PAYMENT_PROVIDER=transbank` | `integration` (por defecto fuera de producción) o `production`. En producción hay que escribirla: si falta, Webpay no opera. En integración no se cargan credenciales: las trae el SDK |
+| `TRANSBANK_ENVIRONMENT` | Con `NODE_ENV=production` y `PAYMENT_PROVIDER=transbank` | `integration` (por defecto fuera de producción) o `production`. En producción hay que escribirla: si falta, Webpay no opera; `integration` junto con `TRANSBANK_PRODUCTION_ENABLED=true` se contradice y tampoco opera. En `.env.example` va comentada. En integración no se cargan credenciales: las trae el SDK |
 | `TRANSBANK_PRODUCTION_ENABLED` | Solo para cobrar de verdad | `true` habilita Webpay productivo. Sin ella, el proveedor productivo se niega a crear cobros |
 | `TRANSBANK_PRODUCTION_COMMERCE_CODE` | Solo producción | Código de comercio que entrega Transbank al certificar. Solo servidor |
 | `TRANSBANK_PRODUCTION_API_KEY_SECRET` | Solo producción | Llave secreta que entrega Transbank al certificar. Solo servidor |
-| `CRON_SECRET` | En producción | Autoriza `/api/cron/conciliar-pagos`. Al menos 32 caracteres (`docs/TRANSBANK.md` §7) |
+| `CRON_SECRET` | En producción | Autoriza `/api/cron/conciliar-pagos`, que un programador externo llama cada 10 minutos (`docs/TRANSBANK.md` §7). Al menos 32 caracteres (`openssl rand -hex 32`): con menos, esa ruta responde 503 «CRON_SECRET inválido» y lo deja en el registro; el resto de la aplicación sigue funcionando |
 | `PLATFORM_COMMISSION_BPS` | No | Comisión por defecto en puntos base. `1400` = 14%. En modo Supabase manda `platform_settings` |
 | `DISPUTE_WINDOW_HOURS` | No | Plazo para reportar un problema. Por defecto 12. En modo Supabase manda `platform_settings`, también en las páginas públicas |
 
@@ -77,9 +77,17 @@ las variables de entorno del hosting. Nunca en el repositorio, en
 `.env.example`, en un registro ni en una conversación. Los nombres
 `TRANSBANK_COMMERCE_CODE` y `TRANSBANK_API_KEY` no existen: el código no los lee.
 
+`.env.example` es la plantilla de `.env.local` en desarrollo, **no** la base de
+las variables del hosting de producción: esas se escriben una por una, con la
+lista de `docs/TRANSBANK.md` §9.
+
 ---
 
 ## Poner en marcha Supabase
+
+**Todos los pasos a mano, en orden** —primero el proyecto de desarrollo,
+después producción—, cada uno con la sección que lo explica:
+[`docs/PUESTA-EN-MARCHA.md`](docs/PUESTA-EN-MARCHA.md).
 
 Guía completa, con la configuración del panel que no cabe en una migración:
 [`docs/DESPLIEGUE-SUPABASE.md`](docs/DESPLIEGUE-SUPABASE.md).
@@ -89,7 +97,7 @@ Resumen:
 ```bash
 npx supabase login
 npx supabase link --project-ref <project-ref>
-npx supabase db push --include-seed      # esquema + 16 regiones y 346 comunas
+npx supabase db push                     # esquema, con las 16 regiones y 346 comunas
 
 npx supabase gen types typescript --linked --schema public \
   > src/lib/supabase/database.types.ts
@@ -101,14 +109,22 @@ por HTTPS con las mismas migraciones (necesita `SUPABASE_ACCESS_TOKEN`):
 ```bash
 npm run db:push:hosted -- --plan                       # qué se aplicaría
 npm run db:push:hosted                                 # aplicar
-npm run db:seed:hosted -- --project-ref <project-ref>  # 16 regiones, 346 comunas
 npm run verify:schema:hosted                           # inventario + advisors
 ```
 
-El token `sbp_…` que usan estos tres da acceso a **todos** los proyectos de la
-cuenta: es para desarrollo, vive solo en `.env.local` y se revoca desde el panel
-si se filtra. Ni `--include-seed` ni las semillas de demostración deben tocar
-producción: crean cuentas con contraseña conocida.
+El token `sbp_…` que usan estos scripts da acceso a **todos** los proyectos de
+la cuenta: es para desarrollo, vive solo en `.env.local` y se revoca desde el
+panel si se filtra.
+
+Las regiones y comunas son datos de referencia, no de demostración, y hacen
+falta en **todos** los entornos, producción incluida: sin ellas nadie termina el
+registro ni publica un trabajo. Llegan con la migración
+`20260601001900_geo_reference_data.sql`, así que cualquier `db push` o
+`db:push:hosted` las deja. `supabase/seed/001_geo.sql` —lo único que aplica
+`--include-seed` (ver `supabase/config.toml`), sin cuentas— trae las mismas
+filas y reaplicarlo no cambia nada. Lo que **nunca** debe tocar producción son
+las semillas de demostración, `002_demo_accounts.sql` y `003_demo_content.sql`:
+crean cuentas con contraseña conocida.
 
 Semillas de demostración, **solo en entornos de prueba** (crean cuentas con
 contraseña conocida):
@@ -143,6 +159,7 @@ Detalle en [`docs/BASE-DE-DATOS.md`](docs/BASE-DE-DATOS.md).
 
 - [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) — capas, decisiones y deuda evitada
 - [`docs/BASE-DE-DATOS.md`](docs/BASE-DE-DATOS.md) — esquema, RLS, funciones, Storage
+- [`docs/PUESTA-EN-MARCHA.md`](docs/PUESTA-EN-MARCHA.md) — la lista ordenada de pasos a mano, de desarrollo a producción
 - [`docs/DESPLIEGUE-SUPABASE.md`](docs/DESPLIEGUE-SUPABASE.md) — poner el proyecto en marcha
 - [`docs/TRANSBANK.md`](docs/TRANSBANK.md) — Webpay Plus: integración, conciliación, devoluciones y producción
 - [`docs/PRUEBAS-WEBPAY.md`](docs/PRUEBAS-WEBPAY.md) — las diecisiete pruebas contra el ambiente de integración, paso a paso
@@ -185,15 +202,21 @@ de `npm run e2e` —siete del marketplace y seis de la ejecución— y el recorr
 Desde esa validación el repositorio sumó migraciones correctivas (hoy son 46
 archivos en `supabase/migrations/`) que **no** están aplicadas en el proyecto
 alojado ni probadas contra él. Antes de usarlo: `npm run db:push:hosted -- --plan`
-muestra cuáles faltan, `npm run db:push:hosted` las aplica, y después se repiten
-`verify:schema:hosted`, `verify:supabase` y `e2e`.
+muestra cuáles faltan y `npm run db:push:hosted` las aplica. Después, con
+§4.1.b, §4.1.c, §4.5 y §8.1 de `docs/DESPLIEGUE-SUPABASE.md` hechos, se repiten
+`verify:schema:hosted`, `verify:supabase`, `verify:payments`, `verify:execution`
+y `e2e`. El orden completo, paso a paso, está en
+[`docs/PUESTA-EN-MARCHA.md`](docs/PUESTA-EN-MARCHA.md).
 
-Del proyecto alojado quedan pasos que no caben en una migración. La protección
-contra contraseñas filtradas, que Supabase solo ofrece desde el plan Pro: hay
-que activarla al pasar a producción, y está anotada, con su motivo, en la lista
-de avisos revisados de `npm run verify:schema:hosted`. Y los límites de Supabase
-Auth y el CAPTCHA del registro y el ingreso, que **no están configurados**: el
-CAPTCHA además necesita que los formularios envíen el token antes de activarlo.
-Ver `docs/DESPLIEGUE-SUPABASE.md` §4.1.b y §4.6.
+Del proyecto alojado quedan pasos que no caben en una migración, y **ninguno
+está hecho todavía en ningún proyecto**: el mínimo de 8 caracteres de Auth
+(§4.1.b) y las plantillas de correo con `token_hash` (§4.1.c), que
+`verify:schema:hosted` exige y que hacen falta en cada proyecto, también en el
+de producción. La protección contra contraseñas filtradas, que Supabase solo
+ofrece desde el plan Pro: hay que activarla en producción, y
+`verify:schema:hosted -- --produccion` falla mientras no lo esté. Y los límites
+de Supabase Auth y el CAPTCHA del registro y el ingreso, que **no están
+configurados**: el CAPTCHA además necesita que los formularios envíen el token
+antes de activarlo. Ver `docs/DESPLIEGUE-SUPABASE.md` §4.1.b, §4.1.c y §4.6.
 
 Ver `docs/HOJA-DE-RUTA.md` para el detalle y los riesgos pendientes.

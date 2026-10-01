@@ -10,6 +10,7 @@ import { Alert } from "@/components/ui/feedback";
 import { requireAdmin } from "@/lib/auth/session";
 import { getData, type AdminDispute } from "@/lib/data";
 import { isDisputeClosed } from "@/lib/data/admin-queues";
+import { disputeEvidenceCountLabel } from "@/lib/domain/dispute-evidence";
 import { DisputeStatus } from "@/lib/domain/enums";
 import { disputeStatusLabels } from "@/lib/domain/labels";
 import { formatDateTime } from "@/lib/utils/datetime";
@@ -171,6 +172,18 @@ function DisputeCard({ row }: { row: AdminDispute }) {
           <p className="mt-1 text-ink-700">{row.dispute.description}</p>
         </div>
 
+        {/* El caso entero —línea de tiempo, fotos, llegadas y las pruebas de
+            las dos partes— vive en su propia pantalla de administración. */}
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-small">
+          <span className="text-ink-600">{disputeEvidenceCountLabel(row.evidenceCount)}</span>
+          <Link
+            href={`/admin/trabajos/${row.dispute.assignmentId}`}
+            className="font-medium text-brand-700 underline underline-offset-2"
+          >
+            Ver el trabajo y su evidencia
+          </Link>
+        </p>
+
         {row.dispute.status === DisputeStatus.RESOLVED ? (
           <div className="rounded-[var(--radius-control)] bg-success-50 p-3.5 text-small text-success-800">
             <p className="font-medium">Resuelta: {row.dispute.resolution}</p>
@@ -203,12 +216,6 @@ function DisputeCard({ row }: { row: AdminDispute }) {
           </div>
         ) : row.dispute.status === DisputeStatus.WITHDRAWN ? null : (
           <div className="flex flex-wrap items-start gap-3">
-            <Link
-              href={`/mis-trabajos/${row.dispute.assignmentId}`}
-              className="text-small font-medium text-brand-700 underline underline-offset-2"
-            >
-              Ver el trabajo y su evidencia
-            </Link>
             <DisputeResolutionForm disputeId={row.dispute.id} />
           </div>
         )}

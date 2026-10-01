@@ -16,8 +16,24 @@
  * `supabase db push` posterior desde otra máquina vea las migraciones como ya
  * aplicadas y no intente repetirlas.
  *
- * No reconstruye ni reescribe SQL: envía el contenido de cada archivo tal cual.
+ * No reconstruye ni reescribe SQL: envía el contenido de cada archivo tal cual,
+ * y en LA MISMA petición su fila del historial. La Management API ejecuta una
+ * petición con varias sentencias como una sola transacción implícita, así que
+ * la migración y su registro se confirman juntos o no se confirma ninguno (es
+ * lo que hace el CLI, que encola el registro en la transacción de la
+ * migración). Antes iban en dos peticiones: si la segunda se perdía —red,
+ * 5xx, token caducado, o un timeout HTTP con PostgreSQL ya confirmando—, la
+ * migración quedaba aplicada sin registrar, y al reintentar se volvía a
+ * aplicar. Cuatro migraciones no se pueden aplicar dos veces (crean un tipo,
+ * un trigger o una restricción sin `if not exists`), y el despliegue quedaba
+ * atascado hasta insertar la fila a mano.
+ *
  * Si una migración falla, se detiene ahí y sale con código distinto de cero.
+ * Volver a ejecutarlo es seguro: lo registrado se salta, y lo que no quedó
+ * registrado tampoco quedó aplicado.
+ *
+ * Una migración no debe abrir ni cerrar su propia transacción (`begin;` /
+ * `commit;`): rompería esa garantía. El script se niega a enviarla.
  *
  * Necesita:
  *   SUPABASE_ACCESS_TOKEN   token de acceso personal (empieza por `sbp_`),
@@ -128,6 +144,113 @@ function literal(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;
 }
 
+/**
+ * Las sentencias de primer nivel del archivo, sin comentarios, literales,
+ * identificadores entre comillas ni cuerpos entre `$$`: un `;` dentro de
+ * cualquiera de ellos no separa sentencias.
+ */
+function topLevelStatements(sql: string): string[] {
+  const statements: string[] = [];
+  let current = "";
+  let i = 0;
+  while (i < sql.length) {
+    const c = sql[i];
+    const next = sql[i + 1];
+    if (c === "-" && next === "-") {
+      const end = sql.indexOf("\n", i);
+      i = end < 0 ? sql.length : end;
+      current += " ";
+    } else if (c === "/" && next === "*") {
+      // PostgreSQL anida los comentarios de bloque.
+      let depth = 1;
+      i += 2;
+      while (i < sql.length && depth > 0) {
+        if (sql[i] === "/" && sql[i + 1] === "*") {
+          depth += 1;
+          i += 2;
+        } else if (sql[i] === "*" && sql[i + 1] === "/") {
+          depth -= 1;
+          i += 2;
+        } else {
+          i += 1;
+        }
+      }
+      current += " ";
+    } else if (c === "'") {
+      // E'…' admite \' además de ''.
+      const backslash = /(^|[^A-Za-z0-9_$])[eE]$/.test(current);
+      i += 1;
+      while (i < sql.length) {
+        if (backslash && sql[i] === "\\") i += 2;
+        else if (sql[i] === "'" && sql[i + 1] === "'") i += 2;
+        else if (sql[i] === "'") break;
+        else i += 1;
+      }
+      i += 1;
+      current += "''";
+    } else if (c === '"') {
+      const end = sql.indexOf('"', i + 1);
+      i = end < 0 ? sql.length : end + 1;
+      current += '""';
+    } else if (c === "$" && !/[A-Za-z0-9_$]$/.test(current)) {
+      const tag = /^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/.exec(sql.slice(i))?.[0];
+      if (tag) {
+        const end = sql.indexOf(tag, i + tag.length);
+        i = end < 0 ? sql.length : end + tag.length;
+        current += " $$ ";
+      } else {
+        current += c;
+        i += 1;
+      }
+    } else if (c === ";") {
+      statements.push(current.trim());
+      current = "";
+      i += 1;
+    } else {
+      current += c;
+      i += 1;
+    }
+  }
+  statements.push(current.trim());
+  return statements.filter(Boolean);
+}
+
+/**
+ * ¿Abre, cierra o parte el archivo su propia transacción? Mira la primera
+ * palabra de cada sentencia de primer nivel: el `begin` y el `end;` de un
+ * cuerpo PL/pgSQL, o el `end` de un `case`, no cuentan; `begin isolation level
+ * …`, `commit and chain` o un `savepoint`, sí.
+ */
+function hasTransactionControl(sql: string): boolean {
+  return topLevelStatements(sql).some((s) =>
+    /^(begin|start\s+transaction|commit|end|rollback|abort|savepoint|release|prepare\s+transaction)\b/i.test(
+      s,
+    ),
+  );
+}
+
+/**
+ * La migración y su fila del historial, en una sola petición: una sola
+ * transacción implícita. El `;` en su propia línea cierra la última sentencia
+ * del archivo aunque acabe en un comentario o sin punto y coma.
+ */
+function migrationBatch(m: Migration): string {
+  return (
+    `${m.sql}\n;\n` +
+    `insert into supabase_migrations.schema_migrations (version, name, statements)\n` +
+    `values (${literal(m.version)}, ${literal(m.name)}, array[${literal(m.sql)}])\n` +
+    `on conflict (version) do nothing;\n`
+  );
+}
+
+/** ¿Quedó registrada? Para saber qué pasó cuando la respuesta no llegó. */
+async function isRecorded(version: string): Promise<boolean> {
+  const rows = (await runSql(
+    `select 1 from supabase_migrations.schema_migrations where version = ${literal(version)};`,
+  )) as unknown[];
+  return Array.isArray(rows) && rows.length > 0;
+}
+
 /* ------------------------------------------------------------------ proceso */
 
 async function main(): Promise<void> {
@@ -185,6 +308,18 @@ async function main(): Promise<void> {
 
   console.log(`→ Por aplicar: ${todo.length}\n`);
 
+  const conTransaccion = todo.filter((m) => hasTransactionControl(m.sql));
+  if (conTransaccion.length > 0) {
+    console.error("✗ Estas migraciones abren o cierran su propia transacción:\n");
+    for (const m of conTransaccion) console.error(`   · ${m.file}`);
+    console.error(
+      "\nEl script envía cada migración junto con su registro en una sola\n" +
+        "transacción; un `begin;` o `commit;` dentro del archivo la partiría.\n" +
+        "Quítalos: cada archivo ya se aplica entero o no se aplica.\n",
+    );
+    process.exit(1);
+  }
+
   if (PLAN_ONLY) {
     for (const m of todo) console.log(`   ${m.version}  ${m.name}`);
     console.log("\n(--plan: no se escribió nada)\n");
@@ -194,22 +329,37 @@ async function main(): Promise<void> {
   for (const m of todo) {
     process.stdout.write(`   · ${m.file} ... `);
     try {
-      await runSql(m.sql);
+      await runSql(migrationBatch(m));
     } catch (error) {
+      // Sin respuesta no se sabe si PostgreSQL confirmó. Como la migración y
+      // su registro van juntos, basta con mirar el registro.
+      let recorded: boolean | null = null;
+      try {
+        recorded = await isRecorded(m.version);
+      } catch {
+        // Tampoco se pudo consultar: se informa como desconocido.
+      }
+
+      if (recorded) {
+        console.log("ok (la respuesta se perdió, pero quedó aplicada y registrada)");
+        continue;
+      }
+
       console.log("FALLÓ");
       console.error(`\n✗ ${m.file}\n  ${(error as Error).message}\n`);
       console.error(
-        "La migración no quedó registrada. Corrige la causa y vuelve a\n" +
-          "ejecutar: se retomará desde este mismo archivo.\n",
+        recorded === false
+          ? "No quedó registrada, y la migración y su registro van en la misma\n" +
+              "transacción: no se aplicó nada de este archivo. Corrige la causa y vuelve\n" +
+              "a ejecutar: se retomará desde este mismo archivo.\n" +
+              "Si lo que falló fue la conexión o un tiempo de espera —no un error de\n" +
+              "PostgreSQL—, la transacción puede seguir en curso: espera unos minutos\n" +
+              "antes de reintentar; si terminó, estará registrada y se saltará.\n"
+          : "No se pudo comprobar si quedó aplicada. Vuelve a ejecutar cuando haya\n" +
+              "conexión: si quedó, estará registrada y se saltará; si no, se aplicará.\n",
       );
       process.exit(1);
     }
-
-    await runSql(
-      `insert into supabase_migrations.schema_migrations (version, name, statements)
-       values (${literal(m.version)}, ${literal(m.name)}, array[${literal(m.sql)}])
-       on conflict (version) do nothing;`,
-    );
     console.log("ok");
   }
 

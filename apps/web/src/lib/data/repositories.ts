@@ -12,6 +12,7 @@ import type {
   ConversationDetail,
   ConversationSummary,
   Dispute,
+  DisputeEvidence,
   Earning,
   EarningsSummary,
   ISODateTime,
@@ -136,6 +137,15 @@ export interface ConversationRepository {
   getById(conversationId: UUID): Promise<ConversationDetail | null>;
 }
 
+export interface DisputeRepository {
+  /**
+   * Pruebas de una disputa, de la más antigua a la más reciente. Las leen las
+   * dos partes del trabajo y la administración; a cualquier otro, RLS le
+   * devuelve una lista vacía.
+   */
+  listEvidence(disputeId: UUID): Promise<readonly DisputeEvidence[]>;
+}
+
 export interface NotificationRepository {
   listMine(limit?: number): Promise<readonly AppNotification[]>;
   unreadCount(): Promise<number>;
@@ -206,6 +216,11 @@ export interface AdminDispute {
    * pendiente», aunque sea antiguo. `null` si no hay.
    */
   paymentId: UUID | null;
+  /**
+   * Pruebas aportadas a la disputa, de cualquiera de las partes o de la
+   * administración. `null` si no se pudieron contar: no es lo mismo que cero.
+   */
+  evidenceCount: number | null;
 }
 
 export interface AdminPayout {
@@ -417,6 +432,7 @@ export interface DataAccess {
   readonly profiles: ProfileRepository;
   readonly session: SessionRepository;
   readonly conversations: ConversationRepository;
+  readonly disputes: DisputeRepository;
   readonly notifications: NotificationRepository;
   readonly settings: SettingsRepository;
   readonly admin: AdminRepository;

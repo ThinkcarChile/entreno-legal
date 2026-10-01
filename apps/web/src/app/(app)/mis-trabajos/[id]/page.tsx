@@ -11,6 +11,7 @@ import {
   Target,
 } from "lucide-react";
 
+import { DisputeEvidence } from "@/components/disputes/dispute-evidence";
 import { EvidenceForm } from "@/components/jobs/execution/evidence-form";
 import { EvidenceGallery } from "@/components/jobs/execution/evidence-gallery";
 import {
@@ -444,6 +445,17 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* Pruebas de la disputa: las dos partes las ven y, mientras la base
+              las acepte, aportan más. */}
+          {dispute && (
+            <DisputeEvidence
+              assignmentId={assignment.id}
+              dispute={dispute}
+              canAdd={can.canAddDisputeEvidence}
+              timezone={job.timezone}
+            />
           )}
 
           {can.canReview && (

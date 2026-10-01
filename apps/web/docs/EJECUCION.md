@@ -389,6 +389,17 @@ reclamo no se aplicaba en ninguna parte.
 | Pruebas (`add_dispute_evidence`) | Texto, archivo o las dos cosas, con las mismas validaciones que la evidencia del trabajo (§6), incluido el tope por persona |
 | Resolver (`resolve_dispute`) | **Solo la administración.** Exige motivo escrito |
 
+**Dónde se ven las pruebas.** Cada parte las lee y aporta en la página de su
+trabajo (`/mis-trabajos/[id]`, «Pruebas de la disputa»), mientras la disputa
+esté abierta o en revisión; resuelta, quedan a la vista. La administración las
+lee —y puede aportar— en `/admin/trabajos/[asignación]`, la vista de solo
+lectura del caso: línea de tiempo, fotos con URL firmada, llegadas y las pruebas
+de las dos partes. A ella llevan los enlaces de `/admin/disputas` (cada tarjeta
+dice cuántas pruebas hay), `/admin/check-ins`, `/admin/payouts` y
+`/admin/pagos`. Antes esos enlaces iban a `/mis-trabajos`, que devuelve a quien
+no es parte, y ninguna pantalla mostraba ni subía pruebas de disputa: se
+resolvía con la descripción del cliente y nada más.
+
 Resultados y su efecto sobre el pago al trabajador:
 
 | Resolución | Payout | Devolución al cliente |

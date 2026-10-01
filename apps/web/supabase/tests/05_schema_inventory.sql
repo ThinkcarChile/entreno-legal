@@ -93,15 +93,24 @@ select 'I13 tablas con escritura para anon = ' ||
    and table_schema = 'public'
    and privilege_type in ('INSERT', 'UPDATE', 'DELETE');
 
--- Una función SECURITY DEFINER sin `search_path` fijo deja que quien pueda crear
--- objetos en otro esquema decida qué se resuelve dentro. Equivalente de V16.
-select 'I14 funciones SECURITY DEFINER sin search_path = ' ||
-       coalesce(string_agg(p.proname, ', '), 'ninguna')
+-- Una función sin `search_path` fijo deja que quien pueda crear objetos en otro
+-- esquema decida qué se resuelve dentro. Equivalente de V16.
+--
+-- Antes miraba solo las SECURITY DEFINER, y por eso no vio
+-- `app_private.job_is_approvable` (20260601000200): el advisor de Supabase
+-- (`function_search_path_mutable`) revisa TODAS, también las INVOKER, y
+-- `verify:schema:hosted` falla con cualquier aviso de seguridad sin revisar.
+-- Quedan fuera las que pertenecen a una extensión, igual que en el advisor.
+select 'I14 funciones sin search_path fijo = ' ||
+       coalesce(string_agg(n.nspname || '.' || p.proname, ', '), 'ninguna')
        || case when count(*) > 0 then ' FALLO' else '' end
   from pg_proc p
   join pg_namespace n on n.oid = p.pronamespace
  where n.nspname in ('public', 'app_private')
-   and p.prosecdef
+   and not exists (
+     select 1 from pg_depend d
+      where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e'
+   )
    and not exists (
      select 1 from unnest(coalesce(p.proconfig, '{}')) cfg
       where cfg like 'search_path=%'

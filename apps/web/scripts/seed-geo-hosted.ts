@@ -10,9 +10,13 @@
  * cerrado no hay forma de aplicar la semilla con el CLI, y sin las 346 comunas
  * no se puede publicar un trabajo: `jobs.commune_id` es una clave foránea.
  *
- * Esto NO es una migración y no se registra como tal. Las migraciones describen
- * el esquema; esto son datos de referencia. Mezclarlos haría que
+ * Esto NO es una migración y no se registra como tal: registrarla haría que
  * `supabase db push` creyera aplicada una migración que no existe.
+ *
+ * Desde 20260601001900_geo_reference_data.sql las mismas filas llegan además
+ * con las migraciones, en todos los entornos y también en producción: un
+ * proyecto al día con `db push` o `npm run db:push:hosted` ya las tiene, y
+ * esto queda como reaplicación inocua para un proyecto de desarrollo.
  *
  * Salvaguardas, en este orden:
  *
@@ -66,9 +70,14 @@ const REF = process.env.SUPABASE_PROJECT_REF || projectRefFromUrl();
 /* -------------------------------------------------------- 1. solo desarrollo */
 
 if (process.env.NODE_ENV === "production") {
+  // Lo que se restringe es la herramienta (token personal, proyecto de
+  // desarrollo), no los datos: producción SÍ necesita las regiones y comunas,
+  // y las recibe con la migración 20260601001900.
   console.error(
-    "\n✗ Esta semilla es solo para desarrollo o staging.\n" +
-      "  NODE_ENV=production. No se ejecuta.\n",
+    "\n✗ db:seed:hosted es una herramienta de desarrollo o staging.\n" +
+      "  NODE_ENV=production. No se ejecuta.\n" +
+      "  Producción no la necesita: las 16 regiones y 346 comunas llegan con la\n" +
+      "  migración 20260601001900_geo_reference_data.sql (docs/DESPLIEGUE-SUPABASE.md §3.d).\n",
   );
   process.exit(1);
 }
