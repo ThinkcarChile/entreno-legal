@@ -164,17 +164,14 @@ export function assignmentAbilities(f: AssignmentFacts): AssignmentAbilities {
     canRequestExtension:
       worker && live && !frozen && s === AssignmentStatus.IN_PROGRESS && !f.pendingExtension,
 
-    canRequestHandoffCode:
-      worker &&
-      live &&
-      !frozen &&
-      (s === AssignmentStatus.CHECKED_IN || s === AssignmentStatus.IN_PROGRESS),
+    // El código de entrega vive en un solo estado: con el trabajo en curso. Es
+    // el único desde el que la base admite pasar a HANDOFF_COMPLETED, y
+    // `verify_handoff_code` rechaza —sin gastar intento— en cualquier otro.
+    // Antes se ofrecía desde el check-in, donde acertar era imposible y
+    // equivocarse sí sumaba intentos hasta bloquear el código 12 horas.
+    canRequestHandoffCode: worker && live && !frozen && s === AssignmentStatus.IN_PROGRESS,
 
-    canVerifyHandoffCode:
-      worker &&
-      live &&
-      !frozen &&
-      (s === AssignmentStatus.CHECKED_IN || s === AssignmentStatus.IN_PROGRESS),
+    canVerifyHandoffCode: worker && live && !frozen && s === AssignmentStatus.IN_PROGRESS,
 
     canRequestCompletion: worker && live && !frozen && s === AssignmentStatus.IN_PROGRESS,
 
@@ -186,11 +183,9 @@ export function assignmentAbilities(f: AssignmentFacts): AssignmentAbilities {
 
     canAnswerExtension: client && live && !frozen && f.pendingExtension,
 
-    canGenerateHandoffCode:
-      client &&
-      live &&
-      !frozen &&
-      (s === AssignmentStatus.CHECKED_IN || s === AssignmentStatus.IN_PROGRESS),
+    // Mismo estado que la validación: un código generado antes de comenzar no
+    // se podría usar.
+    canGenerateHandoffCode: client && live && !frozen && s === AssignmentStatus.IN_PROGRESS,
 
     canSeeHandoffCode: client,
 

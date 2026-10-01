@@ -52,3 +52,37 @@ export function isOwnAvatarPath(path: string, userId: string): boolean {
   const segments = path.split("/");
   return segments.length === 2 && segments[0] === userId && segments[1].length > 0;
 }
+
+/** Tramo que Storage pone delante de la ruta en la URL pública de un archivo. */
+const PUBLIC_PREFIX = `/storage/v1/object/public/${AVATAR_BUCKET}/`;
+
+/**
+ * Ruta en el bucket de la foto que hoy muestra el perfil, si es una de las
+ * nuestras y de esta persona; `null` en cualquier otro caso.
+ *
+ * Sirve para borrar la foto anterior al reemplazarla: sin esto, cada cambio
+ * dejaba la vieja publicada para siempre. Solo se devuelve una ruta propia
+ * (`isOwnAvatarPath`): un `avatar_url` que apunte a otro sitio, o a la carpeta
+ * de otra persona, nunca se traduce en un borrado. La política de Storage
+ * (`avatars_own_delete`) tampoco lo permitiría, pero aquí ni se intenta.
+ */
+export function avatarPathFromPublicUrl(url: string | null | undefined, userId: string): string | null {
+  if (!url) return null;
+  let pathname: string;
+  try {
+    pathname = new URL(url).pathname;
+  } catch {
+    return null;
+  }
+  const at = pathname.indexOf(PUBLIC_PREFIX);
+  if (at === -1) return null;
+
+  let path: string;
+  try {
+    path = decodeURIComponent(pathname.slice(at + PUBLIC_PREFIX.length));
+  } catch {
+    return null;
+  }
+  if (path.includes("..")) return null;
+  return isOwnAvatarPath(path, userId) ? path : null;
+}

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { requireSession } from "./guards";
-import { AVATAR_BUCKET, isOwnAvatarPath } from "@/lib/storage/avatars";
+import { AVATAR_BUCKET, avatarPathFromPublicUrl, isOwnAvatarPath } from "@/lib/storage/avatars";
 import { actionError, actionOk, type ActionResult } from "@/lib/utils/errors";
 
 /**
@@ -171,12 +171,18 @@ export async function requestVerificationAction(
 
 
 /**
- * Registra la foto de perfil recién subida.
+ * Registra la foto de perfil recién subida y retira la anterior.
  *
  * La subida la hace el navegador contra Storage, con la sesión del propio
  * usuario y sujeta a las políticas del bucket. Aquí solo se guarda la URL, y
  * antes se comprueba que la ruta sea suya: si no, alguien podría apuntar su
  * perfil al archivo de otra persona.
+ *
+ * La foto anterior se borra recién después de guardar la nueva, con la sesión
+ * del usuario (política `avatars_own_delete`, solo su carpeta). Antes no había
+ * política de borrado y cada cambio dejaba la vieja pública para siempre. Si
+ * el borrado falla, el cambio de foto no se deshace: lo que importa es que el
+ * perfil muestre la nueva.
  */
 export async function setAvatarAction(storagePath: string): Promise<ActionResult<{ url: string }>> {
   try {
@@ -185,6 +191,13 @@ export async function setAvatarAction(storagePath: string): Promise<ActionResult
     if (!isOwnAvatarPath(storagePath, userId)) {
       return { ok: false, error: "Esa ruta de archivo no es válida." };
     }
+
+    const { data: current } = await supabase
+      .from("profiles")
+      .select("avatar_url")
+      .eq("id", userId)
+      .maybeSingle<{ avatar_url: string | null }>();
+    const previousPath = avatarPathFromPublicUrl(current?.avatar_url, userId);
 
     const { data } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(storagePath);
     const publicUrl = data.publicUrl;
@@ -195,6 +208,10 @@ export async function setAvatarAction(storagePath: string): Promise<ActionResult
       .eq("id", userId);
 
     if (error) return actionError(error, "No pudimos guardar tu fotografía.");
+
+    if (previousPath && previousPath !== storagePath) {
+      await supabase.storage.from(AVATAR_BUCKET).remove([previousPath]);
+    }
 
     revalidatePath("/", "layout");
     revalidatePath("/cuenta");
