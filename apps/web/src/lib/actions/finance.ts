@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 
+import { attemptRefundIdempotencyKey, performAttemptRefund } from "@/lib/payments/attempt-refund";
 import { paymentLog } from "@/lib/payments/logging";
 import { reconcilePayments } from "@/lib/payments/reconcile";
 import { performRefund, refundIdempotencyKey, type RefundState } from "@/lib/payments/refund";
-import { reconcileRefunds } from "@/lib/payments/refund-reconcile";
+import { reconcileAttemptRefunds, reconcileRefunds } from "@/lib/payments/refund-reconcile";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { actionError, actionOk, type ActionResult } from "@/lib/utils/errors";
 
@@ -22,7 +23,8 @@ import { requireSession } from "./guards";
  * que llame a la acción por su cuenta choca contra la segunda.
  *
  * Ninguna de estas operaciones acepta importes, tokens ni órdenes de compra
- * desde el navegador: se leen de la base a partir del identificador del pago.
+ * desde el navegador: se leen de la base a partir del identificador del pago
+ * (o del intento, en la devolución de un cobro duplicado).
  */
 
 /**
@@ -71,12 +73,18 @@ export async function reconcilePaymentsAction(paymentId?: string): Promise<
       paymentId,
       minAgeMinutes: paymentId ? 0 : 10,
     });
+    // Y las de cobros duplicados, contra el token de su intento.
+    const attemptRefunds = await reconcileAttemptRefunds(admin, {
+      paymentId,
+      minAgeMinutes: paymentId ? 0 : 10,
+    });
 
     paymentLog({
       operation: "admin",
       result:
         `reconcile:${summary.changed}/${summary.examined} expirados:${summary.expired}` +
-        ` devoluciones:${refunds.resolved}/${refunds.examined}`,
+        ` devoluciones:${refunds.resolved}/${refunds.examined}` +
+        ` duplicados:${attemptRefunds.resolved}/${attemptRefunds.examined}`,
       paymentId,
       correlationId: userId.slice(0, 8),
     });
@@ -87,7 +95,7 @@ export async function reconcilePaymentsAction(paymentId?: string): Promise<
       examined: summary.examined,
       changed: summary.changed,
       expired: summary.expired,
-      refundsResolved: refunds.resolved,
+      refundsResolved: refunds.resolved + attemptRefunds.resolved,
     });
   } catch (error) {
     return actionError(error, "No pudimos conciliar los pagos.");
@@ -206,6 +214,106 @@ export async function resolveUnknownRefundAction(input: {
     paymentLog({
       operation: "admin",
       result: `refund_resolved_manually:${input.succeeded ? "done" : "not_done"}`,
+    });
+
+    revalidatePath("/admin/pagos");
+    revalidatePath("/admin");
+    const row = (data ?? {}) as Record<string, unknown>;
+    return actionOk({ refundStatus: String(row.refund_status ?? "") });
+  } catch (error) {
+    return actionError(error, "No pudimos cerrar la devolución.");
+  }
+}
+
+/**
+ * Devuelve el cobro de un intento: un cobro duplicado, o un intento que salió
+ * de la ventana con indicios de cobro.
+ *
+ * Va contra el token de ESE intento y por su cobro entero, que fija la base:
+ * del navegador solo llegan el intento, el motivo y el identificador de la
+ * petición. La base comprueba el rol, que el intento sea un duplicado o esté
+ * en revisión, que no sea el que respalda el pago del trabajo y que no haya
+ * otra devolución abierta o hecha. El pago del trabajo no se toca.
+ */
+export async function requestAttemptRefundAction(input: {
+  attemptId: string;
+  reason: string;
+  /** Identificador de la petición, generado por el formulario. */
+  requestId: string;
+}): Promise<
+  ActionResult<{ state: RefundState; kind: string; refundedAmount: number; reason: string | null }>
+> {
+  try {
+    const { supabase } = await requireAdmin();
+
+    if (!REQUEST_ID.test(input.requestId ?? "")) {
+      return {
+        ok: false,
+        error: "No pudimos identificar la petición. Cierra el formulario y vuelve a abrirlo.",
+      };
+    }
+    if (input.reason.trim().length < 10) {
+      return {
+        ok: false,
+        error: "Escribe el motivo de la devolución (al menos 10 caracteres).",
+        field: "reason",
+      };
+    }
+
+    const admin = createAdminClient();
+    const outcome = await performAttemptRefund(supabase, admin, {
+      attemptId: input.attemptId,
+      reason: input.reason.trim(),
+      idempotencyKey: attemptRefundIdempotencyKey(input.attemptId, input.requestId),
+    });
+
+    revalidatePath("/admin/pagos");
+    revalidatePath("/admin");
+
+    return actionOk({
+      state: outcome.state,
+      kind: outcome.kind,
+      refundedAmount: outcome.refundedAmount,
+      reason: outcome.reason ?? null,
+    });
+  } catch (error) {
+    return actionError(error, "No pudimos ejecutar la devolución del cobro duplicado.");
+  }
+}
+
+/**
+ * Cierra a mano la devolución por confirmar de un cobro duplicado, con lo que
+ * muestra el portal de Transbank para la orden de compra de ese intento. Mismas
+ * reglas que `resolveUnknownRefundAction`; la nota queda en la auditoría.
+ */
+export async function resolveUnknownAttemptRefundAction(input: {
+  refundId: string;
+  succeeded: boolean;
+  kind?: "REVERSED" | "NULLIFIED";
+  note: string;
+}): Promise<ActionResult<{ refundStatus: string }>> {
+  try {
+    const { supabase } = await requireAdmin();
+
+    if (input.note.trim().length < 10) {
+      return {
+        ok: false,
+        error: "Escribe lo que muestra el portal de Transbank (al menos 10 caracteres).",
+        field: "note",
+      };
+    }
+
+    const { data, error } = await supabase.rpc("resolve_unknown_attempt_refund", {
+      p_refund_id: input.refundId,
+      p_succeeded: input.succeeded,
+      p_kind: input.succeeded ? (input.kind ?? null) : null,
+      p_note: input.note.trim(),
+    });
+    if (error) return actionError(error, "No pudimos cerrar la devolución.");
+
+    paymentLog({
+      operation: "admin",
+      result: `attempt_refund_resolved_manually:${input.succeeded ? "done" : "not_done"}`,
     });
 
     revalidatePath("/admin/pagos");

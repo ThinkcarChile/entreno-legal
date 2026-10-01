@@ -27,6 +27,7 @@ import type {
   PlatformKpis,
   AdminPayment,
   AdminPaymentFilter,
+  AdminReviewAttempt,
 } from "../repositories";
 import type { CheckInResult, PayoutStatus, VerificationStatus } from "@/lib/domain/enums";
 import type { VerificationRequest } from "@/lib/domain/types";
@@ -567,12 +568,48 @@ export class SupabaseAdminRepository implements AdminRepository {
             lastCheckResult: (row.open_refund_last_check_result as string | null) ?? null,
           }
         : null,
+      reviewAttempts: reviewAttemptsOf(row.attempts_review),
     }));
   }
 
 }
 
 /* ---------------------------------------------------------------- piezas */
+
+const ATTEMPT_REFUND_STATUSES = ["REQUESTED", "UNKNOWN", "CONFIRMED", "FAILED", "CANCELLED"] as const;
+
+/** `admin_payments.attempts_review`: los intentos en revisión y su devolución. */
+function reviewAttemptsOf(value: unknown): AdminReviewAttempt[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => {
+    const a = item as Record<string, unknown>;
+    const r = (a.refund ?? null) as Record<string, unknown> | null;
+    const status = ATTEMPT_REFUND_STATUSES.find((s) => s === r?.status) ?? "REQUESTED";
+    return {
+      attemptId: String(a.attempt_id),
+      attempt: Number(a.attempt ?? 0),
+      buyOrder: String(a.buy_order ?? ""),
+      status: String(a.status ?? ""),
+      reviewReason: (a.review_reason as string | null) ?? null,
+      amount: Number(a.amount ?? 0),
+      backsPayment: a.backs_payment === true,
+      refund: r
+        ? {
+            refundId: String(r.refund_id),
+            status,
+            kind: (r.kind as string | null) ?? null,
+            amount: Number(r.amount ?? 0),
+            requestedAt: String(r.requested_at),
+            settledAt: (r.settled_at as string | null) ?? null,
+            failureReason: (r.failure_reason as string | null) ?? null,
+            unknownReason: (r.unknown_reason as string | null) ?? null,
+            lastCheckedAt: (r.last_checked_at as string | null) ?? null,
+            lastCheckResult: (r.last_check_result as string | null) ?? null,
+          }
+        : null,
+    };
+  });
+}
 
 /** Identificadores por consulta `.in()`: cien uuid ya son 3,7 KB de URL. */
 const IN_CHUNK = 100;

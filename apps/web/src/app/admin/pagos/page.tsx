@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { CreditCard } from "lucide-react";
 
+import { AttemptRefunds } from "@/components/admin/attempt-refunds";
 import { PaymentActions } from "@/components/admin/payment-actions";
 import { ReconcileAll } from "@/components/admin/reconcile-all";
 import { Amount, Card, CardContent, EmptyState, StatusChip } from "@/components/ui";
@@ -176,14 +177,8 @@ export default async function AdminPaymentsPage({
                           habilitó y no hay pago al trabajador.
                         </Alert>
                       )}
-                      {row.attemptsInReview > 0 && (
-                        <Alert tone="danger" title="Cobro de un intento por devolver">
-                          Un intento de este pago, distinto del que lo pagó, quedó autorizado (o
-                          salió de la ventana con indicios de cobro): <code>{row.attemptsReviewDetail}</code>.
-                          Ese dinero no es parte del pago del trabajo y no se devuelve con el botón de
-                          abajo, que actúa sobre el cobro del pago: búscalo por su orden de compra en el
-                          portal de Transbank y devuélvelo desde allí.
-                        </Alert>
+                      {row.reviewAttempts.length > 0 && (
+                        <AttemptRefunds attempts={row.reviewAttempts} />
                       )}
                       {row.failureReason && (
                         <p className="text-small text-ink-600">

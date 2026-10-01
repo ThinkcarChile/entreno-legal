@@ -76,7 +76,9 @@ for pair in \
   "assignments:agreed_total" "notifications:read_at" "platform_settings:commission_bps" \
   "assignment_payment_summary:worker_receives" "assignment_payment_summary:commission_bps" \
   "admin_payments:open_refund_status" "admin_payments:open_refund_unknown_reason" \
-  "payment_refunds:dispatched_at" "payment_refunds:unknown_reason"
+  "payment_refunds:dispatched_at" "payment_refunds:unknown_reason" \
+  "admin_payments:attempts_review" "payment_attempt_refunds:payment_id" \
+  "payment_attempt_refunds:amount" "payment_attempts:token_at"
 do
   check_column "${pair%%:*}" "${pair##*:}"
 done

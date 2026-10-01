@@ -4,7 +4,7 @@ import { env, resolveDataSource } from "@/lib/env";
 import { isAuthorizedCronRequest } from "@/lib/payments/cron-auth";
 import { errorCategory, paymentLog } from "@/lib/payments/logging";
 import { reconcilePayments } from "@/lib/payments/reconcile";
-import { reconcileRefunds } from "@/lib/payments/refund-reconcile";
+import { reconcileAttemptRefunds, reconcileRefunds } from "@/lib/payments/refund-reconcile";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -20,6 +20,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * (`refund-reconcile.ts`): las que siguen «en curso» pasado el margen pasan a
  * «por confirmar», y las por confirmar se contrastan con `status(token)`. Va
  * aparte de los pagos a propósito: que una de las dos falle no impide la otra.
+ * Y por último las devoluciones de cobros duplicados, igual pero contra el
+ * token de su intento.
  *
  * Protegida por `CRON_SECRET` (`Authorization: Bearer …`). Sin secreto
  * configurado responde 503. Recomendado: cada 10 minutos.
@@ -47,6 +49,7 @@ async function run(request: NextRequest) {
 
   let payments: { examined: number; changed: number; expired: number } | null = null;
   let refunds: { examined: number; resolved: number; undecided: number } | null = null;
+  let attemptRefunds: { examined: number; resolved: number; undecided: number } | null = null;
 
   try {
     const summary = await reconcilePayments(admin, { olderThanMinutes: 5 });
@@ -71,10 +74,21 @@ async function run(request: NextRequest) {
     paymentLog({ operation: "admin", result: "cron:refunds:error", errorCategory: errorCategory(error) });
   }
 
-  if (!payments || !refunds) {
-    return NextResponse.json({ ok: false, payments, refunds }, { status: 500 });
+  try {
+    const summary = await reconcileAttemptRefunds(admin, { minAgeMinutes: 10 });
+    attemptRefunds = { examined: summary.examined, resolved: summary.resolved, undecided: summary.undecided };
+    paymentLog({
+      operation: "admin",
+      result: `cron:attempt_refunds:${summary.resolved}/${summary.examined} por_confirmar:${summary.undecided}`,
+    });
+  } catch (error) {
+    paymentLog({ operation: "admin", result: "cron:attempt_refunds:error", errorCategory: errorCategory(error) });
   }
-  return NextResponse.json({ ok: true, ...payments, refunds });
+
+  if (!payments || !refunds || !attemptRefunds) {
+    return NextResponse.json({ ok: false, payments, refunds, attemptRefunds }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true, ...payments, refunds, attemptRefunds });
 }
 
 export const GET = run;

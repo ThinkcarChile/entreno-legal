@@ -8,6 +8,7 @@ import {
   isReconcilable,
   PaymentProviderError,
   PaymentProviderNotConfiguredError,
+  type PaymentProvider,
   type ProviderRefundResult,
 } from "./provider";
 
@@ -177,51 +178,109 @@ export async function performRefund(
   });
   if (requestError) throw new Error(requestError.message);
 
-  const id = String(refundId);
+  return dispatchRefund(paymentRefundBook(admin, request), provider, String(refundId));
+}
 
+/* ------------------------------------------------- el envío, para los dos */
+
+/**
+ * Lo que cambia entre devolver el cobro de un PAGO (`payment_refunds`) y el de
+ * un INTENTO (`payment_attempt_refunds`, un cobro duplicado): qué funciones de
+ * la base reservan, cierran o dejan por confirmar, qué token se usa y por qué
+ * importe. Lo demás —una sola llamada al banco, cómo se lee lo que conteste,
+ * qué se registra con cada respuesta— es lo mismo y vive en `dispatchRefund`.
+ *
+ * Cada implementación llama a las funciones por su nombre escrito, para que
+ * `check-db-contract.sh` las encuentre.
+ */
+export interface RefundBook {
+  /** El pago al que pertenece lo que se devuelve. Solo para el registro. */
+  paymentId: string;
+  /** `claim_…`: `true` solo para la primera llamada. */
+  claim(refundId: string): Promise<boolean>;
+  /**
+   * La transacción a la que va la devolución y por cuánto. `null` si no hay
+   * token: no se puede pedir al banco.
+   */
+  target(refundId: string): Promise<RefundTarget | null>;
+  /** `settle_…`, con la respuesta del banco. */
+  settle(refundId: string, input: RefundSettlement): Promise<RefundSettleResult>;
+  /** `mark_…_unknown`. Lanza si la base no lo registra. */
+  markUnknown(refundId: string, reason: string, details: Record<string, unknown>): Promise<void>;
+  /** Estado del pago, para contarlo en la respuesta. */
+  paymentStatus(): Promise<string>;
+  /** La fila de la devolución tal como está registrada. */
+  registered(refundId: string): Promise<RegisteredRefund | null>;
+}
+
+export interface RefundTarget {
+  token: string;
+  providerTransactionId: string;
+  amount: number;
+}
+
+export interface RefundSettlement {
+  confirmed: boolean;
+  kind: string | null;
+  refunded: number | null;
+  details: Record<string, unknown>;
+}
+
+export interface RefundSettleResult {
+  data: Record<string, unknown> | null;
+  error: { message: string } | null;
+}
+
+export interface RegisteredRefund {
+  status: string;
+  kind: string | null;
+  amount: number;
+  failure_reason: string | null;
+  unknown_reason: string | null;
+}
+
+/**
+ * Reserva el envío, llama al banco una sola vez y registra lo que conteste.
+ */
+export async function dispatchRefund(
+  book: RefundBook,
+  provider: PaymentProvider,
+  refundId: string,
+): Promise<RefundOutcome> {
   // Solo quien reserva el envío llama al banco. Una petición repetida —el
   // mismo formulario enviado dos veces, a la vez o después— recibe la misma
   // fila y aquí se entera de que otra llamada ya la tiene.
-  const { data: claimed, error: claimError } = await admin.rpc("claim_payment_refund", {
-    p_refund_id: id,
-  });
-  if (claimError) throw new Error(claimError.message);
-  if (claimed !== true) return replayOutcome(admin, id, request.paymentId);
+  if (!(await book.claim(refundId))) return replayOutcome(book, refundId);
 
   if (!isReconcilable(provider)) {
-    return settleFailed(admin, id, "provider_without_refund_support");
+    return settleFailed(book, refundId, "provider_without_refund_support");
   }
 
-  const { data: tokenRow } = await admin
-    .from("payments")
-    .select("provider_token,provider_transaction_id")
-    .eq("id", request.paymentId)
-    .maybeSingle<{ provider_token: string | null; provider_transaction_id: string | null }>();
-
-  if (!tokenRow?.provider_token) {
-    return settleFailed(admin, id, "missing_token");
+  const target = await book.target(refundId);
+  if (!target) {
+    return settleFailed(book, refundId, "missing_token");
   }
 
   let providerResult: ProviderRefundResult;
   try {
     providerResult = await provider.refundTransaction({
-      providerTransactionId: tokenRow.provider_transaction_id ?? tokenRow.provider_token,
-      token: tokenRow.provider_token,
-      amount: { amount: request.amount, currency: "CLP" },
+      providerTransactionId: target.providerTransactionId,
+      token: target.token,
+      amount: { amount: target.amount, currency: "CLP" },
     });
   } catch (error) {
     const verdict = classifyRefundError(error);
     paymentLog({
       operation: "refund",
       result: verdict.outcome === "REJECTED" ? "rejected" : "unknown",
-      paymentId: request.paymentId,
+      paymentId: book.paymentId,
       environment: provider.environment,
       reason: verdict.reason,
       errorCategory: errorCategory(error),
     });
     return verdict.outcome === "REJECTED"
-      ? settleFailed(admin, id, verdict.reason)
-      : markUnknown(admin, id, request, verdict.reason);
+      ? settleFailed(book, refundId, verdict.reason)
+      : markUnknown(book, refundId, verdict.reason);
   }
 
   const verdict = classifyRefundResult(providerResult);
@@ -238,21 +297,20 @@ export async function performRefund(
     paymentLog({
       operation: "refund",
       result: "unknown",
-      paymentId: request.paymentId,
+      paymentId: book.paymentId,
       environment: provider.environment,
       reason: verdict.reason,
     });
-    return markUnknown(admin, id, request, verdict.reason, details);
+    return markUnknown(book, refundId, verdict.reason, details);
   }
 
   const confirmed = verdict.outcome === "CONFIRMED";
   const rejection = verdict.outcome === "REJECTED" ? verdict.reason : undefined;
-  const { data: settled, error: settleError } = await admin.rpc("settle_payment_refund", {
-    p_refund_id: id,
-    p_confirmed: confirmed,
-    p_kind: confirmed ? providerResult.kind : null,
-    p_refunded: confirmed ? providerResult.refundedAmount : null,
-    p_details: { ...details, failure_reason: rejection ?? null },
+  const { data: settled, error: settleError } = await book.settle(refundId, {
+    confirmed,
+    kind: confirmed ? providerResult.kind : null,
+    refunded: confirmed ? providerResult.refundedAmount : null,
+    details: { ...details, failure_reason: rejection ?? null },
   });
   if (settleError) {
     // El banco contestó y la base no lo pudo registrar. La devolución queda
@@ -261,7 +319,7 @@ export async function performRefund(
     paymentLog({
       operation: "refund",
       result: confirmed ? "confirmed_unrecorded" : "rejected_unrecorded",
-      paymentId: request.paymentId,
+      paymentId: book.paymentId,
       environment: provider.environment,
     });
     throw new Error(
@@ -269,7 +327,7 @@ export async function performRefund(
     );
   }
 
-  const row = (settled ?? {}) as Record<string, unknown>;
+  const row = settled ?? {};
 
   // Otra vía (la conciliación, o una persona) la cerró mientras el banco
   // contestaba. Lo que vale es lo registrado, no lo que se iba a registrar:
@@ -279,21 +337,21 @@ export async function performRefund(
     paymentLog({
       operation: "refund",
       result: `settled_elsewhere:${String(row.refund_status ?? "")}:provider_${verdict.outcome.toLowerCase()}`,
-      paymentId: request.paymentId,
+      paymentId: book.paymentId,
       environment: provider.environment,
     });
-    return replayOutcome(admin, id, request.paymentId);
+    return replayOutcome(book, refundId);
   }
 
   paymentLog({
     operation: "refund",
     result: confirmed ? `confirmed:${providerResult.kind}` : "rejected",
-    paymentId: request.paymentId,
+    paymentId: book.paymentId,
     environment: provider.environment,
   });
 
   return {
-    refundId: id,
+    refundId,
     state: confirmed ? "CONFIRMED" : "FAILED",
     confirmed,
     kind: providerResult.kind,
@@ -303,83 +361,116 @@ export async function performRefund(
   };
 }
 
+/** Las devoluciones del cobro de un pago (`payment_refunds`). */
+function paymentRefundBook(admin: SupabaseClient, request: RefundRequest): RefundBook {
+  return {
+    paymentId: request.paymentId,
+    async claim(refundId) {
+      const { data, error } = await admin.rpc("claim_payment_refund", { p_refund_id: refundId });
+      if (error) throw new Error(error.message);
+      return data === true;
+    },
+    async target() {
+      const { data: tokenRow } = await admin
+        .from("payments")
+        .select("provider_token,provider_transaction_id")
+        .eq("id", request.paymentId)
+        .maybeSingle<{ provider_token: string | null; provider_transaction_id: string | null }>();
+      if (!tokenRow?.provider_token) return null;
+      return {
+        token: tokenRow.provider_token,
+        providerTransactionId: tokenRow.provider_transaction_id ?? tokenRow.provider_token,
+        amount: request.amount,
+      };
+    },
+    async settle(refundId, input) {
+      const { data, error } = await admin.rpc("settle_payment_refund", {
+        p_refund_id: refundId,
+        p_confirmed: input.confirmed,
+        p_kind: input.kind,
+        p_refunded: input.refunded,
+        p_details: input.details,
+      });
+      return { data: (data ?? null) as Record<string, unknown> | null, error };
+    },
+    async markUnknown(refundId, reason, details) {
+      const { error } = await admin.rpc("mark_payment_refund_unknown", {
+        p_refund_id: refundId,
+        p_reason: reason,
+        p_details: details,
+      });
+      if (error) throw new Error(error.message);
+    },
+    paymentStatus: () => paymentStatusOf(admin, request.paymentId),
+    async registered(refundId) {
+      const { data } = await admin
+        .from("payment_refunds")
+        .select("status,kind,amount,failure_reason,unknown_reason")
+        .eq("id", refundId)
+        .maybeSingle<RegisteredRefund>();
+      return data ?? null;
+    },
+  };
+}
+
+/** Estado actual de un pago. */
+export async function paymentStatusOf(admin: SupabaseClient, paymentId: string): Promise<string> {
+  const { data } = await admin
+    .from("payments")
+    .select("status")
+    .eq("id", paymentId)
+    .maybeSingle<{ status: string }>();
+  return data?.status ?? "";
+}
+
 /** Cierra como fallida una devolución que el banco no hizo. */
 async function settleFailed(
-  admin: SupabaseClient,
+  book: RefundBook,
   refundId: string,
   reason: string,
 ): Promise<RefundOutcome> {
-  const { data, error } = await admin.rpc("settle_payment_refund", {
-    p_refund_id: refundId,
-    p_confirmed: false,
-    p_details: { failure_reason: reason },
+  const { data, error } = await book.settle(refundId, {
+    confirmed: false,
+    kind: null,
+    refunded: null,
+    details: { failure_reason: reason },
   });
   if (error) throw new Error(error.message);
-  const row = (data ?? {}) as Record<string, unknown>;
   return {
     refundId,
     state: "FAILED",
     confirmed: false,
     kind: "UNKNOWN",
     refundedAmount: 0,
-    paymentStatus: String(row.payment_status ?? ""),
+    paymentStatus: String(data?.payment_status ?? ""),
     reason,
   };
 }
 
 /** Deja la devolución por confirmar: el banco pudo haberla hecho. */
 async function markUnknown(
-  admin: SupabaseClient,
+  book: RefundBook,
   refundId: string,
-  request: RefundRequest,
   reason: string,
   details: Record<string, unknown> = {},
 ): Promise<RefundOutcome> {
-  const { error } = await admin.rpc("mark_payment_refund_unknown", {
-    p_refund_id: refundId,
-    p_reason: reason,
-    p_details: details,
-  });
-  if (error) throw new Error(error.message);
-  const { data: payment } = await admin
-    .from("payments")
-    .select("status")
-    .eq("id", request.paymentId)
-    .maybeSingle<{ status: string }>();
+  await book.markUnknown(refundId, reason, details);
   return {
     refundId,
     state: "UNKNOWN",
     confirmed: false,
     kind: "UNKNOWN",
     refundedAmount: 0,
-    paymentStatus: payment?.status ?? "",
+    paymentStatus: await book.paymentStatus(),
     reason,
   };
 }
 
 /** Lo que pasó con una petición que otra llamada ya envió al banco. */
-async function replayOutcome(
-  admin: SupabaseClient,
-  refundId: string,
-  paymentId: string,
-): Promise<RefundOutcome> {
-  const [{ data: refund }, { data: payment }] = await Promise.all([
-    admin
-      .from("payment_refunds")
-      .select("status,kind,amount,failure_reason,unknown_reason")
-      .eq("id", refundId)
-      .maybeSingle<{
-        status: string;
-        kind: string | null;
-        amount: number;
-        failure_reason: string | null;
-        unknown_reason: string | null;
-      }>(),
-    admin
-      .from("payments")
-      .select("status")
-      .eq("id", paymentId)
-      .maybeSingle<{ status: string }>(),
+async function replayOutcome(book: RefundBook, refundId: string): Promise<RefundOutcome> {
+  const [refund, paymentStatus] = await Promise.all([
+    book.registered(refundId),
+    book.paymentStatus(),
   ]);
 
   const status = refund?.status ?? "REQUESTED";
@@ -398,7 +489,7 @@ async function replayOutcome(
     confirmed: state === "CONFIRMED",
     kind: (refund?.kind as RefundOutcome["kind"] | null) ?? "UNKNOWN",
     refundedAmount: state === "CONFIRMED" ? Number(refund?.amount ?? 0) : 0,
-    paymentStatus: payment?.status ?? "",
+    paymentStatus,
     reason:
       state === "FAILED"
         ? (refund?.failure_reason ?? undefined)

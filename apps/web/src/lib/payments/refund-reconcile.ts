@@ -30,6 +30,10 @@ import { TRANSBANK_STATUS } from "./transbank/mapping";
  * que una persona lo mire en el portal de Transbank y lo cierre desde
  * `/admin/pagos` (`resolve_unknown_refund`). Esta función anota por qué.
  *
+ * Vale igual para la devolución de un cobro duplicado (la de un INTENTO,
+ * `payment_attempt_refunds`): se consulta la transacción de ese intento, con
+ * su token, y se decide con las mismas reglas (`reconcileAttemptRefunds`).
+ *
  * Los tipos del SDK (`transbank-sdk` 6.1.1) declaran `status()` como
  * `Promise<any>`: no dicen qué campos trae la respuesta. Los que se usan aquí
  * son los que ya traduce `transbank/mapping.ts` —`status`, `amount`,
@@ -155,6 +159,8 @@ export interface RefundReconcileOptions {
 export interface RefundReconcileResult {
   refundId: string;
   paymentId: string;
+  /** El intento cuyo cobro se devuelve, en una devolución de cobro duplicado. */
+  attemptId?: string;
   outcome: "confirmed" | "failed" | "undecided" | "in_flight" | "unreachable" | "error";
   reason?: string;
 }
@@ -168,7 +174,54 @@ export interface RefundReconcileSummary {
   results: RefundReconcileResult[];
 }
 
-interface PendingRefundRow {
+/** Una devolución abierta, con lo que hace falta para decidir sobre ella. */
+interface PendingRefund {
+  refundId: string;
+  paymentId: string;
+  attemptId?: string;
+  status: string;
+  amount: number;
+  requestedAt: string;
+  dispatchedAt: string | null;
+  environment: string | null;
+  /** Importe de la transacción que se devuelve: la del pago, o la del intento. */
+  transactionAmount: number;
+  /** Lo ya devuelto y confirmado de esa transacción, sin contar esta. */
+  refundedAmount: number;
+}
+
+/**
+ * Lo que cambia entre conciliar las devoluciones del cobro de un PAGO y las
+ * del cobro de un INTENTO (un cobro duplicado, `payment_attempt_refunds`): de
+ * qué cola salen, con qué funciones se reservan, se cierran o se anotan, y de
+ * dónde sale el token. La decisión —`decideUnknownRefund` y los márgenes— es la
+ * misma. Cada una llama a las funciones por su nombre escrito, para que
+ * `check-db-contract.sh` las encuentre.
+ */
+interface RefundLedger {
+  /** Prefijo en el registro. */
+  label: string;
+  queue(admin: SupabaseClient, options: RefundReconcileOptions): Promise<PendingRefund[]>;
+  claim(admin: SupabaseClient, refundId: string): Promise<boolean>;
+  settle(
+    admin: SupabaseClient,
+    refundId: string,
+    confirmed: boolean,
+    kind: string | null,
+    refunded: number | null,
+    details: Record<string, unknown>,
+  ): Promise<void>;
+  /** La deja por confirmar, o anota por qué sigue así. */
+  note(
+    admin: SupabaseClient,
+    refundId: string,
+    reason: string,
+    details?: Record<string, unknown>,
+  ): Promise<void>;
+  token(admin: SupabaseClient, row: PendingRefund): Promise<string | null>;
+}
+
+interface PaymentRefundRow {
   refund_id: string;
   payment_id: string;
   status: string;
@@ -181,26 +234,174 @@ interface PendingRefundRow {
   refunded_amount: number;
 }
 
+interface AttemptRefundRow {
+  refund_id: string;
+  attempt_id: string;
+  payment_id: string;
+  status: string;
+  amount: number;
+  requested_at: string;
+  dispatched_at: string | null;
+  provider: string;
+  environment: string | null;
+  transaction_amount: number;
+  refunded_amount: number;
+}
+
+function failIf(error: { message: string } | null): void {
+  if (error) throw new Error(error.message);
+}
+
+/** Las devoluciones del cobro de un pago (`payment_refunds`). */
+const PAYMENT_REFUNDS: RefundLedger = {
+  label: "refund",
+  async queue(admin, options) {
+    const { data, error } = await admin.rpc("refunds_pending_reconciliation", {
+      p_min_age_minutes: options.minAgeMinutes ?? 10,
+      p_limit: options.limit ?? 50,
+      p_payment_id: options.paymentId ?? null,
+    });
+    if (error) throw new Error(`No se pudo leer la cola de devoluciones: ${error.message}`);
+    return ((data ?? []) as PaymentRefundRow[]).map((row) => ({
+      refundId: row.refund_id,
+      paymentId: row.payment_id,
+      status: row.status,
+      amount: Number(row.amount),
+      requestedAt: row.requested_at,
+      dispatchedAt: row.dispatched_at,
+      environment: row.environment,
+      transactionAmount: Number(row.payment_amount),
+      refundedAmount: Number(row.refunded_amount),
+    }));
+  },
+  async claim(admin, refundId) {
+    const { data, error } = await admin.rpc("claim_payment_refund", { p_refund_id: refundId });
+    failIf(error);
+    return data === true;
+  },
+  async settle(admin, refundId, confirmed, kind, refunded, details) {
+    const { error } = await admin.rpc("settle_payment_refund", {
+      p_refund_id: refundId,
+      p_confirmed: confirmed,
+      p_kind: kind,
+      p_refunded: refunded,
+      p_details: details,
+    });
+    failIf(error);
+  },
+  async note(admin, refundId, reason, details = {}) {
+    const { error } = await admin.rpc("mark_payment_refund_unknown", {
+      p_refund_id: refundId,
+      p_reason: reason,
+      p_details: details,
+    });
+    failIf(error);
+  },
+  async token(admin, row) {
+    const { data } = await admin
+      .from("payments")
+      .select("provider_token")
+      .eq("id", row.paymentId)
+      .maybeSingle<{ provider_token: string | null }>();
+    return data?.provider_token ?? null;
+  },
+};
+
+/** Las devoluciones del cobro de un intento (`payment_attempt_refunds`). */
+const ATTEMPT_REFUNDS: RefundLedger = {
+  label: "attempt_refund",
+  async queue(admin, options) {
+    const { data, error } = await admin.rpc("attempt_refunds_pending_reconciliation", {
+      p_min_age_minutes: options.minAgeMinutes ?? 10,
+      p_limit: options.limit ?? 50,
+      p_payment_id: options.paymentId ?? null,
+    });
+    if (error) {
+      throw new Error(`No se pudo leer la cola de devoluciones de cobros duplicados: ${error.message}`);
+    }
+    return ((data ?? []) as AttemptRefundRow[]).map((row) => ({
+      refundId: row.refund_id,
+      paymentId: row.payment_id,
+      attemptId: row.attempt_id,
+      status: row.status,
+      amount: Number(row.amount),
+      requestedAt: row.requested_at,
+      dispatchedAt: row.dispatched_at,
+      environment: row.environment,
+      transactionAmount: Number(row.transaction_amount),
+      refundedAmount: Number(row.refunded_amount),
+    }));
+  },
+  async claim(admin, refundId) {
+    const { data, error } = await admin.rpc("claim_attempt_refund", { p_refund_id: refundId });
+    failIf(error);
+    return data === true;
+  },
+  async settle(admin, refundId, confirmed, kind, refunded, details) {
+    const { error } = await admin.rpc("settle_attempt_refund", {
+      p_refund_id: refundId,
+      p_confirmed: confirmed,
+      p_kind: kind,
+      p_refunded: refunded,
+      p_details: details,
+    });
+    failIf(error);
+  },
+  async note(admin, refundId, reason, details = {}) {
+    const { error } = await admin.rpc("mark_attempt_refund_unknown", {
+      p_refund_id: refundId,
+      p_reason: reason,
+      p_details: details,
+    });
+    failIf(error);
+  },
+  // El token del INTENTO, no el del pago: el del pago es el del cobro bueno.
+  async token(admin, row) {
+    if (!row.attemptId) return null;
+    const { data } = await admin
+      .from("payment_attempts")
+      .select("provider_token")
+      .eq("id", row.attemptId)
+      .maybeSingle<{ provider_token: string | null }>();
+    return data?.provider_token ?? null;
+  },
+};
+
 const MINUTE = 60_000;
 
 /**
- * Recorre las devoluciones abiertas y resuelve lo que se pueda.
+ * Recorre las devoluciones abiertas del cobro de los pagos y resuelve lo que
+ * se pueda.
  *
  * `admin` tiene que ser el cliente con la clave de servicio. Una fila que
  * falla no detiene la pasada: queda anotada y se sigue con la siguiente.
  */
-export async function reconcileRefunds(
+export function reconcileRefunds(
   admin: SupabaseClient,
   options: RefundReconcileOptions = {},
 ): Promise<RefundReconcileSummary> {
-  const { data, error } = await admin.rpc("refunds_pending_reconciliation", {
-    p_min_age_minutes: options.minAgeMinutes ?? 10,
-    p_limit: options.limit ?? 50,
-    p_payment_id: options.paymentId ?? null,
-  });
-  if (error) throw new Error(`No se pudo leer la cola de devoluciones: ${error.message}`);
+  return reconcileLedger(admin, PAYMENT_REFUNDS, options);
+}
 
-  const rows = (data ?? []) as PendingRefundRow[];
+/**
+ * Lo mismo con las devoluciones de cobros duplicados: se consulta la
+ * transacción del INTENTO, con su token, y se decide con las mismas reglas.
+ * El cobro de un intento se devuelve siempre entero, así que lo «ya devuelto»
+ * de esa transacción es cero.
+ */
+export function reconcileAttemptRefunds(
+  admin: SupabaseClient,
+  options: RefundReconcileOptions = {},
+): Promise<RefundReconcileSummary> {
+  return reconcileLedger(admin, ATTEMPT_REFUNDS, options);
+}
+
+async function reconcileLedger(
+  admin: SupabaseClient,
+  ledger: RefundLedger,
+  options: RefundReconcileOptions,
+): Promise<RefundReconcileSummary> {
+  const rows = await ledger.queue(admin, options);
   if (rows.length === 0) return { examined: 0, resolved: 0, undecided: 0, results: [] };
 
   // El proveedor se construye cuando una fila lo necesita, y si no se puede
@@ -227,25 +428,24 @@ export async function reconcileRefunds(
   for (const row of rows) {
     let result: RefundReconcileResult;
     try {
-      result = await reconcileOne(admin, getProvider, () => providerFailure, row);
+      result = await reconcileOne(admin, ledger, getProvider, () => providerFailure, row);
     } catch (failure) {
       result = {
-        refundId: row.refund_id,
-        paymentId: row.payment_id,
+        ...baseOf(row),
         outcome: "error",
         reason: errorCategory(failure),
       };
       // Que quede dicho en la devolución, y que la próxima pasada espere su
       // margen en vez de volver a preguntar a Webpay cada vez.
       if (row.status === "UNKNOWN") {
-        await note(admin, row.refund_id, "reconcile_error").catch(() => undefined);
+        await ledger.note(admin, row.refundId, "reconcile_error").catch(() => undefined);
       }
     }
     results.push(result);
     paymentLog({
       operation: "reconcile",
-      result: `refund:${result.outcome}`,
-      paymentId: row.payment_id,
+      result: `${ledger.label}:${result.outcome}`,
+      paymentId: row.paymentId,
       reason: result.reason,
     });
   }
@@ -255,20 +455,27 @@ export async function reconcileRefunds(
   return { examined: rows.length, resolved, undecided: pending, results };
 }
 
+function baseOf(row: PendingRefund): Pick<RefundReconcileResult, "refundId" | "paymentId" | "attemptId"> {
+  return row.attemptId
+    ? { refundId: row.refundId, paymentId: row.paymentId, attemptId: row.attemptId }
+    : { refundId: row.refundId, paymentId: row.paymentId };
+}
+
 async function reconcileOne(
   admin: SupabaseClient,
+  ledger: RefundLedger,
   getProvider: () => PaymentProvider | null,
   providerFailure: () => string,
-  row: PendingRefundRow,
+  row: PendingRefund,
 ): Promise<RefundReconcileResult> {
-  const base = { refundId: row.refund_id, paymentId: row.payment_id };
+  const base = baseOf(row);
   const now = Date.now();
 
   if (row.status === "REQUESTED") {
     // Sin marca de envío, la petición no salió: se reserva antes de llamar al
     // banco, siempre. Pasado el margen, se cierra como no hecha.
-    if (!row.dispatched_at) {
-      if (now - new Date(row.requested_at).getTime() < STALE_REQUEST_MINUTES * MINUTE) {
+    if (!row.dispatchedAt) {
+      if (now - new Date(row.requestedAt).getTime() < STALE_REQUEST_MINUTES * MINUTE) {
         return { ...base, outcome: "in_flight" };
       }
       // La cola se leyó hace un instante: entre tanto, la misma petición
@@ -276,68 +483,62 @@ async function reconcileOne(
       // Se reserva igual que lo haría ella; si la reserva es de otro, no se
       // toca. Cerrarla FAILED en ese cruce dejaba libre un saldo que el banco
       // sí devolvió.
-      const { data: claimed, error: claimError } = await admin.rpc("claim_payment_refund", {
-        p_refund_id: row.refund_id,
-      });
-      if (claimError) throw new Error(claimError.message);
-      if (claimed !== true) return { ...base, outcome: "in_flight", reason: "claimed_elsewhere" };
-      await settle(admin, row.refund_id, false, null, null, { failure_reason: "not_dispatched" });
+      if (!(await ledger.claim(admin, row.refundId))) {
+        return { ...base, outcome: "in_flight", reason: "claimed_elsewhere" };
+      }
+      await ledger.settle(admin, row.refundId, false, null, null, { failure_reason: "not_dispatched" });
       return { ...base, outcome: "failed", reason: "not_dispatched" };
     }
     // Enviada y sin respuesta registrada: puede seguir en curso o el proceso
     // pudo morir a mitad. Pasado el margen, ya no se espera: por confirmar.
-    if (now - new Date(row.dispatched_at).getTime() < STALE_REQUEST_MINUTES * MINUTE) {
+    if (now - new Date(row.dispatchedAt).getTime() < STALE_REQUEST_MINUTES * MINUTE) {
       return { ...base, outcome: "in_flight" };
     }
-    await note(admin, row.refund_id, "stale_request");
+    await ledger.note(admin, row.refundId, "stale_request");
   }
 
   const provider = getProvider();
   if (!provider) {
     const reason = `provider_unavailable:${providerFailure()}`;
-    await note(admin, row.refund_id, reason);
+    await ledger.note(admin, row.refundId, reason);
     return { ...base, outcome: "unreachable", reason };
   }
 
   if (!isReconcilable(provider)) {
-    await note(admin, row.refund_id, "provider_without_status");
+    await ledger.note(admin, row.refundId, "provider_without_status");
     return { ...base, outcome: "undecided", reason: "provider_without_status" };
   }
 
   // Una devolución de integración no se pregunta jamás contra producción.
   if (row.environment && row.environment !== provider.environment) {
     const reason = `environment_${row.environment}_vs_${provider.environment}`;
-    await note(admin, row.refund_id, reason);
+    await ledger.note(admin, row.refundId, reason);
     return { ...base, outcome: "undecided", reason };
   }
 
-  const { data: tokenRow } = await admin
-    .from("payments")
-    .select("provider_token")
-    .eq("id", row.payment_id)
-    .maybeSingle<{ provider_token: string | null }>();
-  if (!tokenRow?.provider_token) {
-    await note(admin, row.refund_id, "missing_token");
+  const token = await ledger.token(admin, row);
+  if (!token) {
+    await ledger.note(admin, row.refundId, "missing_token");
     return { ...base, outcome: "undecided", reason: "missing_token" };
   }
 
   let snapshot: ProviderSnapshot;
   try {
-    snapshot = await provider.inspect(tokenRow.provider_token);
+    snapshot = await provider.inspect(token);
   } catch (failure) {
     // Fuera de la ventana de 7 días Webpay ya no contesta, y eso no se
     // arregla esperando: la anotación le dice a quien mire que vaya al portal.
     const reason = `status_unavailable:${errorCategory(failure)}`;
-    await note(admin, row.refund_id, reason);
+    await ledger.note(admin, row.refundId, reason);
     return { ...base, outcome: "unreachable", reason };
   }
 
-  const dispatchedAt = new Date(row.dispatched_at ?? row.requested_at).getTime();
+  const dispatchedAt = new Date(row.dispatchedAt ?? row.requestedAt).getTime();
   const decision = decideUnknownRefund(
     {
-      refundAmount: Number(row.amount),
-      paymentAmount: Number(row.payment_amount),
-      confirmedRefunded: Number(row.refunded_amount),
+      refundAmount: row.amount,
+      paymentAmount: row.transactionAmount,
+      confirmedRefunded: row.refundedAmount,
       minutesSinceDispatch: (now - dispatchedAt) / MINUTE,
     },
     { status: snapshot.providerStatus, amount: snapshot.amount, balance: snapshot.balance },
@@ -352,50 +553,17 @@ async function reconcileOne(
   };
 
   if (decision.outcome === "CONFIRMED") {
-    await settle(admin, row.refund_id, true, decision.kind, decision.refundedAmount, evidence);
+    await ledger.settle(admin, row.refundId, true, decision.kind, decision.refundedAmount, evidence);
     return { ...base, outcome: "confirmed", reason: decision.reason };
   }
   if (decision.outcome === "FAILED") {
-    await settle(admin, row.refund_id, false, null, null, {
+    await ledger.settle(admin, row.refundId, false, null, null, {
       ...evidence,
       failure_reason: decision.reason,
     });
     return { ...base, outcome: "failed", reason: decision.reason };
   }
 
-  await note(admin, row.refund_id, decision.reason, evidence);
+  await ledger.note(admin, row.refundId, decision.reason, evidence);
   return { ...base, outcome: "undecided", reason: decision.reason };
-}
-
-async function settle(
-  admin: SupabaseClient,
-  refundId: string,
-  confirmed: boolean,
-  kind: string | null,
-  refunded: number | null,
-  details: Record<string, unknown>,
-): Promise<void> {
-  const { error } = await admin.rpc("settle_payment_refund", {
-    p_refund_id: refundId,
-    p_confirmed: confirmed,
-    p_kind: kind,
-    p_refunded: refunded,
-    p_details: details,
-  });
-  if (error) throw new Error(error.message);
-}
-
-/** La deja por confirmar, o anota por qué sigue así. */
-async function note(
-  admin: SupabaseClient,
-  refundId: string,
-  reason: string,
-  details: Record<string, unknown> = {},
-): Promise<void> {
-  const { error } = await admin.rpc("mark_payment_refund_unknown", {
-    p_refund_id: refundId,
-    p_reason: reason,
-    p_details: details,
-  });
-  if (error) throw new Error(error.message);
 }

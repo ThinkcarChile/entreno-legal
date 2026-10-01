@@ -274,7 +274,10 @@ interface TokenToReconcile {
   before: string;
   token: string;
   committedAt: string | null;
-  /** Desde cuándo existe el token; de ahí se cuenta el margen para confirmar. */
+  /**
+   * Desde cuándo existe el token; de ahí se cuenta el margen para confirmar.
+   * Es la fecha del intento, nunca la última escritura del pago.
+   */
   since: string;
 }
 
@@ -287,9 +290,14 @@ async function reconcileOne(
   // se registra en ningún sitio sin enmascarar.
   const { data: tokenRow } = await admin
     .from("payments")
-    .select("provider_token,committed_at,updated_at")
+    .select("provider_token,committed_at,buy_order,created_at")
     .eq("id", row.payment_id)
-    .maybeSingle<{ provider_token: string | null; committed_at: string | null; updated_at: string }>();
+    .maybeSingle<{
+      provider_token: string | null;
+      committed_at: string | null;
+      buy_order: string | null;
+      created_at: string;
+    }>();
 
   if (!tokenRow?.provider_token) {
     return {
@@ -306,8 +314,33 @@ async function reconcileOne(
     before: row.status,
     token: tokenRow.provider_token,
     committedAt: tokenRow.committed_at,
-    since: tokenRow.updated_at,
+    since: await currentTokenSince(admin, row.payment_id, tokenRow),
   });
+}
+
+/**
+ * Desde cuándo existe el token VIGENTE de un pago: el del intento que lleva su
+ * orden de compra (cuando Webpay lo entregó o, sin esa marca, cuando se
+ * registró el intento), igual que con un intento anterior.
+ *
+ * No `payments.updated_at`: `record_provider_snapshot` lo renueva en cada
+ * pasada de la conciliación, y con el cron cada 15 minutos o menos el margen
+ * para confirmar no se cumplía nunca. Sin intento en el historial (un pago
+ * anterior a él), la creación del pago.
+ */
+async function currentTokenSince(
+  admin: SupabaseClient,
+  paymentId: string,
+  payment: { buy_order: string | null; created_at: string },
+): Promise<string> {
+  if (!payment.buy_order) return payment.created_at;
+  const { data: attempt } = await admin
+    .from("payment_attempts")
+    .select("token_at,created_at")
+    .eq("payment_id", paymentId)
+    .eq("buy_order", payment.buy_order)
+    .maybeSingle<{ token_at: string | null; created_at: string }>();
+  return attempt ? (attempt.token_at ?? attempt.created_at) : payment.created_at;
 }
 
 async function reconcileAttempt(
