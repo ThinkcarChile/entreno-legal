@@ -61,13 +61,20 @@ Todas en `.env.example`. Ninguna credencial real vive en el repositorio.
 | `SUPABASE_SECRET_KEY` | Solo servidor | Omite RLS. Reemplaza a `SERVICE_ROLE_KEY`. Nunca con prefijo `NEXT_PUBLIC_` |
 | `NEXT_PUBLIC_DATA_SOURCE` | No | `demo`, `supabase` o `auto` (por defecto) |
 | `PAYMENT_PROVIDER` | No | `mock`, `mock-delayed` o `transbank`. Los dos simulados están prohibidos en producción |
-| `TRANSBANK_ENVIRONMENT` | No | `integration` o `production` |
-| `TRANSBANK_COMMERCE_CODE` | Al integrar | Credencial de Transbank |
-| `TRANSBANK_API_KEY` | Al integrar | Credencial de Transbank |
+| `TRANSBANK_ENVIRONMENT` | No | `integration` (por defecto) o `production`. En integración no se cargan credenciales: las trae el SDK |
+| `TRANSBANK_PRODUCTION_ENABLED` | Solo para cobrar de verdad | `true` habilita Webpay productivo. Sin ella, el proveedor productivo se niega a crear cobros |
+| `TRANSBANK_PRODUCTION_COMMERCE_CODE` | Solo producción | Código de comercio que entrega Transbank al certificar. Solo servidor |
+| `TRANSBANK_PRODUCTION_API_KEY_SECRET` | Solo producción | Llave secreta que entrega Transbank al certificar. Solo servidor |
+| `CRON_SECRET` | En producción | Autoriza `/api/cron/conciliar-pagos`. Al menos 32 caracteres (`docs/TRANSBANK.md` §7) |
 | `PLATFORM_COMMISSION_BPS` | No | Comisión por defecto en puntos base. `1400` = 14%. En modo Supabase manda `platform_settings` |
 | `DISPUTE_WINDOW_HOURS` | No | Plazo para reportar un problema. Por defecto 12 |
 
 `SUPABASE_SERVICE_ROLE_KEY` nunca debe llevar el prefijo `NEXT_PUBLIC_`.
+
+Las credenciales productivas de Transbank y `CRON_SECRET` se cargan **solo** en
+las variables de entorno del hosting. Nunca en el repositorio, en
+`.env.example`, en un registro ni en una conversación. Los nombres
+`TRANSBANK_COMMERCE_CODE` y `TRANSBANK_API_KEY` no existen: el código no los lee.
 
 ---
 
@@ -167,12 +174,18 @@ El proyecto Supabase de desarrollo ya existe (`hagotufila-dev`, ref
 conectada: el indicador de desarrollo muestra
 «Supabase conectado · xwgobslgldxzatjrcxhl.supabase.co».
 
-Contra ese proyecto real ya corrieron, y pasan: las 27 migraciones, la semilla
+Contra ese proyecto real ya corrieron, y pasaron: las 27 migraciones de entonces, la semilla
 geográfica (1 país, 16 regiones, 346 comunas), `npm run verify:schema:hosted`,
 las 62 comprobaciones de `npm run verify:supabase`, las 23 de
 `npm run verify:payments`, las 24 de `npm run verify:execution`, las 17 pruebas
 de `npm run e2e` —siete del marketplace y seis de la ejecución— y el recorrido a mano de
 `docs/DESPLIEGUE-SUPABASE.md` §8.4.
+
+Desde esa validación el repositorio sumó migraciones correctivas (hoy son 41
+archivos en `supabase/migrations/`) que **no** están aplicadas en el proyecto
+alojado ni probadas contra él. Antes de usarlo: `npm run db:push:hosted -- --plan`
+muestra cuáles faltan, `npm run db:push:hosted` las aplica, y después se repiten
+`verify:schema:hosted`, `verify:supabase` y `e2e`.
 
 Lo único que queda del proyecto alojado es la protección contra contraseñas
 filtradas, que Supabase solo ofrece desde el plan Pro: hay que activarla al pasar
