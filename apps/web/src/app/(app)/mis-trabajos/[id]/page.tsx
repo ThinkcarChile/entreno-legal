@@ -11,6 +11,7 @@ import {
   Target,
 } from "lucide-react";
 
+import { DisputeEvidence } from "@/components/disputes/dispute-evidence";
 import { EvidenceForm } from "@/components/jobs/execution/evidence-form";
 import { EvidenceGallery } from "@/components/jobs/execution/evidence-gallery";
 import {
@@ -26,7 +27,6 @@ import {
   ClientHandoffPanel,
   WorkerHandoffPanel,
 } from "@/components/jobs/execution/handoff-panel";
-import { DisputeEvidence } from "@/components/disputes/dispute-evidence";
 import { ReviewForm } from "@/components/jobs/execution/review-form";
 import { WorkerSteps } from "@/components/jobs/execution/worker-steps";
 import { WorkTimer } from "@/components/jobs/execution/work-timer";
