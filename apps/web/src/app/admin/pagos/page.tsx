@@ -291,6 +291,8 @@ export default async function AdminPaymentsPage({
                         )}
                         <PaymentActions
                           paymentId={row.paymentId}
+                          status={row.status}
+                          reviewReason={row.reviewReason}
                           amount={row.amount}
                           refunded={row.refundedAmount}
                           refundable={row.refundableAmount}

@@ -254,6 +254,16 @@ const AVISOS_ACEPTADOS: Record<string, Record<string, string>> = {
       "UPDATE sobre payouts. Baja el neto de un payout sin transferir —o lo cancela con 0—, " +
       "nunca lo sube, con motivo escrito; deja audit_logs, línea de tiempo y aviso al trabajador " +
       "(B27–B43, …001610).",
+    "public.flag_payment_for_review":
+      "SOLO la administración: primera línea es app_private.is_admin(). Pone en revisión manual " +
+      "un pago PAID bajo el cerrojo trabajo → asignación → pago → extensión → payout y retiene " +
+      "el payout; payments y payouts no tienen ninguna vía de escritura para el usuario. El " +
+      "motivo va a audit_logs, no al pago (…001720, C21–C35, C52).",
+    "public.release_payment_review":
+      "SOLO la administración: primera línea es app_private.is_admin(). Devuelve a PAID solo un " +
+      "pago en revisión MANUAL, con el cobro entero y sin devoluciones abiertas, y saca de la " +
+      "retención el payout que esa revisión retuvo. Una revisión automática no se puede quitar " +
+      "por aquí (…001720, C21–C35, C52).",
     "public.admin_pending_reviews":
       "SOLO la administración: primera línea es app_private.is_admin(). Devuelve recuentos de " +
       "las colas del panel; sin el rol, lanza excepción en vez de contestar cero.",
@@ -359,7 +369,7 @@ async function main(): Promise<void> {
 
   check("tablas en public", inv.tablas, 36);
   check("vistas en public", inv.vistas, 7);
-  check("funciones en public", inv.funciones, 63);
+  check("funciones en public", inv.funciones, 65);
   check("enums", inv.enums, 24);
   check("políticas RLS en public", inv.politicas, 77);
   check("buckets de Storage", inv.buckets, 5);

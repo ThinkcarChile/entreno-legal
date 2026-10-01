@@ -122,8 +122,19 @@ parece— y con índice único eso es un pago que no se puede iniciar. Con 9 son
 
 `S-` + el UUID del pago sin guiones. Sin correo, sin RUT, sin teléfono, sin
 nombre, y **no es la sesión de Supabase**. Vuelve como `TBK_ID_SESION` cuando
-el retorno no trae token, y es lo que permite reencontrar el intento. No
-autoriza nada: quien vuelve sigue teniendo que ser el dueño del pago.
+el retorno no trae token, y es lo que permite reencontrar el intento.
+
+**No es un secreto.** Lleva dentro el UUID del pago, y `/pagos/retorno`
+resuelve sin sesión de usuario (la cookie no siempre vuelve de Webpay; ver
+§4). Cualquiera que conozca el UUID puede escribir
+`/pagos/retorno?TBK_ID_SESION=S-…` en una URL —sin cookie, incluso desde una
+etiqueta `<img>`—. Por eso un retorno que solo trae la sesión o la orden de
+compra **no decide nada por sí mismo**: sirve para encontrar el intento, y lo
+que le pasó lo dice Transbank, consultado con el token que guardamos de ese
+intento (§4). Antes bastaba para dejar FAILED el pago que el cliente estaba
+pagando en Webpay (lo cerró `return-handler.ts`), y la otra parte del trabajo
+recibía ese UUID de `assignment_payment_states`; desde 20260601001730 el
+trabajador lo recibe en nulo.
 
 ---
 
@@ -136,7 +147,7 @@ POST. Atender solo uno deja un flujo entero sin recoger.
 | Flujo | Llega | Qué se hace | Estado final |
 |---|---|---|---|
 | **Normal** | `token_ws` | `commit` | `PAID` o `FAILED` |
-| **Tiempo agotado** | `TBK_ID_SESION`, `TBK_ORDEN_COMPRA` | nada que confirmar | `FAILED` (`form_timeout`) |
+| **Tiempo agotado** | `TBK_ID_SESION`, `TBK_ORDEN_COMPRA` | `status` con el token **guardado** del intento, nunca `commit` | `FAILED` (`form_timeout`) solo si el estado es final y sin autorizar; si no, nada |
 | **Abortado** | `TBK_TOKEN`, `TBK_ID_SESION`, `TBK_ORDEN_COMPRA` | `status`, nunca `commit` | `FAILED` (`aborted_by_user`) o el estado real |
 | **Error / volver al sitio** | los cuatro | `status`, nunca `commit` | `FAILED` (`return_conflict`) o el estado real |
 
@@ -149,6 +160,32 @@ Los tres flujos sin cobro pueden esconder una autorización real. Si hay token,
 se pregunta antes de darlos por perdidos; y si el proveedor dice que sí está
 autorizada, se asienta por la misma vía que el retorno normal.
 
+**Un retorno sin token no cierra nada con lo que trae la URL.** El tiempo
+agotado llega solo con la sesión y la orden de compra, y un `TBK_TOKEN` que no
+es de ningún intento nuestro vale lo mismo que ninguno: datos que cualquiera
+puede escribir. Con ellos se identifica el intento y se consulta a Transbank
+con el token que **guardamos** de ese intento (`payment_attempts.provider_token`):
+
+- autorizada → **tampoco se asienta desde aquí**: este retorno no trae
+  `token_ws` y lo puede fabricar la otra parte del trabajo. Asentar lo que
+  dice `status` gastaría la clave `commit:<token>` sin haber hecho `commit`, y
+  el retorno de quien pagó vería el pago resuelto y no confirmaría; si una
+  autorización sin confirmar se revierte sola (§12, «Autorizaciones sin
+  commit»), el trabajo quedaría pagado sin dinero. La confirma el retorno con
+  `token_ws` o la conciliación, que confirma antes de consultar;
+- todavía abierta (`INITIALIZED`: el cliente sigue en el formulario) → no se
+  toca nada; el pago sigue en curso y en la cola de conciliación;
+- cerrada sin autorizar → se registra el abandono, con ese token;
+- sin token guardado (la transacción no llegó a crearse) o sin consulta de
+  estado → no se toca nada.
+
+Lo prueban los casos «retorno con solo la sesión: decide Transbank, no la
+URL» de `return-handler.test.ts`. Qué contesta `status` por un formulario que
+venció por tiempo no lo dice la documentación oficial ni se ha validado contra
+Transbank: si contestara `INITIALIZED`, el pago se queda en curso —el cliente
+puede volver a pagar— y lo cierra la conciliación o, fuera de la ventana,
+`expire_stale_payments`.
+
 Un retorno sin cobro cierra **solo el intento que lo trae**. El retorno se
 identifica por su token o por su orden de compra —nunca solo por la sesión, que
 es la misma en todos los intentos del pago— y `record_payment_abandonment`
@@ -157,6 +194,17 @@ pasa a `FAILED`. Antes, anular una pestaña antigua de Webpay marcaba fallido el
 intento que el cliente estaba pagando en otra, y su aprobación caía en revisión
 (`approved_after_failed`). Si un retorno trae solo la sesión y el pago tuvo
 varios intentos, no se toca nada: el intento en curso puede estar cobrándose.
+
+Y aunque sea el vigente, el abandono no cierra el pago si **otro** intento suyo
+se está confirmando —su commit se pidió o se hizo, o el proveedor lo dio por
+autorizado—: es la misma condición con que `register_payment_attempt` se niega
+a abrir uno nuevo. Se cierra solo el intento que vuelve y el pago sigue en
+curso; antes, pagar en una pestaña y anular la otra dejaba el cobro bueno en
+revisión (20260601001730).
+
+Cada «Pagar» abre una transacción nueva en Transbank. `register_payment_attempt`
+admite **como mucho cinco intentos por pago en treinta minutos**; el sexto se
+niega con un mensaje para el cliente antes de llamar a Transbank.
 
 El retorno lleva al cliente a la pantalla que corresponde a **lo que pagó**: el
 cobro del trabajo vuelve a `/pagar/{asignación}` o a la página del trabajo; el

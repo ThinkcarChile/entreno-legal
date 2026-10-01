@@ -470,12 +470,19 @@ export function mapPayment(row: PaymentRow): Payment {
 /**
  * Fila de `assignment_payment_states`: lo que las dos partes de un trabajo
  * pueden saber de sus pagos. Sin `provider_transaction_id`, que con Webpay es
- * el token, ni nada más del proveedor.
+ * el token, ni nada más del proveedor. El `id` llega solo al cliente y a
+ * administración: al trabajador, nulo (20260601001730). Con él se podía
+ * fabricar un retorno de Webpay del pago del cliente, y ninguna pantalla del
+ * trabajador lo usa.
  */
-export type PaymentStateRow = Omit<PaymentRow, "provider_transaction_id">;
+export type PaymentStateRow = Omit<PaymentRow, "provider_transaction_id" | "id"> & {
+  id: string | null;
+};
 
 export function mapPaymentState(row: PaymentStateRow): Payment {
-  return mapPayment({ ...row, provider_transaction_id: null });
+  // Sin identificador queda vacío: lo que el trabajador ve de un pago es su
+  // estado, su importe y sus fechas, nunca qué pago es.
+  return mapPayment({ ...row, id: row.id ?? "", provider_transaction_id: null });
 }
 
 export interface PaymentSummaryRow {

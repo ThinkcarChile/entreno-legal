@@ -57,6 +57,9 @@ export const PAYMENT_COLUMNS =
   "id,job_id,assignment_id,client_id,purpose,amount,currency,status,provider_token," +
   "buy_order,session_id,environment,attempt";
 
+/** Código de PostgreSQL de una regla de negocio que la base dice en voz alta. */
+const CHECK_VIOLATION = "23514";
+
 /** La URL de retorno. Se deriva del sitio, nunca del navegador. */
 export function returnUrl(): string {
   return `${env.NEXT_PUBLIC_SITE_URL}/pagos/retorno`;
@@ -102,6 +105,13 @@ export async function startCheckout(
     p_return_url: target,
   });
   if (attemptError) {
+    // Una regla de la base —el intento anterior se está confirmando, el tope
+    // de intentos seguidos, un pago que ya no admite otro— viene escrita para
+    // quien paga y se muestra tal cual. Se dice ANTES de llamar a Transbank:
+    // ningún rechazo abre una transacción.
+    if (attemptError.code === CHECK_VIOLATION) {
+      throw Object.assign(new Error(attemptError.message), { code: CHECK_VIOLATION });
+    }
     throw new Error(`No se pudo registrar el intento de pago: ${attemptError.message}`);
   }
 

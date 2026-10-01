@@ -95,9 +95,13 @@ export function paymentFingerprintOf(buyOrder: string): string | null {
  *
  * No lleva correo, RUT, teléfono ni nombre, y no es la sesión de Supabase: es
  * un identificador interno del intento, que es exactamente lo que hace falta
- * para reencontrarlo cuando Webpay devuelve `TBK_ID_SESION` sin token. No es un
- * secreto ni autoriza nada: quien vuelve sigue teniendo que ser el dueño del
- * pago para que la ruta de retorno haga algo.
+ * para reencontrarlo cuando Webpay devuelve `TBK_ID_SESION` sin token.
+ *
+ * No es un secreto: lleva dentro el UUID del pago, y la ruta de retorno
+ * resuelve sin sesión (la cookie no siempre vuelve de Webpay). Por eso un
+ * retorno que solo trae esto —o una orden de compra— no decide nada por sí
+ * mismo: sirve para encontrar el intento, y lo que le pasó lo dice Transbank,
+ * consultado con el token que guardamos de ese intento (`return-handler.ts`).
  */
 export function buildSessionId(paymentId: string): string {
   const id = `S-${paymentId.replace(/-/g, "").toUpperCase()}`;

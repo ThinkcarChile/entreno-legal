@@ -73,7 +73,10 @@ Y cuando el proveedor responde sobre un trabajo en `CANCELLATION_PENDING`:
   con dos columnas nuevas que lo hacen inequívoco: `captured_at` (el proveedor
   dijo que cobró) y `review_reason` (por qué está en revisión). No se inventó
   un `REFUND_PENDING`: `REFUNDED` y `PARTIALLY_REFUNDED` ya existen para cuando
-  la devolución ocurra de verdad.
+  la devolución ocurra de verdad. Una excepción con su propia marca:
+  `review_reason = manual_review` es una pausa que puso una persona sobre un
+  pago cobrado, no una devolución pendiente, y es la única revisión que se
+  puede quitar (§4 bis, `release_payment_review`).
 - **Columnas nuevas**: `jobs.cancellation_requested_at`,
   `payment_events.provider_event_id`, `payouts.payment_id`.
 
@@ -218,7 +221,7 @@ trabajo. Ahora:
 
 | Payout | Una devolución nueva |
 |---|---|
-| `PAID` (o `PROCESSING`, mientras se registra la transferencia) | Solo hasta lo que queda de la plataforma: lo cobrado en la asignación (trabajo y tiempo adicional, también un cobro en revisión) menos lo devuelto, lo pedido y sin respuesta, lo que se debe por disputas resueltas y lo transferido al trabajador (neto más retención). Una devolución ligada a una disputa salda primero lo que esa disputa debe. Más allá, `request_payment_refund` se niega con las cifras y con cuánto se puede devolver todavía |
+| `PAID` (o `PROCESSING`, mientras se registra la transferencia) | Solo hasta lo que queda de la plataforma: lo cobrado en la asignación (trabajo y tiempo adicional, también un cobro en revisión **si se capturó**: `captured_at`, migración `20260601001720`) menos lo devuelto, lo pedido y sin respuesta, lo que se debe por disputas resueltas y lo transferido al trabajador (neto más retención). Una devolución ligada a una disputa salda primero lo que esa disputa debe. Más allá, `request_payment_refund` se niega con las cifras y con cuánto se puede devolver todavía |
 | `PENDING`, `APPROVED`, `HELD` | Se acepta: el dinero del trabajador no salió y la transferencia la mide después. Pero si, **confirmada**, deja las cifras sin cuadrar, el payout pagable pasa a `HELD` con un motivo como «Se devolvieron $5.000 al cliente y las cifras de este trabajo ya no cuadran: …», en el mismo disparador que ya lo retenía por devolución total o revisión. Pedida y sin respuesta no retiene: puede fallar, y mientras tanto la transferencia ya se niega por ella (también si quedó `UNKNOWN`) |
 
 `request_payment_refund` bloquea ahora trabajo → asignación → todos los pagos de
@@ -231,6 +234,45 @@ devolución que el banco ya había hecho podía abortar por interbloqueo frente 
 una petición o una transferencia sobre el mismo trabajo. Pruebas: J01–J12
 (`supabase/tests/17_payments_followup.sql`) y J42
 (`supabase/tests/17_race_refund_settle.sh`).
+
+**Una devolución parcial no para el trabajo** (migración `20260601001710`).
+Con el payout sin transferir, una devolución parcial deja el pago del trabajo en
+`PARTIALLY_REFUNDED`, que la transferencia trata como cobro sano. El recorrido
+del trabajo, en cambio, exigía `PAID` exacto: con un bono devuelto a mitad del
+trabajo, el trabajador no podía ponerse en camino ni validar la entrega, el
+cliente no podía aprobar y la aprobación automática lo saltaba en cada pasada.
+Ahora `require_payment_before_work` y `verify_handoff_code` preguntan lo mismo
+que `job_payment_blocker`, en una sola función
+(`app_private.job_payment_backs_work`): pago del trabajo en `PAID` o
+`PARTIALLY_REFUNDED`. Devuelto entero, en revisión, fallido o en curso, sigue sin
+dejar avanzar nada. Pruebas: C12–C18 (`supabase/tests/20_payment_lifecycle.sql`).
+
+**Poner un pago en revisión, y quitarla** (migración `20260601001720`). El botón
+«Poner en revisión» de /admin/pagos era un UPDATE directo con la clave de
+servicio: bloqueaba el pago antes que el trabajo (el orden inverso al de todas
+las funciones de dinero, con interbloqueos frente a una transferencia), podía
+dejar en revisión un pago que nunca cobró —el retorno de Webpay lo daba por
+resuelto, una cancelación pedida se cerraba con «Recibimos un pago…»— y, sobre
+un pago cobrado, no tenía vuelta atrás: la guarda convierte cualquier
+`UNDER_REVIEW → PAID` en `approved_after_under_review`. Ahora:
+
+| Función | Qué hace |
+|---|---|
+| `flag_payment_for_review(pago, motivo)` | Solo administración, motivo de al menos 10 caracteres. Solo un pago `PAID` (cobrado y sin devoluciones); nunca con la cancelación del trabajo en curso ni con el payout ya transferido, donde una revisión ya no retiene nada. Bloquea trabajo → asignación → pago → extensión → payout. El pago queda `UNDER_REVIEW` con `review_reason = manual_review` —la marca que lo distingue de las revisiones automáticas—, el payout que respalda queda `HELD` («en revisión por administración») y el motivo va a `audit_logs`, no al pago, que el cliente lee. Si ya estaba en revisión contesta `unchanged` |
+| `release_payment_review(pago, nota)` | Solo administración. Solo la marca manual, con el cobro entero y sin devoluciones abiertas. El pago vuelve a `PAID` (la guarda lo admite solo dentro de esta función) y el payout que esa revisión retuvo vuelve a `PENDING` —si el trabajo no se había aprobado: la aprobación es la que descuenta un bono no otorgado— o a `APPROVED`. Con una disputa abierta mientras tanto, sigue retenido por ella. Una revisión automática no se quita por aquí: se resuelve consultando al proveedor o devolviendo |
+
+Al quitar la revisión de un pago del trabajo, el disparador de siempre
+(`on_payment_paid`) vuelve a avisar «Pago confirmado» a las dos partes y deja
+el mensaje de sistema en la conversación; no cambia nada más (la asignación y
+el trabajo ya estaban habilitados y el payout ya existía). En el panel, cada
+acción pide confirmación con el texto, «Poner en revisión» solo aparece sobre
+un pago `PAID` y «Quitar de revisión» solo sobre una revisión manual. Pruebas:
+C21–C35, y C52 (`supabase/tests/20_race_review_flag.sh`): con una transferencia
+registrándose a la vez, poner en revisión espera al trabajo sin tener el pago;
+el UPDATE directo de antes terminaba en «deadlock detected». Un pago en
+revisión sin `captured_at` ya no cuenta como cobrado al devolver con el
+trabajador pagado: C36–C38; y con el payout transferido no se pone en revisión
+el pago del trabajo: C39.
 
 ---
 
@@ -322,7 +364,8 @@ es legible para ninguna sesión.
 | `supabase/tests/11_payment_health.sql` | L01–L44: la §4 bis. Devolución total, revisión, devolución sin respuesta y cifras que no cuadran frente a aprobar, resolver y transferir; el ambiente de cada cobro (el del trabajo y el del tiempo adicional) y la bandera `allow_non_production_payouts` |
 | `supabase/tests/19_payout_decisions.sql` | B01–B44: la deuda de una disputa repartida entre los cobros y la devolución ligada solo en su parte (§8 ter bis), el bono negado y el ajuste de un payout que no cuadra (§4 bis) |
 | `supabase/tests/13_payment_attempts.sql` | N01–N47: historial de intentos, guardas del reintento, cobro duplicado, retornos sin cobro de otro intento, revisión sin pasar por `PAID`, cola y vencimiento de intentos (también el vigente con commit pedido, y su autorización tardía), privilegios |
-| `src/lib/payments/return-handler.test.ts`, `reconcile.test.ts`, `return-target.test.ts` | Qué intento resuelve cada retorno, cuándo se llama al banco, con qué identidad se asienta, el barrido de intentos anteriores y a qué pantalla vuelve cada resultado según lo pagado |
+| `src/lib/payments/return-handler.test.ts`, `reconcile.test.ts`, `return-target.test.ts` | Qué intento resuelve cada retorno, cuándo se llama al banco, con qué identidad se asienta, el barrido de intentos anteriores y a qué pantalla vuelve cada resultado según lo pagado. Un retorno sin token se resuelve consultando a Transbank con el token guardado del intento, nunca con lo que trae la URL |
+| `supabase/tests/20_payment_lifecycle.sql`, `20_race_review_flag.sh` | C01–C52: tiempo adicional pagado tarde, devolución parcial a mitad del trabajo, poner y quitar una revisión manual, abandono con otro intento confirmándose, tope de intentos, el identificador del pago que no recibe el trabajador y la historia del pago sin datos de administración |
 
 Sin `sleep` en ninguna: en SQL serializan los bloqueos de fila; en Node, la
 barrera del proveedor.
@@ -345,6 +388,31 @@ trabajo vivo y la asignación sin cancelar. Lo único que produce al confirmarse
 es que el payout existente sube —importe menos comisión—; no habilita nada, no
 cambia el estado del trabajo y no crea un payout nuevo. Si la extensión no está
 aceptada, el pago va a `UNDER_REVIEW` con `review_reason = 'extension_not_accepted'`.
+
+**Y solo mientras el payout admite sumas** (migración `20260601001700`). Antes,
+el tiempo adicional pagado después de transferir el payout lo subía igual: un
+payout `PAID` de $18.480 pasaba a $26.220 con la misma referencia bancaria, el
+trabajador nunca recibía la diferencia y el cliente tampoco podía recuperarla.
+Ahora:
+
+- `guard_payment_settlement` bloquea el payout (después de la extensión, en el
+  orden canónico) y solo da el cobro adicional por `PAID` si el payout está
+  `PENDING`, `APPROVED` o `HELD` y el trabajo no está `CLOSED`. Si no, el dinero
+  ya cobrado queda `UNDER_REVIEW` con `review_reason = 'payout_already_settled'`,
+  a la vista en la cola de revisión, y se devuelve desde /admin/pagos. Vale
+  también para un cobro en curso mientras se registra la transferencia: o la
+  transferencia lo espera, o él la ve.
+- `on_extension_paid` solo suma a un payout `PENDING`, `APPROVED` o `HELD`, solo
+  la primera vez que el cobro llega a `PAID` desde un estado en vuelo, y solo
+  avisa «Se sumó…» si de verdad sumó.
+- `start_extension_payment` se niega a abrir el cobro con el payout ya
+  transferido o cancelado o el trabajo cerrado: «El pago de este trabajo ya se
+  cerró: el tiempo adicional ya no se puede pagar desde aquí…».
+- `guard_payout`: los importes (bruto, comisión, descuento, bono, retención,
+  neto) de un payout `PAID` o `CANCELLED` no cambian, venga de donde venga el
+  UPDATE.
+
+Pruebas: C01–C11 (`supabase/tests/20_payment_lifecycle.sql`).
 
 Al volver de Webpay, el cobro de la extensión va a la página de la asignación
 con sus propios avisos (`?pago=extension-…`), nunca a `/pagar/{asignación}`:
