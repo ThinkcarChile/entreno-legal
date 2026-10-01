@@ -636,3 +636,38 @@ Lo que queda pendiente de ejecutar desde una red que alcance a Transbank
 Todo lo demás —los cuatro flujos de retorno, la idempotencia, la conciliación,
 las devoluciones, las guardas y los invariantes— **sí está probado**, contra la
 base real y con el proveedor simulado, que implementa la misma interfaz.
+
+
+### Autorizaciones sin commit: se confirma siempre
+
+Había una contradicción dentro del propio proyecto. `PAGOS.md` §9.4 dice que
+Transbank exige confirmar y que una autorización sin confirmar se revierte
+sola; pero el retorno sin sesión no confirmaba (mandaba a entrar) y la
+conciliación solo consultaba el estado y asentaba con lo que viera. La
+documentación oficial no zanja cuál de las dos premisas es cierta.
+
+Se eligió el comportamiento que es correcto **en los dos casos**:
+
+- **El retorno confirma con el token, haya sesión o no.** El token es un
+  secreto de 64 caracteres que solo conoce quien pasó por el formulario, y
+  confirmar solo beneficia a quien pagó. La sesión decide a dónde va el
+  navegador: el dueño, a su resultado; sin sesión, a entrar con ese resultado
+  como destino; la sesión de otra persona, a un aviso neutro que no le cuenta
+  nada del pago ajeno. La cookie SameSite=Lax no viaja en el POST de
+  Transbank, una PWA instalada vuelve en otro contenedor de cookies y una
+  sesión puede vencer durante el pago: antes, en esos casos, no se confirmaba.
+- **La conciliación confirma antes de consultar** un pago con token que nunca
+  recibió `commit`, si su último intento tiene más de 15 minutos (el
+  formulario de Webpay dura hasta 10). Usa el mismo `handleReturn`, con la
+  misma clave de idempotencia `commit:<token>`. Si no hay respuesta en firme,
+  sigue con la consulta de estado de siempre.
+
+Si resulta que la confirmación no hacía falta, el segundo `commit` contesta que
+la transacción ya está resuelta y no cambia nada. Si sí hacía falta, es lo
+único que salva el cobro.
+
+La prueba e2e 8 cambió de expectativa en consecuencia («el retorno sin sesión
+confirma con el token y manda a entrar»). Sigue valiendo la pena medir en
+integración qué devuelve `status()` antes del `commit` (pagar y cerrar la
+pestaña; consultar al minuto, a los 10 y a los 30), para documentar el plazo
+real: ya no decide si el diseño es correcto.

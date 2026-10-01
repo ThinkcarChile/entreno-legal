@@ -446,3 +446,33 @@ select pg_temp.expect('V41 fotos de perfil: 4 MB y solo imágenes',
   '4194304 · image/jpeg,image/png,image/webp');
 select pg_temp.expect('V42 ningún bucket admite SVG',
   (select count(*)::text from storage.buckets where 'image/svg+xml' = any(allowed_mime_types)), '0');
+
+\echo ''
+\echo '--- El token de Webpay no se lee con una sesión de usuario'
+
+select pg_temp.expect('V43 authenticated puede leer provider_token',
+  has_column_privilege('authenticated', 'public.payments', 'provider_token', 'SELECT')::text, 'false');
+select pg_temp.expect('V44 ni redirect_url, session_id ni return_url',
+  (has_column_privilege('authenticated', 'public.payments', 'redirect_url', 'SELECT')
+   or has_column_privilege('authenticated', 'public.payments', 'session_id', 'SELECT')
+   or has_column_privilege('authenticated', 'public.payments', 'return_url', 'SELECT'))::text, 'false');
+select pg_temp.expect('V45 sí el estado y el importe, que usa la página del trabajo',
+  (has_column_privilege('authenticated', 'public.payments', 'status', 'SELECT')
+   and has_column_privilege('authenticated', 'public.payments', 'amount', 'SELECT'))::text, 'true');
+
+create function pg_temp.leer_vista_admin()
+returns text language plpgsql as $$
+declare n integer;
+begin
+  perform pg_temp.como(pg_temp.admin_id());
+  set local role authenticated;
+  select count(*) into n from public.admin_payments;
+  reset role;
+  perform pg_temp.como(null);
+  return 'LEE';
+exception when others then
+  reset role;
+  perform pg_temp.como(null);
+  return 'FALLA: ' || sqlerrm;
+end $$;
+select pg_temp.expect('V46 la vista de administración sigue funcionando', pg_temp.leer_vista_admin(), 'LEE');

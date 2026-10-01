@@ -31,7 +31,7 @@ import {
  *   parámetros que manda Webpay en cada uno, y comprueba el estado en que
  *   queda el pago en la base.
  * · Comprueba que un retorno repetido no cobra dos veces, y que el retorno de
- *   otra persona no asienta nada.
+ *   sin sesión se resuelve igual con el token y se manda a entrar.
  *
  * Lo que queda sin automatizar —pasar por el formulario de Webpay con una
  * tarjeta de prueba— está descrito paso a paso en `docs/TRANSBANK.md` §8 para
@@ -410,7 +410,12 @@ test.describe("pago protegido", () => {
     expect(["PAID", "FAILED", "UNDER_REVIEW"]).toContain(after!.status);
   });
 
-  test("8. el retorno de otra persona no asienta nada", async ({ page, context }) => {
+  test("8. el retorno sin sesión confirma con el token y manda a entrar", async ({ page, context }) => {
+    // Antes, sin sesión no se confirmaba nada: la cookie SameSite=Lax no viaja
+    // en el POST de Transbank, una PWA vuelve en otro contenedor de cookies, y
+    // una sesión puede vencer durante el pago. Ahora el token —el secreto que
+    // solo conoce quien pasó por el formulario— basta para resolver el pago, y
+    // la sesión solo decide a dónde va el navegador.
     const admin = adminClient();
     const { data: payment } = await admin
       .from("payments")
@@ -418,19 +423,21 @@ test.describe("pago protegido", () => {
       .eq("id", paymentId)
       .maybeSingle<{ provider_token: string; status: string }>();
 
-    const before = payment!.status;
-
-    // Sin sesión: el retorno tiene que mandar a entrar, no resolver el pago.
     await context.clearCookies();
     await page.goto(`/pagos/retorno?token_ws=${payment!.provider_token}`);
-    await expect(page).toHaveURL(/\/entrar/);
+
+    // A entrar, con el resultado del pago como destino interno.
+    await expect(page).toHaveURL(/\/entrar\?next=%2F/);
 
     const { data: after } = await admin
       .from("payments")
       .select("status")
       .eq("id", paymentId)
       .maybeSingle<{ status: string }>();
-    expect(after!.status).toBe(before);
+
+    // Resuelto o como estaba, pero nunca en un estado inventado ni retrocedido.
+    expect(["PAID", "FAILED", "UNDER_REVIEW", payment!.status]).toContain(after!.status);
+    if (payment!.status === "PAID") expect(after!.status).toBe("PAID");
   });
 
   test("9. el trabajo queda coherente al terminar", async () => {

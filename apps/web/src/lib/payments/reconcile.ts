@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getPaymentProviderForExistingPayments } from "./index";
 import { errorCategory, paymentLog } from "./logging";
 import { recordSnapshot } from "./checkout";
+import { handleReturn } from "./return-handler";
 import { applyProviderResult } from "./settle";
 import { findMismatches } from "./transbank/mapping";
 import { isReconcilable, type ProviderSnapshot } from "./provider";
@@ -176,6 +177,16 @@ async function loadQueue(
   return (data ?? []) as PendingRow[];
 }
 
+/**
+ * Antigüedad mínima del último intento para que la conciliación lo CONFIRME.
+ *
+ * Webpay mantiene abierto su formulario hasta 10 minutos (documentación oficial,
+ * «Timeout»). Confirmar antes podría cruzarse con alguien que todavía está
+ * escribiendo su tarjeta. Pasado ese margen, un intento que nunca recibió
+ * `commit` se confirma como lo haría el retorno.
+ */
+const COMMIT_AFTER_MS = 15 * 60_000;
+
 async function reconcileOne(
   admin: SupabaseClient,
   provider: ReturnType<typeof getPaymentProviderForExistingPayments> & {
@@ -188,9 +199,9 @@ async function reconcileOne(
   // se registra en ningún sitio sin enmascarar.
   const { data: tokenRow } = await admin
     .from("payments")
-    .select("provider_token")
+    .select("provider_token,committed_at,updated_at")
     .eq("id", row.payment_id)
-    .maybeSingle<{ provider_token: string | null }>();
+    .maybeSingle<{ provider_token: string | null; committed_at: string | null; updated_at: string }>();
 
   const token = tokenRow?.provider_token;
   if (!token) {
@@ -201,6 +212,54 @@ async function reconcileOne(
       outcome: "skipped",
       reason: "sin token del proveedor",
     };
+  }
+
+  // Nunca confirmado: se CONFIRMA antes de solo consultar.
+  //
+  // La documentación del proyecto (PAGOS.md §9.4) dice que una autorización
+  // sin confirmar se revierte sola; la oficial no lo aclara. Confirmar es
+  // correcto en los dos casos: si no hacía falta, el proveedor contesta que ya
+  // está resuelta y se sigue con la consulta de estado de siempre. Se usa el
+  // mismo camino que el retorno (`handleReturn`), con sus bloqueos y su clave
+  // de idempotencia `commit:<token>`, así que no hay un segundo modo de asentar.
+  if (
+    tokenRow &&
+    !tokenRow.committed_at &&
+    Date.now() - new Date(tokenRow.updated_at).getTime() > COMMIT_AFTER_MS
+  ) {
+    try {
+      const outcome = await handleReturn(admin, { kind: "NORMAL", token }, null);
+      if (outcome.kind === "SETTLED" || outcome.kind === "REVIEW" || outcome.kind === "ALREADY") {
+        const { data: after } = await admin
+          .from("payments")
+          .select("status")
+          .eq("id", row.payment_id)
+          .maybeSingle<{ status: string }>();
+        return {
+          paymentId: row.payment_id,
+          before: row.status,
+          after: after?.status ?? row.status,
+          outcome:
+            outcome.kind === "REVIEW"
+              ? "under_review"
+              : outcome.kind === "ALREADY"
+                ? "already"
+                : after?.status === "FAILED"
+                  ? "failed"
+                  : "settled",
+          reason: "confirmado por la conciliación",
+        };
+      }
+      // PENDING u otro: sin respuesta en firme, se sigue con la consulta.
+    } catch (error) {
+      paymentLog({
+        operation: "reconcile",
+        result: "commit_failed",
+        paymentId: row.payment_id,
+        token,
+        errorCategory: errorCategory(error),
+      });
+    }
   }
 
   let snapshot: ProviderSnapshot;

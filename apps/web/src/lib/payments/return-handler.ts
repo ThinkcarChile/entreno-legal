@@ -112,13 +112,26 @@ export async function findPaymentForReturn(
 /**
  * Resuelve el retorno.
  *
- * `viewerId` es quien volvió del formulario. Un pago solo lo resuelve su dueño:
- * un retorno que llega con la sesión de otra persona no asienta nada.
+ * `viewerId` es quien volvió del formulario, o `null` cuando no hay sesión o
+ * cuando llama la conciliación.
+ *
+ * Con `null` el pago se resuelve igual: la prueba de que el retorno es
+ * legítimo es el token de Transbank —un secreto de 64 caracteres que solo
+ * conoce quien pasó por el formulario—, y confirmar solo puede beneficiar a
+ * quien pagó. Antes, sin sesión no se confirmaba nada; y la propia
+ * documentación del proyecto (PAGOS.md §9.4) dice que una autorización sin
+ * confirmar se revierte sola. Confirmar siempre es correcto en los dos casos:
+ * si no hacía falta, un segundo `commit` contesta 4xx y se lee el estado.
+ *
+ * Con un `viewerId` que NO es el dueño se responde FORBIDDEN sin tocar nada,
+ * como antes: la ruta llama sin identidad para resolver y decide la
+ * redirección por su cuenta, sin revelar a un tercero el estado de un pago
+ * ajeno.
  */
 export async function handleReturn(
   admin: SupabaseClient,
   flow: ReturnFlow,
-  viewerId: string,
+  viewerId: string | null,
 ): Promise<ReturnOutcome> {
   const provider = getPaymentProviderForExistingPayments();
   const payment = await findPaymentForReturn(admin, flow);
@@ -127,7 +140,7 @@ export async function handleReturn(
     paymentLog({ operation: "return", result: "not_found", flow: flow.kind });
     return { kind: "NOT_FOUND", reason: "no se encontró el pago del retorno" };
   }
-  if (payment.client_id !== viewerId) {
+  if (viewerId !== null && payment.client_id !== viewerId) {
     paymentLog({
       operation: "return",
       result: "forbidden",

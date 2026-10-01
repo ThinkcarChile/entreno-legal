@@ -35,72 +35,83 @@ async function handle(request: NextRequest, values: Record<string, string | null
 
   const supabase = await createClient();
   const viewer = await getVerifiedUser(supabase);
-  if (!viewer) {
-    // Sin sesión no se resuelve nada: se vuelve a entrar y el pago queda donde
-    // estaba, listo para que la conciliación lo cierre si hizo falta.
-    return NextResponse.redirect(`${origin}/entrar?next=%2Fmis-trabajos%2Fpublicados`);
-  }
-
   const admin = createAdminClient();
 
+  // El pago se resuelve SIEMPRE con el token, haya sesión o no: la cookie
+  // SameSite=Lax no viaja en el POST de Transbank, una PWA instalada vuelve en
+  // otro contenedor de cookies, y una sesión pudo vencer durante el pago. La
+  // sesión solo decide a dónde va el navegador. Ver handleReturn.
+  let outcome: Awaited<ReturnType<typeof handleReturn>>;
   try {
-    const outcome = await handleReturn(admin, flow, viewer.id);
-
-    switch (outcome.kind) {
-      case "SETTLED":
-        return NextResponse.redirect(
-          outcome.settlement.paymentStatus === "PAID"
-            ? `${origin}/mis-trabajos/${outcome.payment.assignment_id}?pago=ok`
-            : outcome.settlement.jobStatus === "CANCELLED"
-              ? `${origin}/mis-trabajos/publicados/${outcome.payment.job_id}?pago=cancelado`
-              : `${origin}/pagar/${outcome.payment.assignment_id}?pago=rechazado`,
-        );
-
-      case "REVIEW":
-        return NextResponse.redirect(
-          `${origin}/mis-trabajos/publicados/${outcome.payment.job_id}?pago=revision`,
-        );
-
-      case "ABANDONED":
-        return NextResponse.redirect(
-          `${origin}/pagar/${outcome.payment.assignment_id}?pago=${
-            outcome.reason === "form_timeout"
-              ? "tiempo"
-              : outcome.reason === "aborted_by_user"
-                ? "cancelado"
-                : "incompleto"
-          }`,
-        );
-
-      case "PENDING":
-        return NextResponse.redirect(
-          `${origin}/mis-trabajos/publicados/${outcome.payment.job_id}?pago=verificando`,
-        );
-
-      case "ALREADY":
-        return NextResponse.redirect(
-          outcome.payment.assignment_id
-            ? `${origin}/mis-trabajos/${outcome.payment.assignment_id}?pago=ok`
-            : `${origin}/mis-trabajos/publicados?pago=ok`,
-        );
-
-      case "FORBIDDEN":
-        return NextResponse.redirect(`${origin}/mis-trabajos/publicados?pago=error`);
-
-      default:
-        return NextResponse.redirect(`${origin}/mis-trabajos/publicados?pago=desconocido`);
-    }
+    outcome = await handleReturn(admin, flow, null);
   } catch (error) {
-    // Un fallo aquí no puede dejar al cliente sin saber qué pasó, y tampoco
-    // puede cobrar dos veces: el pago queda como esté y lo cierra la
-    // conciliación. El mensaje del error NO se propaga a la URL.
     paymentLog({
       operation: "return",
       result: "error",
       flow: flow.kind,
       errorCategory: errorCategory(error),
     });
-    return NextResponse.redirect(`${origin}/mis-trabajos/publicados?pago=verificando`);
+    return NextResponse.redirect(
+      viewer
+        ? `${origin}/mis-trabajos/publicados?pago=verificando`
+        : `${origin}/entrar?next=${encodeURIComponent("/mis-trabajos/publicados?pago=verificando")}`,
+    );
+  }
+
+  const owner =
+    "payment" in outcome && outcome.payment ? outcome.payment.client_id : null;
+
+  // Sin sesión: a entrar, y de vuelta al resultado de su pago.
+  if (!viewer) {
+    const target = owner ? targetFor(outcome) : "/mis-trabajos/publicados";
+    return NextResponse.redirect(`${origin}/entrar?next=${encodeURIComponent(target)}`);
+  }
+
+  // La sesión de otra persona: el pago quedó resuelto para su dueño, pero a un
+  // tercero no se le cuenta nada de él.
+  if (owner && owner !== viewer.id) {
+    paymentLog({ operation: "return", result: "foreign_session", flow: flow.kind });
+    return NextResponse.redirect(`${origin}/mis-trabajos/publicados?pago=desconocido`);
+  }
+
+  return NextResponse.redirect(`${origin}${targetFor(outcome)}`);
+}
+
+/** Ruta interna del resultado, para el dueño del pago. */
+function targetFor(outcome: Awaited<ReturnType<typeof handleReturn>>): string {
+  switch (outcome.kind) {
+    case "SETTLED":
+      return outcome.settlement.paymentStatus === "PAID"
+        ? `/mis-trabajos/${outcome.payment.assignment_id}?pago=ok`
+        : outcome.settlement.jobStatus === "CANCELLED"
+          ? `/mis-trabajos/publicados/${outcome.payment.job_id}?pago=cancelado`
+          : `/pagar/${outcome.payment.assignment_id}?pago=rechazado`;
+
+    case "REVIEW":
+      return `/mis-trabajos/publicados/${outcome.payment.job_id}?pago=revision`;
+
+    case "ABANDONED":
+      return `/pagar/${outcome.payment.assignment_id}?pago=${
+        outcome.reason === "form_timeout"
+          ? "tiempo"
+          : outcome.reason === "aborted_by_user"
+            ? "cancelado"
+            : "incompleto"
+      }`;
+
+    case "PENDING":
+      return `/mis-trabajos/publicados/${outcome.payment.job_id}?pago=verificando`;
+
+    case "ALREADY":
+      return outcome.payment.assignment_id
+        ? `/mis-trabajos/${outcome.payment.assignment_id}?pago=ok`
+        : "/mis-trabajos/publicados?pago=ok";
+
+    case "FORBIDDEN":
+      return "/mis-trabajos/publicados?pago=error";
+
+    default:
+      return "/mis-trabajos/publicados?pago=desconocido";
   }
 }
 
