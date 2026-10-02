@@ -17,6 +17,7 @@ import { isCancellationPending, jobPermissions } from "@/lib/domain/job-actions"
 import { jobStatusLabels } from "@/lib/domain/labels";
 import { paymentIsPayable } from "@/lib/domain/permissions";
 import { formatDate, formatDuration, formatTime } from "@/lib/utils/datetime";
+import { objectiveSummary } from "@/lib/domain/objective";
 
 export const metadata: Metadata = {
   title: "Mi trabajo",
@@ -182,7 +183,7 @@ export default async function ClientJobDetailPage({ params, searchParams }: Page
                     Objetivo
                   </p>
                   <p className="mt-1 text-[0.9375rem] text-ink-700">
-                    {job.objective.description ?? "Mantener el lugar en la fila."}
+                    {objectiveSummary(job.objective)}
                   </p>
                 </div>
               </div>

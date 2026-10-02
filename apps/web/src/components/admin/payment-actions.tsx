@@ -15,6 +15,7 @@ import {
 } from "@/lib/actions/finance";
 import type { AdminOpenRefund } from "@/lib/data/repositories";
 import { formatMoney } from "@/lib/utils/money";
+import { refundSuggestion } from "@/lib/payments/refund-suggestion";
 
 type Tone = "success" | "info" | "warning" | "danger";
 
@@ -74,6 +75,7 @@ export function PaymentActions({
   refunded,
   refundable,
   disputeId,
+  suggestedRefund = null,
   canRefund,
   openRefund,
 }: {
@@ -85,6 +87,12 @@ export function PaymentActions({
   refunded: number;
   refundable: number;
   disputeId: string | null;
+  /**
+   * Lo que se sugiere devolver al abrir el diálogo. Con una disputa por pedir,
+   * es lo que esa disputa debe sobre este cobro: antes el diálogo traía el
+   * saldo entero y un clic devolvía de más.
+   */
+  suggestedRefund?: number | null;
   /** El pago está en un estado que admite devolución y hay saldo. */
   canRefund: boolean;
   /** Devolución en curso o por confirmar: mientras exista, no se pide otra. */
@@ -93,7 +101,8 @@ export function PaymentActions({
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ tone: Tone; text: string } | null>(null);
   const [refundOpen, setRefundOpen] = useState(false);
-  const [refundAmount, setRefundAmount] = useState(String(refundable));
+  const initialRefund = refundSuggestion(refundable, suggestedRefund);
+  const [refundAmount, setRefundAmount] = useState(String(initialRefund));
   const [reason, setReason] = useState("");
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
@@ -127,7 +136,7 @@ export function PaymentActions({
   function openRefundDialog() {
     setMessage(null);
     setDialogError(null);
-    setRefundAmount(String(refundable));
+    setRefundAmount(String(initialRefund));
     setRequestId(newRequestId());
     setRefundOpen(true);
   }

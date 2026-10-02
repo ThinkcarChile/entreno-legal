@@ -64,6 +64,8 @@ import {
 } from "@/lib/domain/permissions";
 import { formatDate, formatDuration, formatTime, hasPassed } from "@/lib/utils/datetime";
 import { formatPercent } from "@/lib/utils/format";
+import { objectiveSummary } from "@/lib/domain/objective";
+import { settlementHeadline } from "@/lib/domain/settlement-view";
 
 export const metadata: Metadata = {
   title: "Trabajo asignado",
@@ -108,6 +110,7 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
     payout,
     reviewAuthors,
   } = detail;
+  const headline = settlementHeadline({ settlement, payment, extensionPayments, payout });
 
   const isClient = assignment.clientId === session.id;
   const isWorker = assignment.workerId === session.id;
@@ -370,7 +373,7 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
                     Objetivo
                   </p>
                   <p className="mt-1 text-[0.9375rem] text-ink-700">
-                    {job.objective.description ?? "Mantener el lugar en la fila."}
+                    {objectiveSummary(job.objective)}
                   </p>
                 </div>
               </div>
@@ -482,8 +485,18 @@ export default async function AssignmentPage({ params, searchParams }: PageProps
                 {isClient ? "Total pagado" : "Recibes por este trabajo"}
               </p>
               <p className="mt-1 text-h1 text-ink-950">
-                <Amount value={isClient ? settlement.clientTotal : settlement.workerReceives} />
+                <Amount value={isClient ? headline.clientCharged : headline.workerReceives} />
               </p>
+              {isClient && headline.extensionCharged.amount > 0 && (
+                <p className="mt-1 text-small text-ink-600">
+                  Incluye <Amount value={headline.extensionCharged} /> de tiempo adicional.
+                </p>
+              )}
+              {isWorker && headline.fromPayout && (
+                <p className="mt-1 text-small text-ink-600">
+                  Es lo que registra tu pago, con tiempo adicional, ajustes o devoluciones.
+                </p>
+              )}
 
               <dl className="mt-4 space-y-2 border-t border-ink-100 pt-4 text-small">
                 <div className="flex justify-between gap-4">

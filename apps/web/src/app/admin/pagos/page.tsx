@@ -318,6 +318,7 @@ export default async function AdminPaymentsPage({
                           refunded={row.refundedAmount}
                           refundable={row.refundableAmount}
                           disputeId={refundDisputeId(row)}
+                          suggestedRefund={refundDisputeId(row) ? row.disputeRefundPending : null}
                           canRefund={refundable}
                           openRefund={row.openRefund}
                         />

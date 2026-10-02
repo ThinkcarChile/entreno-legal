@@ -160,6 +160,47 @@ entrar. → D §4.6.
 
 ---
 
+### Recorrido en navegador del 2026-10-02 (cliente, trabajador, administración)
+
+Hecho contra `hagotufila-dev` con dos cuentas nuevas y la de administración, en
+Chromium. Funcionó de punta a punta: registro y confirmación por
+`/auth/confirm`, publicación y edición, privacidad antes de asignar, oferta,
+chat, pago simulado, extensión, PIN, aprobación, disputa parcial con
+devolución, reseña, verificación del trabajador, revisión de llegadas, ajuste
+y transferencia del pago al trabajador. Las escrituras directas por la API del
+trabajador (importes, estados, mensajes `SYSTEM`, `provider_token`, datos
+ajenos, `mark_payout_paid`) fueron todas rechazadas.
+
+Corregido ese día, con prueba: los importes de cabecera de la asignación y de
+la vista de caso ignoraban el tiempo adicional, los ajustes y las devoluciones
+(`src/lib/domain/settlement-view.ts`); el objetivo de la fila se mostraba como
+«Mantener el lugar» para cualquier objetivo sin descripción
+(`src/lib/domain/objective.ts`); el diálogo «Devolver» proponía el saldo entero
+en vez de lo que debe la disputa (`src/lib/payments/refund-suggestion.ts`).
+
+**Pendiente, sin corregir:**
+
+- **Coordenadas del trabajo (importante).** El asistente de publicación no
+  guarda latitud ni longitud (`job_private_location.lat/lng` quedan nulos):
+  todo check-in real queda «sin ubicación» y en revisión manual antes de
+  poder comenzar. Corregirlo necesita geocodificar la dirección o pedir la
+  ubicación en el mapa: decisión de proveedor pendiente.
+- **Correo.** El registro dice «Revisa tu correo», pero con el proveedor por
+  omisión de Supabase el correo solo llega a miembros del equipo del proyecto:
+  hace falta SMTP propio (A5).
+- El servidor de desarrollo tiene que escuchar en el puerto de
+  `NEXT_PUBLIC_SITE_URL`: si no, el pago simulado se queda en «Preparando tu
+  pago» (D §10).
+- Menores: no hay comprobante para el cliente; «Resueltas recientemente» en
+  `/admin/verificaciones` muestra las más antiguas; el aviso de disputa en
+  `/admin/pagos` dice «a favor del cliente» también para una resolución
+  parcial y `/admin/disputas` muestra `PARTIAL` sin traducir; un error de
+  devolución muestra cifras sin formato; el onboarding precarga la inicial del
+  apellido en vez del apellido; la línea de tiempo atribuye a «Usuario» las
+  acciones de administración; las zonas del perfil público no muestran la
+  comuna; el panel del PIN sigue diciendo «cinco intentos» tras un error; entrar
+  con el onboarding incompleto lleva a `/trabajos` y no a `/bienvenida`.
+
 ## B. Webpay en integración
 
 Desde una red que alcance `webpay3gint.transbank.cl` (una VPN de centro de datos

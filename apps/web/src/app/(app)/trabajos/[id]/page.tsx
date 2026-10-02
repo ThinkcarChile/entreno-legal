@@ -32,13 +32,14 @@ import { site } from "@/config/site";
 import { getViewer } from "@/lib/auth/session";
 import { canSendOffers } from "@/lib/domain/eligibility";
 import { isOpen } from "@/lib/domain/job-actions";
-import { JobObjectiveType, UserRole } from "@/lib/domain/enums";
+import { UserRole } from "@/lib/domain/enums";
 import { jobStatusLabels, urgencyLabels } from "@/lib/domain/labels";
 import { getData } from "@/lib/data";
 import { getPricingEngine } from "@/lib/pricing";
 import { formatDate, formatDuration, formatTime } from "@/lib/utils/datetime";
 
 import type { Job } from "@/lib/domain/types";
+import { objectiveSummary } from "@/lib/domain/objective";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -376,16 +377,5 @@ function DetailRow({
 }
 
 function ObjectiveText({ job }: { job: Job }) {
-  switch (job.objective.type) {
-    case JobObjectiveType.HOLD_PLACE:
-      return <>Mantener el lugar en la fila hasta que llegue el cliente.</>;
-    case JobObjectiveType.AS_FRONT_AS_POSSIBLE:
-      return <>Quedar lo más adelante posible en la fila.</>;
-    case JobObjectiveType.WITHIN_FIRST_N:
-      return <>Quedar dentro de los primeros {job.objective.targetPosition} de la fila.</>;
-    case JobObjectiveType.COMPLETE_ERRAND:
-      return <>{job.objective.description ?? "Completar la gestión encargada."}</>;
-    default:
-      return <>{job.objective.description ?? "Objetivo personalizado."}</>;
-  }
+  return <>{objectiveSummary(job.objective)}</>;
 }

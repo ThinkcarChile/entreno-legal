@@ -23,6 +23,8 @@ import {
 } from "@/lib/domain/labels";
 import { isDisputeOpen } from "@/lib/domain/permissions";
 import { formatDate, formatDateTime, formatDuration, formatTime } from "@/lib/utils/datetime";
+import { objectiveSummary } from "@/lib/domain/objective";
+import { settlementHeadline } from "@/lib/domain/settlement-view";
 
 export const metadata: Metadata = {
   title: "Caso del trabajo",
@@ -84,6 +86,7 @@ export default async function AdminAssignmentPage({
     dispute,
     payout,
   } = detail;
+  const headline = settlementHeadline({ settlement, payment, extensionPayments, payout });
 
   const status = assignmentStatusLabels[assignment.status];
   const jobStatus = jobStatusLabels[job.status];
@@ -251,7 +254,7 @@ export default async function AdminAssignmentPage({
                     Objetivo
                   </p>
                   <p className="mt-1 text-[0.9375rem] text-ink-700">
-                    {job.objective.description ?? "Mantener el lugar en la fila."}
+                    {objectiveSummary(job.objective)}
                   </p>
                   {job.objective.bonusConditions && (
                     <p className="mt-1 text-small text-ink-500">
@@ -291,12 +294,18 @@ export default async function AdminAssignmentPage({
           <Card>
             <CardContent className="space-y-4 text-small">
               <div>
-                <p className="text-ink-500">Total del cliente</p>
+                <p className="text-ink-500">Cobrado al cliente</p>
                 <p className="mt-1 text-h2 text-ink-950">
-                  <Amount value={settlement.clientTotal} />
+                  <Amount value={headline.clientCharged} />
                 </p>
+                {headline.extensionCharged.amount > 0 && (
+                  <p className="text-ink-500">
+                    Incluye <Amount value={headline.extensionCharged} /> de tiempo adicional
+                  </p>
+                )}
                 <p className="text-ink-500">
-                  El trabajador recibe <Amount value={settlement.workerReceives} />
+                  {headline.fromPayout ? "El trabajador recibe" : "Acordado para el trabajador"}{" "}
+                  <Amount value={headline.workerReceives} />
                 </p>
               </div>
 
