@@ -192,31 +192,23 @@ El proyecto Supabase de desarrollo ya existe (`hagotufila-dev`, ref
 conectada: el indicador de desarrollo muestra
 «Supabase conectado · xwgobslgldxzatjrcxhl.supabase.co».
 
-Contra ese proyecto real ya corrieron, y pasaron: las 27 migraciones de entonces, la semilla
-geográfica (1 país, 16 regiones, 346 comunas), `npm run verify:schema:hosted`,
-las 62 comprobaciones de `npm run verify:supabase`, las 23 de
-`npm run verify:payments`, las 24 de `npm run verify:execution`, las 17 pruebas
-de `npm run e2e` —siete del marketplace y seis de la ejecución— y el recorrido a mano de
-`docs/DESPLIEGUE-SUPABASE.md` §8.4.
+El 2026-10-02 se le aplicaron las 79 migraciones del repositorio (tenía 33), y
+contra él pasaron, sin omisiones: `npm run verify:supabase` (63),
+`verify:payments` (23), `verify:execution` (24), las 51 pruebas de `npm run e2e`
+y `verify:schema:hosted` salvo las plantillas de correo (abajo). La primera
+pasada de pg_cron corrió bien y los invariantes quedaron en cero. Estado paso a
+paso en [`docs/PUESTA-EN-MARCHA.md`](docs/PUESTA-EN-MARCHA.md) §A.
 
-Desde esa validación el repositorio sumó migraciones correctivas (hoy son 79
-archivos en `supabase/migrations/`) que **no** están aplicadas en el proyecto
-alojado ni probadas contra él. Antes de usarlo: `npm run db:push:hosted -- --plan`
-muestra cuáles faltan y `npm run db:push:hosted` las aplica. Después, con
-§4.1.b, §4.1.c, §4.5 y §8.1 de `docs/DESPLIEGUE-SUPABASE.md` hechos, se repiten
-`verify:schema:hosted`, `verify:supabase`, `verify:payments`, `verify:execution`
-y `e2e`. El orden completo, paso a paso, está en
-[`docs/PUESTA-EN-MARCHA.md`](docs/PUESTA-EN-MARCHA.md).
-
-Del proyecto alojado quedan pasos que no caben en una migración, y **ninguno
-está hecho todavía en ningún proyecto**: el mínimo de 8 caracteres de Auth
-(§4.1.b) y las plantillas de correo con `token_hash` (§4.1.c), que
-`verify:schema:hosted` exige y que hacen falta en cada proyecto, también en el
-de producción. La protección contra contraseñas filtradas, que Supabase solo
-ofrece desde el plan Pro: hay que activarla en producción, y
-`verify:schema:hosted -- --produccion` falla mientras no lo esté. Y los límites
-de Supabase Auth y el CAPTCHA del registro y el ingreso, que **no están
-configurados**: el CAPTCHA además necesita que los formularios envíen el token
-antes de activarlo. Ver `docs/DESPLIEGUE-SUPABASE.md` §4.1.b, §4.1.c y §4.6.
+Del proyecto alojado quedan pasos que no caben en una migración. El mínimo de 8
+caracteres de Auth (§4.1.b) ya está en `hagotufila-dev`; falta en producción.
+Las plantillas de correo con `token_hash` (§4.1.c) **no se pueden cambiar** en
+un proyecto Free con el correo por omisión de Supabase: necesitan SMTP propio o
+un plan de pago, y `verify:schema:hosted` las marca en rojo mientras tanto. La
+protección contra contraseñas filtradas, que Supabase solo ofrece desde el plan
+Pro: hay que activarla en producción, y `verify:schema:hosted -- --produccion`
+falla mientras no lo esté. Y los límites de Supabase Auth y el CAPTCHA del
+registro y el ingreso, que **no están configurados**: el CAPTCHA además
+necesita que los formularios envíen el token antes de activarlo. Ver
+`docs/DESPLIEGUE-SUPABASE.md` §4.1.b, §4.1.c y §4.6.
 
 Ver `docs/HOJA-DE-RUTA.md` para el detalle y los riesgos pendientes.

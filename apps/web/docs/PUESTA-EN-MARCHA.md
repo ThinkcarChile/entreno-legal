@@ -25,8 +25,24 @@ Abreviaturas: **D** = `docs/DESPLIEGUE-SUPABASE.md`, **T** = `docs/TRANSBANK.md`
 
 ## A. El proyecto de desarrollo, `hagotufila-dev`
 
-Ya existe (ref `xwgobslgldxzatjrcxhl`) con las 27 migraciones de su primera
-validación y la semilla geográfica. Le faltan las correctivas posteriores.
+Ya existe (ref `xwgobslgldxzatjrcxhl`, región `sa-east-1`, PostgreSQL 17.6,
+plan Free sin respaldos).
+
+> **Estado al 2026-10-02.** Hechos en `hagotufila-dev`: A2 (las 79 migraciones
+> aplicadas; el plan queda en cero), A3 (reparación de restos e2e: 0 restos,
+> 0 invariantes rotos), A4 (mínimo 8), A6, A8 (pg_cron instalado, job
+> `hagotufila-tareas-programadas` cada 10 minutos, primera pasada correcta), A9,
+> A10 y A12 (todas las verificaciones en verde y las 51 e2e sin omisiones).
+> **No hecho:** A5. Supabase no permite cambiar las plantillas de correo en un
+> proyecto Free que usa su proveedor de correo por omisión (la Management API
+> responde `400 Email template modification is not available for free tier
+> projects using the default email provider`). Hace falta SMTP propio (decisión
+> pendiente: proveedor y DNS) o un plan de pago. Mientras tanto
+> `verify:schema:hosted` falla en V20–V22 en este proyecto, y recuperar la
+> contraseña solo funciona abriendo el enlace en el mismo navegador.
+> Antes de migrar se tomó un respaldo lógico por la Management API (datos de
+> todas las tablas, `auth.users`, Storage y el SQL de las migraciones
+> aplicadas), guardado fuera del repositorio: D §3.e.
 
 **A1. Variables de `.env.local`.** Copia `.env.example` a `.env.local` y completa
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
@@ -62,8 +78,9 @@ la alerta de integridad ya había saltado, la misma reparación la deja resuelta
 **A4. Mínimo de 8 caracteres en Auth.** En el panel, o con el `PATCH` de la
 Management API. → D §4.1.b.
 
-**A5. Plantillas de correo con `token_hash`.** *Confirm signup*, *Reset
-password*, *Change email address* y *Magic link*. Sin quitar las *Redirect
+**A5. Plantillas de correo con `token_hash`.** Requiere SMTP propio o un plan
+de pago: en Free con el correo por omisión, Supabase no deja editarlas.
+*Confirm signup*, *Reset password*, *Change email address* y *Magic link*. Sin quitar las *Redirect
 URLs* de §4.1 (`http://localhost:3000/auth/callback`,
 `http://localhost:3100/auth/callback` y la de producción). → D §4.1.c, D §4.1.
 

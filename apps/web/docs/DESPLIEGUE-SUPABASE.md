@@ -23,9 +23,10 @@ Anota el **project ref**: es el identificador que aparece en la URL del panel,
 
 > **Proyecto de desarrollo de HagoTuFila.** Ya existe y no hay que crearlo de
 > nuevo: `hagotufila-dev`, ref `xwgobslgldxzatjrcxhl`, región `sa-east-1`,
-> `https://xwgobslgldxzatjrcxhl.supabase.co`. Tiene aplicadas las 27
-> migraciones de su primera validación y la semilla geográfica, pero **no** las
-> correctivas posteriores: corre `npm run db:push:hosted -- --plan` para ver
+> `https://xwgobslgldxzatjrcxhl.supabase.co`. Desde el 2026-10-02 tiene
+> aplicadas las 79 migraciones del repositorio (antes tenía 33) y el estado de
+> cada paso está en `docs/PUESTA-EN-MARCHA.md` §A. Si el repositorio suma
+> migraciones nuevas, corre `npm run db:push:hosted -- --plan` para ver
 > cuáles faltan y `npm run db:push:hosted` para aplicarlas. Justo después, antes
 > de la primera pasada de pg_cron, la reparación de los restos de las pruebas
 > e2e de §8.3. Luego, en este orden: §2; «Comprobar que quedó completo» de §3;
@@ -200,6 +201,38 @@ y falla si no.
 > allí, la vía es `supabase db push --include-seed` desde la integración
 > continua o `psql "$DATABASE_URL" -f supabase/seed/001_geo.sql`; `db:seed:hosted`
 > es solo para proyectos de desarrollo, por el token personal que usa (§3.c).
+
+### 3.e Respaldo antes de migrar en un proyecto Free
+
+El plan Free no tiene respaldos automáticos ni PITR, y desde un entorno sin el
+puerto 5432 tampoco hay `pg_dump`. Antes de aplicar migraciones a
+`hagotufila-dev` se hace un respaldo **lógico** por la Management API, con el
+mismo `SUPABASE_ACCESS_TOKEN`:
+
+- cada tabla de `public`, `auth.users`, `auth.identities`, `storage.buckets`,
+  `storage.objects` y `supabase_migrations.schema_migrations` como JSON
+  (`select json_agg(t) from <tabla> t`), contrastando las filas con un
+  `count(*)`. `schema_migrations.statements` guarda el SQL exacto de cada
+  migración aplicada: es el respaldo del esquema;
+- los archivos de Storage, descargados con la clave secreta;
+- **fuera del repositorio**, con permisos solo para el dueño: trae hashes de
+  contraseña y datos de las cuentas de prueba.
+
+Restaurar: aplicar las migraciones hasta la última registrada; cargar cada JSON
+con `insert into <tabla> select * from json_populate_recordset(null::<tabla>,
+'<json>')` bajo `set session_replication_role = replica`, en orden de
+dependencias (usuarios → perfiles → trabajos → … → payouts), y volver a subir
+los archivos. No incluye sesiones ni tokens de refresco, que son efímeros.
+
+Antes de escribir en el proyecto alojado conviene además **ensayar** las
+migraciones pendientes en un PostgreSQL local con esa copia de los datos: se
+aplican las mismas migraciones ya registradas, se cargan los JSON y se aplican
+las pendientes una por una con `psql -1 -v ON_ERROR_STOP=1`. Así un `CHECK`
+nuevo que choque con datos reales aparece en el ensayo y no en el proyecto.
+Así se hizo el 2026-10-02 (46 migraciones, sin errores).
+
+En producción no sirve como único respaldo: ahí va un plan con respaldos
+diarios y PITR (decisión pendiente).
 
 ### Comprobar que quedó completo
 
@@ -378,6 +411,14 @@ para el Supabase local de la CLI.
 menor que 8.
 
 ### 4.1.c Plantillas de correo con `token_hash` (obligatorio, **pendiente**)
+
+> **Requiere SMTP propio en un proyecto Free.** En `hagotufila-dev` (Free, con
+> el proveedor de correo por omisión de Supabase) el cambio de plantillas se
+> rechaza: la Management API responde `400 Email template modification is not
+> available for free tier projects using the default email provider` y el panel
+> lo bloquea igual. Primero se configura SMTP propio (*Authentication → Emails →
+> SMTP Settings*) o se pasa a un plan de pago; después se cambian las
+> plantillas. Comprobado el 2026-10-02.
 
 **El defecto.** Con las plantillas por omisión, el enlace de los correos
 (`{{ .ConfirmationURL }}`) usa el flujo PKCE: Supabase verifica el enlace y
