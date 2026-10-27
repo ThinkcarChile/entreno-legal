@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { Clock, Gift, MapPin, Moon, Users } from "lucide-react";
+import { ArrowRight, Clock, Gift, MapPin, Moon, Users } from "lucide-react";
 
 import { Amount, Badge, Card, CardContent, HourlyRate } from "@/components/ui";
 import { urgencyLabels } from "@/lib/domain/labels";
@@ -11,7 +11,7 @@ import type { JobSummary } from "@/lib/domain/types";
 
 export function JobCard({ job }: { job: JobSummary }) {
   return (
-    <Card className="transition-shadow hover:shadow-[var(--shadow-raised)]">
+    <Card className="transition-[border-color,box-shadow] hover:border-brand-200 hover:shadow-[var(--shadow-raised)]">
       <CardContent className="flex h-full flex-col">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone="info">{job.categoryName}</Badge>
@@ -30,7 +30,7 @@ export function JobCard({ job }: { job: JobSummary }) {
           )}
         </div>
 
-        <h3 className="mt-3.5 text-base font-semibold text-ink-950">
+        <h3 className="mt-3.5 text-h3 text-ink-950">
           <Link href={`/trabajos/${job.id}`} className="hover:text-brand-700">
             <span className="absolute inset-0" aria-hidden="true" />
             {job.title}
@@ -61,19 +61,25 @@ export function JobCard({ job }: { job: JobSummary }) {
           </div>
         </dl>
 
-        <div className="mt-auto flex items-end justify-between gap-4 border-t border-ink-100 pt-4">
+        <div className="mt-auto flex items-end justify-between gap-4 border-t border-line pt-4">
           <div>
-            <p className="text-caption text-ink-500">Presupuesto propuesto</p>
-            <p className="mt-0.5 text-h3 text-ink-950">
-              <Amount value={job.proposedTotal} />
-            </p>
-            <p className="text-caption text-ink-500">
+            <p className="text-caption text-ink-500">Tarifa propuesta</p>
+            <p className="mt-0.5 text-[1.5rem] leading-tight font-extrabold tracking-[-0.05em] text-ink-950">
               <HourlyRate value={job.proposedHourlyRate} />
             </p>
+            <p className="text-caption text-ink-500">
+              Total <Amount value={job.proposedTotal} />
+              {job.publishedAt && <> · {formatRelative(job.publishedAt)}</>}
+            </p>
           </div>
-          {job.publishedAt && (
-            <p className="text-caption text-ink-500">{formatRelative(job.publishedAt)}</p>
-          )}
+          {/* Toda la tarjeta es el enlace; esto solo lo hace evidente. */}
+          <span
+            aria-hidden="true"
+            className="inline-flex h-9 shrink-0 items-center gap-1 rounded-[var(--radius-chip)] bg-brand-50 px-3 text-small font-bold text-brand-950"
+          >
+            Ver trabajo
+            <ArrowRight size={14} />
+          </span>
         </div>
       </CardContent>
     </Card>

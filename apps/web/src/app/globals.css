@@ -3,128 +3,161 @@
 /*
   Sistema de diseño HagoTuFila.
 
-  Una marca chilena de servicios entre personas: cálida, clara y seria con el
-  dinero. Coral para lo que se pulsa, azul profundo para lo que se lee, crema
-  para el fondo. Sin gradientes decorativos ni efectos que no signifiquen nada:
-  la estética comunica confianza, y la confianza es el producto.
+  «Tu lugar está asegurado. Tu día sigue». La interfaz tiene que transmitir
+  seguridad, seguimiento claro y trato directo entre personas: verde petróleo
+  para lo que se lee y se decide, lima solo para la acción destacada, marfil
+  frío de fondo. Práctica, serena y precisa cuando habla de dinero; sin adornos
+  infantiles ni mensajes promocionales en los estados financieros.
 
   Todo valor vive aquí. Ningún componente escribe un color, un radio o una
   sombra a mano: si mañana cambia la marca, cambia este archivo y nada más.
+  Los valores salen de `docs/DISENO.md`, que resume la especificación.
 
   Contraste: los tonos de texto están elegidos para cumplir WCAG AA sobre
-  blanco y sobre crema. Los números de cada uno están en el comentario de su
-  bloque, porque un tono que «se ve bien» y no llega a 4,5:1 es un tono que
-  deja fuera a alguien.
+  blanco y sobre el fondo marfil. Los números de cada uno están en el
+  comentario de su bloque, porque un tono que «se ve bien» y no llega a 4,5:1
+  es un tono que deja fuera a alguien.
 */
 
 @theme {
   /* --------------------------------------------------------------- marca --
-     Coral. `brand-500` es el color de marca de las piezas gráficas; para texto
-     y botones se usan los dos siguientes, que sí llegan a contraste AA:
-       brand-600 sobre blanco con texto blanco encima → 4,98:1
-       brand-700 como texto sobre blanco               → 6,70:1
+     Verde petróleo. `brand-950` es el de la acción principal y los encabezados
+     oscuros; `brand-700`, el del foco, el progreso y la navegación activa.
+       texto blanco sobre brand-950 → 12,56:1
+       texto blanco sobre brand-700 →  5,47:1
+       brand-700 como texto sobre blanco → 5,47:1; sobre el fondo → 5,13:1
+       brand-600 como texto sobre blanco → 4,69:1
   */
-  --color-brand-50: #fff1f4;
-  --color-brand-100: #ffe1e8;
-  --color-brand-200: #ffc8d5;
-  --color-brand-300: #ffa0b8;
-  --color-brand-400: #f76e91;
-  --color-brand-500: #e8476b;
-  --color-brand-600: #ce2f59;
-  --color-brand-700: #b01f47;
-  --color-brand-800: #921a3d;
-  --color-brand-900: #7b1937;
-  --color-brand-950: #450a1b;
+  --color-brand-50: #eef6f2;
+  --color-brand-100: #ddf3e9;
+  --color-brand-200: #bfe6d6;
+  --color-brand-300: #8fd0ba;
+  --color-brand-400: #4dae97;
+  --color-brand-500: #23917f;
+  --color-brand-600: #188273;
+  --color-brand-700: #14766c;
+  --color-brand-800: #145a55;
+  --color-brand-900: #134846;
+  --color-brand-950: #12393a;
+
+  /* --------------------------------------------------------------- acento --
+     Lima. Solo para la acción destacada y para los acentos sobre el verde
+     oscuro; nunca como fondo de texto largo ni con texto claro encima.
+       brand-950 sobre accent-300 → 10,14:1
+       accent-300 sobre brand-950 → 10,14:1
+  */
+  --color-accent-100: #f1fad0;
+  --color-accent-200: #e6f6a8;
+  --color-accent-300: #d9f27e;
+  --color-accent-400: #c8e65a;
+  --color-accent-500: #afcf3a;
 
   /* ---------------------------------------------------------- neutros --
-     Azul profundo, no gris puro: es lo que hace que el crema se vea cálido y
-     no sucio. `ink-950` es el azul de la marca (#152238).
-       ink-600 sobre blanco → 7,14:1 (texto largo)
-       ink-500 sobre blanco → 4,78:1 (texto secundario)
+     Gris verdoso, no gris puro: es lo que hace que el marfil se vea limpio.
+     `ink-950` es el texto primario (#142F33).
+       ink-950 sobre blanco → 14,15:1
+       ink-600 sobre blanco →  6,75:1 (texto largo)
+       ink-500 sobre blanco →  4,99:1; sobre el fondo → 4,68:1 (secundario)
        ink-400 no se usa para texto: iconos y separadores.
   */
-  --color-ink-50: #f6f7fa;
-  --color-ink-100: #edeff4;
-  --color-ink-200: #dce1ea;
-  --color-ink-300: #c1c9d8;
-  --color-ink-400: #8e9ab0;
-  --color-ink-500: #66738c;
-  --color-ink-600: #4c5871;
-  --color-ink-700: #3a455c;
-  --color-ink-800: #273249;
-  --color-ink-900: #1b2740;
-  --color-ink-950: #152238;
+  --color-ink-50: #f4f7f5;
+  --color-ink-100: #e9f0ec;
+  --color-ink-200: #dce5e1;
+  --color-ink-300: #c8d8d2;
+  --color-ink-400: #8fa19d;
+  --color-ink-500: #627371;
+  --color-ink-600: #4d5f5d;
+  --color-ink-700: #3a4d4c;
+  --color-ink-800: #28403f;
+  --color-ink-900: #1b3538;
+  --color-ink-950: #142f33;
 
-  /* ------------------------------------------------------ verificación --
-     Verde de confianza. `success-500` es el de las insignias;
-     `success-700` sobre blanco → 5,31:1, que es el que lleva texto.
+  /* ------------------------------------------------- confirmado / pagado --
+     `success-800` sobre `success-50`/`brand-100` → 6,70:1 (chips);
+     `success-700` sobre blanco → 6,71:1.
   */
-  --color-success-50: #ecfdf6;
-  --color-success-100: #d1fae8;
-  --color-success-200: #a7f3d4;
-  --color-success-500: #20b486;
-  --color-success-600: #14936c;
-  --color-success-700: #0f7a5a;
-  --color-success-800: #0d6149;
+  --color-success-50: #eaf6f0;
+  --color-success-100: #d3eee0;
+  --color-success-200: #a8dbc2;
+  --color-success-500: #2e9a72;
+  --color-success-600: #1e7f5f;
+  --color-success-700: #17684f;
+  --color-success-800: #155d4a;
 
-  /* ------------------------------------------------------------- aviso -- */
-  --color-warning-50: #fffaeb;
-  --color-warning-100: #fef0c7;
-  --color-warning-200: #fedf89;
-  --color-warning-500: #f59e0b;
-  --color-warning-600: #dc6803;
-  --color-warning-700: #b54708;
-  --color-warning-800: #93370d;
-
-  /* ------------------------------------------------------------- error --
-     Rojo netamente más oscuro y menos rosado que el coral de marca: un botón
-     destructivo no se puede confundir con el botón principal.
+  /* ---------------------------------------------- pendiente / en revisión --
+     `warning-800` sobre `warning-50` → 6,38:1; `warning-700` sobre
+     `warning-100` → 4,54:1 y sobre blanco → 5,10:1.
   */
-  --color-danger-50: #fef3f2;
-  --color-danger-100: #fee4e2;
-  --color-danger-200: #fecdca;
-  --color-danger-500: #d92d20;
-  --color-danger-600: #c0281c;
-  --color-danger-700: #b42318;
-  --color-danger-800: #912018;
+  --color-warning-50: #fff6e6;
+  --color-warning-100: #fff0d7;
+  --color-warning-200: #f5ddaf;
+  --color-warning-500: #d9922f;
+  --color-warning-600: #b97a25;
+  --color-warning-700: #97631e;
+  --color-warning-800: #76501d;
+
+  /* ------------------------------------- rechazo / disputa / cancelación --
+     `danger-700` sobre blanco → 6,82:1; sobre `danger-100` → 5,78:1.
+  */
+  --color-danger-50: #fcf1f1;
+  --color-danger-100: #fbe8e8;
+  --color-danger-200: #efcdcd;
+  --color-danger-500: #c24848;
+  --color-danger-600: #b03c3c;
+  --color-danger-700: #a33333;
+  --color-danger-800: #842828;
+
+  /* ---------------------------------------------------- avisos neutrales --
+     Azul. `info-700` sobre `info-100` → 5,71:1.
+  */
+  --color-info-50: #eef4fb;
+  --color-info-100: #e6effa;
+  --color-info-200: #c9daf1;
+  --color-info-500: #3b74ba;
+  --color-info-600: #2d67ae;
+  --color-info-700: #245da3;
+  --color-info-800: #1d4b85;
 
   /* ------------------------------------------------------- superficies --
      Capa semántica. Los componentes nuevos usan estos nombres y no el color
      concreto: es lo que permitiría un tema oscuro sin tocar cada archivo.
   */
   --color-surface: #ffffff;
-  --color-surface-sunken: #fbfcfe;
-  --color-canvas: #fff9f4;
-  --color-canvas-warm: #fff3ea;
-  --color-line: #dce1ea;
-  --color-line-strong: #c1c9d8;
+  --color-surface-sunken: #fafbf8;
+  --color-canvas: #f7f8f4;
+  --color-canvas-warm: #eef5f0;
+  --color-line: #dce5e1;
+  --color-line-strong: #c8d8d2;
 
-  /* ------------------------------------------------------- tipografía -- */
+  /* ------------------------------------------------------- tipografía --
+     Inter para texto y cifras. Encabezados apretados y con peso: la marca
+     habla corto y seguro.
+  */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     sans-serif;
 
-  --text-display: 3rem;
-  --text-display--line-height: 1.04;
-  --text-display--letter-spacing: -0.03em;
-  --text-display--font-weight: 650;
+  --text-display: 3.5rem;
+  --text-display--line-height: 1.06;
+  --text-display--letter-spacing: -0.055em;
+  --text-display--font-weight: 800;
 
-  --text-h1: 2.25rem;
-  --text-h1--line-height: 1.1;
-  --text-h1--letter-spacing: -0.025em;
-  --text-h1--font-weight: 650;
+  --text-h1: 2.375rem;
+  --text-h1--line-height: 1.16;
+  --text-h1--letter-spacing: -0.045em;
+  --text-h1--font-weight: 750;
 
   --text-h2: 1.75rem;
   --text-h2--line-height: 1.2;
-  --text-h2--letter-spacing: -0.02em;
-  --text-h2--font-weight: 600;
+  --text-h2--letter-spacing: -0.035em;
+  --text-h2--font-weight: 700;
 
-  --text-h3: 1.25rem;
-  --text-h3--line-height: 1.3;
-  --text-h3--letter-spacing: -0.015em;
-  --text-h3--font-weight: 600;
+  --text-h3: 1.1875rem;
+  --text-h3--line-height: 1.28;
+  --text-h3--letter-spacing: -0.025em;
+  --text-h3--font-weight: 700;
 
   --text-body: 1rem;
-  --text-body--line-height: 1.6;
+  --text-body--line-height: 1.55;
 
   --text-small: 0.875rem;
   --text-small--line-height: 1.5;
@@ -132,19 +165,22 @@
   --text-caption: 0.8125rem;
   --text-caption--line-height: 1.45;
 
-  --text-label: 0.75rem;
+  /* La «ceja» que va sobre los títulos: siempre en mayúsculas. */
+  --text-label: 0.6875rem;
   --text-label--line-height: 1.3;
-  --text-label--letter-spacing: 0.04em;
-  --text-label--font-weight: 600;
+  --text-label--letter-spacing: 0.13em;
+  --text-label--font-weight: 800;
 
   /* ------------------------------------------------------------ formas -- */
-  --radius-card: 1rem;
+  --radius-chip: 0.5625rem;
   --radius-control: 0.75rem;
+  --radius-card: 1.1875rem;
+  --radius-hero: 1.75rem;
   --radius-pill: 999px;
 
-  --shadow-card: 0 1px 2px rgb(21 34 56 / 0.04), 0 8px 24px -12px rgb(21 34 56 / 0.12);
-  --shadow-raised: 0 2px 4px rgb(21 34 56 / 0.05), 0 16px 40px -16px rgb(21 34 56 / 0.18);
-  --shadow-overlay: 0 24px 64px -24px rgb(21 34 56 / 0.35);
+  --shadow-card: 0 14px 36px rgb(20 47 51 / 0.07);
+  --shadow-raised: 0 18px 44px -12px rgb(20 47 51 / 0.2);
+  --shadow-overlay: 0 24px 64px -24px rgb(4 22 24 / 0.45);
 
   /* ------------------------------------------------------------ medidas -- */
   /* Altura de la barra inferior móvil, usada para reservar espacio. */
@@ -203,10 +239,10 @@
 
   body {
     background-color: var(--color-canvas);
-    color: var(--color-ink-900);
+    color: var(--color-ink-950);
     font-family: var(--font-sans);
     font-size: 1rem;
-    line-height: 1.6;
+    line-height: 1.55;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     overflow-x: hidden;
@@ -216,7 +252,7 @@
   h2,
   h3,
   h4 {
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
     text-wrap: balance;
   }
 
@@ -226,14 +262,14 @@
 
   /* Foco visible y consistente: requisito de accesibilidad, no un detalle estético. */
   :focus-visible {
-    outline: 2px solid var(--color-brand-600);
+    outline: 3px solid var(--color-brand-700);
     outline-offset: 2px;
     border-radius: 4px;
   }
 
   ::selection {
-    background-color: var(--color-brand-100);
-    color: var(--color-brand-900);
+    background-color: var(--color-accent-200);
+    color: var(--color-brand-950);
   }
 
   /* Una imagen nunca desborda su contenedor. */
@@ -250,7 +286,7 @@
   .container-page {
     width: 100%;
     margin-inline: auto;
-    max-width: 75rem;
+    max-width: 77.5rem;
     padding-inline: 1rem;
   }
 

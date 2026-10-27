@@ -72,7 +72,7 @@ export function MobileTabBar({ mode = "client" }: { mode?: NavMode }) {
             href="/publicar"
             aria-label="Publicar un trabajo"
             aria-current={pathname.startsWith("/publicar") ? "page" : undefined}
-            className="-mt-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-white shadow-[var(--shadow-raised)] transition-colors hover:bg-brand-700 active:bg-brand-800"
+            className="-mt-5 inline-flex h-14 w-14 items-center justify-center rounded-[1.125rem] bg-brand-950 text-accent-300 shadow-[var(--shadow-raised)] transition-colors hover:bg-brand-900 active:bg-brand-800"
           >
             <Plus size={24} strokeWidth={2.4} aria-hidden="true" />
           </Link>
@@ -94,7 +94,7 @@ function TabLink({ tab, active }: { tab: Tab; active: boolean }) {
         href={tab.href}
         aria-current={active ? "page" : undefined}
         className={cn(
-          "flex h-(--spacing-tabbar) flex-col items-center justify-center gap-1 text-[0.6875rem] font-medium transition-colors",
+          "flex h-(--spacing-tabbar) flex-col items-center justify-center gap-1 text-[0.6875rem] font-bold transition-colors",
           active ? "text-brand-700" : "text-ink-500 hover:text-ink-800",
         )}
       >

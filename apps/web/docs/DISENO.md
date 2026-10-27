@@ -5,35 +5,43 @@ el color y toda la tipografía, el catálogo de componentes, cómo se comporta l
 interfaz de 320 a 1440 píxeles y qué hace —y qué no hace— la aplicación
 instalable.
 
-> **Identidad provisional.** El logotipo de este documento sirve para construir
-> el producto. No está registrado, no es definitivo y está pensado para
-> sustituirse sin tocar más que dos archivos.
+> **Identidad conceptual.** La identidad actual sale del diseño entregado el
+> 27 de octubre de 2026 (`docs/diseno-entregado/`: la especificación y el
+> prototipo navegable, que es solo de concepto y no está conectado a nada).
+> El logotipo no está registrado y debe redibujarse en vector antes de su uso
+> comercial; está pensado para sustituirse sin tocar más que los archivos que
+> nombra la tabla del isotipo.
 
 ---
 
 ## 1. La marca en una frase
 
-Una marca chilena de servicios entre personas: cálida, clara y seria con el
-dinero. Coral para lo que se pulsa, azul profundo para lo que se lee, crema para
-el fondo. Ni un gradiente decorativo ni un efecto que no signifique nada: aquí
-la estética comunica confianza, y la confianza es el producto.
+«Tu lugar está asegurado. Tu día sigue». El producto no vende tiempo en
+abstracto: reduce la incertidumbre de un encargo que otra persona hace en
+persona. Práctica, humana, serena y precisa cuando habla de dinero. Verde
+petróleo dominante, lima solo para la acción destacada, fondo marfil frío. Sin
+adornos infantiles, sin mapas con posiciones exactas y sin mensajes
+promocionales en los estados financieros.
 
 ### Isotipo
 
-Tres ideas en una figura: el **pin** de ubicación (dónde), el **reloj** que
-lleva dentro (cuánto tiempo) y el **visto** verde que lo cierra (cumplido).
+Una **flecha ascendente** ↗ dentro de una silueta suave y ladeada que recuerda
+al número de turno de una fila, con una esquina más aguda, como el corte de un
+ticket. El logotipo es la palabra en minúsculas con un punto verde:
+**hagotufila.**
 
 Está dibujado en código (`src/components/layout/logo.tsx`) y no como imagen:
-hereda el color del contexto, se ve nítido a 16 px y a 512, y no hay un PNG que
-se olvide de actualizar. Variantes:
+se ve nítido a 16 px y a 512, y no hay un PNG que se olvide de actualizar.
+Variantes:
 
 | Variante | Dónde | Cómo |
 |---|---|---|
 | Horizontal | Cabecera, pie | `<Logo />` |
 | Compacta (solo símbolo) | Espacios estrechos | `<Logo compact />` |
-| Monocroma sobre oscuro | Bloques oscuros | `<Logo tone="invert" />` |
+| Sobre oscuro | Bloques oscuros | `<Logo tone="invert" />` (palabra blanca, punto lima) |
 | Favicon | Pestaña del navegador | `src/app/icon.svg` |
 | Icono de aplicación | PWA, iOS | `public/icons/*`; en iOS, `src/app/apple-icon.png` (generado desde `brand/apple-icon.svg`) |
+| Formulario de Transbank | Logotipo de comercio, 130 × 59 | `brand/logo-transbank-130x59.png` (generado desde `brand/logo-130x59.html`) |
 
 ---
 
@@ -43,7 +51,7 @@ Todo vive en `src/app/globals.css`, dentro de `@theme`. **Ningún componente
 escribe un color, un radio o una sombra a mano.** `npm run verify:pwa` lo
 comprueba: recorre todos los `.tsx` y falla si encuentra un hexadecimal suelto.
 
-La única excepción declarada es `src/config/brand.ts`, con tres colores que
+La única excepción declarada es `src/config/brand.ts`, con los colores que
 hacen falta fuera del CSS —el manifiesto, `theme-color`, el símbolo del
 logotipo— y que antes estaban copiados a mano en cuatro archivos.
 
@@ -63,31 +71,38 @@ logotipo— y que antes estaban copiados a mano en cuatro archivos.
 
 | Papel | Token | Valor |
 |---|---|---|
-| Azul profundo (marca, texto) | `--color-ink-950` | `#152238` |
-| Coral (marca gráfica) | `--color-brand-500` | `#e8476b` |
-| Coral de acción | `--color-brand-600` | `#ce2f59` |
-| Crema (fondo) | `--color-canvas` | `#fff9f4` |
-| Blanco (superficie) | `--color-surface` | `#ffffff` |
-| Verde de verificación | `--color-success-500` | `#20b486` |
+| Verde petróleo: acción principal, encabezados oscuros | `--color-brand-950` | `#12393a` |
+| Foco, progreso, navegación activa, enlaces | `--color-brand-700` | `#14766c` |
+| Confirmaciones y fondos suaves | `--color-brand-100` | `#ddf3e9` |
+| Lima: acción destacada, acentos sobre oscuro | `--color-accent-300` | `#d9f27e` |
+| Fondo de las vistas (marfil) | `--color-canvas` | `#f7f8f4` |
+| Tarjetas y formularios | `--color-surface` | `#ffffff` |
+| Texto primario | `--color-ink-950` | `#142f33` |
+| Texto secundario | `--color-ink-500` | `#627371` |
+| Separadores y bordes | `--color-line` | `#dce5e1` |
+| Confirmado / transferido | `--color-success-800` | `#155d4a` |
+| Pendiente / en revisión | `--color-warning-700` | `#97631e` |
+| Rechazo / disputa / cancelación | `--color-danger-700` | `#a33333` |
+| Avisos neutrales | `--color-info-700` | `#245da3` |
 
-Los grises no son grises: son azules desaturados. Es lo que hace que el crema se
-vea cálido y no sucio.
+Los grises no son grises: son verdes desaturados. Es lo que hace que el marfil
+se vea limpio. El lima nunca lleva texto claro encima ni texto largo.
 
 ### Contraste
 
 Los tonos de texto están elegidos para cumplir **WCAG AA** sobre blanco y sobre
-crema, y `verify:pwa` **recalcula** los diez pares críticos en cada ejecución: un
-comentario que dice «4,98:1» y una paleta que ya no lo cumple es peor que no
-tener el comentario.
+el marfil, y `verify:pwa` **recalcula** los veinte pares críticos en cada
+ejecución: un comentario que dice «5,47:1» y una paleta que ya no lo cumple es
+peor que no tener el comentario.
 
 | Par | Ratio |
 |---|---|
-| Texto blanco sobre `brand-600` | 4,98:1 |
-| `brand-700` sobre blanco | 6,70:1 |
-| `ink-600` sobre blanco | 7,14:1 |
-| `ink-500` sobre blanco | 4,78:1 |
-| `success-700` sobre blanco | 5,31:1 |
-| `ink-400` sobre `ink-950` | 5,63:1 |
+| Texto blanco sobre `brand-950` (botón principal) | 12,56:1 |
+| `brand-950` sobre `accent-300` (botón lima) | 10,14:1 |
+| `brand-700` sobre blanco | 5,47:1 |
+| `ink-600` sobre blanco | 6,75:1 |
+| `ink-500` sobre blanco / sobre el marfil | 4,99:1 / 4,68:1 |
+| Chips: éxito, aviso, error, información | 6,70 · 4,54 · 5,78 · 5,71 |
 
 `ink-400` **no se usa para texto**: es de iconos y separadores. Donde acompañaba
 a un tamaño de texto se subió a `ink-500`.
@@ -101,14 +116,22 @@ Una sola escala, la de los tokens:
 
 | Token | Tamaño | Uso |
 |---|---|---|
-| `text-display` | 3 rem | Portada en escritorio |
-| `text-h1` | 2,25 rem | Título de página |
+| `text-display` | 3,5 rem | Portada en escritorio |
+| `text-h1` | 2,375 rem | Título de página |
 | `text-h2` | 1,75 rem | Título de sección |
-| `text-h3` | 1,25 rem | Título de tarjeta o bloque |
+| `text-h3` | 1,1875 rem | Título de tarjeta o bloque |
 | `text-body` | 1 rem | Texto corrido |
 | `text-small` | 0,875 rem | Texto secundario |
 | `text-caption` | 0,8125 rem | Marcas de tiempo, referencias |
-| `text-label` | 0,75 rem | Etiquetas en versalitas |
+| `text-label` | 0,6875 rem | La «ceja» sobre los títulos, siempre en mayúsculas |
+
+Los encabezados van apretados y con peso (700–800, espaciado negativo): la
+marca habla corto y seguro.
+
+`cn()` (`src/lib/utils/cn.ts`) conoce esta escala. Sin eso, `tailwind-merge`
+tomaba `text-small` o `text-body` por colores y borraba el color de texto que
+venía antes: los botones `sm` y `lg` perdían su color y heredaban el del
+contexto. Lo cubre `cn.test.ts`.
 
 Cada token trae su interlineado, su peso y su espaciado de letra. Por eso los
 titulares ya no llevan `font-semibold tracking-tight` pegado detrás: estaba
@@ -131,7 +154,7 @@ media aplicación importando por ruta directa y la otra media por el barril.
 
 | Grupo | Componentes |
 |---|---|
-| Acción | `Button` (5 variantes, 3 tamaños, estado `loading`), `ButtonLink`, `IconButton` |
+| Acción | `Button` (6 variantes: `primary` verde petróleo, `accent` lima, `secondary` suave, `outline`, `ghost`, `danger`; 3 tamaños, estado `loading`), `ButtonLink`, `IconButton` |
 | Formulario | `Field`, `Input`, `Select`, `Textarea`, `Checkbox`, `Radio`, `Switch` |
 | Superficie | `Card` y su familia, `Section` |
 | Identidad | `Avatar`, `Badge`, `StatusChip`, `Rating`, `StarRow` |
@@ -165,9 +188,9 @@ desplazar. `role="dialog"`, `aria-modal`, título anunciado.
 | Sección | Qué hace |
 |---|---|
 | Cabecera | Cuatro enlaces y ninguno más. Lo que no está aquí está en el pie |
-| Portada | «Tu tiempo vale. Nosotros hacemos la fila.» + los dos caminos |
+| Portada | Bloque verde petróleo: «Tu lugar está asegurado. Tu día sigue.» + los dos caminos (lima: publicar; blanco: ganar dinero) y, en escritorio, la ilustración del aviso de llegada |
+| Franja de confianza | Identidad verificada, Pago Protegido HagoTuFila, seguimiento de cada etapa |
 | Buscador | Categoría, comuna y fecha, sin registrarse. Formulario `GET` real |
-| Franja de confianza | Verificación, pago protegido, soporte durante el trabajo |
 | Trabajos publicados | Datos reales. Comuna y región, **nunca la dirección exacta** |
 | Cómo funciona | Dos columnas: quien contrata y quien trabaja |
 | Seguridad | Bloque oscuro con las cuatro garantías del pago |
@@ -210,6 +233,8 @@ Reglas de fondo:
 - Las filas de pestañas se desplazan en móvil y **se reparten en varias líneas
   desde `lg`**: una fila recortada en una pantalla ancha esconde estados sin que
   nadie sepa que están ahí.
+- La administración lleva menú lateral oscuro desde `lg` y, por debajo, una
+  fila desplazable con la sección activa marcada (`aria-current`).
 - Los filtros del listado: lo habitual siempre a la vista, lo raro detrás de
   «Más filtros», que se abre solo si ya hay alguno puesto —si no, se aplican
   filtros invisibles y los resultados parecen equivocados—.
@@ -262,7 +287,7 @@ aparecer un `apple-icon.svg`.
 
 Cinco destinos —Inicio, Explorar, **Publicar**, Mensajes o Mis trabajos según el
 modo, y Perfil—. Publicar está destacado de verdad: sale de la rejilla, va
-elevado y en coral. Antes tenía una marca `emphasis` que no producía ningún
+elevado, en verde petróleo con el signo en lima. Antes tenía una marca `emphasis` que no producía ningún
 estilo, así que estaba declarado como destacado y se veía igual que los demás.
 
 - Solo bajo `lg`. Por encima, la navegación vive en la cabecera.

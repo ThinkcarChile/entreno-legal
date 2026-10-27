@@ -308,14 +308,15 @@ const css = read("src/app/globals.css");
 
 check("la paleta de marca está en los tokens", () => {
   for (const [name, value] of [
-    ["--color-ink-950", "#152238"],
-    ["--color-brand-500", "#e8476b"],
-    ["--color-canvas", "#fff9f4"],
-    ["--color-success-500", "#20b486"],
+    ["--color-brand-950", "#12393a"],
+    ["--color-brand-700", "#14766c"],
+    ["--color-accent-300", "#d9f27e"],
+    ["--color-ink-950", "#142f33"],
+    ["--color-canvas", "#f7f8f4"],
   ] as const) {
     expect(css.includes(`${name}: ${value}`), `${name} no vale ${value}`);
   }
-  return "azul profundo, coral, crema y verde";
+  return "verde petróleo, lima, texto y marfil";
 });
 
 check("hay tokens de cada familia", () => {
@@ -382,16 +383,26 @@ check("los contrastes documentados se cumplen", () => {
   const white = "#ffffff";
   const canvas = hex("--color-canvas");
   const pairs: readonly [string, string, string, number][] = [
-    ["texto blanco sobre brand-600", white, hex("--color-brand-600"), 4.5],
+    ["texto blanco sobre brand-950", white, hex("--color-brand-950"), 4.5],
+    ["texto blanco sobre brand-700", white, hex("--color-brand-700"), 4.5],
     ["brand-700 sobre blanco", hex("--color-brand-700"), white, 4.5],
+    ["brand-700 sobre marfil", hex("--color-brand-700"), canvas, 4.5],
+    ["brand-600 sobre blanco", hex("--color-brand-600"), white, 4.5],
+    ["brand-950 sobre accent-300", hex("--color-brand-950"), hex("--color-accent-300"), 4.5],
+    ["brand-100 sobre brand-950", hex("--color-brand-100"), hex("--color-brand-950"), 4.5],
+    ["brand-200 sobre brand-950", hex("--color-brand-200"), hex("--color-brand-950"), 4.5],
     ["ink-600 sobre blanco", hex("--color-ink-600"), white, 4.5],
     ["ink-500 sobre blanco", hex("--color-ink-500"), white, 4.5],
-    ["ink-500 sobre crema", hex("--color-ink-500"), canvas, 4.5],
-    ["ink-600 sobre crema", hex("--color-ink-600"), canvas, 4.5],
+    ["ink-500 sobre marfil", hex("--color-ink-500"), canvas, 4.5],
+    ["ink-600 sobre marfil", hex("--color-ink-600"), canvas, 4.5],
     ["success-700 sobre blanco", hex("--color-success-700"), white, 4.5],
+    ["success-800 sobre brand-100", hex("--color-success-800"), hex("--color-brand-100"), 4.5],
+    ["warning-800 sobre warning-100", hex("--color-warning-800"), hex("--color-warning-100"), 4.5],
+    ["danger-700 sobre danger-100", hex("--color-danger-700"), hex("--color-danger-100"), 4.5],
+    ["info-700 sobre info-100", hex("--color-info-700"), hex("--color-info-100"), 4.5],
     ["danger-700 con texto blanco", white, hex("--color-danger-700"), 4.5],
+    ["warning-700 con texto blanco", white, hex("--color-warning-700"), 4.5],
     ["ink-300 sobre ink-950", hex("--color-ink-300"), hex("--color-ink-950"), 4.5],
-    ["ink-400 sobre ink-950", hex("--color-ink-400"), hex("--color-ink-950"), 4.5],
   ];
 
   const failures = pairs

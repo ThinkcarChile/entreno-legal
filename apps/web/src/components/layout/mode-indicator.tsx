@@ -21,7 +21,7 @@ export function ModeIndicator() {
     <div
       className={
         demo
-          ? "bg-warning-600 text-white"
+          ? "bg-warning-700 text-white"
           : "bg-success-700 text-white"
       }
     >

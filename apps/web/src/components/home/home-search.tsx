@@ -45,9 +45,9 @@ export function HomeSearch({ categories }: { categories: readonly JobCategory[] 
       action="/trabajos"
       method="get"
       onSubmit={onSubmit}
-      className="rounded-[var(--radius-card)] border border-line bg-surface p-4 shadow-[var(--shadow-raised)] sm:p-5"
+      className="rounded-[var(--radius-card)] border border-line bg-surface p-4 shadow-[var(--shadow-card)] sm:p-5"
     >
-      <p className="text-label text-ink-500 uppercase">Busca un trabajo publicado</p>
+      <p className="text-label text-brand-700 uppercase">Busca un trabajo publicado</p>
 
       <div className="mt-3 grid gap-3 md:grid-cols-[1.1fr_1.1fr_0.9fr_auto] md:items-end">
         <div className="space-y-1.5">

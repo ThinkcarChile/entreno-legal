@@ -43,26 +43,26 @@ const guarantees = [
 
 export function ProtectedPayment() {
   return (
-    <section className="bg-ink-950 py-14 text-white sm:py-20">
+    <section className="bg-brand-950 py-14 text-white sm:py-20">
       <div className="container-page grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-16">
         <div>
-          <p className="inline-flex items-center gap-2 rounded-[var(--radius-pill)] bg-white/10 px-3 py-1.5 text-small font-medium text-white">
+          <p className="inline-flex items-center gap-2 rounded-[var(--radius-pill)] bg-white/10 px-3 py-1.5 text-small font-bold text-accent-300">
             <ShieldCheck size={15} aria-hidden="true" />
             {site.protectedPaymentLabel}
           </p>
           <h2 className="mt-5 text-h2 sm:text-[2rem]">Tranquilidad para los dos lados</h2>
-          <p className="mt-4 max-w-lg text-body text-ink-300 sm:text-[1.0625rem]">
+          <p className="mt-4 max-w-lg text-body text-brand-100 sm:text-[1.0625rem]">
             El trabajador sabe que el dinero está disponible y tú mantienes la protección hasta
             que el servicio se complete.
           </p>
-          <p className="mt-5 max-w-lg text-small text-ink-500">
+          <p className="mt-5 max-w-lg text-small text-brand-200">
             {site.name} nunca almacena los datos de tu tarjeta: el cobro lo procesa la pasarela
             de pago, no nosotros.
           </p>
           <p className="mt-6">
             <Link
               href="/pago-protegido"
-              className="text-small font-medium text-white underline underline-offset-4 hover:text-brand-200"
+              className="text-small font-medium text-white underline underline-offset-4 hover:text-accent-300"
             >
               Cómo protegemos tu dinero
             </Link>
@@ -75,10 +75,10 @@ export function ProtectedPayment() {
               key={item.title}
               className="flex gap-4 rounded-[var(--radius-card)] bg-white/5 p-5 ring-1 ring-white/10 ring-inset"
             >
-              <item.icon size={20} className="mt-0.5 shrink-0 text-brand-300" aria-hidden="true" />
+              <item.icon size={20} className="mt-0.5 shrink-0 text-accent-300" aria-hidden="true" />
               <div className="min-w-0">
                 <h3 className="font-semibold">{item.title}</h3>
-                <p className="mt-1.5 text-small text-ink-300">{item.description}</p>
+                <p className="mt-1.5 text-small text-brand-100">{item.description}</p>
               </div>
             </li>
           ))}

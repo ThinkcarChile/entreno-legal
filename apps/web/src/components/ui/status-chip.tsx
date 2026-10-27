@@ -11,10 +11,10 @@ import type { ToneName } from "@/lib/domain/labels";
  */
 const tones: Record<ToneName, { chip: string; dot: string }> = {
   neutral: { chip: "bg-ink-100 text-ink-700 ring-ink-200", dot: "bg-ink-500" },
-  info: { chip: "bg-brand-50 text-brand-700 ring-brand-100", dot: "bg-brand-500" },
-  success: { chip: "bg-success-50 text-success-800 ring-success-100", dot: "bg-success-500" },
-  warning: { chip: "bg-warning-50 text-warning-800 ring-warning-100", dot: "bg-warning-500" },
-  danger: { chip: "bg-danger-50 text-danger-700 ring-danger-100", dot: "bg-danger-500" },
+  info: { chip: "bg-info-100 text-info-700 ring-info-200", dot: "bg-info-500" },
+  success: { chip: "bg-brand-100 text-success-800 ring-success-200", dot: "bg-success-500" },
+  warning: { chip: "bg-warning-100 text-warning-800 ring-warning-200", dot: "bg-warning-500" },
+  danger: { chip: "bg-danger-100 text-danger-700 ring-danger-200", dot: "bg-danger-500" },
 };
 
 export function StatusChip({
@@ -33,7 +33,7 @@ export function StatusChip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] px-2.5 py-1 text-caption font-medium ring-1 ring-inset",
+        "inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] px-2.5 py-1 text-[0.75rem] font-bold ring-1 ring-inset",
         style.chip,
         className,
       )}

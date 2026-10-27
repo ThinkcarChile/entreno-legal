@@ -41,10 +41,10 @@ export function Section({
                 </p>
               )}
               {title && (
-                <h2 className="mt-2 text-h2 text-ink-950 sm:text-[2rem]">{title}</h2>
+                <h2 className="mt-2 text-h2 text-ink-950 sm:text-[2.375rem]">{title}</h2>
               )}
               {description && (
-                <p className="mt-3 text-base text-ink-600 sm:text-lg">{description}</p>
+                <p className="mt-3 text-base text-ink-500 sm:text-[1.0625rem]">{description}</p>
               )}
             </div>
             {action && <div className="shrink-0">{action}</div>}

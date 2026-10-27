@@ -95,9 +95,9 @@ export function Tabs({
               tabIndex={selected ? 0 : -1}
               onClick={() => setActive(item.id)}
               className={cn(
-                "relative shrink-0 rounded-t-[var(--radius-control)] px-3.5 py-2.5 text-small font-medium whitespace-nowrap transition-colors",
+                "relative shrink-0 rounded-t-[var(--radius-control)] px-3.5 py-3 text-small font-bold whitespace-nowrap transition-colors",
                 selected
-                  ? "text-brand-700 after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full after:bg-brand-600"
+                  ? "text-brand-950 after:absolute after:inset-x-1 after:-bottom-px after:h-[3px] after:rounded-full after:bg-brand-700"
                   : "text-ink-500 hover:text-ink-800",
               )}
             >
@@ -106,7 +106,7 @@ export function Tabs({
                 <span
                   className={cn(
                     "ml-1.5 rounded-full px-1.5 py-0.5 text-[0.6875rem] tabular-nums",
-                    selected ? "bg-brand-50 text-brand-700" : "bg-ink-100 text-ink-600",
+                    selected ? "bg-brand-100 text-brand-950" : "bg-ink-100 text-ink-600",
                   )}
                 >
                   {item.count}

@@ -39,8 +39,8 @@ export async function SiteHeader() {
   const unread = session?.unreadNotifications ?? 0;
 
   return (
-    <header className="sticky top-0 z-(--z-index-header) border-b border-line bg-surface/90 backdrop-blur-md">
-      <div className="container-page flex h-(--spacing-header) items-center justify-between gap-4">
+    <header className="sticky top-0 z-(--z-index-header) border-b border-line bg-surface/95 backdrop-blur-md">
+      <div className="container-page flex h-(--spacing-header) items-center justify-between gap-4 lg:h-[4.625rem]">
         <Link
           href="/"
           className="flex shrink-0 items-center rounded-[var(--radius-control)]"
@@ -54,7 +54,7 @@ export async function SiteHeader() {
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-[var(--radius-control)] px-3 py-2 text-small font-medium text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-950"
+              className="rounded-[var(--radius-control)] px-3 py-2 text-small font-bold text-ink-500 transition-colors hover:text-brand-700"
             >
               {item.label}
             </Link>
@@ -106,7 +106,7 @@ export async function SiteHeader() {
             </div>
           ) : (
             <div className="hidden lg:flex lg:items-center lg:gap-2">
-              <ButtonLink href="/entrar" variant="ghost" size="sm">
+              <ButtonLink href="/entrar" variant="outline" size="sm">
                 Iniciar sesión
               </ButtonLink>
               <ButtonLink href="/publicar" size="sm">

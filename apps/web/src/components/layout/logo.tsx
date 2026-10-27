@@ -5,13 +5,17 @@ import { cn } from "@/lib/utils/cn";
 /**
  * Isotipo y marca denominativa.
  *
- * Tres ideas en una figura: el pin de ubicación (dónde), el reloj que lleva
- * dentro (cuánto tiempo) y el visto que lo cierra (cumplido). Está dibujado en
- * código y no como imagen para que herede el color del contexto y se vea nítido
- * en cualquier tamaño, incluido el favicon.
+ * El símbolo es una flecha ascendente dentro de una silueta suave, ladeada,
+ * que recuerda al número de turno que uno saca al llegar a una fila: con una
+ * esquina más aguda, como el corte de un ticket. La palabra va en minúsculas y
+ * cierra con un punto verde, «hagotufila.», como quien da algo por resuelto.
  *
- * Es una identidad **provisional**: sirve para construir el producto, no está
- * registrada y no pretende ser definitiva.
+ * Está dibujado en código y no como imagen para que se vea nítido en cualquier
+ * tamaño, incluido el favicon.
+ *
+ * Es una identidad **conceptual**: sirve para construir el producto, no está
+ * registrada y el logotipo final debe redibujarse en vector antes de su uso
+ * comercial.
  */
 export function Logo({
   className,
@@ -27,16 +31,17 @@ export function Logo({
   const inverted = tone === "invert";
 
   return (
-    <span className={cn("inline-flex items-center gap-2", className)}>
-      <LogoMark className={cn("h-8 w-8 shrink-0", inverted && "text-white")} inverted={inverted} />
+    <span className={cn("inline-flex items-center gap-2.5", className)}>
+      <LogoMark className="h-9 w-9 shrink-0" />
       {!compact && (
         <span
+          aria-hidden="true"
           className={cn(
-            "text-[1.0625rem] font-semibold tracking-tight",
+            "text-[1.375rem] leading-none font-[850] tracking-[-0.065em]",
             inverted ? "text-white" : "text-ink-950",
           )}
         >
-          Hago<span className={inverted ? "text-brand-300" : "text-brand-600"}>Tu</span>Fila
+          hagotufila<span className={inverted ? "text-accent-300" : "text-brand-700"}>.</span>
         </span>
       )}
       <span className="sr-only">{site.name}</span>
@@ -45,48 +50,22 @@ export function Logo({
 }
 
 /** El símbolo solo, para el favicon y los iconos de la aplicación instalada. */
-export function LogoMark({
-  className,
-  inverted = false,
-}: {
-  className?: string;
-  inverted?: boolean;
-}) {
+export function LogoMark({ className }: { className?: string }) {
   // Los colores del símbolo salen de `config/brand`, que es el único sitio
   // donde un valor de marca se escribe a mano fuera de `globals.css`.
-  const body = inverted ? "white" : "currentColor";
-  const inner = inverted ? brand.ink : "white";
-
   return (
-    <svg
-      viewBox="0 0 32 32"
-      role="img"
-      aria-hidden="true"
-      className={cn("text-brand-600", className)}
-    >
-      {/* Pin: gota con la punta abajo. */}
+    <svg viewBox="0 0 32 32" role="img" aria-hidden="true" className={className}>
+      {/* Ticket: esquinas redondas y una más aguda abajo a la izquierda. */}
       <path
-        d="M16 2.5c-5.8 0-10.5 4.6-10.5 10.3 0 7.3 8.7 15.4 10 16.6.3.3.7.3 1 0 1.3-1.2 10-9.3 10-16.6C26.5 7.1 21.8 2.5 16 2.5Z"
-        fill={body}
+        transform="rotate(-7 16 16)"
+        d="M12 3h8a9 9 0 0 1 9 9v8a9 9 0 0 1-9 9H6a3 3 0 0 1-3-3V12a9 9 0 0 1 9-9Z"
+        fill={brand.accent}
       />
-      {/* Esfera del reloj. */}
-      <circle cx="16" cy="12.6" r="6.6" fill={inner} />
-      {/* Manecillas: las doce y las cuatro, como un reloj que avanza. */}
+      {/* Flecha ascendente, derecha aunque el ticket esté ladeado. */}
       <path
-        d="M16 8.6v4.1l2.9 1.7"
-        stroke={body}
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      {/* Visto de cumplido, apoyado en la punta del pin. */}
-      <circle cx="24" cy="23.5" r="6" fill={inner} />
-      <circle cx="24" cy="23.5" r="4.6" fill={brand.check} />
-      <path
-        d="m21.8 23.6 1.6 1.6 2.9-3.1"
-        stroke={inner}
-        strokeWidth="1.6"
+        d="M11.2 20.8 20.4 11.6M13.4 11.6h7v7"
+        stroke={brand.primary}
+        strokeWidth="2.8"
         strokeLinecap="round"
         strokeLinejoin="round"
         fill="none"
