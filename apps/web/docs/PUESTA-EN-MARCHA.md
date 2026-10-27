@@ -252,9 +252,16 @@ código.
 > `https://hagotufila.vercel.app`: banda de prueba, `noindex`, `robots.txt`,
 > ingreso con una cuenta QA en escritorio y móvil sin errores de consola, la
 > clave secreta resolviendo un retorno de pago inexistente y la ruta
-> programada respondiendo 401 sin su secreto. Pendiente: V4 en NIC Chile, V6
-> (SMTP) y V7 con el dominio; borrar la clave secreta `default` del
-> 2026-09-17 cuando el entorno de desarrollo tenga otra.
+> programada respondiendo 401 sin su secreto, y un pago de integración creado
+> desde Vercel (Transbank devolvió token y formulario de `webpay3gint`).
+> V4 hecho el mismo día: NIC Chile delega en `ns1/ns2.vercel-dns.com` desde
+> las 19:09 (hora de Chile); el certificado no se emitió solo y hubo que
+> pedirlo con `vercel certs issue hagotufila.cl www.hagotufila.cl`. Desde
+> entonces `https://hagotufila.cl` responde con certificado de Let's Encrypt,
+> `www` y `http` redirigen con 308, y el ingreso funciona en el dominio.
+> Pendiente: V6 (SMTP), el pago de prueba completo de V7 con tarjeta de
+> prueba desde un navegador que llegue a Transbank, y borrar la clave secreta
+> `default` del 2026-09-17 cuando el entorno de desarrollo tenga otra.
 >
 > `vercel.json` fija el framework (un proyecto creado desde la CLI queda en
 > «Other» y publica solo `public/`: la portada daba 404) y la región `gru1`,
