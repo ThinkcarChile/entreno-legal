@@ -65,15 +65,11 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: supabaseImagePatterns(),
   },
-  experimental: {
-    serverActions: {
-      // La evidencia y las pruebas de disputa admiten hasta 8 MB
-      // (src/lib/storage/evidence.ts). El valor por omisión de Next es 1 MB, y
-      // cortaba cualquier foto normal de un teléfono antes de llegar a validarla.
-      // El margen cubre los encabezados del multipart.
-      bodySizeLimit: "9mb",
-    },
-  },
+  // Sin `serverActions.bodySizeLimit`: ningún archivo pasa por una acción de
+  // servidor. La evidencia, las pruebas de disputa y la foto de perfil suben
+  // directo del navegador a Storage (src/lib/storage/evidence.ts), así que el
+  // límite por omisión de Next (1 MB) sobra para formularios de texto, y una
+  // foto de 8 MB no choca con el límite de cuerpo del hosting (4,5 MB en Vercel).
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

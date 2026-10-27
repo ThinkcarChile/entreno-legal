@@ -7,15 +7,19 @@ import { ImagePlus, Send } from "lucide-react";
 
 import { Button, Field, Input, Select, Textarea } from "@/components/ui";
 import { Alert } from "@/components/ui/feedback";
-import { addJobEvidenceAction } from "@/lib/actions/assignment";
+import { addJobEvidenceAction, prepareJobEvidenceUploadAction } from "@/lib/actions/assignment";
 import { EvidenceType } from "@/lib/domain/enums";
+import { uploadErrorMessage } from "@/lib/storage/upload-errors";
+import { createClient } from "@/lib/supabase/client";
 
 /**
  * Actualización del trabajo: texto, foto o comprobante.
  *
- * El archivo se manda al servidor y allí se comprueba lo que de verdad es
- * antes de guardarlo. Aquí solo se corta lo evidente —formato y tamaño— para
- * no hacerle subir 20 MB a alguien que está en la calle con datos móviles.
+ * El archivo sube directo a Storage con la sesión de quien lo manda (no pasa
+ * por el servidor de la aplicación, que en Vercel no acepta más de 4,5 MB por
+ * envío), y el servidor comprueba después lo que de verdad es antes de
+ * registrarlo. Aquí solo se corta lo evidente —formato y tamaño— para no
+ * hacerle subir 20 MB a alguien que está en la calle con datos móviles.
  */
 const MAX_BYTES = 8 * 1024 * 1024;
 const ACCEPTED = "image/jpeg,image/png,image/webp,application/pdf";
@@ -56,6 +60,31 @@ export function EvidenceForm({ assignmentId }: { assignmentId: string }) {
     setError(null);
     setDone(false);
     startTransition(async () => {
+      // El archivo no viaja al servidor de la aplicación: sube directo a
+      // Storage con la sesión de esta persona, y al servidor llega solo la ruta.
+      const file = formData.get("file");
+      formData.delete("file");
+      if (file instanceof File && file.size > 0) {
+        const prepared = await prepareJobEvidenceUploadAction(assignmentId, { type: file.type, size: file.size });
+        if (!prepared.ok) {
+          setError(prepared.error);
+          return;
+        }
+        try {
+          const { error: uploadError } = await createClient()
+            .storage.from(prepared.data.bucket)
+            .upload(prepared.data.path, file, { contentType: file.type, upsert: false });
+          if (uploadError) {
+            setError(uploadErrorMessage(uploadError));
+            return;
+          }
+        } catch (uploadFailure) {
+          setError(uploadErrorMessage(uploadFailure));
+          return;
+        }
+        formData.set("storagePath", prepared.data.path);
+      }
+
       const result = await addJobEvidenceAction(assignmentId, formData);
       if (!result.ok) {
         setError(result.error);

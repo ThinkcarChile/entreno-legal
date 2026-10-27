@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import {
   buildEvidencePath,
   DISPUTE_BUCKET,
-  isOwnEvidencePath,
+  inspectUploadedEvidence,
+  isGeneratedEvidencePath,
   validateEvidence,
 } from "@/lib/storage/evidence";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -65,7 +66,35 @@ export async function openDisputeAction(
   }
 }
 
-/** Texto, archivo, o las dos cosas. Se valida el contenido real del archivo. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/**
+ * Antes de subir una prueba con archivo: valida tipo y tamaño declarados y
+ * devuelve dónde subirla. Igual que la evidencia del trabajo: la ruta la genera
+ * el servidor y la subida la autoriza la política del bucket.
+ */
+export async function prepareDisputeEvidenceUploadAction(
+  disputeId: string,
+  file: { type: string; size: number },
+): Promise<ActionResult<{ bucket: string; path: string }>> {
+  try {
+    const { userId } = await requireSession();
+    if (!UUID.test(disputeId)) return { ok: false, error: "Esa disputa no existe." };
+
+    const check = validateEvidence({ type: String(file?.type ?? ""), size: Number(file?.size ?? 0) });
+    if (!check.ok) return { ok: false, error: check.message!, field: "file" };
+
+    return actionOk({ bucket: DISPUTE_BUCKET, path: buildEvidencePath(userId, disputeId, file.type) });
+  } catch (error) {
+    return actionError(error, "No pudimos preparar la subida del archivo.");
+  }
+}
+
+/**
+ * Texto, archivo, o las dos cosas. El archivo ya está en Storage (lo subió el
+ * navegador en la ruta de `prepareDisputeEvidenceUploadAction`); aquí llega su
+ * ruta y se comprueba su contenido real antes de registrarlo.
+ */
 export async function addDisputeEvidenceAction(
   assignmentId: string,
   disputeId: string,
@@ -75,13 +104,29 @@ export async function addDisputeEvidenceAction(
     const { supabase, userId } = await requireSession();
 
     const body = String(form.get("body") ?? "").trim();
-    const file = form.get("file");
-    const hasFile = file instanceof File && file.size > 0;
+    const uploadedPath = String(form.get("storagePath") ?? "").trim() || null;
+    // La ruta llega del navegador: solo vale la forma exacta que generó
+    // `prepare…UploadAction` para esta persona y este ámbito. Una ruta ajena ni
+    // se inspecciona ni se borra.
+    if (uploadedPath && !isGeneratedEvidencePath(uploadedPath, userId, disputeId)) {
+      return { ok: false, error: "Esa ruta de archivo no es válida.", field: "file" };
+    }
+    const bucket = supabase.storage.from(DISPUTE_BUCKET);
 
-    if (!body && !hasFile) {
+    // Mismo criterio que la evidencia del trabajo: lo que no se registra se
+    // retira con la sesión de quien lo subió, mientras no esté registrado.
+    const discard = async () => {
+      if (uploadedPath) await bucket.remove([uploadedPath]);
+    };
+
+    if (form.get("file") instanceof File && (form.get("file") as File).size > 0) {
+      return { ok: false, error: "Recarga la página e inténtalo de nuevo.", field: "file" };
+    }
+    if (!body && !uploadedPath) {
       return { ok: false, error: "Escribe algo o adjunta un archivo.", field: "body" };
     }
     if (body.length > 2000) {
+      await discard();
       return { ok: false, error: "El texto es demasiado largo.", field: "body" };
     }
 
@@ -89,24 +134,15 @@ export async function addDisputeEvidenceAction(
     let mimeType: string | null = null;
     let sizeBytes: number | null = null;
 
-    if (hasFile) {
-      const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
-      const check = validateEvidence({ type: file.type, size: file.size }, head);
-      if (!check.ok) return { ok: false, error: check.message!, field: "file" };
-
-      storagePath = buildEvidencePath(userId, disputeId, file.type);
-      if (!isOwnEvidencePath(storagePath, userId)) {
-        return { ok: false, error: "No pudimos preparar la ruta del archivo." };
+    if (uploadedPath) {
+      const inspected = await inspectUploadedEvidence((path) => bucket.download(path), uploadedPath);
+      if (!inspected.ok) {
+        await discard();
+        return { ok: false, error: inspected.message, field: "file" };
       }
-
-      const upload = await supabase.storage
-        .from(DISPUTE_BUCKET)
-        .upload(storagePath, file, { contentType: file.type, upsert: false });
-
-      if (upload.error) return actionError(upload.error, "No pudimos guardar el archivo.");
-
-      mimeType = file.type;
-      sizeBytes = file.size;
+      storagePath = uploadedPath;
+      mimeType = inspected.type;
+      sizeBytes = inspected.size;
     }
 
     const { data, error } = await supabase.rpc("add_dispute_evidence", {
@@ -118,9 +154,7 @@ export async function addDisputeEvidenceAction(
     });
 
     if (error) {
-      // Mismo criterio que la evidencia del trabajo: se retira con la sesión de
-      // quien lo subió, y la política solo lo permite mientras no esté registrado.
-      if (storagePath) await supabase.storage.from(DISPUTE_BUCKET).remove([storagePath]);
+      await discard();
       return actionError(error, "No pudimos adjuntar la prueba.");
     }
 

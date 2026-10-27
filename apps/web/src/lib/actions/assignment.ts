@@ -6,7 +6,8 @@ import { EvidenceType } from "@/lib/domain/enums";
 import {
   buildEvidencePath,
   EVIDENCE_BUCKET,
-  isOwnEvidencePath,
+  inspectUploadedEvidence,
+  isGeneratedEvidencePath,
   validateEvidence,
 } from "@/lib/storage/evidence";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -117,12 +118,38 @@ export async function startWorkAction(assignmentId: string): Promise<ActionResul
   }
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/**
+ * Antes de subir un archivo de evidencia: valida tipo y tamaño declarados y
+ * devuelve dónde subirlo. La ruta la genera el servidor; el navegador sube ahí
+ * directo a Storage, con su sesión, y la política del bucket decide si puede.
+ */
+export async function prepareJobEvidenceUploadAction(
+  assignmentId: string,
+  file: { type: string; size: number },
+): Promise<ActionResult<{ bucket: string; path: string }>> {
+  try {
+    const { userId } = await requireSession();
+    if (!UUID.test(assignmentId)) return { ok: false, error: "Ese trabajo no existe." };
+
+    const check = validateEvidence({ type: String(file?.type ?? ""), size: Number(file?.size ?? 0) });
+    if (!check.ok) return { ok: false, error: check.message!, field: "file" };
+
+    return actionOk({ bucket: EVIDENCE_BUCKET, path: buildEvidencePath(userId, assignmentId, file.type) });
+  } catch (error) {
+    return actionError(error, "No pudimos preparar la subida del archivo.");
+  }
+}
+
 /**
  * Actualización del trabajo, con o sin archivo.
  *
- * El archivo viaja al servidor, se valida por contenido y se sube con la sesión
- * de quien lo manda: así la política de Storage sigue aplicando y la carpeta no
- * puede ser la de otro. Recién después se registra la fila, por RPC.
+ * El archivo ya no viaja aquí: el navegador lo subió directo a Storage, en la
+ * ruta que dio `prepareJobEvidenceUploadAction`, y aquí llega solo esa ruta
+ * (`storagePath`). Antes de registrar se descarga con la sesión de quien lo
+ * subió y se miran sus primeros bytes: el tipo y el tamaño que se registran son
+ * los medidos, no los declarados. Si algo no cuadra, el archivo se retira.
  */
 export async function addJobEvidenceAction(
   assignmentId: string,
@@ -135,13 +162,35 @@ export async function addJobEvidenceAction(
     const title = String(form.get("title") ?? "").trim();
     const body = String(form.get("body") ?? "").trim();
     const queueAheadRaw = String(form.get("queueAhead") ?? "").trim();
-    const file = form.get("file");
+    const uploadedPath = String(form.get("storagePath") ?? "").trim() || null;
+    // La ruta llega del navegador: solo vale la forma exacta que generó
+    // `prepare…UploadAction` para esta persona y este ámbito. Una ruta ajena ni
+    // se inspecciona ni se borra.
+    if (uploadedPath && !isGeneratedEvidencePath(uploadedPath, userId, assignmentId)) {
+      return { ok: false, error: "Esa ruta de archivo no es válida.", field: "file" };
+    }
+    const bucket = supabase.storage.from(EVIDENCE_BUCKET);
 
-    if (!title) return { ok: false, error: "Escribe un título para la actualización.", field: "title" };
+    // Si la publicación no se registra, el archivo subido no puede quedar
+    // huérfano: se retira con la sesión de quien lo subió
+    // (`evidence_own_delete_unregistered` lo permite mientras no esté registrado).
+    const discard = async () => {
+      if (uploadedPath) await bucket.remove([uploadedPath]);
+    };
+
+    if (form.get("file") instanceof File && (form.get("file") as File).size > 0) {
+      return { ok: false, error: "Recarga la página e inténtalo de nuevo.", field: "file" };
+    }
+    if (!title) {
+      await discard();
+      return { ok: false, error: "Escribe un título para la actualización.", field: "title" };
+    }
     if (title.length > 120) {
+      await discard();
       return { ok: false, error: "El título es demasiado largo.", field: "title" };
     }
     if (!["NOTE", "PHOTO", "QUEUE_STATUS", "LOCATION"].includes(type)) {
+      await discard();
       return { ok: false, error: "Ese tipo de actualización no existe." };
     }
 
@@ -149,24 +198,15 @@ export async function addJobEvidenceAction(
     let mimeType: string | null = null;
     let sizeBytes: number | null = null;
 
-    if (file instanceof File && file.size > 0) {
-      const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
-      const check = validateEvidence({ type: file.type, size: file.size }, head);
-      if (!check.ok) return { ok: false, error: check.message!, field: "file" };
-
-      storagePath = buildEvidencePath(userId, assignmentId, file.type);
-      if (!isOwnEvidencePath(storagePath, userId)) {
-        return { ok: false, error: "No pudimos preparar la ruta del archivo." };
+    if (uploadedPath) {
+      const inspected = await inspectUploadedEvidence((path) => bucket.download(path), uploadedPath);
+      if (!inspected.ok) {
+        await discard();
+        return { ok: false, error: inspected.message, field: "file" };
       }
-
-      const upload = await supabase.storage
-        .from(EVIDENCE_BUCKET)
-        .upload(storagePath, file, { contentType: file.type, upsert: false });
-
-      if (upload.error) return actionError(upload.error, "No pudimos guardar el archivo.");
-
-      mimeType = file.type;
-      sizeBytes = file.size;
+      storagePath = uploadedPath;
+      mimeType = inspected.type;
+      sizeBytes = inspected.size;
     }
 
     const { data, error } = await supabase.rpc("add_job_evidence", {
@@ -181,12 +221,7 @@ export async function addJobEvidenceAction(
     });
 
     if (error) {
-      // Si la fila no se pudo registrar, el archivo subido queda huérfano: se
-      // retira para no dejar basura en un bucket privado. Va con la sesión de
-      // quien lo subió: `evidence_own_delete_unregistered` deja borrar lo propio
-      // solo mientras no esté registrado. Antes no había política de borrado y
-      // esta limpieza fallaba en silencio.
-      if (storagePath) await supabase.storage.from(EVIDENCE_BUCKET).remove([storagePath]);
+      await discard();
       return actionError(error, "No pudimos publicar la actualización.");
     }
 

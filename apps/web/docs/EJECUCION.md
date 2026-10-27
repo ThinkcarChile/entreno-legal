@@ -194,10 +194,18 @@ Cada hito lleva un `event_key` (`on_the_way`, `check_in`, `work_started`,
 
 ## 6. Evidencia y Storage
 
-La subida de la aplicación es **del servidor**, no del navegador. La diferencia
-importa: ahí se miran los primeros bytes del archivo antes de guardarlo, y no
-solo lo que el navegador dice que es. Un ejecutable renombrado a `.jpg` declara
-`image/jpeg` en el formulario; su firma, no.
+El archivo sube **directo del navegador a Storage**, con la sesión de quien lo
+aporta, en tres pasos: el servidor valida tipo y tamaño declarados y genera la
+ruta (`prepareJobEvidenceUploadAction` / `prepareDisputeEvidenceUploadAction`);
+el navegador sube a esa ruta y la política del bucket decide si puede; y antes
+de registrar, el servidor descarga lo subido con la misma sesión y mira **los
+primeros bytes**. Un ejecutable renombrado a `.jpg` declara `image/jpeg`; su
+firma, no: se retira y no se registra. Se registran el tipo y el tamaño
+medidos, no los declarados.
+
+Hasta el 2026-10 el archivo viajaba al servidor de la aplicación y de ahí a
+Storage. Se cambió porque el hosting corta el cuerpo de una función de
+servidor (4,5 MB en Vercel) y la evidencia admite 8 MB.
 
 Pero quien tiene una sesión puede hablar con Storage y con las RPC sin pasar
 por la aplicación. Por eso cada control dice dónde vive:
@@ -205,7 +213,7 @@ por la aplicación. Por eso cada control dice dónde vive:
 | Control | Dónde | Cómo |
 |---|---|---|
 | Formatos | Storage y base | JPG, PNG, WebP y PDF (`allowed_mime_types` del bucket). **SVG queda fuera**: es un documento que puede llevar script |
-| Tipo real | Solo la aplicación | Firmas de los primeros bytes (`validateEvidence`). La base no lee bytes: quien sube directo con su sesión se salta esta comprobación, no las demás |
+| Tipo real | Solo la aplicación | Firmas de los primeros bytes del archivo **ya subido** (`inspectUploadedEvidence`), antes de registrarlo; si no cuadran, se retira. La base no lee bytes: quien registra por la RPC directo, sin pasar por la aplicación, se salta esta comprobación, no las demás |
 | Tamaño | Storage y base | 8 MB por archivo: `file_size_limit` del bucket, y `add_job_evidence` / `add_dispute_evidence` toman el tamaño **que midió Storage** (`storage.objects.metadata`), lo contrastan con `evidence_max_bytes` y exigen que coincida con el declarado |
 | Existencia | Base | El archivo tiene que estar en `storage.objects`, en esa ruta, al registrarlo. Antes se podía registrar un archivo que no existía |
 | Cantidad | Storage y base | Máximo por persona y asignación, y por persona y disputa, en `evidence_max_per_assignment`: lo cuenta la RPC sobre lo registrado y, desde `20260601001840`, la política de subida sobre los archivos de esa persona en ese ámbito, registrados o no. La administración no tiene tope en las disputas |

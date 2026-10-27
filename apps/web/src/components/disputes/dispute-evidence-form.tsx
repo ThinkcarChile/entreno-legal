@@ -7,14 +7,17 @@ import { ImagePlus, Send } from "lucide-react";
 
 import { Button, Field, Textarea } from "@/components/ui";
 import { Alert } from "@/components/ui/feedback";
-import { addDisputeEvidenceAction } from "@/lib/actions/disputes";
+import { addDisputeEvidenceAction, prepareDisputeEvidenceUploadAction } from "@/lib/actions/disputes";
+import { uploadErrorMessage } from "@/lib/storage/upload-errors";
+import { createClient } from "@/lib/supabase/client";
 
 /**
  * Aportar una prueba a la disputa: un texto, un archivo, o las dos cosas.
  *
- * El archivo se comprueba de verdad en el servidor (tipo, primeros bytes y
- * tamaño) y la base vuelve a mirar quién la aporta, si la disputa sigue
- * abierta y el tope por persona. Aquí solo se corta lo evidente.
+ * El archivo sube directo a Storage con la sesión de quien lo aporta, y el
+ * servidor comprueba después su contenido real (tipo, primeros bytes y tamaño)
+ * antes de registrarlo; la base vuelve a mirar quién la aporta, si la disputa
+ * sigue abierta y el tope por persona. Aquí solo se corta lo evidente.
  */
 const MAX_BYTES = 8 * 1024 * 1024;
 const ACCEPTED = "image/jpeg,image/png,image/webp,application/pdf";
@@ -59,6 +62,31 @@ export function DisputeEvidenceForm({
     setError(null);
     setDone(false);
     startTransition(async () => {
+      // El archivo no viaja al servidor de la aplicación: sube directo a
+      // Storage con la sesión de esta persona, y al servidor llega solo la ruta.
+      const file = formData.get("file");
+      formData.delete("file");
+      if (file instanceof File && file.size > 0) {
+        const prepared = await prepareDisputeEvidenceUploadAction(disputeId, { type: file.type, size: file.size });
+        if (!prepared.ok) {
+          setError(prepared.error);
+          return;
+        }
+        try {
+          const { error: uploadError } = await createClient()
+            .storage.from(prepared.data.bucket)
+            .upload(prepared.data.path, file, { contentType: file.type, upsert: false });
+          if (uploadError) {
+            setError(uploadErrorMessage(uploadError));
+            return;
+          }
+        } catch (uploadFailure) {
+          setError(uploadErrorMessage(uploadFailure));
+          return;
+        }
+        formData.set("storagePath", prepared.data.path);
+      }
+
       const result = await addDisputeEvidenceAction(assignmentId, disputeId, formData);
       if (!result.ok) {
         setError(result.error);
