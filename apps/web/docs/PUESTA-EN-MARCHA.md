@@ -230,6 +230,68 @@ condiciones de A9 y A10 siguen haciendo falta. → P §6.
 
 ---
 
+## V. Versión de prueba en `hagotufila.cl`
+
+Para ver la aplicación en el dominio real antes del lanzamiento: el mismo
+código, conectado a `hagotufila-dev` y a Webpay de **integración**. Nada de
+esta parte mueve dinero. La aplicación lo sabe sola (`deploymentStage` en
+`src/lib/env.ts`): en un despliegue de producción que no cobra de verdad
+muestra la banda «Versión de prueba», responde `noindex` y su `robots.txt`
+dice `Disallow: /`. El día de C7 la banda y el bloqueo desaparecen sin tocar
+código.
+
+**V1. Hosting: Vercel, no un hosting compartido.** HagoTuFila es Next.js con
+servidor (acciones de servidor, rutas de API, retorno de Webpay). Un hosting
+compartido de cPanel/PHP —HostGator y similares— no lo ejecuta. Vercel es de
+quien hace Next.js y lo despliega desde GitHub en cada push. El plan Hobby
+(gratis) sirve para esta versión de prueba; para operar como negocio hace
+falta Pro: Hobby es de uso no comercial y su programador no llega a cada 10
+minutos (C6).
+
+**V2. Proyecto.** En Vercel: *Add New → Project* → importar
+`ThinkcarChile/entreno-legal` → *Root Directory* `apps/web` (Next.js se
+detecta solo). Mientras HagoTuFila no tenga repositorio propio, en
+*Settings → Git → Production Branch* va la rama de trabajo.
+
+**V3. Variables** (*Settings → Environment Variables*, entorno Production),
+una por una:
+
+| Variable | Valor |
+|---|---|
+| `NEXT_PUBLIC_SITE_URL` | `https://hagotufila.cl` |
+| `NEXT_PUBLIC_SUPABASE_URL` | la de `hagotufila-dev` |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | la publicable de `hagotufila-dev` |
+| `SUPABASE_SECRET_KEY` | una secreta **nueva** de `hagotufila-dev`, creada para esto (D §2); nunca la que estuvo expuesta |
+| `PAYMENT_PROVIDER` | `transbank` (el simulado no opera con `NODE_ENV=production`) |
+| `TRANSBANK_ENVIRONMENT` | `integration`, **escrita** |
+
+Ninguna `TRANSBANK_PRODUCTION_*`. `NODE_ENV` la pone Vercel.
+
+**V4. Dominio.** En Vercel, *Settings → Domains*: agrega `hagotufila.cl` y
+`www.hagotufila.cl` (que redirija a la primera). Vercel indica sus servidores
+de nombre, `ns1.vercel-dns.com` y `ns2.vercel-dns.com`. En
+[nic.cl](https://www.nic.cl), con la cuenta del titular: el dominio →
+*Servidores de nombre (DNS)* → reemplazar por esos dos. NIC Chile no guarda
+registros sueltos (A, MX, TXT): delega el dominio entero a esos servidores, y
+desde entonces los registros se administran en Vercel. La propagación tarda de
+minutos a un día; el certificado HTTPS lo emite Vercel solo.
+
+**V5. Auth de `hagotufila-dev`.** *Site URL* `https://hagotufila.cl` y en
+*Redirect URLs* `https://hagotufila.cl/auth/callback`, sin quitar las de
+`localhost` (D §4.1).
+
+**V6. Correo.** Con el SMTP integrado de Supabase los correos de registro y
+de recuperación salen con un límite muy bajo y no se pueden personalizar
+(D §4.1.c): para que gente de fuera del equipo cree cuentas hace falta SMTP
+propio (Resend, Brevo, Amazon SES…) con sus registros SPF y DKIM agregados en
+el DNS de V4, y un DMARC. Si además se quiere correo `hola@hagotufila.cl`, sus
+registros MX van en el mismo sitio.
+
+**V7. Comprobación.** En `https://hagotufila.cl`: la banda «Versión de
+prueba» a la vista; `/robots.txt` con `Disallow: /`; registrarse y entrar; un
+pago con una tarjeta de prueba de Webpay de principio a fin —desde Vercel
+Transbank responde, a diferencia de la red de los contenedores de desarrollo—.
+
 ## C. Producción
 
 Solo después de que Transbank apruebe el comercio. Ningún paso de esta parte se

@@ -3,6 +3,7 @@ import { ModeIndicator } from "@/components/layout/mode-indicator";
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
+import { TrialBanner } from "@/components/layout/trial-banner";
 import { getViewer } from "@/lib/auth/session";
 import { UserRole } from "@/lib/domain/enums";
 
@@ -16,6 +17,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
     <div className="flex min-h-dvh flex-col pb-tabbar lg:pb-0">
       <ModeIndicator />
       <DemoBanner />
+      <TrialBanner />
       <SiteHeader />
       <main className="flex-1">{children}</main>
       <SiteFooter />

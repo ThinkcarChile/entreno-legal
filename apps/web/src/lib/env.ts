@@ -180,6 +180,36 @@ export const transbankEnvironmentExplicit = isExplicitTransbankEnvironment(
   process.env.TRANSBANK_ENVIRONMENT,
 );
 
+/**
+ * ¿Este despliegue mueve dinero real?
+ *
+ * Solo cuando todo viene escrito: Webpay en producción, elegido a mano, y el
+ * interruptor encendido. Cualquier otra combinación en un despliegue de
+ * producción es una versión de prueba —con Webpay de integración, o con el
+ * productivo apagado— y se publica con un aviso visible y sin indexar, para
+ * que nadie confunda un pago de prueba con uno de verdad ni llegue a ella
+ * desde un buscador antes del lanzamiento.
+ */
+export type DeploymentStage = "development" | "trial" | "live";
+
+export function deploymentStage(
+  config: Pick<
+    ServerEnv,
+    "NODE_ENV" | "PAYMENT_PROVIDER" | "TRANSBANK_ENVIRONMENT" | "TRANSBANK_PRODUCTION_ENABLED"
+  >,
+  environmentExplicit: boolean,
+): DeploymentStage {
+  if (config.NODE_ENV !== "production") return "development";
+  const live =
+    config.PAYMENT_PROVIDER === "transbank" &&
+    config.TRANSBANK_ENVIRONMENT === "production" &&
+    environmentExplicit &&
+    config.TRANSBANK_PRODUCTION_ENABLED;
+  return live ? "live" : "trial";
+}
+
+export const currentDeploymentStage = deploymentStage(env, transbankEnvironmentExplicit);
+
 /** Largo mínimo de `CRON_SECRET` (`openssl rand -hex 32` da 64). */
 export const CRON_SECRET_MIN_LENGTH = 32;
 

@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import { ServiceWorkerSetup } from "@/components/layout/service-worker";
 import { brand } from "@/config/brand";
 import { seoKeywords, site } from "@/config/site";
+import { currentDeploymentStage } from "@/lib/env";
 
 import "./globals.css";
 
@@ -37,11 +38,15 @@ export const metadata: Metadata = {
     title: `${site.name} — ${site.claim}`,
     description: site.description,
   },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: { index: true, follow: true, "max-image-preview": "large" },
-  },
+  // Una versión de prueba no se indexa (ver `deploymentStage`).
+  robots:
+    currentDeploymentStage === "trial"
+      ? { index: false, follow: false }
+      : {
+          index: true,
+          follow: true,
+          googleBot: { index: true, follow: true, "max-image-preview": "large" },
+        },
   formatDetection: { telephone: false },
   // La aplicación instalada usa su propia barra de estado, sin la del navegador.
   appleWebApp: {

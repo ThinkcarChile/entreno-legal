@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   cronSecretState,
+  deploymentStage,
   isExplicitTransbankEnvironment,
   parseServerEnv,
   type RawServerEnv,
@@ -125,5 +126,38 @@ describe(".env.example", () => {
       PAYMENT_PROVIDER: "transbank",
     });
     expect(environmentBlockers(context).join(" ")).toContain("falta TRANSBANK_ENVIRONMENT");
+  });
+});
+
+describe("deploymentStage", () => {
+  const stage = (raw: RawServerEnv) =>
+    deploymentStage(parseServerEnv(raw), isExplicitTransbankEnvironment(raw.TRANSBANK_ENVIRONMENT));
+
+  it("fuera de producción no es ni prueba ni lanzamiento", () => {
+    expect(stage({})).toBe("development");
+    expect(stage({ NODE_ENV: "test", PAYMENT_PROVIDER: "transbank" })).toBe("development");
+  });
+
+  it("en producción con Webpay de integración es una versión de prueba", () => {
+    expect(
+      stage({ NODE_ENV: "production", PAYMENT_PROVIDER: "transbank", TRANSBANK_ENVIRONMENT: "integration" }),
+    ).toBe("trial");
+  });
+
+  it("con Webpay productivo pero el interruptor apagado sigue siendo de prueba", () => {
+    expect(
+      stage({ NODE_ENV: "production", PAYMENT_PROVIDER: "transbank", TRANSBANK_ENVIRONMENT: "production" }),
+    ).toBe("trial");
+  });
+
+  it("solo con todo escrito y encendido mueve dinero real", () => {
+    expect(
+      stage({
+        NODE_ENV: "production",
+        PAYMENT_PROVIDER: "transbank",
+        TRANSBANK_ENVIRONMENT: "production",
+        TRANSBANK_PRODUCTION_ENABLED: "true",
+      }),
+    ).toBe("live");
   });
 });
