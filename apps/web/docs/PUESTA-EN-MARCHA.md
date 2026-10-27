@@ -240,6 +240,28 @@ muestra la banda «Versión de prueba», responde `noindex` y su `robots.txt`
 dice `Disallow: /`. El día de C7 la banda y el bloqueo desaparecen sin tocar
 código.
 
+> **Estado al 2026-10-27.** Hecho: proyecto `hagotufila` en el equipo
+> `hagotufila` de Vercel (plan Hobby), publicado desde la CLI con
+> `vercel deploy --prod` en `apps/web` —no hay integración con GitHub: cada
+> publicación es un `deploy` explícito—; las siete variables de V3 cargadas
+> (la secreta es una clave nueva, `vercel_prueba`, que nadie ha visto: se
+> creó con la Management API y pasó directo a Vercel); dominios `hagotufila.cl`
+> y `www.hagotufila.cl` (redirige con 308) agregados; Auth de
+> `hagotufila-dev` con *Site URL* `https://hagotufila.cl` y la URL de retorno
+> de `hagotufila.vercel.app` además de las de V5. Comprobado en
+> `https://hagotufila.vercel.app`: banda de prueba, `noindex`, `robots.txt`,
+> ingreso con una cuenta QA en escritorio y móvil sin errores de consola, la
+> clave secreta resolviendo un retorno de pago inexistente y la ruta
+> programada respondiendo 401 sin su secreto. Pendiente: V4 en NIC Chile, V6
+> (SMTP) y V7 con el dominio; borrar la clave secreta `default` del
+> 2026-09-17 cuando el entorno de desarrollo tenga otra.
+>
+> `vercel.json` fija el framework (un proyecto creado desde la CLI queda en
+> «Other» y publica solo `public/`: la portada daba 404) y la región `gru1`,
+> São Paulo, junto a la base (`sa-east-1`). `.vercelignore` deja fuera lo que
+> no se construye; sus rutas van ancladas con «/», porque `supabase` a secas
+> excluía también `src/lib/supabase` y el build fallaba.
+
 **V1. Hosting: Vercel, no un hosting compartido.** HagoTuFila es Next.js con
 servidor (acciones de servidor, rutas de API, retorno de Webpay). Un hosting
 compartido de cPanel/PHP —HostGator y similares— no lo ejecuta. Vercel es de

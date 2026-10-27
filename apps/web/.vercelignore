@@ -1,0 +1,14 @@
+# Lo que no hace falta subir a Vercel para construir la aplicación.
+# Rutas ancladas con «/»: sin ella, «supabase» también excluía src/lib/supabase.
+# Las variables de entorno se configuran en el panel, nunca en archivos.
+.env*
+!.env.example
+/.next
+/node_modules
+/test-results
+/playwright-report
+/e2e
+/docs
+/brand
+/supabase
+/tsconfig.tsbuildinfo
